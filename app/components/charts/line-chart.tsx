@@ -19,6 +19,13 @@ type LineChartProps = {
   label: string;
   height?: number;
   formatValue?: (value: number) => string;
+  /**
+   * Keep zero on the y-axis (the default). Turn off for values that sit far
+   * from zero, such as a skill rating, so the change is visible.
+   */
+  includeZero?: boolean;
+  /** Y-axis tick labels; compact ("1.2K") by default. */
+  formatTick?: (value: number) => string;
 };
 
 const M = { top: 12, right: 12, bottom: 28, left: 36 };
@@ -33,6 +40,8 @@ export function LineChart({
   label,
   height = 240,
   formatValue = (v) => String(v),
+  includeZero = true,
+  formatTick = formatCompact,
 }: LineChartProps) {
   const [ref, width] = useElementWidth<HTMLDivElement>(640);
   const [active, setActive] = useState<number | null>(null);
@@ -40,7 +49,11 @@ export function LineChart({
   const last = labels.length - 1;
 
   const all = shown.flatMap((s) => s.values.filter((v) => v != null));
-  const ticks = niceTicks(Math.min(0, ...all), Math.max(0, ...all));
+  const zero = includeZero ? [0] : [];
+  let [lo, hi] = [Math.min(...zero, ...all), Math.max(...zero, ...all)];
+  // A flat series away from zero still gets a band around it, not a 0-based axis.
+  if (!includeZero && lo === hi) [lo, hi] = [lo - 1, hi + 1];
+  const ticks = niceTicks(lo, hi);
   const x = linearScale([0, Math.max(1, last)], [M.left, width - M.right]);
   const y = linearScale(
     [ticks[0], ticks[ticks.length - 1]],
@@ -120,7 +133,7 @@ export function LineChart({
               textAnchor="end"
               className="fill-ink-muted text-xs tabular"
             >
-              {formatCompact(t)}
+              {formatTick(t)}
             </text>
           </g>
         ))}
