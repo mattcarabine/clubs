@@ -891,6 +891,61 @@ function deviationFrom(
 }
 
 // ---------------------------------------------------------------------------
+// Compared with your usual (CLUBS-34): one Session against every Match
+
+/** The stats a Session is compared on, as `[club, metric id]`, in order. */
+const USUAL_STATS: ReadonlyArray<readonly [Club, string]> = [
+  ["ours", "goals"],
+  ["opponent", "goals"],
+  ["ours", "shots"],
+  ["ours", "pass"],
+  ["ours", "tackle"],
+  ["ours", "rating"],
+];
+
+/** One stat over a set of Matches beside Our Club's usual. */
+export interface UsualComparisonRow {
+  id: string;
+  /** "Goals per 90", "Opponent goals per 90". */
+  label: string;
+  /** Over the set, e.g. one Session's Matches. */
+  value: string;
+  /** Over every Match. */
+  usual: string;
+}
+
+/**
+ * A set of Matches (one Session's) beside the average over every Match
+ * (`usual`, which includes the set), with the Outcome Split's per-90 and
+ * rate formulas. Null until `MIN_SPLIT_MATCHES` Matches fall outside the
+ * set, since a usual made mostly of the set itself says nothing.
+ */
+export function usualComparison(
+  set: readonly MatchPerformance[],
+  usual: readonly MatchPerformance[],
+): UsualComparisonRow[] | null {
+  if (usual.length - set.length < MIN_SPLIT_MATCHES) return null;
+  return USUAL_STATS.flatMap(([club, id]) => {
+    const metric = PERFORMANCE_METRICS.find((m) => m.id === id);
+    if (!metric) return [];
+    const mean = (from: readonly MatchPerformance[]) => {
+      const value = weightedMean(
+        withoutNulls(from.map((m) => metric.sample(m[club], m.secondsPlayed))),
+      );
+      return value === null ? NO_VALUE : metric.format(value);
+    };
+    return [
+      {
+        id: `${club}-${id}`,
+        label: statName(club, metric.label),
+        value: mean(set),
+        usual: mean(usual),
+      },
+    ];
+  });
+}
+
+// ---------------------------------------------------------------------------
 // One Squad Member
 
 /** A Squad Member's record at one Position Group. */

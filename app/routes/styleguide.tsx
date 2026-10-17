@@ -17,6 +17,7 @@ import {
   PlayerChip,
   ScoreBar,
   SectionHeading,
+  SessionHeader,
   Skeleton,
   Sparkline,
   StackedColumnChart,
@@ -456,6 +457,50 @@ export default function Styleguide() {
           <span className="flex items-center gap-2 text-ink-soft text-sm">
             OutcomeBadge <OutcomeBadge outcome="W" />
           </span>
+        </div>
+      </Section>
+
+      <Section id="session-header" title="SessionHeader">
+        <div className="flex flex-col gap-4">
+          <SessionHeader
+            to="/styleguide"
+            start={minutesAgo(150)}
+            end={minutesAgo(30)}
+            matchCount={5}
+            shownCount={5}
+            record={{
+              wins: 3,
+              draws: 1,
+              losses: 1,
+              goalsFor: 11,
+              goalsAgainst: 6,
+            }}
+            form={["W", "D", "W", "L", "W"]}
+            topPerformer={{
+              name: "Kopite Kev",
+              appearances: 5,
+              goals: 4,
+              assists: 2,
+              averageRating: 8.1,
+              manOfTheMatch: 2,
+            }}
+          />
+          <SessionHeader
+            to="/styleguide"
+            start={minutesAgo(60)}
+            end={minutesAgo(60)}
+            matchCount={3}
+            shownCount={1}
+            record={{
+              wins: 1,
+              draws: 0,
+              losses: 0,
+              goalsFor: 2,
+              goalsAgainst: 0,
+            }}
+            form={["W"]}
+            topPerformer={null}
+          />
         </div>
       </Section>
 

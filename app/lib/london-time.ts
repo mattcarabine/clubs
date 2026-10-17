@@ -163,6 +163,13 @@ export function formatLondonTime(date: Date): string {
   return timeFormat.format(date);
 }
 
+/** "20:05–21:40", one time when both are the same minute: a Session under its day. */
+export function formatLondonTimeSpan(start: Date, end: Date): string {
+  const first = formatLondonTime(start);
+  const last = formatLondonTime(end);
+  return first === last ? first : `${first}–${last}`;
+}
+
 /** "14 Oct", only where space is tightest: chart axes and the date-range chip. */
 export function formatLondonShortDate(date: Date): string {
   return shortDateFormat.format(date);

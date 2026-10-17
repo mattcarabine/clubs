@@ -35,6 +35,7 @@ export { LastUpdatedBadge } from "./last-updated-badge";
 export { LondonTime } from "./london-time";
 export { MatchScoreBar } from "./match-score-bar";
 export { OutcomeBadge } from "./outcome-badge";
+export { PERFORMER_COLUMNS } from "./performer-columns";
 export { PlayerChip } from "./player-chip";
 export {
   EA_POSITIONS_DISABLED,
@@ -54,6 +55,7 @@ export {
   type ScoreBarStat,
 } from "./score-bar";
 export { ScrollRail } from "./scroll-rail";
+export { SessionHeader, SessionRecord } from "./session-header";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";
 export { Ticker, type TickerItem } from "./ticker";

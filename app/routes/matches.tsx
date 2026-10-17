@@ -1,28 +1,31 @@
-/** The Match list: every Match the filter selects, newest first, a page at a time. */
+/**
+ * The Match list (CLUBS-34): every Match the filter selects, newest first,
+ * under a header for its Session, a page of whole Sessions at a time.
+ */
 import { env } from "cloudflare:workers";
 import { Link, useSearchParams } from "react-router";
 
 import {
   EmptyState,
   FilterBar,
-  FormGuide,
   LondonTime,
   MatchScoreBar,
   PageHeader,
+  SessionHeader,
 } from "~/components";
 import { getDb } from "~/db/client";
-import { formatLondonDate, londonDateKey } from "~/lib/london-time";
-import { pageCount, parsePage, withPage } from "~/lib/pagination";
+import { formatLondonDate, formatLondonTimeSpan } from "~/lib/london-time";
+import { parsePage, withPage } from "~/lib/pagination";
+import { sessionPath } from "~/lib/paths";
 import {
-  countMatches,
-  groupBy,
-  listMatches,
-  type MatchSummary,
+  listSessionPage,
+  type SessionSummary,
   statsFilterFromRequest,
 } from "~/stats";
 
 import type { Route } from "./+types/matches";
 
+/** A page holds whole Sessions until it has at least this many Matches. */
 const PAGE_SIZE = 20;
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -33,29 +36,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = statsFilterFromRequest(request);
   const page = parsePage(new URL(request.url).searchParams);
-  const [total, matches] = await Promise.all([
-    countMatches(db, filter),
-    listMatches(db, filter, {
-      limit: PAGE_SIZE,
-      offset: (page - 1) * PAGE_SIZE,
-    }),
-  ]);
-  // A night's Matches sit together under its London date.
-  const days = [...groupBy(matches, (m) => londonDateKey(m.playedAt))].map(
-    ([key, dayMatches]) => ({ key, matches: dayMatches }),
-  );
-  return {
-    clubName: env.EA_CLUB_NAME,
-    filter,
-    days,
+  const { sessions, pages, total } = await listSessionPage(db, filter, {
     page,
-    pages: pageCount(total, PAGE_SIZE),
-    total,
-  };
+    pageSize: PAGE_SIZE,
+  });
+  return { clubName: env.EA_CLUB_NAME, filter, sessions, page, pages, total };
 }
 
 export default function Matches({ loaderData }: Route.ComponentProps) {
-  const { clubName, filter, days, page, pages, total } = loaderData;
+  const { clubName, filter, sessions, page, pages, total } = loaderData;
   const pageLink = usePageLink();
   return (
     <>
@@ -65,7 +54,7 @@ export default function Matches({ loaderData }: Route.ComponentProps) {
       />
       <FilterBar filter={filter} />
 
-      {days.length === 0 ? (
+      {sessions.length === 0 ? (
         <EmptyState
           title={total === 0 ? "No Matches" : "No Matches on this page"}
           description={
@@ -82,9 +71,13 @@ export default function Matches({ loaderData }: Route.ComponentProps) {
           }
         />
       ) : (
-        <div className="flex flex-col gap-8">
-          {days.map((day) => (
-            <MatchDay key={day.key} clubName={clubName} matches={day.matches} />
+        <div className="flex flex-col gap-10">
+          {sessions.map((session) => (
+            <SessionMatches
+              key={session.id}
+              clubName={clubName}
+              session={session}
+            />
           ))}
         </div>
       )}
@@ -94,24 +87,30 @@ export default function Matches({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function MatchDay({
+function SessionMatches({
   clubName,
-  matches,
+  session,
 }: {
   clubName: string;
-  matches: MatchSummary[];
+  session: SessionSummary;
 }) {
-  const date = formatLondonDate(matches[0].playedAt);
+  const { matches } = session;
   return (
-    <section aria-label={date}>
-      <div className="mb-3 flex items-center justify-between gap-3 border-shale-700 border-b pb-2">
-        <h2 className="font-display font-extrabold text-2xl text-ink uppercase leading-none tracking-wide">
-          {date}
-        </h2>
-        {/* The night's results, oldest first like every form strip. */}
-        <FormGuide results={matches.map((m) => m.outcome).reverse()} />
-      </div>
-      <ul className="grid gap-x-6 gap-y-4 lg:grid-cols-2">
+    <section
+      aria-label={`Session, ${formatLondonDate(session.start)}, ${formatLondonTimeSpan(session.start, session.end)}`}
+    >
+      <SessionHeader
+        to={sessionPath(session.id)}
+        start={session.start}
+        end={session.end}
+        matchCount={session.matchCount}
+        shownCount={matches.length}
+        record={session.record}
+        // The night's results, oldest first like every form strip.
+        form={matches.map((m) => m.outcome).reverse()}
+        topPerformer={session.topPerformer}
+      />
+      <ul className="mt-4 grid gap-x-6 gap-y-4 lg:grid-cols-2">
         {matches.map((match) => (
           <li key={match.matchId}>
             <Link
