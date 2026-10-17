@@ -19,3 +19,6 @@ worker-configuration.d.ts
 # Tests
 /playwright-report/
 /test-results/
+
+# Claude Code local settings and agent worktrees
+/.claude/
