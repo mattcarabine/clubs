@@ -1,12 +1,10 @@
 // page.evaluate callbacks run in the browser, so they need DOM types.
 /// <reference lib="dom" />
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
 import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import { loss, OUR_CLUB_ID, win } from "./support/match-builders.ts";
+import { membersPayload } from "./support/members.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-10: the Squad Member profile at /players/:playerId.
@@ -14,26 +12,6 @@ import { expect, test } from "./support/test.ts";
 /** Kabeeble: in every recorded Match and in both member Snapshot fixtures. */
 const PLAYER_ID = "256171605";
 const PROFILE = `/players/${PLAYER_ID}`;
-
-const FIXTURES_DIR = path.resolve(import.meta.dirname, "../fixtures/ea");
-
-interface MembersPayload {
-  members: Record<string, string>[];
-}
-
-/** A recorded member Snapshot payload with Kabeeble's fields overridden. */
-function membersPayload(
-  file: "members-stats.json" | "members-career-stats.json",
-  kabeeble: Record<string, string>,
-): MembersPayload {
-  const payload: MembersPayload = JSON.parse(
-    readFileSync(path.join(FIXTURES_DIR, file), "utf8"),
-  );
-  const member = payload.members.find((m) => m.name === "Kabeeble");
-  if (!member) throw new Error(`Kabeeble missing from ${file}`);
-  Object.assign(member, kabeeble);
-  return payload;
-}
 
 /** Sets Kabeeble's rating in a built Match, as EA sends it ("7.50"). */
 function rated(fake: AddMatchBody, rating: number): AddMatchBody {
@@ -82,26 +60,29 @@ test("the rating chart plots every Appearance with a 5-Match rolling average", a
   }
 });
 
-test("the All-time (EA) panel shows EA's career games apart from tracked Appearances", async ({
+test("the EA totals block shows EA's career games apart from tracked Appearances", async ({
   page,
   fakeEa,
   triggerPoll,
 }) => {
   await fakeEa.setPayload(
     "members/career/stats",
-    membersPayload("members-career-stats.json", { gamesPlayed: "80" }),
+    membersPayload("members/career/stats", {
+      Kabeeble: { gamesPlayed: "80" },
+    }),
   );
   await fakeEa.addMatch(win());
   await fakeEa.addMatch(loss());
   await triggerPoll();
 
   await page.goto(PROFILE);
-  const allTime = section(page, "All-time (EA)");
-  await expect(allTime.getByText("Since club founded")).toBeVisible();
+  const eaTotals = section(page, "EA totals");
   await expect(
-    allTime.getByRole("definition").filter({ hasText: /^80$/ }),
+    section(page, "Career (EA)")
+      .getByRole("definition")
+      .filter({ hasText: /^80$/ }),
   ).toBeVisible();
-  await expect(allTime.getByText("2 Appearances")).toBeVisible();
+  await expect(eaTotals.getByText("2 Appearances")).toBeVisible();
   await expect(
     section(page, "Tracked totals")
       .locator("div")
@@ -119,12 +100,12 @@ test("build progression lists each overall with its date", async ({
   await fakeEa.addMatch(win());
   await fakeEa.setPayload(
     "members/stats",
-    membersPayload("members-stats.json", { proOverall: "78" }),
+    membersPayload("members/stats", { Kabeeble: { proOverall: "78" } }),
   );
   await triggerPoll();
   await fakeEa.setPayload(
     "members/stats",
-    membersPayload("members-stats.json", { proOverall: "80" }),
+    membersPayload("members/stats", { Kabeeble: { proOverall: "80" } }),
   );
   await triggerPoll();
 

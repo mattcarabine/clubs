@@ -192,7 +192,7 @@ function sameMatchTypes(
 }
 
 /** A copy of `params` without the page number, which a filter change resets. */
-function withoutPage(params: URLSearchParams): URLSearchParams {
+export function withoutPage(params: URLSearchParams): URLSearchParams {
   const next = new URLSearchParams(params);
   next.delete(PAGE_PARAM);
   return next;
