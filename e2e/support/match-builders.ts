@@ -239,3 +239,19 @@ export function withShots(
   });
   return body;
 }
+
+/**
+ * Gives Our Club exactly `shots` and zeroes every other count (goals, shots,
+ * saves, red cards) on both sides, so per 90 only our shots can differ
+ * between Matches of different lengths.
+ */
+export function withOnlyShots(body: AddMatchBody, shots: number): AddMatchBody {
+  withShots(withShots(body, 0, "opponent"), shots);
+  for (const side of Object.values(body.match.players)) {
+    for (const player of Object.values(side)) {
+      player.saves = "0";
+      player.redcards = "0";
+    }
+  }
+  return body;
+}

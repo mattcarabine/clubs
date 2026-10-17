@@ -25,6 +25,7 @@ import {
   per90,
   percentage,
   rollingWinPercentage,
+  standardScore,
   type WeightedValue,
   weightedMean,
   winPercentage,
@@ -106,6 +107,8 @@ interface PerformanceMetric {
   format: (value: number) => string;
   /** The finding's sentence after "In Dropped Points". */
   describe: (club: Club, diff: number) => string;
+  /** One Match against a typical Win, before "than in a typical Win": "6.1 fewer shots per 90". */
+  compare: (club: Club, diff: number) => string;
 }
 
 const SUBJECT: Record<Club, string> = { ours: "we", opponent: "Opponents" };
@@ -113,6 +116,13 @@ const POSSESSIVE: Record<Club, string> = {
   ours: "our",
   opponent: "Opponents'",
 };
+/** Names one Match's stat: "Opponent pass completion". */
+const OWNER: Record<Club, string> = { ours: "", opponent: "Opponent " };
+
+/** "Pass completion" for ours, "Opponent pass completion" for theirs. */
+function statName(club: Club, label: string): string {
+  return capitalise(`${OWNER[club]}${label.toLowerCase()}`);
+}
 
 function perNinety(
   id: string,
@@ -131,6 +141,8 @@ function perNinety(
     format: (value) => formatDecimal(value),
     describe: (club, diff) =>
       `${SUBJECT[club]} ${verb} ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "fewer" : "more"} ${noun} per 90`,
+    compare: (club, diff) =>
+      `${formatDecimal(Math.abs(diff))} ${diff < 0 ? "fewer" : "more"} ${OWNER[club]}${noun} per 90`,
   };
 }
 
@@ -150,6 +162,8 @@ function rate(
     format: formatPercentage,
     describe: (club, diff) =>
       `${POSSESSIVE[club]} ${label.toLowerCase()} is ${Math.round(Math.abs(diff))} points ${diff < 0 ? "lower" : "higher"}`,
+    compare: (club, diff) =>
+      `${statName(club, label)} ${Math.round(Math.abs(diff))} points ${diff < 0 ? "lower" : "higher"}`,
   };
 }
 
@@ -163,6 +177,8 @@ const RATING: PerformanceMetric = {
   format: (value) => formatDecimal(value),
   describe: (club, diff) =>
     `${POSSESSIVE[club]} average rating is ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "lower" : "higher"}`,
+  compare: (club, diff) =>
+    `${statName(club, "Average rating")} ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "lower" : "higher"}`,
 };
 
 /** Every performance stat, in table order. */
@@ -778,6 +794,104 @@ function performanceSplit(
       smallSample: isSmall(n.wins, n.dropped),
       strength: Math.abs(effect),
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Why we dropped points (CLUBS-27): one Match against a typical Win
+
+/** How many deviations the Match page shows. */
+export const TOP_DEVIATIONS = 3;
+
+/** One Match's performance, as the Outcome Split reads it. */
+export type MatchPerformance = Pick<
+  SplitMatch,
+  "secondsPlayed" | "ours" | "opponent"
+>;
+
+/** One stat where a Match differed from a typical Win. */
+export interface Deviation {
+  id: string;
+  club: Club;
+  /** "6.1 fewer shots per 90 than in a typical Win (5.9 vs 12.0)". */
+  text: string;
+  /** Standard deviations of the stat across Wins, signed; infinite when the Wins never vary. */
+  standardDeviations: number;
+}
+
+/** A Dropped Points Match against the average Win. */
+export interface DroppedPointsReasons {
+  /** How many Wins it is compared against. */
+  wins: number;
+  /** The biggest deviations, biggest first; empty when nothing differed. */
+  deviations: Deviation[];
+}
+
+/**
+ * The `TOP_DEVIATIONS` stats in which a Match differed most from the Wins,
+ * measured in standard deviations of each stat across the Wins (both clubs,
+ * per 90 over how long each Match ran, as in the Outcome Split). Null with
+ * fewer than `MIN_SPLIT_MATCHES` Wins.
+ */
+export function droppedPointsReasons(
+  match: MatchPerformance,
+  wins: readonly MatchPerformance[],
+): DroppedPointsReasons | null {
+  if (wins.length < MIN_SPLIT_MATCHES) return null;
+  const candidates = withoutNulls(
+    PERFORMANCE_METRICS.flatMap((metric) =>
+      (["ours", "opponent"] as const).map((club) =>
+        deviationFrom(metric, club, match, wins),
+      ),
+    ),
+  );
+  return {
+    wins: wins.length,
+    deviations: candidates
+      // Wins that never vary make every difference infinite: the bigger relative change leads.
+      .sort(
+        (a, b) =>
+          Math.abs(b.deviation.standardDeviations) -
+            Math.abs(a.deviation.standardDeviations) ||
+          b.relativeChange - a.relativeChange,
+      )
+      .slice(0, TOP_DEVIATIONS)
+      .map((c) => c.deviation),
+  };
+}
+
+function deviationFrom(
+  metric: PerformanceMetric,
+  club: Club,
+  match: MatchPerformance,
+  wins: readonly MatchPerformance[],
+): { deviation: Deviation; relativeChange: number } | null {
+  const sample = metric.sample(match[club], match.secondsPlayed);
+  const winSamples = withoutNulls(
+    wins.map((w) => metric.sample(w[club], w.secondsPlayed)),
+  );
+  const typical = weightedMean(winSamples);
+  const score = sample && standardScore(sample.value, winSamples);
+  if (
+    !sample ||
+    !score ||
+    typical === null ||
+    winSamples.length < MIN_SPLIT_MATCHES
+  ) {
+    return null;
+  }
+  const [ours, usual] = [metric.format(sample.value), metric.format(typical)];
+  // A gap too small to show ("7.7 vs 7.7") says nothing in words either.
+  if (ours === usual) return null;
+  const diff = sample.value - typical;
+  return {
+    deviation: {
+      id: `${club}-${metric.id}`,
+      club,
+      text: `${metric.compare(club, diff)} than in a typical Win (${ours} vs ${usual})`,
+      standardDeviations: score,
+    },
+    relativeChange: typical === 0 ? Infinity : Math.abs(diff / typical),
   };
 }
 
