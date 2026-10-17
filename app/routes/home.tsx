@@ -10,6 +10,7 @@ import {
   EmptyState,
   FormGuide,
   LastUpdatedBadge,
+  LondonTime,
   MatchScoreBar,
   PageHeader,
   SectionHeading,
@@ -20,13 +21,7 @@ import {
   type TickerItem,
 } from "~/components";
 import { getDb } from "~/db/client";
-import {
-  formatLondonDateTime,
-  formatLondonShortDate,
-  formatLondonTime,
-} from "~/lib/london-time";
 import { formatDecimal, formatOptional } from "~/lib/number-format";
-import { formatRelativeTime } from "~/lib/relative-time";
 import { useRevalidateWhileVisible } from "~/lib/use-revalidate-while-visible";
 import {
   type ClubSnapshotSummary,
@@ -133,30 +128,7 @@ function LatestMatch({
         items={performers.map(toTickerItem)}
         durationSeconds={Math.max(20, performers.length * 8)}
       />
-      <p className="mt-2 text-ink-muted text-sm">
-        Played {formatLondonDateTime(match.playedAt)}
-      </p>
     </section>
-  );
-}
-
-/**
- * When the Match was played: the lead Match says how long ago, older ones give
- * the London date and time.
- */
-function PlayedAt({
-  playedAt,
-  relative = false,
-}: {
-  playedAt: Date;
-  relative?: boolean;
-}) {
-  return (
-    <time dateTime={playedAt.toISOString()} suppressHydrationWarning>
-      {relative
-        ? formatRelativeTime(playedAt, new Date())
-        : `${formatLondonShortDate(playedAt)}, ${formatLondonTime(playedAt)}`}
-    </time>
   );
 }
 
@@ -294,10 +266,7 @@ function RecentResults({
   );
 }
 
-/**
- * A Match's score strip, linking to its page. The `hero` strip leads the page
- * and says how long ago the Match was played.
- */
+/** A Match's score strip, linking to its page. The `hero` strip leads the page. */
 function MatchLink({
   clubName,
   match,
@@ -313,7 +282,7 @@ function MatchLink({
         clubName={clubName}
         match={match}
         size={hero ? "hero" : "compact"}
-        status={<PlayedAt playedAt={match.playedAt} relative={hero} />}
+        status={<LondonTime date={match.playedAt} format="moment" />}
       />
     </Link>
   );

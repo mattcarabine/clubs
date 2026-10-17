@@ -219,11 +219,16 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section aria-label="By Position Group" className="min-w-0">
-          <SectionHeading title="By Position Group" />
-          <PositionGroupTable rows={profile.positionGroups} />
-        </section>
+      {/* One Position Group would only repeat the tiles above. */}
+      <div
+        className={`grid gap-6 ${profile.positionGroups.length > 1 ? "lg:grid-cols-2" : ""}`}
+      >
+        {profile.positionGroups.length > 1 && (
+          <section aria-label="By Position Group" className="min-w-0">
+            <SectionHeading title="By Position Group" />
+            <PositionGroupTable rows={profile.positionGroups} />
+          </section>
+        )}
         <section aria-label="Build progression" className="min-w-0">
           <SectionHeading
             title="Build progression"

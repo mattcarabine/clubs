@@ -67,7 +67,6 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", {
   weekday: "short",
   day: "numeric",
   month: "short",
-  year: "numeric",
 });
 
 const shortDateFormat = new Intl.DateTimeFormat("en-GB", {
@@ -83,24 +82,36 @@ const timeFormat = new Intl.DateTimeFormat("en-GB", {
   hourCycle: "h23",
 });
 
-/** "Tue 14 Oct 2026" */
-export function formatLondonDate(date: Date): string {
-  return dateFormat.format(date).replace(",", "");
+/*
+ * The time-format convention (CLAUDE.md "Time formats"): a day reads
+ * "Wed 14 Oct" and a moment "Wed 14 Oct, 20:30", each with the year added
+ * only when it is not the current London year. Relative times ("4 min ago")
+ * are for the age of our data, never for when a Match was played.
+ */
+
+/** A day: "Wed 14 Oct" this year, "Tue 14 Oct 2025" in any other. */
+export function formatLondonDate(date: Date, now: Date = new Date()): string {
+  const day = dateFormat.format(date).replace(",", "");
+  const { year } = londonParts(date);
+  return year === londonParts(now).year ? day : `${day} ${year}`;
 }
 
-/** "14 Oct", for chart axes and compact lists. */
-export function formatLondonShortDate(date: Date): string {
-  return shortDateFormat.format(date);
+/** A moment, such as a Match's kick-off: "Wed 14 Oct, 20:30". */
+export function formatLondonDateTime(
+  date: Date,
+  now: Date = new Date(),
+): string {
+  return `${formatLondonDate(date, now)}, ${formatLondonTime(date)}`;
 }
 
-/** "20:30" */
+/** "20:30", only under a heading that already names the day. */
 export function formatLondonTime(date: Date): string {
   return timeFormat.format(date);
 }
 
-/** "Tue 14 Oct 2026, 20:30" */
-export function formatLondonDateTime(date: Date): string {
-  return `${formatLondonDate(date)}, ${formatLondonTime(date)}`;
+/** "14 Oct", for chart axes only, where labels must stay short. */
+export function formatLondonShortDate(date: Date): string {
+  return shortDateFormat.format(date);
 }
 
 function pad(n: number): string {

@@ -11,6 +11,11 @@ type PlayerChipProps = {
   former?: boolean;
   /** Turns the chip into a link, e.g. to the Squad Member's page. */
   to?: string;
+  /**
+   * On phones, shows just the name, without the box, initials or Position
+   * Group, so a pinned table column stays narrow and its stats stay in view.
+   */
+  dense?: boolean;
 };
 
 /** Compact Squad Member identity: initials block, name, position group and an optional stat. */
@@ -20,12 +25,14 @@ export function PlayerChip({
   stat,
   former = false,
   to,
+  dense = false,
 }: PlayerChipProps) {
+  const onlyWide = dense ? "hidden sm:flex" : "flex";
   const body = (
     <>
       <span
         aria-hidden
-        className={`clip-slant-r flex h-full w-9 shrink-0 items-center justify-center pr-1 font-display font-extrabold text-base [--slant:0.35rem] ${former ? "bg-shale-700 text-ink-soft" : "bg-sound-700 text-ink"}`}
+        className={`clip-slant-r ${onlyWide} h-full w-9 shrink-0 items-center justify-center pr-1 font-display font-extrabold text-base [--slant:0.35rem] ${former ? "bg-shale-700 text-ink-soft" : "bg-sound-700 text-ink"}`}
       >
         {initials(name)}
       </span>
@@ -33,7 +40,7 @@ export function PlayerChip({
       {positionGroup && (
         <abbr
           title={positionGroup}
-          className="font-display font-bold text-ink-muted text-sm no-underline"
+          className={`${onlyWide} font-display font-bold text-ink-muted text-sm no-underline`}
         >
           {POSITION_GROUP_ABBR[positionGroup]}
         </abbr>
@@ -47,7 +54,13 @@ export function PlayerChip({
     </>
   );
 
-  const className = `inline-flex h-9 max-w-full min-w-0 items-center gap-2 bg-shale-800 text-sm ${former ? "text-ink-soft" : "text-ink"} ${stat != null ? "" : "pr-3"}`;
+  const className = [
+    "inline-flex h-9 max-w-full min-w-0 items-center gap-2 text-sm",
+    // Dense on phones: just the name, no box.
+    dense ? "sm:bg-shale-800" : "bg-shale-800",
+    former ? "text-ink-soft" : "text-ink",
+    stat != null ? "" : dense ? "sm:pr-3" : "pr-3",
+  ].join(" ");
 
   return to ? (
     <Link to={to} className={`${className} hover:bg-shale-700`}>

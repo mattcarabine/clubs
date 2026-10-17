@@ -116,6 +116,7 @@ function RecordedSquad({
         columns={COLUMNS}
         rows={rows}
         rowKey={(r) => r.playerId}
+        rowHref={(r) => playerPath(r.playerId)}
         initialSort={{ columnId: "apps", direction: "desc" }}
         empty={
           <EmptyState
@@ -149,6 +150,7 @@ function EaSquad({ filter, includeFormer, rows }: SquadData<"ea">) {
         columns={EA_COLUMNS}
         rows={rows}
         rowKey={(r) => r.playerId}
+        rowHref={(r) => playerPath(r.playerId)}
         initialSort={{ columnId: "games", direction: "desc" }}
         empty={
           <EmptyState
@@ -258,7 +260,7 @@ function Leaders<Row extends SquadRow>({
 }) {
   return (
     <section aria-label="Leaders" className="mb-6">
-      <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
         {leaders.map((leader, i) => {
           const [top] = sortBy(rows, leader.pick, "desc");
           // Nobody leads on a zero, e.g. before anyone has scored.
@@ -299,14 +301,18 @@ function LeaderTile({
   children: ReactNode;
 }) {
   return (
+    // Phones get a compact tile (number beside the name) so the Squad table
+    // starts on the first screen; wider screens stack it broadcast-size.
     <div
       className={[
-        "flex min-w-0 flex-col gap-1 border-t-2 p-4",
+        "grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1 border-t-2 px-3 py-2.5 sm:flex sm:flex-col sm:items-stretch sm:p-4",
         featured ? "border-rave bg-sound-900" : "border-shale-700 bg-shale-900",
       ].join(" ")}
     >
-      <dt className="text-ink-soft text-sm">{label} leader</dt>
-      <dd className="font-display font-extrabold text-5xl text-ink tabular leading-none">
+      <dt className="col-span-2 truncate text-ink-soft text-xs sm:text-sm">
+        {label} leader
+      </dt>
+      <dd className="font-display font-extrabold text-3xl text-ink tabular leading-none sm:text-5xl">
         {value}
       </dd>
       <dd className="min-w-0 text-sm">{children}</dd>
@@ -386,18 +392,21 @@ function seasonStat(
   );
 }
 
-/** The pinned Squad Member column, linking to their profile; `width` is its phone width. */
-function nameColumn<Row extends SquadRow>(width: string): DataTableColumn<Row> {
+/**
+ * The pinned Squad Member column. On phones it is just the name, capped in
+ * width, so the headline stats beside it fit without scrolling.
+ */
+function nameColumn<Row extends SquadRow>(): DataTableColumn<Row> {
   return {
     id: "name",
     header: "Squad Member",
     cell: (r) => (
-      <span className={`block ${width} sm:w-auto`}>
+      <span className="block max-w-24 sm:max-w-none">
         <PlayerChip
           name={r.name}
           positionGroup={r.positionGroup ?? undefined}
           former={r.former}
-          to={playerPath(r.playerId)}
+          dense
         />
       </span>
     ),
@@ -406,44 +415,48 @@ function nameColumn<Row extends SquadRow>(width: string): DataTableColumn<Row> {
   };
 }
 
+/**
+ * The stats people compare lead (G+A, rating, Form, Appearances), so a phone
+ * shows them beside the name before the table scrolls.
+ */
 const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
-  nameColumn("w-40"),
+  nameColumn(),
+  stat("ga", "G+A", (r) => r.goalContributions),
+  stat("rating", "Rating", (r) => r.averageRating, formatDecimal),
+  {
+    ...stat("form", "Form", (r: LeaderboardRow) => r.form),
+    cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
+  },
   stat("apps", "Apps", (r) => r.appearances),
-  stat("mins", "Mins", (r) => r.minutes, formatThousands),
   stat("goals", "G", (r) => r.goals),
   stat("assists", "A", (r) => r.assists),
-  stat("ga", "G+A", (r) => r.goalContributions),
+  stat("mins", "Mins", (r) => r.minutes, formatThousands),
   stat("goals90", "G/90", (r) => r.goalsPer90, per90),
   stat("assists90", "A/90", (r) => r.assistsPer90, per90),
   stat("ga90", "G+A/90", (r) => r.goalContributionsPer90, per90),
   stat("shots", "Shots", (r) => r.shots),
   stat("pass", "Pass %", (r) => r.passPercentage, formatPercentage),
   stat("tackle", "Tkl %", (r) => r.tacklePercentage, formatPercentage),
-  stat("rating", "Rating", (r) => r.averageRating, formatDecimal),
-  {
-    ...stat("form", "Form", (r: LeaderboardRow) => r.form),
-    cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
-  },
   stat("motm", "MOTM", (r) => r.manOfTheMatch),
   stat("cs", "CS", (r) => r.cleanSheets),
   stat("saves", "Saves", (r) => r.saves),
 ];
 
 /**
- * EA's season totals: the rate stats lead, so a phone shows the name with
- * rating and pass success before the table scrolls.
+ * EA's season totals, led like the Recorded table: G+A and rating, then
+ * games played and pass success, so a phone shows them before it scrolls.
  */
 const EA_COLUMNS: DataTableColumn<EaMemberTotals>[] = [
-  nameColumn("w-36"),
+  nameColumn(),
+  stat("ga", "G+A", season(goalContributions)),
   seasonStat("rating", "Rating", "averageRating", formatDecimal),
+  seasonStat("games", "GP", "gamesPlayed"),
   seasonStat("pass", "Pass %", "passSuccessRate", formatPercentage),
+  seasonStat("goals", "G", "goals"),
+  seasonStat("assists", "A", "assists"),
   seasonStat("shot", "Shot %", "shotSuccessRate", formatPercentage),
   seasonStat("tackle", "Tkl %", "tackleSuccessRate", formatPercentage),
   seasonStat("win", "Win %", "winRate", formatPercentage),
-  seasonStat("games", "GP", "gamesPlayed"),
-  seasonStat("goals", "G", "goals"),
-  seasonStat("assists", "A", "assists"),
-  stat("ga", "G+A", season(goalContributions)),
   seasonStat("passes", "Passes", "passesMade", formatThousands),
   seasonStat("tackles", "Tackles", "tacklesMade", formatThousands),
   seasonStat("motm", "MOTM", "manOfTheMatch"),

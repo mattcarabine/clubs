@@ -110,13 +110,15 @@ test("build progression lists each overall with its date", async ({
   await triggerPoll();
 
   await page.goto(PROFILE);
-  // Today in Europe/London, as the page writes dates: "17 Oct 2026".
+  // Today in Europe/London, as the page writes a day this year: "Sat 17 Oct".
   const today = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
+    weekday: "short",
     day: "numeric",
     month: "short",
-    year: "numeric",
-  }).format(new Date());
+  })
+    .format(new Date())
+    .replace(",", "");
   const entries = section(page, "Build progression").getByRole("listitem");
   await expect(entries).toHaveCount(2);
   // Newest first.

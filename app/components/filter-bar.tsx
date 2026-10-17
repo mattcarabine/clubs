@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router";
 
+import { fadeAttributes, useScrollFade } from "~/lib/use-scroll-fade";
 import type { loader as rootLoader } from "~/root";
 
 import {
@@ -57,6 +58,7 @@ export function FilterBar(props: FilterBarProps) {
   const pending = usePendingSearchParams();
   const filter = pending ? parseStatsFilter(pending) : props.filter;
   const seasons = useSeasonNumbers();
+  const [railRef, railEdges] = useScrollFade<HTMLDivElement>();
   const minAppearances =
     pending && props.minAppearances !== undefined
       ? parseMinAppearances(pending)
@@ -117,84 +119,91 @@ export function FilterBar(props: FilterBarProps) {
     <section
       aria-label="Stats filters"
       aria-busy={pending !== null}
-      // One scrolling rail on phones, so the filters take one row, not a screen.
-      className="mb-6 flex items-end gap-x-6 gap-y-3 overflow-x-auto border-shale-700 border-t-2 bg-shale-900 px-3 py-3 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible sm:px-4"
+      className="mb-6 border-shale-700 border-t-2 bg-shale-900"
     >
-      {sourceToggle}
+      {/* One scrolling rail on phones, so the filters take one row, not a
+          screen; its clipped edge fades so it reads as scrollable. */}
+      <div
+        ref={railRef}
+        {...fadeAttributes(railEdges)}
+        className="scroll-fade flex items-end gap-x-6 gap-y-3 overflow-x-auto px-3 py-3 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-4"
+      >
+        {sourceToggle}
 
-      <FilterGroup label="Match Type">
-        {MATCH_TYPES.map((type) => {
-          const selected = filter.matchTypes.includes(type);
-          return (
+        <FilterGroup label="Match Type">
+          {MATCH_TYPES.map((type) => {
+            const selected = filter.matchTypes.includes(type);
+            return (
+              <Chip
+                key={type}
+                pressed={selected}
+                // The last selected Match Type cannot be turned off.
+                disabled={selected && filter.matchTypes.length === 1}
+                onClick={() => updateFilter((f) => toggleMatchType(f, type))}
+              >
+                {type}
+              </Chip>
+            );
+          })}
+        </FilterGroup>
+
+        <FilterGroup label="DNF">
+          <Chip
+            pressed={filter.includeDnf}
+            onClick={() =>
+              updateFilter((f) => ({ ...f, includeDnf: !f.includeDnf }))
+            }
+          >
+            Include DNF
+          </Chip>
+        </FilterGroup>
+
+        <FilterGroup label="Dates">
+          {DATE_RANGES.map((range) => (
             <Chip
-              key={type}
-              pressed={selected}
-              // The last selected Match Type cannot be turned off.
-              disabled={selected && filter.matchTypes.length === 1}
-              onClick={() => updateFilter((f) => toggleMatchType(f, type))}
+              key={range}
+              pressed={filter.range === range}
+              onClick={() => updateFilter((f) => ({ ...f, range }))}
             >
-              {type}
+              {DATE_RANGE_LABEL[range]}
             </Chip>
-          );
-        })}
-      </FilterGroup>
-
-      <FilterGroup label="DNF">
-        <Chip
-          pressed={filter.includeDnf}
-          onClick={() =>
-            updateFilter((f) => ({ ...f, includeDnf: !f.includeDnf }))
-          }
-        >
-          Include DNF
-        </Chip>
-      </FilterGroup>
-
-      <FilterGroup label="Dates">
-        {DATE_RANGES.map((range) => (
-          <Chip
-            key={range}
-            pressed={filter.range === range}
-            onClick={() => updateFilter((f) => ({ ...f, range }))}
-          >
-            {DATE_RANGE_LABEL[range]}
-          </Chip>
-        ))}
-      </FilterGroup>
-
-      {(seasons.length > 1 || filter.season !== undefined) && (
-        <FilterGroup label="Season">
-          <SeasonSelect
-            seasons={seasons}
-            value={filter.season}
-            onChange={(season) => updateFilter((f) => ({ ...f, season }))}
-          />
+          ))}
         </FilterGroup>
-      )}
 
-      {minAppearances !== undefined && (
-        <FilterGroup label="Minimum Appearances">
-          <Chip
-            aria-label="Fewer minimum Appearances"
-            disabled={minAppearances <= 0}
-            onClick={() => stepMinAppearances(-1)}
-          >
-            −
-          </Chip>
-          <output
-            aria-live="polite"
-            className="flex min-w-8 items-center justify-center font-display font-extrabold text-ink text-xl tabular"
-          >
-            {minAppearances}
-          </output>
-          <Chip
-            aria-label="More minimum Appearances"
-            onClick={() => stepMinAppearances(1)}
-          >
-            +
-          </Chip>
-        </FilterGroup>
-      )}
+        {(seasons.length > 1 || filter.season !== undefined) && (
+          <FilterGroup label="Season">
+            <SeasonSelect
+              seasons={seasons}
+              value={filter.season}
+              onChange={(season) => updateFilter((f) => ({ ...f, season }))}
+            />
+          </FilterGroup>
+        )}
+
+        {minAppearances !== undefined && (
+          <FilterGroup label="Minimum Appearances">
+            <Chip
+              aria-label="Fewer minimum Appearances"
+              disabled={minAppearances <= 0}
+              onClick={() => stepMinAppearances(-1)}
+            >
+              −
+            </Chip>
+            <output
+              aria-live="polite"
+              className="flex min-w-8 items-center justify-center font-display font-extrabold text-ink text-xl tabular"
+            >
+              {minAppearances}
+            </output>
+            <Chip
+              aria-label="More minimum Appearances"
+              onClick={() => stepMinAppearances(1)}
+            >
+              +
+            </Chip>
+          </FilterGroup>
+        )}
+      </div>
     </section>
   );
 }
