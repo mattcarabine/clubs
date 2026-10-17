@@ -23,12 +23,12 @@ import type { EaMatch } from "../../app/ea/types.ts";
 import {
   type AddMatchBody,
   CONTROL_PREFIX,
+  EA_PREFIX,
   type FailNextBody,
   type RecordedRequest,
   type SetPayloadBody,
 } from "./control.ts";
 
-const EA_PREFIX = "/api/fc/";
 /** A "timed out" request is answered eventually so sockets never leak. */
 const HANG_MS = 30_000;
 
@@ -41,7 +41,11 @@ interface State {
   requests: RecordedRequest[];
 }
 
-export function createFakeEa(fixturesDir: string): Server {
+/**
+ * `instance` identifies the checkout that started this server; `GET
+ * /__control/health?instance=…` answers 200 only when it matches.
+ */
+export function createFakeEa(fixturesDir: string, instance: string): Server {
   const loadFixtures = () =>
     new Map(
       readdirSync(fixturesDir)
@@ -133,9 +137,12 @@ export function createFakeEa(fixturesDir: string): Server {
     req: IncomingMessage,
     res: ServerResponse,
     action: string,
+    query: URLSearchParams,
   ) {
     if (req.method === "GET" && action === "health") {
-      sendJson(res, 200, { ok: true });
+      // 409 for another checkout's `instance`, so Playwright never reuses it.
+      const ours = query.get("instance") === instance;
+      sendJson(res, ours ? 200 : 409, { instance });
       return;
     }
     if (req.method === "GET" && action === "requests") {
@@ -154,9 +161,12 @@ export function createFakeEa(fixturesDir: string): Server {
   return createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     if (url.pathname.startsWith(CONTROL_PREFIX)) {
-      handleControl(req, res, url.pathname.slice(CONTROL_PREFIX.length)).catch(
-        (error: unknown) => sendJson(res, 400, { error: String(error) }),
-      );
+      handleControl(
+        req,
+        res,
+        url.pathname.slice(CONTROL_PREFIX.length),
+        url.searchParams,
+      ).catch((error: unknown) => sendJson(res, 400, { error: String(error) }));
     } else if (url.pathname.startsWith(EA_PREFIX)) {
       handleEa(req, res, url);
     } else {
