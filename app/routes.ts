@@ -4,6 +4,7 @@ export default [
   index("routes/home.tsx"),
   route("styleguide", "routes/styleguide.tsx"),
   route("squad", "routes/squad.tsx"),
+  route("trends", "routes/trends.tsx"),
   route("matches", "routes/matches.tsx"),
   route("matches/:matchId", "routes/match.tsx"),
   route("opponents", "routes/opponents.tsx"),

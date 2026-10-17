@@ -19,3 +19,4 @@ export * from "./snapshots";
 export * from "./squad";
 export * from "./summaries";
 export * from "./top-performers";
+export * from "./trends";
