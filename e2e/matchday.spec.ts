@@ -85,6 +85,21 @@ test("shows the latest Match's top performers, form and season snapshot", async 
   expect(noSideScroll).toBe(true);
 });
 
+test("clicking the latest Match opens its Match page", async ({
+  page,
+  triggerPoll,
+}) => {
+  await triggerPoll();
+  await page.goto("/");
+
+  const { opponentName } = newestFixtureMatch();
+  await latestMatch(page).getByRole("link").first().click();
+  await expect(page).toHaveURL(/\/matches\/\d+$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: `v ${opponentName}` }),
+  ).toBeVisible();
+});
+
 test("flags a DNF on the latest Match", async ({
   page,
   fakeEa,

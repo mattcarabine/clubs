@@ -10,8 +10,8 @@ import {
   EmptyState,
   FormGuide,
   LastUpdatedBadge,
+  MatchScoreBar,
   PageHeader,
-  ScoreBar,
   SectionHeading,
   type StatDelta,
   StatGrid,
@@ -126,7 +126,7 @@ function LatestMatch({
       <h2 id="latest-match" className="sr-only">
         Latest Match
       </h2>
-      <MatchScoreBar clubName={clubName} match={match} hero />
+      <MatchLink clubName={clubName} match={match} hero />
       <Ticker
         label="Top performers"
         items={performers.map(toTickerItem)}
@@ -140,32 +140,22 @@ function LatestMatch({
 }
 
 /**
- * When the Match was played, plus a DNF flag when EA awarded the result. The
- * lead Match says how long ago; older ones give the London date and time.
+ * When the Match was played: the lead Match says how long ago, older ones give
+ * the London date and time.
  */
-function MatchStatus({
-  match,
+function PlayedAt({
+  playedAt,
   relative = false,
 }: {
-  match: MatchSummary;
+  playedAt: Date;
   relative?: boolean;
 }) {
   return (
-    <>
-      {match.dnf && (
-        <span
-          title="Did not finish: a side quit and EA awarded the result"
-          className="clip-slant bg-shale-700 px-2 py-0.5 text-ink [--slant:0.3rem]"
-        >
-          DNF
-        </span>
-      )}
-      <time dateTime={match.playedAt.toISOString()} suppressHydrationWarning>
-        {relative
-          ? formatRelativeTime(match.playedAt, new Date())
-          : `${formatLondonShortDate(match.playedAt)}, ${formatLondonTime(match.playedAt)}`}
-      </time>
-    </>
+    <time dateTime={playedAt.toISOString()} suppressHydrationWarning>
+      {relative
+        ? formatRelativeTime(playedAt, new Date())
+        : `${formatLondonShortDate(playedAt)}, ${formatLondonTime(playedAt)}`}
+    </time>
   );
 }
 
@@ -292,7 +282,7 @@ function RecentResults({
       <ul className="flex flex-col gap-3">
         {matches.map((match) => (
           <li key={match.matchId}>
-            <MatchScoreBar clubName={clubName} match={match} />
+            <MatchLink clubName={clubName} match={match} />
           </li>
         ))}
       </ul>
@@ -304,7 +294,7 @@ function RecentResults({
  * A Match's score strip, linking to its page. The `hero` strip leads the page
  * and says how long ago the Match was played.
  */
-function MatchScoreBar({
+function MatchLink({
   clubName,
   match,
   hero = false,
@@ -315,13 +305,11 @@ function MatchScoreBar({
 }) {
   return (
     <Link to={`/matches/${match.matchId}`} className="block hover:opacity-90">
-      <ScoreBar
+      <MatchScoreBar
+        clubName={clubName}
+        match={match}
         size={hero ? "hero" : "compact"}
-        home={{ name: clubName, score: match.goalsFor, isOurClub: true }}
-        away={{ name: match.opponent.name, score: match.goalsAgainst }}
-        label={match.matchType}
-        status={<MatchStatus match={match} relative={hero} />}
-        outcome={match.outcome}
+        status={<PlayedAt playedAt={match.playedAt} relative={hero} />}
       />
     </Link>
   );
