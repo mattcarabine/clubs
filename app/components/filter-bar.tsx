@@ -30,8 +30,9 @@ type FilterBarProps = {
 /**
  * The global stats filter: Match Types, DNF, date range and Season, plus an
  * optional leaderboard minimum. The Season picker lists the Seasons from the
- * root loader, and shows once there are two to choose between. Every change rewrites the URL, so the page's loader
- * reruns with the new filter and the view can be shared.
+ * root loader, and shows once there are two to choose between. Every change
+ * rewrites the URL, so the page's loader reruns with the new filter and the
+ * view can be shared.
  *
  * While a filter change is loading, the chips show the pending URL and the
  * next change builds on it, so quick successive clicks all count.
@@ -160,10 +161,10 @@ type SeasonSelectProps = {
 /** All Seasons, then each Season newest first, the latest marked current. */
 function SeasonSelect({ seasons, value, onChange }: SeasonSelectProps) {
   const current = seasons.at(-1);
+  const known = new Set(seasons);
   // A Season from a shared URL that this database has not detected still shows.
-  const options = [...new Set([...seasons, ...(value ? [value] : [])])].sort(
-    (a, b) => b - a,
-  );
+  if (value !== undefined) known.add(value);
+  const options = [...known].sort((a, b) => b - a);
   return (
     <select
       aria-label="Season"
