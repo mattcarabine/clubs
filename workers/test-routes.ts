@@ -7,7 +7,11 @@
  * - `GET /__test/tables/:name` returns all rows of one table as JSON.
  * - `POST /__test/poll-runs/age?minutes=N` moves every Poll run N minutes
  *   into the past, e.g. to make the latest Poll stale.
+ *
+ * Every request also loads `TEST_ROSTER` (Roster entries for players that
+ * exist only in E2E specs) into the Roster.
  */
+import { setTestRoster } from "../app/roster";
 
 const PREFIX = "/__test/";
 
@@ -16,7 +20,9 @@ export async function handleTestRoute(
   env: Env,
 ): Promise<Response | null> {
   const { pathname } = new URL(request.url);
-  if (env.TEST_ROUTES !== "1" || !pathname.startsWith(PREFIX)) return null;
+  if (env.TEST_ROUTES !== "1") return null;
+  setTestRoster(JSON.parse(env.TEST_ROSTER ?? "{}"));
+  if (!pathname.startsWith(PREFIX)) return null;
 
   const tables = await appTables(env.DB);
   const route = pathname.slice(PREFIX.length);

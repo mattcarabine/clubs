@@ -1,5 +1,3 @@
-import { env } from "cloudflare:workers";
-
 /**
  * The Roster: hand-maintained overrides for Squad Members, keyed by EA's
  * stable player ID (see `players.player_id`). Everyone who has made an
@@ -20,20 +18,19 @@ export interface RosterEntry {
 export const ROSTER: Readonly<Record<string, RosterEntry>> = {};
 
 export function rosterEntry(playerId: string): RosterEntry {
-  return ROSTER[playerId] ?? testRoster()[playerId] ?? {};
+  return ROSTER[playerId] ?? testRoster[playerId] ?? {};
 }
 
-let parsedTestRoster: Readonly<Record<string, RosterEntry>> | undefined;
+let testRoster: Readonly<Record<string, RosterEntry>> = {};
 
 /**
- * Extra Roster entries for the E2E suite, from the `TEST_ROSTER` var (JSON).
- * Only the `test` Wrangler env sets it, and it is ignored unless the test
- * routes are on, so it can never change the real Roster.
+ * Extra Roster entries for the E2E suite. Only `workers/test-routes.ts` calls
+ * this, from the `TEST_ROSTER` var, and only when the test routes are on, so
+ * it never changes the real Roster. Kept free of Worker imports because this
+ * module also reaches client bundles.
  */
-function testRoster(): Readonly<Record<string, RosterEntry>> {
-  if (env.TEST_ROUTES !== "1") return {};
-  parsedTestRoster ??= JSON.parse(env.TEST_ROSTER ?? "{}");
-  return parsedTestRoster ?? {};
+export function setTestRoster(entries: Readonly<Record<string, RosterEntry>>) {
+  testRoster = entries;
 }
 
 /** The name to show for a Squad Member: nickname, then persona name, then ID. */
