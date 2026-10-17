@@ -15,15 +15,10 @@ export function sortBy<T>(
   return rows
     .map((row, index) => ({ row, index, value: getValue(row) }))
     .sort((a, b) => {
-      const aMissing = a.value == null;
-      const bMissing = b.value == null;
-      if (aMissing || bMissing) {
-        return aMissing === bMissing ? a.index - b.index : aMissing ? 1 : -1;
-      }
-      const order = compare(
-        a.value as number | string,
-        b.value as number | string,
-      );
+      if (a.value == null && b.value == null) return a.index - b.index;
+      if (a.value == null) return 1;
+      if (b.value == null) return -1;
+      const order = compare(a.value, b.value);
       return order === 0 ? a.index - b.index : sign * order;
     })
     .map(({ row }) => row);

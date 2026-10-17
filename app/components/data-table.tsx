@@ -53,9 +53,7 @@ export function DataTable<T>({
       columnId: column.id,
       direction:
         current?.columnId === column.id
-          ? current.direction === "asc"
-            ? "desc"
-            : "asc"
+          ? flip(current.direction)
           : (column.firstSort ?? "desc"),
     }));
 
@@ -79,13 +77,7 @@ export function DataTable<T>({
                   <th
                     key={column.id}
                     scope="col"
-                    aria-sort={
-                      direction === "asc"
-                        ? "ascending"
-                        : direction === "desc"
-                          ? "descending"
-                          : undefined
-                    }
+                    aria-sort={direction && ARIA_SORT[direction]}
                     className={[
                       "whitespace-nowrap border-shale-700 border-b bg-shale-800 px-3 py-2 font-display font-bold text-base text-ink-muted uppercase tracking-wide",
                       alignClass(column.align),
@@ -137,6 +129,15 @@ export function DataTable<T>({
       </section>
     </div>
   );
+}
+
+const ARIA_SORT = {
+  asc: "ascending",
+  desc: "descending",
+} as const satisfies Record<SortDirection, string>;
+
+function flip(direction: SortDirection): SortDirection {
+  return direction === "asc" ? "desc" : "asc";
 }
 
 function alignClass(align: "left" | "right" = "left") {

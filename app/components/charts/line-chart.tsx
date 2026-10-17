@@ -37,13 +37,11 @@ export function LineChart({
   const [ref, width] = useElementWidth<HTMLDivElement>(640);
   const [active, setActive] = useState<number | null>(null);
   const shown = series.slice(0, MAX_SERIES);
+  const last = labels.length - 1;
 
   const all = shown.flatMap((s) => s.values.filter((v) => v != null));
   const ticks = niceTicks(Math.min(0, ...all), Math.max(0, ...all));
-  const x = linearScale(
-    [0, Math.max(1, labels.length - 1)],
-    [M.left, width - M.right],
-  );
+  const x = linearScale([0, Math.max(1, last)], [M.left, width - M.right]);
   const y = linearScale(
     [ticks[0], ticks[ticks.length - 1]],
     [height - M.bottom, M.top],
@@ -55,10 +53,7 @@ export function LineChart({
   );
   const indexAt = (clientX: number, rect: DOMRect) => {
     const ratio = (clientX - rect.left - M.left) / (width - M.left - M.right);
-    return Math.min(
-      labels.length - 1,
-      Math.max(0, Math.round(ratio * (labels.length - 1))),
-    );
+    return Math.min(last, Math.max(0, Math.round(ratio * last)));
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) =>
@@ -66,11 +61,9 @@ export function LineChart({
       indexAt(event.clientX, event.currentTarget.getBoundingClientRect()),
     );
 
-  const last = labels.length - 1;
   const onKeyDown = (event: KeyboardEvent) => {
-    const step =
-      event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-    if (!step) return;
+    const step = ARROW_STEP[event.key];
+    if (step === undefined) return;
     event.preventDefault();
     setActive((i) => Math.min(last, Math.max(0, (i ?? last) + step)));
   };
@@ -132,15 +125,13 @@ export function LineChart({
           </g>
         ))}
         {labels.map((l, i) =>
-          i % xTickEvery === 0 || i === labels.length - 1 ? (
+          i % xTickEvery === 0 || i === last ? (
             <text
               // biome-ignore lint/suspicious/noArrayIndexKey: labels may repeat
               key={i}
               x={x(i)}
               y={height - 8}
-              textAnchor={
-                i === 0 ? "start" : i === labels.length - 1 ? "end" : "middle"
-              }
+              textAnchor={tickAnchor(i, last)}
               className="fill-ink-muted text-xs"
             >
               {l}
@@ -157,34 +148,33 @@ export function LineChart({
             strokeWidth={1}
           />
         )}
-        {shown.map((s, si) => (
-          <g key={s.id}>
-            <path
-              d={toPath(s.values, x, y)}
-              fill="none"
-              stroke={SERIES_COLORS[si]}
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-            {s.values.map((v, i) =>
-              v != null &&
-              (i === active ||
-                (active == null && i === lastDefined(s.values))) ? (
+        {shown.map((s, si) => {
+          // One marker per series: at the crosshair, or on the latest value at rest.
+          const markerAt = active ?? lastDefined(s.values);
+          const markerValue = s.values[markerAt];
+          return (
+            <g key={s.id}>
+              <path
+                d={toPath(s.values, x, y)}
+                fill="none"
+                stroke={SERIES_COLORS[si]}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              {markerValue != null && (
                 <circle
-                  // biome-ignore lint/suspicious/noArrayIndexKey: points are positional
-                  key={i}
-                  cx={x(i)}
-                  cy={y(v)}
+                  cx={x(markerAt)}
+                  cy={y(markerValue)}
                   r={4}
                   fill={SERIES_COLORS[si]}
                   stroke="var(--color-shale-900)"
                   strokeWidth={2}
                 />
-              ) : null,
-            )}
-          </g>
-        ))}
+              )}
+            </g>
+          );
+        })}
       </svg>
       {active != null && (
         <div
@@ -243,6 +233,18 @@ export function LineChart({
       </table>
     </div>
   );
+}
+
+const ARROW_STEP: Partial<Record<string, 1 | -1>> = {
+  ArrowRight: 1,
+  ArrowLeft: -1,
+};
+
+/** Pins the first and last x labels inside the plot; centres the rest. */
+function tickAnchor(index: number, last: number): "start" | "middle" | "end" {
+  if (index === 0) return "start";
+  if (index === last) return "end";
+  return "middle";
 }
 
 function lastDefined(values: readonly (number | null)[]): number {

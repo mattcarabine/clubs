@@ -31,24 +31,20 @@ export function niceTicks(min: number, max: number, count = 4): number[] {
 function niceStep(rough: number): number {
   const magnitude = 10 ** Math.floor(Math.log10(rough));
   const residual = rough / magnitude;
-  const nice =
-    residual <= 1
-      ? 1
-      : residual <= 2
-        ? 2
-        : residual <= 2.5
-          ? 2.5
-          : residual <= 5
-            ? 5
-            : 10;
+  const nice = NICE_STEPS.find((step) => residual <= step) ?? 10;
   return nice * magnitude;
 }
+
+const NICE_STEPS = [1, 2, 2.5, 5, 10] as const;
 
 /** Compact tick label: 950, 1.2K, 12K, 3.4M. */
 export function formatCompact(value: number): string {
   const abs = Math.abs(value);
-  const [divisor, suffix] =
-    abs >= 1e6 ? [1e6, "M"] : abs >= 1e3 ? [1e3, "K"] : [1, ""];
-  const scaled = Number.parseFloat((value / divisor).toFixed(1));
-  return `${scaled}${suffix}`;
+  if (abs >= 1e6) return `${trimToOneDecimal(value / 1e6)}M`;
+  if (abs >= 1e3) return `${trimToOneDecimal(value / 1e3)}K`;
+  return `${trimToOneDecimal(value)}`;
+}
+
+function trimToOneDecimal(value: number): number {
+  return Number.parseFloat(value.toFixed(1));
 }
