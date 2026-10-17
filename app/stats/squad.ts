@@ -158,6 +158,45 @@ export async function squadLeaderboard(
     );
 }
 
+/** A current Squad Member in Hot or Cold form. */
+export interface SquadFormRow {
+  playerId: string;
+  name: string;
+  formIndicator: FormIndicator;
+}
+
+/**
+ * The current Squad Members in Hot or Cold form over the filtered Matches
+ * (CLUBS-40), biggest gap first, for Matchday's strip. One query.
+ */
+export async function squadForm(
+  db: Db,
+  filter: StatsFilter,
+): Promise<SquadFormRow[]> {
+  const byPlayer = groupBy(
+    await squadAppearances(db, filter),
+    (a) => a.playerId,
+  );
+  return [...byPlayer.entries()]
+    .flatMap(([playerId, apps]) => {
+      const indicator = formIndicator(apps);
+      return indicator && !isFormerSquadMember(playerId)
+        ? [
+            {
+              playerId,
+              name: apps[apps.length - 1].name,
+              formIndicator: indicator,
+            },
+          ]
+        : [];
+    })
+    .sort(
+      (a, b) =>
+        Math.abs(b.formIndicator.recent - b.formIndicator.usual) -
+        Math.abs(a.formIndicator.recent - a.formIndicator.usual),
+    );
+}
+
 export interface SquadMember {
   playerId: string;
   name: string;

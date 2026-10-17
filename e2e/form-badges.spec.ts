@@ -124,6 +124,31 @@ test("Compare shows a badge on each side", async ({
   await expect(badge(plates, HOT_DETAIL)).toHaveCount(0);
 });
 
+test("Matchday lists who is in form and out of form, only when someone qualifies", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // 14 Matches: nobody has 10 before their last 5 yet.
+  const matches = season();
+  await record(fakeEa, triggerPoll, matches.slice(0, 14));
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Matchday" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Form watch" })).toHaveCount(0);
+
+  await record(fakeEa, triggerPoll, matches.slice(14));
+  await page.reload();
+  const strip = page.getByRole("region", { name: "Form watch" });
+  const inForm = strip.getByRole("list", { name: "In form" });
+  await expect(inForm.getByRole("listitem")).toHaveCount(1);
+  await expect(inForm).toContainText(HOT.name);
+  await expect(badge(inForm, HOT_DETAIL)).toContainText("Hot");
+  const outOfForm = strip.getByRole("list", { name: "Out of form" });
+  await expect(outOfForm.getByRole("listitem")).toHaveCount(1);
+  await expect(outOfForm).toContainText(COLD.name);
+  await expect(outOfForm).toContainText(COLD_DETAIL);
+});
+
 test("badges follow the FilterBar and Position Group filters", async ({
   page,
   fakeEa,
@@ -155,6 +180,7 @@ test.describe("on a 375px phone", () => {
     await record(fakeEa, triggerPoll, season());
 
     for (const path of [
+      "/",
       "/squad",
       `/players/${HOT.id}`,
       `/compare?players=${HOT.id},${COLD.id}`,
