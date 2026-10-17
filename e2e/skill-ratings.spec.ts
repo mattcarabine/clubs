@@ -18,7 +18,9 @@ test("a rated Match shows both Skill Ratings beside the score, and its Opponent 
 
   await page.goto("/matches/28001");
   const score = page.getByRole("region", { name: "Score" });
-  await expect(score.getByText("Skill rating", { exact: true })).toBeVisible();
+  // CLUBS-31: each rating sits under its club's name in the hero.
+  await expect(score.getByText(`Skill rating ${OUR_RATING}`)).toBeVisible();
+  await expect(score.getByText(`Skill rating ${CLUB_X.rating}`)).toBeVisible();
   await expect(
     score.getByText(
       `Skill ratings at this Match: A Bloo Bloo ${OUR_RATING}, ${CLUB_X.name} ${CLUB_X.rating}`,

@@ -186,7 +186,7 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
                       <MatchScoreBar
                         clubName={clubName}
                         match={match}
-                        status={
+                        when={
                           <LondonTime date={match.playedAt} format="moment" />
                         }
                       />

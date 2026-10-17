@@ -1,6 +1,7 @@
 import { OUTCOME_LABEL, type Outcome } from "~/lib/domain";
 
-const TONE: Record<Outcome, string> = {
+/** An Outcome's fill, with the text colour that reads on it. */
+export const OUTCOME_FILL: Record<Outcome, string> = {
   W: "bg-win text-shale-950",
   D: "bg-draw text-shale-950",
   L: "bg-loss text-shale-950",
@@ -23,7 +24,7 @@ export function OutcomeBadge({ outcome, size = "sm" }: OutcomeBadgeProps) {
       role="img"
       aria-label={OUTCOME_LABEL[outcome]}
       title={OUTCOME_LABEL[outcome]}
-      className={`clip-slant inline-flex items-center justify-center font-display font-extrabold leading-none [--slant:0.3rem] ${TONE[outcome]} ${SIZE[size]}`}
+      className={`clip-slant inline-flex items-center justify-center font-display font-extrabold leading-none [--slant:0.3rem] ${OUTCOME_FILL[outcome]} ${SIZE[size]}`}
     >
       {outcome}
     </span>

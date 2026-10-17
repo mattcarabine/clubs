@@ -138,7 +138,7 @@ test.describe("Match detail", () => {
     await expect(page).toHaveURL(/\/matches\/800000000000001$/);
     const score = page.getByRole("region", { name: "Score" });
     await expect(score.getByTitle("Did not finish")).toBeVisible();
-    await expect(score.getByRole("img", { name: "Win" })).toBeVisible();
+    await expect(score.getByText("DNF win", { exact: true })).toBeVisible();
     await expect(
       page.getByRole("complementary", { name: "DNF" }),
     ).toContainText(

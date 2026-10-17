@@ -27,6 +27,7 @@ export {
 } from "./charts/step-chart";
 export { WinRateBarChart } from "./charts/win-rate-bar-chart";
 export { Chip, ChipGroup, chipClassName } from "./chip";
+export { CrestMark } from "./crest-mark";
 export {
   DataTable,
   type DataTableColumn,
@@ -56,8 +57,14 @@ export {
   ROW_HEADER_LINK,
   useRowLink,
 } from "./row-link";
-export { ScoreBar, type ScoreBarSide } from "./score-bar";
+export {
+  HERO_WIDTH,
+  ScoreBar,
+  type ScoreBarSide,
+  type ScoreBarStat,
+} from "./score-bar";
 export { ScrollRail } from "./scroll-rail";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";
 export { Ticker, type TickerItem } from "./ticker";
+export { TopPerformersStrip } from "./top-performers-strip";

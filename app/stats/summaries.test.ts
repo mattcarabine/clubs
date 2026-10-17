@@ -5,6 +5,7 @@ import {
   groupBy,
   type RecordInput,
   summariseAppearances,
+  summariseMatchSides,
   summariseRecord,
 } from "./summaries";
 
@@ -175,6 +176,55 @@ describe("summariseAppearances", () => {
       appearance({ positionGroup: null }),
     ]);
     expect(totals.positionGroup).toBe("Defender");
+  });
+});
+
+describe("summariseMatchSides", () => {
+  const appearance = (
+    isOurClub: boolean,
+    overrides: Partial<AppearanceStats> = {},
+  ) => ({
+    isOurClub,
+    positionGroup: null,
+    goals: 0,
+    assists: 0,
+    shots: 0,
+    passesMade: 0,
+    passAttempts: 0,
+    tacklesMade: 0,
+    tackleAttempts: 0,
+    rating: null,
+    manOfTheMatch: false,
+    redCards: 0,
+    saves: 0,
+    goalsConceded: 0,
+    cleanSheet: false,
+    secondsPlayed: 90 * 60,
+    ...overrides,
+  });
+
+  it("totals each club's Appearances separately", () => {
+    const sides = summariseMatchSides([
+      appearance(true, { shots: 3, passesMade: 8, passAttempts: 10 }),
+      appearance(false, { shots: 1, tacklesMade: 4 }),
+      appearance(true, { shots: 2, passesMade: 1, passAttempts: 2 }),
+    ]);
+    expect(sides.ours).toMatchObject({
+      appearances: 2,
+      shots: 5,
+      passPercentage: 75,
+    });
+    expect(sides.theirs).toMatchObject({
+      appearances: 1,
+      shots: 1,
+      tacklesMade: 4,
+      passPercentage: null,
+    });
+  });
+
+  it("gives a side with no Appearances zero of them", () => {
+    const sides = summariseMatchSides([appearance(true)]);
+    expect(sides.theirs.appearances).toBe(0);
   });
 });
 

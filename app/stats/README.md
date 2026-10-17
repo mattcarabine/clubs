@@ -31,7 +31,7 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 | Module | What it holds |
 |---|---|
 | `formulas.ts` | Pure maths: `per90`, `passPercentage`, `tacklePercentage`, `average`, `form` (last 5 ratings), `rollingAverage`, `rollingWinPercentage`, `weightedMean` / `weightedVariance`, `effectSize` (Cohen's d, weighted), `standardScore` (one value's distance from a sample's mean in standard deviations) and `winRateEffectSize` (Cohen's h, so Win-rate gaps rank on the same scale), `outcomeFromScore`, `oppositeOutcome`, `points`, `winPercentage`, `currentStreak`, `minutesPlayed`. Uncomputable values are `null`, never `NaN`. |
-| `summaries.ts` | Pure roll-ups: `summariseRecord` (W/D/L, goals, points, DNFs), `summariseAppearances` (a Squad Member's totals, per-90s, %s, Form), `groupBy`. |
+| `summaries.ts` | Pure roll-ups: `summariseRecord` (W/D/L, goals, points, DNFs), `summariseAppearances` (a Squad Member's totals, per-90s, %s, Form), `summariseMatchSides` (both clubs' totals in one Match, for the hero ScoreBar and the Match page), `groupBy`. |
 | `filter.ts` | `StatsFilter` and the URL format: `parseStatsFilter`, `statsFilterFromRequest`, `writeStatsFilter`, `toggleMatchType`. The date filter: `DateRange` (all, a `DATE_PRESETS` preset, or custom London dates) and `dateWindow`, which turns it into instants. |
 | `scope.ts` | `matchScope(db, filter, { opponentClubId, now })`: the SQL condition behind every query; `isShownMatch` (League and Playoff only) for the queries that ignore the filter; and `isOurAppearance`. |
 | `convert.ts` | Stored values to `~/lib/domain` ones (`"win"` to `"W"`, `"league"` to `"League"`, and so on). |

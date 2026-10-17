@@ -12,6 +12,8 @@ export type TickerItem = {
   headline: ReactNode;
   /** Supporting text, e.g. "vs Northside FC". */
   detail?: ReactNode;
+  /** A trailing pill, e.g. a rating. */
+  badge?: ReactNode;
 };
 
 type TickerProps = {
@@ -20,25 +22,36 @@ type TickerProps = {
   items: TickerItem[];
   /** Seconds for one full loop. Longer lists want longer loops. */
   durationSeconds?: number;
+  /**
+   * Shrink the strip to its items and centre it while they fit, so a short
+   * list never leaves an empty bar. Off for full-width strips like the shell's.
+   */
+  fit?: boolean;
 };
 
 /**
- * A broadcast ticker strip. When the items are wider than the strip they
- * scroll continuously and pause on hover or focus; when they fit, or with
- * reduced motion, they sit still (and scroll by hand if they overflow).
+ * A broadcast ticker strip of slanted chips. When the items are wider than
+ * the strip they scroll continuously and pause on hover or focus; when they
+ * fit, or with reduced motion, they sit still (and scroll by hand if they
+ * overflow).
  */
-export function Ticker({ label, items, durationSeconds = 40 }: TickerProps) {
+export function Ticker({
+  label,
+  items,
+  durationSeconds = 40,
+  fit = false,
+}: TickerProps) {
   const [viewport, overflows] = useOverflows<HTMLDivElement>(items);
   if (items.length === 0) return null;
 
   return (
     <section
       aria-label={label}
-      className="flex h-9 items-stretch overflow-hidden border-shale-700 border-b bg-shale-900"
+      className={`flex h-11 items-stretch overflow-hidden border-shale-700 border-b bg-shale-900 ${fit ? "mx-auto w-fit max-w-full" : ""}`}
     >
       <span
         aria-hidden
-        className="clip-slant-r z-10 flex shrink-0 items-center bg-rave pr-5 pl-4 font-display font-extrabold text-base text-shale-950 uppercase tracking-wide [--slant:0.6rem]"
+        className="clip-slant-r z-10 flex shrink-0 items-center bg-rave pr-5 pl-4 font-display font-extrabold text-lg text-shale-950 uppercase tracking-wide [--slant:0.6rem]"
       >
         {label}
       </span>
@@ -89,7 +102,8 @@ function useOverflows<T extends HTMLElement>(items: readonly TickerItem[]) {
       setOverflows(
         first !== undefined &&
           last !== undefined &&
-          last.right - first.left > element.clientWidth,
+          // A pixel of slack: a strip sized to its items can measure a hair narrower.
+          last.right - first.left > element.clientWidth + 1,
       );
     };
     const observer = new ResizeObserver(check);
@@ -114,19 +128,20 @@ function TickerTrack({
     <ul
       aria-hidden={hidden || undefined}
       // Each looping copy is at least a screen wide so a short list never leaves a gap mid-loop.
-      className={`flex shrink-0 items-center ${loop ? "motion-safe:min-w-[100vw]" : ""} ${hidden ? "motion-reduce:hidden" : ""}`}
+      className={`flex shrink-0 items-center gap-1.5 px-0.75 ${loop ? "motion-safe:min-w-[100vw]" : ""} ${hidden ? "motion-reduce:hidden" : ""}`}
     >
       {items.map((item) => (
         <li
           key={item.id}
-          className="flex items-center gap-2 whitespace-nowrap px-5 text-sm before:mr-3 before:h-3 before:w-1 before:-skew-x-12 before:bg-sound-700"
+          className="clip-slant flex items-center gap-2.5 whitespace-nowrap bg-shale-800 py-1 pr-3 pl-5 text-sm [--slant:0.5rem]"
         >
-          <span className="font-display font-extrabold text-base text-ink uppercase tracking-wide">
+          <span className="font-display font-extrabold text-ink text-xl uppercase leading-none tracking-wide">
             {item.headline}
           </span>
           {item.detail != null && (
             <span className="text-ink-soft">{item.detail}</span>
           )}
+          {item.badge}
         </li>
       ))}
     </ul>
