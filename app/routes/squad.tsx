@@ -1,7 +1,7 @@
 /**
  * The Squad table (CLUBS-9): one row per Squad Member over the Matches the
- * FilterBar selects, sortable on every column, with a minimum-Appearances
- * stepper and a toggle that brings Former Squad Members back in.
+ * FilterBar selects, sortable on every column, with a toggle that brings
+ * Former Squad Members back in.
  *
  * `?source=ea` (CLUBS-19) swaps in EA's own season totals from the latest
  * member Snapshots: they include Matches from before tracking began, so the
@@ -37,7 +37,6 @@ import {
   eaCleanSheets,
   eaMemberTotals,
   type LeaderboardRow,
-  parseMinAppearances,
   parseStatsFilter,
   parseStatsSource,
   squadLeaderboard,
@@ -55,7 +54,6 @@ export function meta(_: Route.MetaArgs) {
 export async function loader({ request }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
   const filter = parseStatsFilter(params);
-  const minAppearances = parseMinAppearances(params);
   const includeFormer = params.get(FORMER_PARAM) === "1";
   const db = getDb(env.DB);
   if (parseStatsSource(params) === "ea") {
@@ -66,14 +64,10 @@ export async function loader({ request }: Route.LoaderArgs) {
       rows: await eaMemberTotals(db, { includeFormer }),
     };
   }
-  const rows = await squadLeaderboard(db, filter, {
-    minAppearances,
-    includeFormer,
-  });
+  const rows = await squadLeaderboard(db, filter, { includeFormer });
   return {
     source: "recorded" as const,
     filter,
-    minAppearances,
     includeFormer,
     rows,
   };
@@ -92,24 +86,15 @@ export default function Squad({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function RecordedSquad({
-  filter,
-  minAppearances,
-  includeFormer,
-  rows,
-}: SquadData<"recorded">) {
+function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
   return (
     <>
       <PageHeader
         title="Squad"
-        subtitle={squadSubtitle(rows.length, minAppearances)}
+        subtitle={formatCount(rows.length, "Squad Member", "Squad Members")}
         aside={<SquadToggle includeFormer={includeFormer} />}
       />
-      <FilterBar
-        filter={filter}
-        minAppearances={minAppearances}
-        source="recorded"
-      />
+      <FilterBar filter={filter} source="recorded" />
       {rows.length > 0 && <Leaders leaders={LEADERS} rows={rows} />}
       <DataTable
         caption="Squad Members"
@@ -120,7 +105,7 @@ function RecordedSquad({
         empty={
           <EmptyState
             title="No Squad Members to show"
-            description={`Nobody has ${minAppearances} or more Appearances in these Matches. Lower the minimum Appearances or widen the filters.`}
+            description="No Squad Member has an Appearance in these Matches. Widen the filters to see more."
           />
         }
       />
@@ -160,11 +145,6 @@ function EaSquad({ filter, includeFormer, rows }: SquadData<"ea">) {
       {rows.length > 0 && <ColumnKey entries={EA_KEY} />}
     </>
   );
-}
-
-function squadSubtitle(count: number, minAppearances: number): string {
-  const apps = minAppearances === 1 ? "Appearance" : "Appearances";
-  return `${formatCount(count, "Squad Member", "Squad Members")} with ${minAppearances}+ ${apps}`;
 }
 
 /** Current squad only, or everyone including Former Squad Members. */

@@ -24,7 +24,6 @@ import {
   clubRecord,
   type LeaderboardRow,
   listMatches,
-  parseMinAppearances,
   squadLeaderboard,
   statsFilterFromRequest,
 } from "~/stats";
@@ -44,16 +43,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   const db = getDb(env.DB);
   const filter = statsFilterFromRequest(request);
-  const minAppearances = parseMinAppearances(new URL(request.url).searchParams);
   const [record, matches, leaderboard] = await Promise.all([
     clubRecord(db, filter),
     listMatches(db, filter, { limit: 20 }),
-    squadLeaderboard(db, filter, { minAppearances }),
+    squadLeaderboard(db, filter),
   ]);
   return {
     clubName: env.EA_CLUB_NAME,
     filter,
-    minAppearances,
     record,
     matches,
     leaderboard,
@@ -79,15 +76,14 @@ const LEADERBOARD_COLUMNS: DataTableColumn<LeaderboardRow>[] = [
 ];
 
 export default function TestStats({ loaderData }: Route.ComponentProps) {
-  const { clubName, filter, minAppearances, record, matches, leaderboard } =
-    loaderData;
+  const { clubName, filter, record, matches, leaderboard } = loaderData;
   return (
     <>
       <PageHeader
         title="Stats check"
         subtitle="Test page for the stats filters"
       />
-      <FilterBar filter={filter} minAppearances={minAppearances} />
+      <FilterBar filter={filter} />
 
       <section aria-label="Record" className="mb-8">
         <StatGrid>
@@ -152,7 +148,7 @@ export default function TestStats({ loaderData }: Route.ComponentProps) {
             empty={
               <EmptyState
                 title="No Squad Members"
-                description="Nobody has enough Appearances. Lower the minimum."
+                description="No Appearances in these Matches."
               />
             }
           />

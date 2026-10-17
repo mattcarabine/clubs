@@ -12,11 +12,9 @@ import {
   DATE_RANGE_LABEL,
   DATE_RANGES,
   MATCH_TYPES,
-  parseMinAppearances,
   parseStatsFilter,
   type StatsFilter,
   toggleMatchType,
-  writeMinAppearances,
   writeStatsFilter,
 } from "~/stats/filter";
 import {
@@ -30,8 +28,6 @@ import {
 type FilterBarProps = {
   /** The page's current filter, parsed in its loader with `statsFilterFromRequest`. */
   filter: StatsFilter;
-  /** Shows the leaderboard minimum-Appearances stepper with this value (from `parseMinAppearances`). */
-  minAppearances?: number;
   /**
    * Shows the Recorded / EA totals toggle with this value (from
    * `statsSourceFromRequest`). On EA totals the Match filters are hidden,
@@ -41,11 +37,10 @@ type FilterBarProps = {
 };
 
 /**
- * The global stats filter: Match Types, DNF, date range and Season, plus an
- * optional leaderboard minimum. The Season picker lists the Seasons from the
- * root loader, and shows once there are two to choose between. Every change
- * rewrites the URL, so the page's loader reruns with the new filter and the
- * view can be shared.
+ * The global stats filter: Match Types, DNF, date range and Season. The
+ * Season picker lists the Seasons from the root loader, and shows once there
+ * are two to choose between. Every change rewrites the URL, so the page's
+ * loader reruns with the new filter and the view can be shared.
  *
  * With a `source`, it leads with the Recorded / EA totals toggle.
  *
@@ -57,10 +52,6 @@ export function FilterBar(props: FilterBarProps) {
   const pending = usePendingSearchParams();
   const filter = pending ? parseStatsFilter(pending) : props.filter;
   const seasons = useSeasonNumbers();
-  const minAppearances =
-    pending && props.minAppearances !== undefined
-      ? parseMinAppearances(pending)
-      : props.minAppearances;
   const source =
     pending && props.source !== undefined
       ? parseStatsSource(pending)
@@ -73,13 +64,6 @@ export function FilterBar(props: FilterBarProps) {
   const updateFilter = (change: (filter: StatsFilter) => StatsFilter) =>
     apply((params) =>
       writeStatsFilter(params, change(parseStatsFilter(params))),
-    );
-  const stepMinAppearances = (by: number) =>
-    apply((params) =>
-      writeMinAppearances(
-        params,
-        Math.max(0, parseMinAppearances(params) + by),
-      ),
     );
 
   const sourceToggle = source !== undefined && (
@@ -171,30 +155,6 @@ export function FilterBar(props: FilterBarProps) {
           />
         </FilterGroup>
       )}
-
-      {minAppearances !== undefined && (
-        <FilterGroup label="Minimum Appearances">
-          <Chip
-            aria-label="Fewer minimum Appearances"
-            disabled={minAppearances <= 0}
-            onClick={() => stepMinAppearances(-1)}
-          >
-            −
-          </Chip>
-          <output
-            aria-live="polite"
-            className="flex min-w-8 items-center justify-center font-display font-extrabold text-ink text-xl tabular"
-          >
-            {minAppearances}
-          </output>
-          <Chip
-            aria-label="More minimum Appearances"
-            onClick={() => stepMinAppearances(1)}
-          >
-            +
-          </Chip>
-        </FilterGroup>
-      )}
     </section>
   );
 }
@@ -268,15 +228,13 @@ function FilterGroup({ label, children }: FilterGroupProps) {
 }
 
 type ChipProps = {
-  /** Set for toggles; leave out for plain actions like the stepper. */
-  pressed?: boolean;
+  pressed: boolean;
   disabled?: boolean;
   onClick: () => void;
-  "aria-label"?: string;
   children: ReactNode;
 };
 
-/** A slanted filter button: a toggle when `pressed` is set, else a plain action. */
+/** A slanted filter toggle button. */
 export function Chip({ pressed, ...props }: ChipProps) {
   return (
     <button

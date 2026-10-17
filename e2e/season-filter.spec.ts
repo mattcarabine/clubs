@@ -65,7 +65,7 @@ test("filtering to Season 2 counts only the Matches after the boundary", async (
   await fakeEa.addMatch(loss({ playedAt: new Date(Date.now() + 60_000) }));
   await triggerPoll();
 
-  await page.goto("/test/stats?minApps=1");
+  await page.goto("/test/stats");
   await expect(seasonPicker(page)).toHaveValue("");
   await expect(tile(page, "Played")).toHaveText("3");
   expect(new Set(await squadAppearances(page))).toEqual(new Set(["3"]));
