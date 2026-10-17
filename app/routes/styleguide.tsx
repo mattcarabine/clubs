@@ -7,6 +7,7 @@ import {
   type DataTableColumn,
   EmptyState,
   FormGuide,
+  HeadToHeadBar,
   LastUpdatedBadge,
   LineChart,
   LoadingState,
@@ -243,6 +244,26 @@ export default function Styleguide() {
               away={{ name: "Cosmos FC", score: 2 }}
             />
           </div>
+        </div>
+      </Section>
+
+      <Section id="head-to-head-bar" title="HeadToHeadBar">
+        <div className="grid gap-6">
+          <HeadToHeadBar
+            size="hero"
+            label="Head-to-head"
+            status="7 Matches"
+            ourClub="A Bloo Bloo"
+            opponent="Northside Athletic"
+            record={{ wins: 4, draws: 1, losses: 2 }}
+          />
+          <HeadToHeadBar
+            label="Most played"
+            status="3 Matches"
+            ourClub="A Bloo Bloo"
+            opponent="Real Gravesend Rovers Football Club"
+            record={{ wins: 0, draws: 1, losses: 2 }}
+          />
         </div>
       </Section>
 
