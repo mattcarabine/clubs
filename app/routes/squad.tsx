@@ -1,7 +1,8 @@
 /**
  * The Squad table (CLUBS-9): one row per Squad Member over the Matches the
  * FilterBar selects, sortable on every column, with a toggle that brings
- * Former Squad Members back in.
+ * Former Squad Members back in. The FilterBar's Position Group selection
+ * (CLUBS-23) narrows each row to the Appearances in those groups.
  *
  * `?source=ea` (CLUBS-19) swaps in EA's own season totals from the latest
  * member Snapshots: they include Matches from before tracking began, so the
@@ -32,11 +33,13 @@ import {
 } from "~/lib/number-format";
 import { sortBy } from "~/lib/sort";
 import {
+  describePositionGroups,
   type EaMemberTotals,
   type EaSeasonTotals,
   eaCleanSheets,
   eaMemberTotals,
   type LeaderboardRow,
+  type PositionGroupSelection,
   parseStatsFilter,
   parseStatsSource,
   squadLeaderboard,
@@ -64,7 +67,10 @@ export async function loader({ request }: Route.LoaderArgs) {
       rows: await eaMemberTotals(db, { includeFormer }),
     };
   }
-  const rows = await squadLeaderboard(db, filter, { includeFormer });
+  const rows = await squadLeaderboard(db, filter, {
+    includeFormer,
+    positionGroups: filter.positionGroups,
+  });
   return {
     source: "recorded" as const,
     filter,
@@ -91,10 +97,10 @@ function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
     <>
       <PageHeader
         title="Squad"
-        subtitle={formatCount(rows.length, "Squad Member", "Squad Members")}
+        subtitle={squadSubtitle(rows.length, filter.positionGroups)}
         aside={<SquadToggle includeFormer={includeFormer} />}
       />
-      <FilterBar filter={filter} source="recorded" />
+      <FilterBar filter={filter} source="recorded" positions />
       {rows.length > 0 && <Leaders leaders={LEADERS} rows={rows} />}
       <DataTable
         caption="Squad Members"
@@ -127,7 +133,7 @@ function EaSquad({ filter, includeFormer, rows }: SquadData<"ea">) {
         }
         aside={<SquadToggle includeFormer={includeFormer} />}
       />
-      <FilterBar filter={filter} source="ea" />
+      <FilterBar filter={filter} source="ea" positions />
       {rows.length > 0 && <Leaders leaders={EA_LEADERS} rows={rows} />}
       <DataTable
         caption="Squad Members"
@@ -145,6 +151,17 @@ function EaSquad({ filter, includeFormer, rows }: SquadData<"ea">) {
       {rows.length > 0 && <ColumnKey entries={EA_KEY} />}
     </>
   );
+}
+
+/** "4 Squad Members", saying which Appearances count when a Position Group is selected. */
+function squadSubtitle(
+  count: number,
+  positionGroups: PositionGroupSelection,
+): string {
+  const members = formatCount(count, "Squad Member", "Squad Members");
+  return positionGroups.length
+    ? `${members}, counting Appearances as ${describePositionGroups(positionGroups)}`
+    : members;
 }
 
 /** Current squad only, or everyone including Former Squad Members. */
@@ -386,27 +403,45 @@ function nameColumn<Row extends SquadRow>(width: string): DataTableColumn<Row> {
   };
 }
 
+/**
+ * A column of the recorded totals. A Squad Member with no Appearances in the
+ * selected Position Groups shows "–" throughout, and sorts last.
+ */
+function recordedStat(
+  id: string,
+  header: string,
+  value: (row: LeaderboardRow) => number | null,
+  format?: (value: number) => ReactNode,
+): DataTableColumn<LeaderboardRow> {
+  return stat(
+    id,
+    header,
+    (row) => (row.appearances === 0 ? null : value(row)),
+    format,
+  );
+}
+
 const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
   nameColumn("w-40"),
-  stat("apps", "Apps", (r) => r.appearances),
-  stat("mins", "Mins", (r) => r.minutes, formatThousands),
-  stat("goals", "G", (r) => r.goals),
-  stat("assists", "A", (r) => r.assists),
-  stat("ga", "G+A", (r) => r.goalContributions),
-  stat("goals90", "G/90", (r) => r.goalsPer90, per90),
-  stat("assists90", "A/90", (r) => r.assistsPer90, per90),
-  stat("ga90", "G+A/90", (r) => r.goalContributionsPer90, per90),
-  stat("shots", "Shots", (r) => r.shots),
-  stat("pass", "Pass %", (r) => r.passPercentage, formatPercentage),
-  stat("tackle", "Tkl %", (r) => r.tacklePercentage, formatPercentage),
-  stat("rating", "Rating", (r) => r.averageRating, formatDecimal),
+  recordedStat("apps", "Apps", (r) => r.appearances),
+  recordedStat("mins", "Mins", (r) => r.minutes, formatThousands),
+  recordedStat("goals", "G", (r) => r.goals),
+  recordedStat("assists", "A", (r) => r.assists),
+  recordedStat("ga", "G+A", (r) => r.goalContributions),
+  recordedStat("goals90", "G/90", (r) => r.goalsPer90, per90),
+  recordedStat("assists90", "A/90", (r) => r.assistsPer90, per90),
+  recordedStat("ga90", "G+A/90", (r) => r.goalContributionsPer90, per90),
+  recordedStat("shots", "Shots", (r) => r.shots),
+  recordedStat("pass", "Pass %", (r) => r.passPercentage, formatPercentage),
+  recordedStat("tackle", "Tkl %", (r) => r.tacklePercentage, formatPercentage),
+  recordedStat("rating", "Rating", (r) => r.averageRating, formatDecimal),
   {
-    ...stat("form", "Form", (r: LeaderboardRow) => r.form),
+    ...recordedStat("form", "Form", (r) => r.form),
     cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
   },
-  stat("motm", "MOTM", (r) => r.manOfTheMatch),
-  stat("cs", "CS", (r) => r.cleanSheets),
-  stat("saves", "Saves", (r) => r.saves),
+  recordedStat("motm", "MOTM", (r) => r.manOfTheMatch),
+  recordedStat("cs", "CS", (r) => r.cleanSheets),
+  recordedStat("saves", "Saves", (r) => r.saves),
 ];
 
 /**

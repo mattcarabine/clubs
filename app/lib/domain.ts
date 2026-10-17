@@ -17,6 +17,14 @@ export type PositionGroup =
   | "Midfielder"
   | "Forward";
 
+/** Goalkeeper to Forward: the order every Position Group list and control uses. */
+export const POSITION_GROUPS = [
+  "Goalkeeper",
+  "Defender",
+  "Midfielder",
+  "Forward",
+] as const satisfies readonly PositionGroup[];
+
 export const POSITION_GROUP_ABBR: Record<PositionGroup, string> = {
   Goalkeeper: "GK",
   Defender: "DEF",

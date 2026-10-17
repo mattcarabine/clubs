@@ -14,7 +14,7 @@ export {
   StackedColumnChart,
   type StackedColumnSeries,
 } from "./charts/stacked-column-chart";
-export { Chip } from "./chip";
+export { Chip, ChipGroup } from "./chip";
 export {
   DataTable,
   type DataTableColumn,
@@ -31,6 +31,10 @@ export { LastUpdatedBadge } from "./last-updated-badge";
 export { MatchScoreBar } from "./match-score-bar";
 export { OutcomeBadge } from "./outcome-badge";
 export { PlayerChip } from "./player-chip";
+export {
+  EA_POSITIONS_DISABLED,
+  PositionGroupPicker,
+} from "./position-group-picker";
 export { BackLink, isNotFound, RouteError } from "./route-error";
 export { ScoreBar, type ScoreBarSide } from "./score-bar";
 export { LoadingState, Skeleton } from "./skeleton";

@@ -14,21 +14,25 @@ import {
 const params = (query: string) => new URLSearchParams(query);
 
 describe("parseStatsFilter", () => {
-  it("defaults to Competitive Matches, DNF included, all dates", () => {
+  it("defaults to Competitive Matches, DNF included, all dates, All Positions", () => {
     expect(parseStatsFilter(params(""))).toEqual({
       matchTypes: ["League", "Playoff"],
       includeDnf: true,
       dates: { kind: "all" },
+      positionGroups: [],
     });
   });
 
   it("reads every field", () => {
     expect(
-      parseStatsFilter(params("types=friendly,league&dnf=0&range=30d")),
+      parseStatsFilter(
+        params("types=friendly,league&dnf=0&range=30d&pos=forward,midfielder"),
+      ),
     ).toEqual({
       matchTypes: ["League", "Friendly"],
       includeDnf: false,
       dates: { kind: "preset", preset: "30d" },
+      positionGroups: ["Midfielder", "Forward"],
     });
   });
 
@@ -109,9 +113,10 @@ describe("writeStatsFilter", () => {
       includeDnf: false,
       dates: { kind: "preset", preset: "7d" },
       season: 2,
+      positionGroups: ["Forward", "Defender"],
     };
     expect(writeStatsFilter(params(""), filter).toString()).toBe(
-      "types=league%2Cfriendly&dnf=0&range=7d&season=2",
+      "types=league%2Cfriendly&dnf=0&range=7d&season=2&pos=defender%2Cforward",
     );
   });
 
@@ -151,11 +156,13 @@ describe("writeStatsFilter", () => {
         matchTypes: ["Friendly"],
         includeDnf: false,
         dates: { kind: "preset", preset: "30d" },
+        positionGroups: ["Goalkeeper"],
       },
       {
         matchTypes: ["League", "Playoff", "Friendly"],
         includeDnf: true,
         dates: { kind: "custom", from: "2026-01-01", to: "2026-10-17" },
+        positionGroups: [],
       },
       { ...DEFAULT_STATS_FILTER, season: 3 },
     ];

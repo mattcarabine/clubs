@@ -3,7 +3,7 @@
 import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
-import { friendly, OUR_CLUB_ID, win } from "./support/match-builders.ts";
+import { friendly, win, withLineup } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-9: the Squad table at /squad.
@@ -13,34 +13,6 @@ const ALPHA = { id: "900000001", name: "Alpha Striker" };
 const BRAVO = { id: "900000002", name: "Bravo Winger" };
 /** Marked former by the test env's TEST_ROSTER (wrangler.jsonc). */
 const FORMER = { id: "900000099", name: "Old Boy" };
-
-type Lineup = {
-  player: { id: string; name: string };
-  goals?: number;
-  rating?: number;
-}[];
-
-/**
- * Replaces Our Club's line-up in a built Match. Each player is a copy of a
- * recorded one, so every stat is realistic, with a new ID, name, goals and
- * (optionally) rating.
- */
-function withLineup(body: AddMatchBody, lineup: Lineup): AddMatchBody {
-  const recorded = body.match.players[OUR_CLUB_ID];
-  const template = Object.values(recorded)[0];
-  body.match.players[OUR_CLUB_ID] = Object.fromEntries(
-    lineup.map(({ player, goals = 0, rating }) => [
-      player.id,
-      {
-        ...template,
-        playername: player.name,
-        goals: String(goals),
-        rating: rating === undefined ? template.rating : rating.toFixed(2),
-      },
-    ]),
-  );
-  return body;
-}
 
 test.beforeEach(async ({ fakeEa }) => {
   // Only the Matches each test adds, so every total is exact.

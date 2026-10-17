@@ -25,6 +25,11 @@ type DataTableProps<T> = {
   initialSort?: DataTableSort;
   /** Shown instead of the table when there are no rows. */
   empty?: ReactNode;
+  /**
+   * Rows to pick out in Our Club's blue, e.g. the selected Position Groups.
+   * Colour alone never carries meaning, so say it in the row too.
+   */
+  highlight?: (row: T) => boolean;
 };
 
 /**
@@ -38,6 +43,7 @@ export function DataTable<T>({
   rowKey,
   initialSort,
   empty,
+  highlight,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState(initialSort);
   const sortColumn = columns.find((c) => c.id === sort?.columnId);
@@ -102,28 +108,35 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {sorted.map((row) => (
-              <tr key={rowKey(row)} className="group">
-                {columns.map((column, i) => {
-                  const Cell = i === 0 ? "th" : "td";
-                  return (
-                    <Cell
-                      key={column.id}
-                      scope={i === 0 ? "row" : undefined}
-                      className={[
-                        "whitespace-nowrap border-shale-700 border-b px-3 py-2.5 group-last:border-b-0 group-hover:bg-shale-800",
-                        alignClass(column.align),
-                        i === 0
-                          ? "sticky left-0 z-10 bg-shale-900 font-semibold text-ink shadow-[1px_0_0_var(--color-shale-700)]"
-                          : "text-ink-soft",
-                      ].join(" ")}
-                    >
-                      {column.cell(row)}
-                    </Cell>
-                  );
-                })}
-              </tr>
-            ))}
+            {sorted.map((row) => {
+              const highlighted = highlight?.(row) ?? false;
+              return (
+                <tr
+                  key={rowKey(row)}
+                  className="group"
+                  data-highlighted={highlighted || undefined}
+                >
+                  {columns.map((column, i) => {
+                    const Cell = i === 0 ? "th" : "td";
+                    return (
+                      <Cell
+                        key={column.id}
+                        scope={i === 0 ? "row" : undefined}
+                        className={[
+                          "whitespace-nowrap border-shale-700 border-b px-3 py-2.5 group-last:border-b-0 group-hover:bg-shale-800",
+                          alignClass(column.align),
+                          i === 0
+                            ? rowHeaderClass(highlighted)
+                            : cellClass(highlighted),
+                        ].join(" ")}
+                      >
+                        {column.cell(row)}
+                      </Cell>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>
@@ -161,6 +174,18 @@ function flip(direction: SortDirection): SortDirection {
 
 function alignClass(align: "left" | "right" = "left") {
   return align === "right" ? "text-right" : "text-left";
+}
+
+/** The sticky first cell; a highlighted row gets a rave edge inside its border. */
+function rowHeaderClass(highlighted: boolean): string {
+  const sticky = "sticky left-0 z-10 font-semibold text-ink";
+  return highlighted
+    ? `${sticky} bg-sound-900 shadow-[inset_3px_0_0_var(--color-rave),1px_0_0_var(--color-shale-700)]`
+    : `${sticky} bg-shale-900 shadow-[1px_0_0_var(--color-shale-700)]`;
+}
+
+function cellClass(highlighted: boolean): string {
+  return highlighted ? "bg-sound-900 text-ink" : "text-ink-soft";
 }
 
 function SortIcon({ direction }: { direction?: SortDirection }) {
