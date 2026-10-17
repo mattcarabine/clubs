@@ -100,7 +100,6 @@ export default function Opponents({ loaderData }: Route.ComponentProps) {
         <div className="grid gap-8">
           <Link
             to={`/opponents/${mostPlayed.clubId}`}
-            aria-label={`Most played: ${mostPlayed.name}`}
             className="block transition-[filter] hover:brightness-110"
           >
             <HeadToHeadBar

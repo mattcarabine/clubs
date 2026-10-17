@@ -121,7 +121,9 @@ test("the Opponents list shows each club's head-to-head record, most played firs
     CLUB_Y.name,
   ]);
   await expect(
-    page.getByRole("link", { name: `Most played: ${CLUB_X.name}` }),
+    page.getByRole("link", {
+      name: `A Bloo Bloo against ${CLUB_X.name}: 2 wins, 0 draws, 1 loss Most played`,
+    }),
   ).toBeVisible();
 
   // Sortable: Last met puts the most recent meeting first.
