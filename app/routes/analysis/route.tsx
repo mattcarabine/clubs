@@ -32,6 +32,7 @@ import {
 } from "~/lib/number-format";
 import { playerPath } from "~/lib/paths";
 import {
+  type AfterResultSplit,
   type GroupSplit,
   getOutcomeSplit,
   MIN_SPLIT_MATCHES,
@@ -43,6 +44,7 @@ import {
   ROLLING_WIN_WINDOW,
   statsFilterFromRequest,
   type WithWithout,
+  winRateBucket,
 } from "~/stats";
 import { parseStatsFilter, writeStatsFilter } from "~/stats/filter";
 import type { PositionGroupSelection } from "~/stats/positions";
@@ -198,6 +200,8 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
         </section>
       </div>
 
+      <AfterResultSection splits={split.afterResult} />
+
       <PlayerSection
         players={split.players}
         positionGroups={filter.positionGroups}
@@ -226,6 +230,49 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
         </ChartFrame>
       </section>
     </div>
+  );
+}
+
+/** Win % in the Match after a Win against after Dropped Points, any next Match and within a Session. */
+function AfterResultSection({
+  splits,
+}: {
+  splits: readonly AfterResultSplit[];
+}) {
+  return (
+    <section aria-label="After a result" className="flex flex-col gap-4">
+      <SectionHeading
+        title="After a result"
+        subtitle="Win % in the Match after a Win against the Match after Dropped Points, among the filtered Matches. Matches played in brackets."
+      />
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-6">
+        {splits.map((split) => (
+          <ChartFrame
+            key={split.scope}
+            title={split.label}
+            subtitle={
+              split.scope === "same-session"
+                ? "Only when the next Match is in the same Session"
+                : "The next Match, however long after"
+            }
+          >
+            {split.comparable ? (
+              <WinRateBarChart
+                label={`Win % after a result: ${split.label}`}
+                buckets={[
+                  winRateBucket("After a Win", split.afterWin),
+                  winRateBucket("After Dropped Points", split.afterDropped),
+                ]}
+              />
+            ) : (
+              <p className="text-ink-muted text-sm">
+                {`Needs at least ${MIN_SPLIT_MATCHES} Matches after a Win and ${MIN_SPLIT_MATCHES} after Dropped Points (${split.afterWin.played} and ${split.afterDropped.played} so far).`}
+              </p>
+            )}
+          </ChartFrame>
+        ))}
+      </div>
+    </section>
   );
 }
 

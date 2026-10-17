@@ -18,6 +18,7 @@ import {
   ratio,
   rollingAverage,
   rollingWinPercentage,
+  standardScore,
   tacklePercentage,
   weightedMean,
   weightedVariance,
@@ -57,6 +58,36 @@ describe("weightedMean and weightedVariance", () => {
   it("is null with no weight", () => {
     expect(weightedMean([])).toBeNull();
     expect(weightedVariance([{ value: 4, weight: 0 }])).toBeNull();
+  });
+});
+
+describe("standardScore", () => {
+  const unweighted = (values: number[]) =>
+    values.map((value) => ({ value, weight: 1 }));
+
+  it("is the distance from the mean in standard deviations, signed", () => {
+    // Mean 12, population standard deviation sqrt(8/3).
+    const wins = unweighted([10, 12, 14]);
+    expect(standardScore(6, wins)).toBeCloseTo(-6 / Math.sqrt(8 / 3));
+    expect(standardScore(14, wins)).toBeCloseTo(2 / Math.sqrt(8 / 3));
+  });
+
+  it("weights the sample", () => {
+    // Weighted mean 12, variance (90 * 4 + 10 * 324) / 100 = 36.
+    const sample = [
+      { value: 10, weight: 90 },
+      { value: 30, weight: 10 },
+    ];
+    expect(standardScore(18, sample)).toBeCloseTo(1);
+  });
+
+  it("is infinite for any difference from a constant sample, and 0 for none", () => {
+    expect(standardScore(9, unweighted([12, 12]))).toBe(-Infinity);
+    expect(standardScore(12, unweighted([12, 12]))).toBe(0);
+  });
+
+  it("is null for an empty sample", () => {
+    expect(standardScore(1, [])).toBeNull();
   });
 });
 

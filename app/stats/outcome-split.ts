@@ -25,6 +25,7 @@ import {
   per90,
   percentage,
   rollingWinPercentage,
+  standardScore,
   type WeightedValue,
   weightedMean,
   winPercentage,
@@ -83,6 +84,8 @@ export interface SplitMatch {
   opponent: ClubMatchTotals;
   /** How many Squad Members played. */
   squadSize: number;
+  /** Which Session it was in: equal for Matches in the same Session. */
+  session: number;
   /** 1 for the first Match in its Session. */
   sessionPlace: number;
 }
@@ -91,6 +94,9 @@ export interface SplitMatch {
 // Performance
 
 type Club = "ours" | "opponent";
+
+/** Both clubs, Our Club first. */
+const CLUBS: readonly Club[] = ["ours", "opponent"];
 
 interface PerformanceMetric {
   id: string;
@@ -104,6 +110,8 @@ interface PerformanceMetric {
   format: (value: number) => string;
   /** The finding's sentence after "In Dropped Points". */
   describe: (club: Club, diff: number) => string;
+  /** One Match against a typical Win, before "than in a typical Win": "6.1 fewer shots per 90". */
+  compare: (club: Club, diff: number) => string;
 }
 
 const SUBJECT: Record<Club, string> = { ours: "we", opponent: "Opponents" };
@@ -111,6 +119,13 @@ const POSSESSIVE: Record<Club, string> = {
   ours: "our",
   opponent: "Opponents'",
 };
+/** Names one Match's stat: "Opponent pass completion". */
+const OWNER: Record<Club, string> = { ours: "", opponent: "Opponent " };
+
+/** "Pass completion" for ours, "Opponent pass completion" for theirs. */
+function statName(club: Club, label: string): string {
+  return capitalise(`${OWNER[club]}${label.toLowerCase()}`);
+}
 
 function perNinety(
   id: string,
@@ -129,6 +144,8 @@ function perNinety(
     format: (value) => formatDecimal(value),
     describe: (club, diff) =>
       `${SUBJECT[club]} ${verb} ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "fewer" : "more"} ${noun} per 90`,
+    compare: (club, diff) =>
+      `${formatDecimal(Math.abs(diff))} ${diff < 0 ? "fewer" : "more"} ${OWNER[club]}${noun} per 90`,
   };
 }
 
@@ -148,6 +165,8 @@ function rate(
     format: formatPercentage,
     describe: (club, diff) =>
       `${POSSESSIVE[club]} ${label.toLowerCase()} is ${Math.round(Math.abs(diff))} points ${diff < 0 ? "lower" : "higher"}`,
+    compare: (club, diff) =>
+      `${statName(club, label)} ${Math.round(Math.abs(diff))} points ${diff < 0 ? "lower" : "higher"}`,
   };
 }
 
@@ -161,6 +180,8 @@ const RATING: PerformanceMetric = {
   format: (value) => formatDecimal(value),
   describe: (club, diff) =>
     `${POSSESSIVE[club]} average rating is ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "lower" : "higher"}`,
+  compare: (club, diff) =>
+    `${statName(club, "Average rating")} ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "lower" : "higher"}`,
 };
 
 /** Every performance stat, in table order. */
@@ -223,6 +244,12 @@ export function winRecord(outcomes: readonly Outcome[]): WinRecord {
   };
 }
 
+/** A Win record as a labelled bar for `WinRateBarChart`. */
+export function winRateBucket(label: string, record: WinRecord): SplitBucket {
+  const { played, wins, winPercentage } = record;
+  return { label, played, wins, winPercentage: winPercentage ?? 0 };
+}
+
 /** The Matches in a group against every other Match. */
 export interface GroupSplit {
   group: WinRecord;
@@ -255,11 +282,9 @@ function buckets<T extends { outcome: Outcome }>(
   const byBucket = groupBy(matches, bucketOf);
   return order.flatMap(({ id, label }) => {
     const group = byBucket.get(id);
-    if (!group) return [];
-    const { played, wins, winPercentage } = winRecord(
-      group.map((m) => m.outcome),
-    );
-    return [{ label, played, wins, winPercentage: winPercentage ?? 0 }];
+    return group
+      ? [winRateBucket(label, winRecord(group.map((m) => m.outcome)))]
+      : [];
   });
 }
 
@@ -383,9 +408,88 @@ function squadSizeOf(match: SplitMatch): string {
 }
 
 // ---------------------------------------------------------------------------
+// After a result (CLUBS-26): does a bad result lead to another?
+
+/** Which Match counts as the one after a result. */
+export const AFTER_RESULT_SCOPES = [
+  { id: "any-next", label: "Any next Match" },
+  { id: "same-session", label: "Same Session" },
+] as const;
+
+export type AfterResultScope = (typeof AFTER_RESULT_SCOPES)[number]["id"];
+
+/** Our Win rate in the Match after a Win against the Match after Dropped Points. */
+export interface AfterResultSplit {
+  scope: AfterResultScope;
+  label: string;
+  afterWin: WinRecord;
+  afterDropped: WinRecord;
+  /** Both sides have `MIN_SPLIT_MATCHES`; otherwise the split is hidden and makes no finding. */
+  comparable: boolean;
+}
+
+/**
+ * Each Match (oldest first, already filtered) paired with the next one: the
+ * next in the list whatever the gap, or only when it is in the same Session.
+ * With only League selected, the Match after a League Match is the next
+ * League Match.
+ */
+export function afterResult(
+  matches: readonly Pick<SplitMatch, "outcome" | "session">[],
+): AfterResultSplit[] {
+  const pairs = matches
+    .slice(1)
+    .map((next, i) => ({ previous: matches[i], next }));
+  return AFTER_RESULT_SCOPES.map(({ id, label }) => {
+    const afterWin: Outcome[] = [];
+    const afterDropped: Outcome[] = [];
+    for (const { previous, next } of pairs) {
+      if (id === "same-session" && previous.session !== next.session) continue;
+      (previous.outcome === "W" ? afterWin : afterDropped).push(next.outcome);
+    }
+    const winRecords = {
+      afterWin: winRecord(afterWin),
+      afterDropped: winRecord(afterDropped),
+    };
+    return {
+      scope: id,
+      label,
+      ...winRecords,
+      comparable: isComparable({
+        group: winRecords.afterDropped,
+        rest: winRecords.afterWin,
+      }),
+    };
+  });
+}
+
+/** "After Dropped Points in the same Session we win 20% (5 Matches) vs 60% after a Win (5)". */
+function afterResultFinding({
+  scope,
+  afterWin,
+  afterDropped,
+}: AfterResultSplit): RankedFinding | null {
+  const when = scope === "same-session" ? " in the same Session" : "";
+  const droppedCount = formatCount(afterDropped.played, "Match", "Matches");
+  return winRateFinding(
+    `after-${scope}`,
+    "After a result",
+    { group: afterDropped, rest: afterWin },
+    {
+      text: `After Dropped Points${when} we win ${formatPercentage(afterDropped.winPercentage)} (${droppedCount}) vs ${formatPercentage(afterWin.winPercentage)} after a Win (${afterWin.played})`,
+      counts: `${droppedCount} after Dropped Points, ${afterWin.played} after a Win${when}`,
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Findings
 
-export type Factor = "Performance" | "Personnel" | "Circumstances";
+export type Factor =
+  | "Performance"
+  | "Personnel"
+  | "Circumstances"
+  | "After a result";
 
 /** One plain-English difference between Wins and Dropped Points. */
 export interface Finding {
@@ -426,25 +530,39 @@ interface SplitWords {
   counts: [string, string];
 }
 
-/** A split as a finding, or null when either side is too small. */
-function splitFinding(
+/** A Win-rate split as a finding ranked by Cohen's h, or null when either side is too small. */
+function winRateFinding(
   id: string,
   factor: Factor,
   split: GroupSplit,
-  words: SplitWords,
+  { text, counts }: Pick<Finding, "text" | "counts">,
 ): RankedFinding | null {
   if (!isComparable(split)) return null;
   const { group, rest } = split;
   return {
     id,
     factor,
-    text: `We win ${formatPercentage(group.winPercentage)} of Matches ${words.group}, against ${formatPercentage(rest.winPercentage)} ${words.rest}`,
-    counts: `${formatCount(group.played, "Match", "Matches")} ${words.counts[0]}, ${rest.played} ${words.counts[1]}`,
+    text,
+    counts,
     smallSample: isSmall(group.played, rest.played),
     strength: Math.abs(
       winRateEffectSize(group.winPercentage ?? 0, rest.winPercentage ?? 0),
     ),
   };
+}
+
+/** A group against the rest as a finding, or null when either side is too small. */
+function splitFinding(
+  id: string,
+  factor: Factor,
+  split: GroupSplit,
+  words: SplitWords,
+): RankedFinding | null {
+  const { group, rest } = split;
+  return winRateFinding(id, factor, split, {
+    text: `We win ${formatPercentage(group.winPercentage)} of Matches ${words.group}, against ${formatPercentage(rest.winPercentage)} ${words.rest}`,
+    counts: `${formatCount(group.played, "Match", "Matches")} ${words.counts[0]}, ${rest.played} ${words.counts[1]}`,
+  });
 }
 
 /** Each bucket against the rest; a two-bucket factor gives one finding, not its mirror. */
@@ -488,6 +606,8 @@ export interface OutcomeSplit {
   byTimeOfDay: SplitBucket[];
   byDayType: SplitBucket[];
   bySessionPlace: SplitBucket[];
+  /** Win % after a Win against after Dropped Points, one per `AFTER_RESULT_SCOPES`. */
+  afterResult: AfterResultSplit[];
   /** Win % over the last `ROLLING_WIN_WINDOW` Matches at each Match, oldest first. */
   rollingWinPercentage: number[];
 }
@@ -508,13 +628,12 @@ export function outcomeSplit(
   const ready = Math.min(record.wins, record.dropped) >= MIN_SPLIT_MATCHES;
 
   const performance = PERFORMANCE_METRICS.flatMap((metric) =>
-    (["ours", "opponent"] as const).map((club) =>
-      performanceSplit(metric, club, matches),
-    ),
+    CLUBS.map((club) => performanceSplit(metric, club, matches)),
   );
   const withWithoutRows = withAndWithout(matches, appearances);
   const outliers = positionOutliers(matches, appearances);
   const sizes = squadSizes(matches);
+  const afterResultSplits = afterResult(matches);
   // A Squad Member who only ever plays one Position Group would say the same
   // thing twice: once with and without them, once as an outlier.
   const withCounts = new Set(
@@ -604,6 +723,7 @@ export function outcomeSplit(
             counts: [label, "otherwise"],
           }),
         ),
+        ...withoutNulls(afterResultSplits.map(afterResultFinding)),
       ]
     : [];
 
@@ -628,6 +748,7 @@ export function outcomeSplit(
     bySessionPlace: buckets(matches, SESSION_PLACES, (m) =>
       sessionPlaceBucket(m.sessionPlace),
     ),
+    afterResult: afterResultSplits,
     rollingWinPercentage: rollingWinPercentage(outcomes),
   };
 }
@@ -674,6 +795,98 @@ function performanceSplit(
       smallSample: isSmall(n.wins, n.dropped),
       strength: Math.abs(effect),
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Why we dropped points (CLUBS-27): one Match against a typical Win
+
+/** How many deviations the Match page shows. */
+export const TOP_DEVIATIONS = 3;
+
+/** One Match's performance, as the Outcome Split reads it. */
+export type MatchPerformance = Pick<
+  SplitMatch,
+  "secondsPlayed" | "ours" | "opponent"
+>;
+
+/** One stat where a Match differed from a typical Win. */
+export interface Deviation {
+  id: string;
+  club: Club;
+  /** "6.1 fewer shots per 90 than in a typical Win (5.9 vs 12.0)". */
+  text: string;
+  /** Standard deviations of the stat across Wins, signed; infinite when the Wins never vary. */
+  standardDeviations: number;
+}
+
+/** A Dropped Points Match against the average Win. */
+export interface DroppedPointsReasons {
+  /** How many Wins it is compared against. */
+  wins: number;
+  /** The biggest deviations, biggest first; empty when nothing differed. */
+  deviations: Deviation[];
+}
+
+/**
+ * The `TOP_DEVIATIONS` stats in which a Match differed most from the Wins,
+ * measured in standard deviations of each stat across the Wins (both clubs,
+ * per 90 over how long each Match ran, as in the Outcome Split). Null with
+ * fewer than `MIN_SPLIT_MATCHES` Wins.
+ */
+export function droppedPointsReasons(
+  match: MatchPerformance,
+  wins: readonly MatchPerformance[],
+): DroppedPointsReasons | null {
+  if (wins.length < MIN_SPLIT_MATCHES) return null;
+  const candidates = withoutNulls(
+    PERFORMANCE_METRICS.flatMap((metric) =>
+      CLUBS.map((club) => deviationFrom(metric, club, match, wins)),
+    ),
+  );
+  return {
+    wins: wins.length,
+    deviations: candidates
+      // Wins that never vary make every difference infinite: the bigger relative change leads.
+      .sort(
+        (a, b) =>
+          Math.abs(b.deviation.standardDeviations) -
+            Math.abs(a.deviation.standardDeviations) ||
+          b.relativeChange - a.relativeChange,
+      )
+      .slice(0, TOP_DEVIATIONS)
+      .map((c) => c.deviation),
+  };
+}
+
+function deviationFrom(
+  metric: PerformanceMetric,
+  club: Club,
+  match: MatchPerformance,
+  wins: readonly MatchPerformance[],
+): { deviation: Deviation; relativeChange: number } | null {
+  const sample = metric.sample(match[club], match.secondsPlayed);
+  const winSamples = withoutNulls(
+    wins.map((w) => metric.sample(w[club], w.secondsPlayed)),
+  );
+  if (!sample || winSamples.length < MIN_SPLIT_MATCHES) return null;
+  const typical = weightedMean(winSamples);
+  const score = standardScore(sample.value, winSamples);
+  // A score of 0 is no difference at all.
+  if (typical === null || !score) return null;
+  const shown = metric.format(sample.value);
+  const typicalShown = metric.format(typical);
+  // A gap too small to show ("7.7 vs 7.7") says nothing in words either.
+  if (shown === typicalShown) return null;
+  const diff = sample.value - typical;
+  return {
+    deviation: {
+      id: `${club}-${metric.id}`,
+      club,
+      text: `${metric.compare(club, diff)} than in a typical Win (${shown} vs ${typicalShown})`,
+      standardDeviations: score,
+    },
+    relativeChange: typical === 0 ? Infinity : Math.abs(diff / typical),
   };
 }
 

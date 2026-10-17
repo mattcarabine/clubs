@@ -3,8 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { Outcome, PositionGroup } from "~/lib/domain";
 
 import {
+  type AfterResultScope,
+  type AfterResultSplit,
+  afterResult,
   type ClubMatchTotals,
   dayType,
+  droppedPointsReasons,
   outcomeSplit,
   POSITION_OUTLIER_GAP,
   playerOutcomeSplit,
@@ -39,11 +43,13 @@ function match(
   outcome: Outcome,
   {
     ours,
+    opponent,
     secondsPlayed = FULL,
     playedAt,
     ...rest
-  }: Partial<Omit<SplitMatch, "ours">> & {
+  }: Partial<Omit<SplitMatch, "ours" | "opponent">> & {
     ours?: Partial<ClubMatchTotals>;
+    opponent?: Partial<ClubMatchTotals>;
   } = {},
 ): SplitMatch {
   sequence += 1;
@@ -53,8 +59,10 @@ function match(
     outcome,
     secondsPlayed,
     ours: totals(ours),
-    opponent: totals(),
+    opponent: totals(opponent),
     squadSize: 4,
+    // Each Match its own Session unless a test says otherwise.
+    session: sequence,
     sessionPlace: 1,
     ...rest,
   };
@@ -153,6 +161,160 @@ describe("outcomeSplit", () => {
       [],
     );
     expect(split.rollingWinPercentage).toEqual([100, 50, 200 / 3, 50]);
+  });
+});
+
+/** Matches from a string like "WLWLL", oldest first, each in its own Session. */
+function run(outcomes: string): SplitMatch[] {
+  return [...outcomes].map((o) => match(o as Outcome));
+}
+
+/** Matches from a string like "WLWLL", all in one Session. */
+function session(outcomes: string, id: number): SplitMatch[] {
+  return [...outcomes].map((o) => match(o as Outcome, { session: id }));
+}
+
+describe("afterResult", () => {
+  const scope = (splits: AfterResultSplit[], id: AfterResultScope) =>
+    splits.find((s) => s.scope === id);
+
+  it("pairs each Match with the next one in the list", () => {
+    // W→L, L→W, W→L, L→L, L→W, W→W, W→L, L→W, W→L
+    const anyNext = scope(afterResult(run("WLWLLWWLWL")), "any-next");
+    expect(anyNext).toMatchObject({
+      label: "Any next Match",
+      afterWin: { played: 5, wins: 1, winPercentage: 20 },
+      afterDropped: { played: 4, wins: 3, winPercentage: 75 },
+      comparable: true,
+    });
+  });
+
+  it("counts draws as Dropped Points", () => {
+    const anyNext = scope(afterResult(run("DWDWDW")), "any-next");
+    expect(anyNext?.afterDropped).toEqual({
+      played: 3,
+      wins: 3,
+      winPercentage: 100,
+    });
+  });
+
+  it("keeps only pairs in the same Session under Same Session", () => {
+    // The L ending Session 1 and the W starting Session 2 are a pair only under Any next Match.
+    const splits = afterResult([...session("WLWL", 1), ...session("WLW", 2)]);
+    expect(scope(splits, "any-next")).toMatchObject({
+      afterWin: { played: 3, wins: 0 },
+      afterDropped: { played: 3, wins: 3 },
+    });
+    expect(scope(splits, "same-session")).toMatchObject({
+      afterWin: { played: 3, wins: 0 },
+      afterDropped: { played: 2, wins: 2 },
+      comparable: false,
+    });
+  });
+
+  it("is not comparable with fewer than 3 Matches on either side", () => {
+    const [anyNext] = afterResult(run("WWWLLL"));
+    expect(anyNext.afterWin.played).toBe(3);
+    expect(anyNext.afterDropped.played).toBe(2);
+    expect(anyNext.comparable).toBe(false);
+  });
+
+  it("joins the findings in plain English, ranked by Win-rate gap", () => {
+    // Same Session: 5 after Dropped Points (1 won), 5 after a Win (3 won).
+    const matches = [...session("WWWWLL", 1), ...session("WLLLLW", 2)];
+    const { findings } = outcomeSplit(matches, []);
+    const sameSession = findings.find((f) => f.id === "after-same-session");
+    expect(sameSession).toEqual({
+      id: "after-same-session",
+      factor: "After a result",
+      text: "After Dropped Points in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
+      counts:
+        "5 Matches after Dropped Points, 5 after a Win in the same Session",
+      smallSample: true,
+    });
+    expect(findings.find((f) => f.id === "after-any-next")?.text).toBe(
+      "After Dropped Points we win 33% (6 Matches) vs 60% after a Win (5)",
+    );
+  });
+
+  it("leaves a split with fewer than 3 on either side out of the findings", () => {
+    const { findings } = outcomeSplit(run("WLWLLWWLWL"), []);
+    expect(findings.map((f) => f.id)).toContain("after-any-next");
+    expect(findings.map((f) => f.id)).not.toContain("after-same-session");
+  });
+});
+
+describe("droppedPointsReasons", () => {
+  /** Three Wins with 10, 12 and 14 shots (mean 12, standard deviation 1.63) and no goals. */
+  const wins = () =>
+    [10, 12, 14].map((shots) => match("W", { ours: { shots, goals: 0 } }));
+
+  it("is null with fewer than 3 Wins", () => {
+    expect(droppedPointsReasons(match("L"), wins().slice(0, 2))).toBeNull();
+  });
+
+  it("leads with the stat furthest from the Wins, in standard deviations, with both values", () => {
+    const reasons = droppedPointsReasons(
+      match("L", { ours: { shots: 6, goals: 0 } }),
+      wins(),
+    );
+    expect(reasons?.wins).toBe(3);
+    expect(reasons?.deviations[0]).toMatchObject({
+      id: "ours-shots",
+      club: "ours",
+      text: "6.0 fewer shots per 90 than in a typical Win (6.0 vs 12.0)",
+      standardDeviations: expect.closeTo(-6 / Math.sqrt(8 / 3)),
+    });
+  });
+
+  it("shows at most 3, biggest first, and names the Opponent's stats", () => {
+    const reasons = droppedPointsReasons(
+      match("L", {
+        ours: { shots: 2, goals: 0, saves: 6 },
+        opponent: { passesMade: 92, ratingSum: 32 },
+      }),
+      wins(),
+    );
+    // Every Win has the same saves, Opponent pass % and rating, so those
+    // differences are infinite and rank by relative change.
+    expect(reasons?.deviations.map((d) => d.text)).toEqual([
+      "4.0 more saves per 90 than in a typical Win (6.0 vs 2.0)",
+      "Opponent pass completion 12 points higher than in a typical Win (92% vs 80%)",
+      "Opponent average rating 1.0 higher than in a typical Win (8.0 vs 7.0)",
+    ]);
+  });
+
+  it("compares a DNF per 90 over how long it ran", () => {
+    // 9 shots in 45 minutes is 18 per 90; every other count doubles too, so zero them.
+    const none = { goals: 0, saves: 0, redCards: 0 };
+    const reasons = droppedPointsReasons(
+      match("L", {
+        secondsPlayed: FULL / 2,
+        ours: { ...none, shots: 9 },
+        opponent: { ...none, shots: 0 },
+      }),
+      [10, 12, 14].map((shots) =>
+        match("W", {
+          ours: { ...none, shots },
+          opponent: { ...none, shots: 0 },
+        }),
+      ),
+    );
+    expect(reasons?.deviations.map((d) => d.text)).toEqual([
+      "6.0 more shots per 90 than in a typical Win (18.0 vs 12.0)",
+    ]);
+  });
+
+  it("has no deviations when the Match was like every Win", () => {
+    expect(
+      droppedPointsReasons(
+        match("D"),
+        many(3, () => match("W")),
+      ),
+    ).toEqual({
+      wins: 3,
+      deviations: [],
+    });
   });
 });
 

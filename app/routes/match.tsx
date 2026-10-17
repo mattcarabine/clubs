@@ -1,4 +1,7 @@
-/** Match detail: the score, both line-ups, and the two clubs' totals side by side. */
+/**
+ * Match detail: the score, why we dropped points (CLUBS-27), both line-ups,
+ * and the two clubs' totals side by side.
+ */
 import { env } from "cloudflare:workers";
 import { data, Link } from "react-router";
 
@@ -17,9 +20,17 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import type { PositionGroup } from "~/lib/domain";
-import { formatDecimal, formatPercentage, NO_VALUE } from "~/lib/number-format";
+import {
+  formatCount,
+  formatDecimal,
+  formatPercentage,
+  NO_VALUE,
+} from "~/lib/number-format";
 import { playerPath } from "~/lib/paths";
 import {
+  type Deviation,
+  type DroppedPointsReasons,
+  getDroppedPointsReasons,
   getMatch,
   type MatchAppearance,
   type MatchSides,
@@ -42,8 +53,10 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function loader({ params }: Route.LoaderArgs) {
-  const match = await getMatch(getDb(env.DB), params.matchId);
+  const db = getDb(env.DB);
+  const match = await getMatch(db, params.matchId);
   if (!match) throw data("Match not found", { status: 404 });
+  const droppedPoints = await getDroppedPointsReasons(db, match);
   const ours = match.appearances.filter((a) => a.isOurClub);
   const theirs = match.appearances.filter((a) => !a.isOurClub);
   return {
@@ -51,12 +64,13 @@ export async function loader({ params }: Route.LoaderArgs) {
     match,
     ours,
     theirs,
+    droppedPoints,
     totals: summariseMatchSides(match.appearances),
   };
 }
 
 export default function Match({ loaderData }: Route.ComponentProps) {
-  const { clubName, match, ours, theirs, totals } = loaderData;
+  const { clubName, match, ours, theirs, droppedPoints, totals } = loaderData;
   const { opponent } = match;
   const motm = match.appearances.find((a) => a.manOfTheMatch);
   return (
@@ -91,6 +105,13 @@ export default function Match({ loaderData }: Route.ComponentProps) {
             <DnfNote winner={opponent.name} quitter={clubName} />
           ))}
       </section>
+
+      {droppedPoints && (
+        <WhyWeDroppedPoints
+          reasons={droppedPoints}
+          names={{ ours: clubName, opponent: opponent.name }}
+        />
+      )}
 
       <div className="grid gap-8 lg:grid-cols-3">
         <section
@@ -161,6 +182,60 @@ function DnfNote({ winner, quitter }: { winner: string; quitter: string }) {
         in all stats unless you turn off “Include DNF” in the filters.
       </p>
     </aside>
+  );
+}
+
+/**
+ * The stats in which this Dropped Points Match differed most from a typical
+ * Win, as a numbered rundown. Each item names whose stat it is: Our Club in
+ * blue, the Opponent in slate.
+ */
+function WhyWeDroppedPoints({
+  reasons,
+  names,
+}: {
+  reasons: DroppedPointsReasons;
+  names: Record<Deviation["club"], string>;
+}) {
+  return (
+    <section aria-label="Why we dropped points" className="mb-8">
+      <SectionHeading
+        title="Why we dropped points"
+        subtitle={`Against the average of ${formatCount(reasons.wins, "Win", "Wins")}: Competitive Matches, all time, DNFs included. Counts are per 90 over how long each Match ran.`}
+      />
+      {reasons.deviations.length === 0 ? (
+        <p className="border-shale-700 border-t-2 bg-shale-900 p-4 text-ink-soft text-sm">
+          Nothing stood out: every stat was in line with a typical Win.
+        </p>
+      ) : (
+        <ol
+          aria-label="Biggest differences from a typical Win"
+          className="grid gap-3 lg:grid-cols-3"
+        >
+          {reasons.deviations.map((deviation, i) => (
+            <li
+              key={deviation.id}
+              className="flex min-w-0 gap-4 border-shale-700 border-t-2 bg-shale-900 p-4"
+            >
+              <span
+                aria-hidden
+                className="font-display font-extrabold text-4xl text-ink-muted italic leading-none tabular"
+              >
+                {i + 1}
+              </span>
+              <div className="flex min-w-0 flex-col items-start gap-2">
+                <span
+                  className={`clip-slant px-2 py-0.5 font-display font-bold text-xs uppercase tracking-wide [--slant:0.2rem] ${deviation.club === "ours" ? "bg-sound-700 text-ink" : "bg-shale-800 text-ink-soft"}`}
+                >
+                  {names[deviation.club]}
+                </span>
+                <p className="text-ink">{deviation.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 

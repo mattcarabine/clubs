@@ -214,6 +214,24 @@ export function effectSize(
 }
 
 /**
+ * How many (weighted) standard deviations `value` lies from a sample's
+ * weighted mean, signed `value - mean`: e.g. one Match's shots per 90 against
+ * every Win. Null with no weight. Like `effectSize`, any difference from a
+ * sample that never varies is infinite, and none is 0.
+ */
+export function standardScore(
+  value: number,
+  sample: readonly WeightedValue[],
+): number | null {
+  const mean = weightedMean(sample);
+  const variance = weightedVariance(sample);
+  if (mean === null || variance === null) return null;
+  const diff = value - mean;
+  if (variance === 0) return diff === 0 ? 0 : Math.sign(diff) * Infinity;
+  return diff / Math.sqrt(variance);
+}
+
+/**
  * The effect size of a gap between two Win % (Cohen's h, signed `a - b`), so
  * a Win-rate gap ranks on the same scale as `effectSize`. Takes 0 to 100.
  */
