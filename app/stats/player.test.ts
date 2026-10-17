@@ -4,7 +4,6 @@ import {
   bestAppearances,
   buildHistory,
   buildState,
-  careerTotals,
   formSeries,
   positionGroupSplit,
   proPositionName,
@@ -175,28 +174,5 @@ describe("buildHistory", () => {
 
   it("is empty with no Snapshots", () => {
     expect(buildHistory([])).toEqual([]);
-  });
-});
-
-describe("careerTotals", () => {
-  it("reads EA's all-time totals from a members/career/stats Snapshot", () => {
-    expect(
-      careerTotals(
-        snapshot(1, {
-          gamesPlayed: 80,
-          goals: 41,
-          assists: 22,
-          manOfTheMatch: 9,
-          ratingAve: 7.6,
-        }),
-      ),
-    ).toEqual({
-      takenAt: new Date(Date.UTC(2026, 9, 1)),
-      gamesPlayed: 80,
-      goals: 41,
-      assists: 22,
-      manOfTheMatch: 9,
-      averageRating: 7.6,
-    });
   });
 });

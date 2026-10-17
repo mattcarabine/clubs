@@ -28,6 +28,11 @@ export function formatOptional(value: number | null): string {
   return value === null ? NO_VALUE : String(value);
 }
 
+/** A count with thousands separators, "1,267", or a dash for a value EA did not send. */
+export function formatThousands(value: number | null): string {
+  return value === null ? NO_VALUE : value.toLocaleString("en-GB");
+}
+
 /** "1 Match", "6 Matches": a count with its noun. */
 export function formatCount(
   n: number,

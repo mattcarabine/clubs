@@ -2,6 +2,10 @@
  * The Squad table (CLUBS-9): one row per Squad Member over the Matches the
  * FilterBar selects, sortable on every column, with a minimum-Appearances
  * stepper and a toggle that brings Former Squad Members back in.
+ *
+ * `?source=ea` (CLUBS-19) swaps in EA's own season totals from the latest
+ * member Snapshots: they include Matches from before tracking began, so the
+ * Match filters, per-90s and Form do not apply.
  */
 import { env } from "cloudflare:workers";
 import type { ReactNode } from "react";
@@ -17,12 +21,25 @@ import {
   PlayerChip,
 } from "~/components";
 import { getDb } from "~/db/client";
-import { formatDecimal, formatPercentage, NO_VALUE } from "~/lib/number-format";
+import type { PositionGroup } from "~/lib/domain";
+import { formatLondonDate } from "~/lib/london-time";
+import {
+  formatCount,
+  formatDecimal,
+  formatPercentage,
+  formatThousands,
+  NO_VALUE,
+} from "~/lib/number-format";
 import { sortBy } from "~/lib/sort";
 import {
+  type EaMemberTotals,
+  type EaSeasonTotals,
+  eaCleanSheets,
+  eaMemberTotals,
   type LeaderboardRow,
   parseMinAppearances,
   parseStatsFilter,
+  parseStatsSource,
   squadLeaderboard,
 } from "~/stats";
 
@@ -40,15 +57,47 @@ export async function loader({ request }: Route.LoaderArgs) {
   const filter = parseStatsFilter(params);
   const minAppearances = parseMinAppearances(params);
   const includeFormer = params.get(FORMER_PARAM) === "1";
-  const rows = await squadLeaderboard(getDb(env.DB), filter, {
+  const db = getDb(env.DB);
+  if (parseStatsSource(params) === "ea") {
+    return {
+      source: "ea" as const,
+      filter,
+      includeFormer,
+      rows: await eaMemberTotals(db, { includeFormer }),
+    };
+  }
+  const rows = await squadLeaderboard(db, filter, {
     minAppearances,
     includeFormer,
   });
-  return { filter, minAppearances, includeFormer, rows };
+  return {
+    source: "recorded" as const,
+    filter,
+    minAppearances,
+    includeFormer,
+    rows,
+  };
 }
 
+type SquadData<Source> = Extract<
+  Route.ComponentProps["loaderData"],
+  { source: Source }
+>;
+
 export default function Squad({ loaderData }: Route.ComponentProps) {
-  const { filter, minAppearances, includeFormer, rows } = loaderData;
+  return loaderData.source === "ea" ? (
+    <EaSquad {...loaderData} />
+  ) : (
+    <RecordedSquad {...loaderData} />
+  );
+}
+
+function RecordedSquad({
+  filter,
+  minAppearances,
+  includeFormer,
+  rows,
+}: SquadData<"recorded">) {
   return (
     <>
       <PageHeader
@@ -56,8 +105,12 @@ export default function Squad({ loaderData }: Route.ComponentProps) {
         subtitle={squadSubtitle(rows.length, minAppearances)}
         aside={<SquadToggle includeFormer={includeFormer} />}
       />
-      <FilterBar filter={filter} minAppearances={minAppearances} />
-      {rows.length > 0 && <Leaders rows={rows} />}
+      <FilterBar
+        filter={filter}
+        minAppearances={minAppearances}
+        source="recorded"
+      />
+      {rows.length > 0 && <Leaders leaders={LEADERS} rows={rows} />}
       <DataTable
         caption="Squad Members"
         columns={COLUMNS}
@@ -71,15 +124,47 @@ export default function Squad({ loaderData }: Route.ComponentProps) {
           />
         }
       />
-      {rows.length > 0 && <ColumnKey />}
+      {rows.length > 0 && <ColumnKey entries={KEY} />}
+    </>
+  );
+}
+
+function EaSquad({ filter, includeFormer, rows }: SquadData<"ea">) {
+  const takenAt = rows.find((r) => r.season)?.season?.takenAt;
+  return (
+    <>
+      <PageHeader
+        title="Squad"
+        subtitle={
+          takenAt
+            ? `EA's season totals for ${formatCount(rows.length, "Squad Member", "Squad Members")}, as of ${formatLondonDate(takenAt)}`
+            : "EA's season totals"
+        }
+        aside={<SquadToggle includeFormer={includeFormer} />}
+      />
+      <FilterBar filter={filter} source="ea" />
+      {rows.length > 0 && <Leaders leaders={EA_LEADERS} rows={rows} />}
+      <DataTable
+        caption="Squad Members"
+        columns={EA_COLUMNS}
+        rows={rows}
+        rowKey={(r) => r.playerId}
+        initialSort={{ columnId: "games", direction: "desc" }}
+        empty={
+          <EmptyState
+            title="No EA totals yet"
+            description="EA's season totals arrive with the next Poll that reaches EA. Switch to Recorded to see the Appearances tracked so far."
+          />
+        }
+      />
+      {rows.length > 0 && <ColumnKey entries={EA_KEY} />}
     </>
   );
 }
 
 function squadSubtitle(count: number, minAppearances: number): string {
-  const members = count === 1 ? "Squad Member" : "Squad Members";
   const apps = minAppearances === 1 ? "Appearance" : "Appearances";
-  return `${count} ${members} with ${minAppearances}+ ${apps}`;
+  return `${formatCount(count, "Squad Member", "Squad Members")} with ${minAppearances}+ ${apps}`;
 }
 
 /** Current squad only, or everyone including Former Squad Members. */
@@ -110,13 +195,21 @@ function SquadToggle({ includeFormer }: { includeFormer: boolean }) {
   );
 }
 
-type Leader = {
+/** What every Squad table row has, whichever source it comes from. */
+type SquadRow = {
+  playerId: string;
+  name: string;
+  positionGroup: PositionGroup | null;
+  former: boolean;
+};
+
+type Leader<Row> = {
   label: string;
-  pick: (row: LeaderboardRow) => number | null;
+  pick: (row: Row) => number | null;
   format: (value: number) => string;
 };
 
-const LEADERS: readonly Leader[] = [
+const LEADERS: readonly Leader<LeaderboardRow>[] = [
   { label: "Goals", pick: (r) => r.goals, format: String },
   { label: "Assists", pick: (r) => r.assists, format: String },
   {
@@ -127,12 +220,46 @@ const LEADERS: readonly Leader[] = [
   { label: "Form", pick: (r) => r.form, format: formatDecimal },
 ];
 
+/** EA's numeric season figures, one per column. */
+type EaSeasonFigure = Exclude<
+  keyof EaSeasonTotals,
+  "takenAt" | "favouritePosition"
+>;
+
+/** A season value of an EA row, null before the member's first season Snapshot. */
+function season(
+  pick: (season: EaSeasonTotals) => number | null,
+): (row: EaMemberTotals) => number | null {
+  return (row) => (row.season ? pick(row.season) : null);
+}
+
+const EA_LEADERS: readonly Leader<EaMemberTotals>[] = [
+  { label: "Goals", pick: season((s) => s.goals), format: String },
+  { label: "Assists", pick: season((s) => s.assists), format: String },
+  {
+    label: "Average rating",
+    pick: season((s) => s.averageRating),
+    format: formatDecimal,
+  },
+  {
+    label: "MOTM",
+    pick: season((s) => s.manOfTheMatch),
+    format: String,
+  },
+];
+
 /** The broadcast "leaders" strip: who tops each headline stat. */
-function Leaders({ rows }: { rows: readonly LeaderboardRow[] }) {
+function Leaders<Row extends SquadRow>({
+  leaders,
+  rows,
+}: {
+  leaders: readonly Leader<Row>[];
+  rows: readonly Row[];
+}) {
   return (
     <section aria-label="Leaders" className="mb-6">
       <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-        {LEADERS.map((leader, i) => {
+        {leaders.map((leader, i) => {
           const [top] = sortBy(rows, leader.pick, "desc");
           // Nobody leads on a zero, e.g. before anyone has scored.
           const best = leader.pick(top);
@@ -197,10 +324,19 @@ const KEY: readonly [string, string][] = [
   ["CS", "Clean sheets as Goalkeeper or Defender"],
 ];
 
-function ColumnKey() {
+const EA_KEY: readonly [string, string][] = [
+  ["GP", "Games played this Season, as EA counts them"],
+  ["G / A", "Goals / assists"],
+  ["Shot %", "Shot success, as EA rates it"],
+  ["Tkl %", "Tackle success"],
+  ["MOTM", "Man of the Match"],
+  ["CS", "Clean sheets in goal for a Goalkeeper, else as a Defender"],
+];
+
+function ColumnKey({ entries }: { entries: readonly [string, string][] }) {
   return (
     <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-ink-muted text-xs">
-      {KEY.map(([abbr, meaning]) => (
+      {entries.map(([abbr, meaning]) => (
         <div key={abbr} className="flex gap-1.5">
           <dt className="font-display font-bold text-ink-soft text-sm uppercase leading-4">
             {abbr}
@@ -217,12 +353,12 @@ function playerPath(playerId: string): string {
 }
 
 /** A sortable, right-aligned numeric column. */
-function stat(
+function stat<Row>(
   id: string,
   header: string,
-  value: (row: LeaderboardRow) => number | null,
+  value: (row: Row) => number | null,
   format: (value: number) => ReactNode = String,
-): DataTableColumn<LeaderboardRow> {
+): DataTableColumn<Row> {
   return {
     id,
     header,
@@ -235,12 +371,28 @@ function stat(
   };
 }
 
-const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
-  {
+/** A sortable column of one of EA's season figures. */
+function seasonStat(
+  id: string,
+  header: string,
+  field: EaSeasonFigure,
+  format?: (value: number) => ReactNode,
+): DataTableColumn<EaMemberTotals> {
+  return stat(
+    id,
+    header,
+    season((s) => s[field]),
+    format,
+  );
+}
+
+/** The pinned Squad Member column, linking to their profile; `width` is its phone width. */
+function nameColumn<Row extends SquadRow>(width: string): DataTableColumn<Row> {
+  return {
     id: "name",
     header: "Squad Member",
     cell: (r) => (
-      <span className="block w-40 sm:w-auto">
+      <span className={`block ${width} sm:w-auto`}>
         <PlayerChip
           name={r.name}
           positionGroup={r.positionGroup ?? undefined}
@@ -251,14 +403,13 @@ const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
     ),
     sortValue: (r) => r.name,
     firstSort: "asc",
-  },
+  };
+}
+
+const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
+  nameColumn("w-40"),
   stat("apps", "Apps", (r) => r.appearances),
-  stat(
-    "mins",
-    "Mins",
-    (r) => r.minutes,
-    (v) => v.toLocaleString("en-GB"),
-  ),
+  stat("mins", "Mins", (r) => r.minutes, formatThousands),
   stat("goals", "G", (r) => r.goals),
   stat("assists", "A", (r) => r.assists),
   stat("ga", "G+A", (r) => r.goalContributions),
@@ -270,13 +421,39 @@ const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
   stat("tackle", "Tkl %", (r) => r.tacklePercentage, formatPercentage),
   stat("rating", "Rating", (r) => r.averageRating, formatDecimal),
   {
-    ...stat("form", "Form", (r) => r.form),
+    ...stat("form", "Form", (r: LeaderboardRow) => r.form),
     cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
   },
   stat("motm", "MOTM", (r) => r.manOfTheMatch),
   stat("cs", "CS", (r) => r.cleanSheets),
   stat("saves", "Saves", (r) => r.saves),
 ];
+
+/**
+ * EA's season totals: the rate stats lead, so a phone shows the name with
+ * rating and pass success before the table scrolls.
+ */
+const EA_COLUMNS: DataTableColumn<EaMemberTotals>[] = [
+  nameColumn("w-36"),
+  seasonStat("rating", "Rating", "averageRating", formatDecimal),
+  seasonStat("pass", "Pass %", "passSuccessRate", formatPercentage),
+  seasonStat("shot", "Shot %", "shotSuccessRate", formatPercentage),
+  seasonStat("tackle", "Tkl %", "tackleSuccessRate", formatPercentage),
+  seasonStat("win", "Win %", "winRate", formatPercentage),
+  seasonStat("games", "GP", "gamesPlayed"),
+  seasonStat("goals", "G", "goals"),
+  seasonStat("assists", "A", "assists"),
+  stat("ga", "G+A", season(goalContributions)),
+  seasonStat("passes", "Passes", "passesMade", formatThousands),
+  seasonStat("tackles", "Tackles", "tacklesMade", formatThousands),
+  seasonStat("motm", "MOTM", "manOfTheMatch"),
+  stat("cs", "CS", season(eaCleanSheets)),
+  seasonStat("red", "Red", "redCards"),
+];
+
+function goalContributions(s: EaSeasonTotals): number | null {
+  return s.goals === null || s.assists === null ? null : s.goals + s.assists;
+}
 
 /** Below this, Form and the season average count as level. */
 const FORM_LEVEL = 0.1;
