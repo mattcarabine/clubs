@@ -6,6 +6,7 @@ import { getDb } from "../db/client.ts";
 import { pollRuns } from "../db/schema.ts";
 import { DEFAULT_EA_TIMEOUT_MS } from "../ea/client.ts";
 import { type CollectedPoll, collectPoll, type PollConfig } from "./collect.ts";
+import { ratingState } from "./ratings.ts";
 import { type PollSummary, recordPoll } from "./record.ts";
 
 export function pollConfigFromEnv(env: Env): PollConfig {
@@ -27,7 +28,8 @@ export async function runPoll(env: Env): Promise<void> {
   const startedAt = Date.now();
   let poll: CollectedPoll | undefined;
   try {
-    poll = await collectPoll(pollConfigFromEnv(env));
+    const ratings = await ratingState(db, env.EA_CLUB_ID, startedAt);
+    poll = await collectPoll(pollConfigFromEnv(env), { ratings });
     log(await recordPoll(db, poll, env.EA_CLUB_ID), poll);
   } catch (error) {
     // Recording itself failed (e.g. D1 unavailable): make a best effort to

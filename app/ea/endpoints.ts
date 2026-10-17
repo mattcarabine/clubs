@@ -35,7 +35,8 @@ export interface EaRequest {
   endpoint: EaEndpoint;
   /** Distinguishes requests to the same endpoint (the Match Type for `clubs/matches`), otherwise "". */
   variant: string;
-  query: Record<string, string>;
+  /** An array value is sent as a repeated parameter (`clubIds=1&clubIds=2`). */
+  query: Record<string, string | readonly string[]>;
 }
 
 /** EA silently caps `maxResultCount` at 10 and has no paging (docs/adr/0002). */
@@ -84,6 +85,26 @@ export function pollRequests(club: ClubRef): EaRequest[] {
   ];
 }
 
+/** The `clubs/overallStats` variant that asks for Opponents' ratings. */
+export const OPPONENT_RATINGS_VARIANT = "opponents";
+
+/**
+ * Several Opponents' `clubs/overallStats` in one request. EA rejects
+ * comma-separated `clubIds` here (400 "Invalid query parameter"), but accepts
+ * the parameter repeated, and leaves unknown clubs out of the answer (verified
+ * against live EA with 12 IDs on 2026-10-17).
+ */
+export function opponentRatingsRequest(
+  platform: string,
+  clubIds: readonly string[],
+): EaRequest {
+  return {
+    endpoint: "clubs/overallStats",
+    variant: OPPONENT_RATINGS_VARIANT,
+    query: { platform, clubIds },
+  };
+}
+
 /** Everything the fixture recorder captures: the Poll plus reference data. */
 export function recordedRequests(club: ClubRef): EaRequest[] {
   return [
@@ -97,7 +118,11 @@ export function requestUrl(baseUrl: string, request: EaRequest): string {
   // Encoded by hand: URLSearchParams turns spaces into "+", but the club name
   // must go out as "%20", exactly as the verified curl requests send it.
   const query = Object.entries(request.query)
-    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .flatMap(([key, value]) =>
+      (typeof value === "string" ? [value] : value).map(
+        (item) => `${key}=${encodeURIComponent(item)}`,
+      ),
+    )
     .join("&");
   return `${ensureTrailingSlash(baseUrl)}${request.endpoint}?${query}`;
 }

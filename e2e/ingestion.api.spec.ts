@@ -21,6 +21,8 @@ interface MatchRow {
   dnf: number;
   raw_payload_id: number;
   ingested_at: number;
+  our_skill_rating: number | null;
+  opponent_skill_rating: number | null;
 }
 
 interface AppearanceRow {
@@ -87,6 +89,11 @@ test("a new Match is stored and the older ones are not touched", async ({
   fakeEa,
   db,
 }) => {
+  // Skill Ratings (CLUBS-28) are backfilled onto older Matches; nothing else.
+  const withoutRatings = (rows: MatchRow[]) =>
+    rows.map(
+      ({ our_skill_rating: _, opponent_skill_rating: __, ...row }) => row,
+    );
   await triggerPoll();
   const before = await db.rows<MatchRow>("matches");
 
@@ -96,7 +103,7 @@ test("a new Match is stored and the older ones are not touched", async ({
 
   const after = await db.rows<MatchRow>("matches");
   expect(after).toHaveLength(11);
-  expect(after.slice(0, 10)).toEqual(before);
+  expect(withoutRatings(after.slice(0, 10))).toEqual(withoutRatings(before));
   expect(after[10]).toMatchObject({
     match_id: added.match.matchId,
     match_type: "league",

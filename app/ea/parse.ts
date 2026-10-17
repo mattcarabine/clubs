@@ -283,3 +283,19 @@ export function parseSnapshotEntries(
     { subject: "club", subjectKey: ourClubId, stats: coerceStats(totals) },
   ];
 }
+
+/**
+ * Each club's `skillRating` in a `clubs/overallStats` response, keyed by club
+ * ID. Clubs without a usable rating are left out.
+ */
+export function parseSkillRatings(json: unknown): Map<string, number> {
+  const ratings = new Map<string, number>();
+  if (!Array.isArray(json)) return ratings;
+  for (const club of json as (Record<string, unknown> | null)[]) {
+    const rating = toDecimal(club?.skillRating);
+    if (club?.clubId != null && rating !== null) {
+      ratings.set(String(club.clubId), rating);
+    }
+  }
+  return ratings;
+}

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { OUR_CLUB } from "../../scripts/live-ea.ts";
 import { fixtureFileName, MATCH_TYPES, pollRequests } from "./endpoints.ts";
-import { payloadShapeProblems } from "./shape.ts";
+import { opponentRatingsProblems, payloadShapeProblems } from "./shape.ts";
 
 const fixture = (name: string): unknown =>
   JSON.parse(
@@ -98,6 +98,29 @@ describe("payloadShapeProblems", () => {
     ).toEqual(['members/stats: missing "members" array']);
     expect(payloadShapeProblems("clubs/matches", {}, OUR_CLUB.clubId)).toEqual([
       "clubs/matches: expected an array",
+    ]);
+  });
+});
+
+describe("opponentRatingsProblems", () => {
+  const recorded = fixture("clubs-overallStats-opponents.json");
+
+  it("accepts the recorded Opponents' overallStats", () => {
+    expect(opponentRatingsProblems(recorded, ["356611", "7735"])).toEqual([]);
+  });
+
+  it("tolerates a requested club EA left out, but not an answer with none", () => {
+    expect(opponentRatingsProblems(recorded, ["356611", "1"])).toEqual([]);
+    expect(opponentRatingsProblems(recorded, ["1"])).toEqual([
+      "clubs/overallStats (Opponents): none of the requested clubs",
+    ]);
+  });
+
+  it("names a requested club without a skill rating", () => {
+    expect(
+      opponentRatingsProblems([{ clubId: "356611", wins: "1" }], ["356611"]),
+    ).toEqual([
+      'clubs/overallStats (Opponents)[356611]: missing "skillRating"',
     ]);
   });
 });

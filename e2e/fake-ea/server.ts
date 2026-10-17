@@ -18,6 +18,7 @@ import {
   type EaEndpoint,
   fixtureFileName,
   MAX_MATCHES_PER_TYPE,
+  OPPONENT_RATINGS_VARIANT,
 } from "../../app/ea/endpoints.ts";
 import type { EaMatch } from "../../app/ea/types.ts";
 import {
@@ -25,6 +26,7 @@ import {
   CONTROL_PREFIX,
   EA_PREFIX,
   type FailNextBody,
+  type FailureTarget,
   type RecordedRequest,
   type SetPayloadBody,
 } from "./control.ts";
@@ -32,7 +34,9 @@ import {
 /** A "timed out" request is answered eventually so sockets never leak. */
 const HANG_MS = 30_000;
 
-type Failure = { status: number } | { timeout: true };
+type Failure = ({ status: number } | { timeout: true }) & {
+  target?: FailureTarget;
+};
 
 interface State {
   /** Response bodies keyed by fixture file name. */
@@ -93,13 +97,24 @@ export function createFakeEa(fixturesDir: string, instance: string): Server {
   function handleEa(req: IncomingMessage, res: ServerResponse, url: URL) {
     const endpoint = url.pathname.slice(EA_PREFIX.length);
     const query = Object.fromEntries(url.searchParams);
+    const params: Record<string, string[]> = {};
+    for (const key of url.searchParams.keys()) {
+      params[key] = url.searchParams.getAll(key);
+    }
     state.requests.push({
       endpoint,
       query,
+      params,
       headers: req.headers as Record<string, string>,
     });
 
-    const failure = state.failures.shift();
+    const failureIndex = state.failures.findIndex(({ target }) =>
+      targets(target, endpoint, params.clubIds ?? []),
+    );
+    const failure =
+      failureIndex === -1
+        ? undefined
+        : state.failures.splice(failureIndex, 1)[0];
     if (failure && "timeout" in failure) {
       hanging.add(res);
       setTimeout(() => {
@@ -124,12 +139,37 @@ export function createFakeEa(fixturesDir: string, instance: string): Server {
       sendJson(res, 404, { error: `No fixture for ${endpoint} ${variant}` });
       return;
     }
-    sendJson(
-      res,
-      200,
-      endpoint === "clubs/matches"
-        ? latestMatches(payload as EaMatch[], query.maxResultCount)
-        : payload,
+    sendJson(res, 200, respond(endpoint, payload, params));
+  }
+
+  function respond(
+    endpoint: EaEndpoint,
+    payload: unknown,
+    params: Record<string, string[]>,
+  ): unknown {
+    if (endpoint === "clubs/matches") {
+      return latestMatches(payload as EaMatch[], params.maxResultCount?.[0]);
+    }
+    if (endpoint === "clubs/overallStats" && Array.isArray(payload)) {
+      return overallStats(payload, params.clubIds ?? []);
+    }
+    return payload;
+  }
+
+  /**
+   * Like EA, answers with an entry per requested club it knows, from Our
+   * Club's fixture and the recorded Opponents', and leaves the rest out.
+   */
+  function overallStats(ours: unknown[], clubIds: string[]): unknown[] {
+    const opponents = state.payloads.get(
+      fixtureFileName({
+        endpoint: "clubs/overallStats",
+        variant: OPPONENT_RATINGS_VARIANT,
+      }),
+    );
+    const known = [...ours, ...(Array.isArray(opponents) ? opponents : [])];
+    return known.filter((club) =>
+      clubIds.includes(String((club as { clubId?: unknown })?.clubId)),
     );
   }
 
@@ -179,6 +219,17 @@ export function createFakeEa(fixturesDir: string, instance: string): Server {
 function latestMatches(matches: EaMatch[], maxResultCount = "10"): EaMatch[] {
   const limit = Math.min(Number(maxResultCount) || 0, MAX_MATCHES_PER_TYPE);
   return [...matches].sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+}
+
+function targets(
+  target: FailureTarget | undefined,
+  endpoint: string,
+  clubIds: string[],
+): boolean {
+  return (
+    (!target?.endpoint || target.endpoint === endpoint) &&
+    (!target?.clubId || clubIds.includes(target.clubId))
+  );
 }
 
 function isEndpoint(endpoint: string): endpoint is EaEndpoint {

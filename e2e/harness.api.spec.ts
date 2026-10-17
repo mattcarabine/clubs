@@ -3,6 +3,7 @@
  * (never live EA), records each Poll, and survives EA failures.
  */
 import { EA_BROWSER_HEADERS } from "../app/ea/client.ts";
+import { OPPONENT_RATINGS_VARIANT } from "../app/ea/endpoints.ts";
 import { win } from "./support/match-builders.ts";
 import {
   E2E_INSTANCE,
@@ -82,18 +83,24 @@ test("an unchanged EA response is not stored twice; a changed one is", async ({
   fakeEa,
   db,
 }) => {
-  await triggerPoll();
-  const first = await db.rows<RawPayloadRow>("raw_payloads");
-  expect(first).toHaveLength(7);
+  // Opponents' ratings (CLUBS-28) are asked for afresh each time, and the
+  // backfill of the recorded Matches adds one such payload per later Poll.
+  const pollPayloads = async () =>
+    (await db.rows<RawPayloadRow>("raw_payloads")).filter(
+      (row) => row.variant !== OPPONENT_RATINGS_VARIANT,
+    );
 
   await triggerPoll();
-  expect(await db.rows<RawPayloadRow>("raw_payloads")).toHaveLength(7);
+  expect(await pollPayloads()).toHaveLength(7);
+
+  await triggerPoll();
+  expect(await pollPayloads()).toHaveLength(7);
 
   const newMatch = win();
   await fakeEa.addMatch(newMatch);
   await triggerPoll();
 
-  const stored = await db.rows<RawPayloadRow>("raw_payloads");
+  const stored = await pollPayloads();
   expect(stored).toHaveLength(8);
   expect(stored[7]).toMatchObject({
     endpoint: "clubs/matches",
@@ -101,7 +108,7 @@ test("an unchanged EA response is not stored twice; a changed one is", async ({
   });
   expect(JSON.parse(stored[7].body)[0].matchId).toBe(newMatch.match.matchId);
   const runs = await db.rows<PollRunRow>("poll_runs");
-  expect(runs.map((r) => r.payloads_stored)).toEqual([7, 0, 1]);
+  expect(runs.map((r) => r.payloads_stored)).toEqual([7, 1, 2]);
 });
 
 test("an EA 403 is recorded as a failed Poll and nothing crashes", async ({

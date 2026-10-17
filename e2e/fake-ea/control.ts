@@ -24,17 +24,29 @@ export interface SetPayloadBody {
   body: unknown;
 }
 
+/** Which requests a queued failure applies to; every request when empty. */
+export interface FailureTarget {
+  endpoint?: EaEndpoint;
+  /** Only requests naming this club in `clubIds`. */
+  clubId?: string;
+}
+
 /**
  * `POST /__control/fail-next`: make the next `count` EA requests (default 1)
- * fail, either with an HTTP status or by never answering (`timeout`).
+ * matching `target` fail, either with an HTTP status or by never answering
+ * (`timeout`).
  */
-export type FailNextBody =
+export type FailNextBody = (
   | { status: number; count?: number }
-  | { timeout: true; count?: number };
+  | { timeout: true; count?: number }
+) & { target?: FailureTarget };
 
 /** One EA request the fake received, from `GET /__control/requests`. */
 export interface RecordedRequest {
   endpoint: string;
+  /** The last value of each query parameter. */
   query: Record<string, string>;
+  /** Every value of each query parameter, e.g. a repeated `clubIds`. */
+  params: Record<string, string[]>;
   headers: Record<string, string>;
 }

@@ -7,6 +7,7 @@ import {
   coerceStats,
   matchResult,
   parseMatches,
+  parseSkillRatings,
   parseSnapshotEntries,
   toDecimal,
   toInt,
@@ -252,5 +253,32 @@ describe("parseSnapshotEntries", () => {
     expect(parseSnapshotEntries("clubs/overallStats", {}, OUR_CLUB)).toEqual(
       [],
     );
+  });
+});
+
+describe("parseSkillRatings", () => {
+  it("reads every recorded Opponent's skillRating, keyed by club ID", () => {
+    const ratings = parseSkillRatings(
+      fixture("clubs-overallStats-opponents.json"),
+    );
+    expect(ratings.size).toBe(10);
+    expect(ratings.get("356611")).toBe(1420);
+    expect(ratings.get("7735")).toBe(1912);
+  });
+
+  it("leaves out clubs without a usable rating", () => {
+    expect(
+      parseSkillRatings([
+        { clubId: "1", skillRating: "1500" },
+        { clubId: "2", skillRating: "" },
+        { clubId: "3" },
+        { skillRating: "1400" },
+        null,
+      ]),
+    ).toEqual(new Map([["1", 1500]]));
+  });
+
+  it("is empty for anything but an array", () => {
+    expect(parseSkillRatings({ error: "x" }).size).toBe(0);
   });
 });
