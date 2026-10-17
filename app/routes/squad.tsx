@@ -473,7 +473,7 @@ function seasonStat(
  * width, so the headline stats beside it fit without scrolling.
  */
 function nameColumn<Row extends SquadRow>(
-  /** Hot or Cold form beside the name (CLUBS-40), within the same width on phones. */
+  /** Hot or Cold form (CLUBS-40): beside the name, or under it on phones so the column never widens. */
   form?: (row: Row) => FormIndicator | null,
 ): DataTableColumn<Row> {
   return {
@@ -482,7 +482,7 @@ function nameColumn<Row extends SquadRow>(
     cell: (r) => {
       const indicator = form?.(r);
       return (
-        <span className="flex max-w-24 items-center gap-1.5 sm:max-w-none">
+        <span className="flex max-w-24 flex-col items-start sm:max-w-none sm:flex-row sm:items-center sm:gap-1.5">
           <PlayerChip
             name={r.name}
             positionGroup={r.positionGroup ?? undefined}
