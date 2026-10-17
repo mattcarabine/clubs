@@ -83,6 +83,23 @@ test("shows a line-up of 4 Squad Members who played 3 Matches together, with its
   ]);
 });
 
+test("with one skill rating reading there is no chart yet", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.setPayload("clubs/overallStats", overallStats("1632"));
+  await triggerPoll();
+
+  await page.goto("/trends");
+  const section = page.getByRole("region", { name: "Skill rating" });
+  await expect(section.getByText("Now 1632")).toBeVisible();
+  await expect(
+    section.getByText("The line starts once EA's rating changes."),
+  ).toBeVisible();
+  await expect(section.getByRole("slider")).toHaveCount(0);
+});
+
 test("charts both club Snapshots' skill ratings", async ({
   page,
   fakeEa,

@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   formatCount,
   formatDecimal,
+  formatOptional,
   formatPercentage,
   formatSigned,
+  formatThousands,
   NO_VALUE,
 } from "./number-format";
 
@@ -16,6 +18,27 @@ describe("formatDecimal", () => {
 
   it("shows a dash when there is no value", () => {
     expect(formatDecimal(null)).toBe(NO_VALUE);
+  });
+
+  it("takes other precisions, e.g. 2 for a per-90", () => {
+    expect(formatDecimal(0.675, 2)).toBe("0.68");
+    expect(formatDecimal(1, 2)).toBe("1.00");
+  });
+});
+
+describe("formatOptional", () => {
+  it("shows a count as is, and a dash when EA sent none", () => {
+    expect(formatOptional(112)).toBe("112");
+    expect(formatOptional(0)).toBe("0");
+    expect(formatOptional(null)).toBe(NO_VALUE);
+  });
+});
+
+describe("formatThousands", () => {
+  it("separates thousands, and shows a dash when EA sent none", () => {
+    expect(formatThousands(1267)).toBe("1,267");
+    expect(formatThousands(0)).toBe("0");
+    expect(formatThousands(null)).toBe(NO_VALUE);
   });
 });
 

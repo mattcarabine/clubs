@@ -1,7 +1,7 @@
 /**
  * Pure roll-ups for one Squad Member's profile (CLUBS-10): the per-Match form
- * series, the Position Group split, best Matches, and the EA build and career
- * figures read out of Snapshots. `player-profile.ts` feeds these from D1.
+ * series, the Position Group split, best Matches, and the EA build read out
+ * of Snapshots (EA's totals are in `ea-totals.ts`). `player-profile.ts` feeds these from D1.
  */
 import type { PositionGroup } from "~/lib/domain";
 
@@ -126,15 +126,13 @@ export function proPositionName(code: number | null): string | null {
   return code === null ? null : (PRO_POSITIONS[code] ?? null);
 }
 
-/** A Squad Member's Pro build at one Snapshot. */
+/**
+ * A Squad Member's Pro build at one Snapshot. EA's `proStyle` is left out: it
+ * has no published names and is 0 for every Squad Member (CLUBS-16).
+ */
 export interface BuildState {
   takenAt: Date;
   overall: number | null;
-  /**
-   * EA's `proStyle` code. EA publishes no names for these codes, so pages
-   * show the code itself rather than a guessed name.
-   */
-  playStyle: number | null;
   /** The pitch position, e.g. "CM". */
   position: string | null;
 }
@@ -143,7 +141,6 @@ export function buildState({ takenAt, stats }: SnapshotPoint): BuildState {
   return {
     takenAt,
     overall: snapshotNumber(stats, "proOverall"),
-    playStyle: snapshotNumber(stats, "proStyle"),
     position: proPositionName(snapshotNumber(stats, "proPos")),
   };
 }
@@ -156,7 +153,7 @@ export interface BuildChange extends BuildState {
 
 /**
  * The build history from `members/stats` Snapshots (oldest first), keeping
- * only the Snapshots where overall, play style or position changed. A new
+ * only the Snapshots where overall or position changed. A new
  * Snapshot is taken whenever any season total moves, so most repeat the build.
  */
 export function buildHistory(points: readonly SnapshotPoint[]): BuildChange[] {
@@ -166,7 +163,6 @@ export function buildHistory(points: readonly SnapshotPoint[]): BuildChange[] {
     if (
       previous &&
       previous.overall === state.overall &&
-      previous.playStyle === state.playStyle &&
       previous.position === state.position
     ) {
       continue;
@@ -180,25 +176,4 @@ export function buildHistory(points: readonly SnapshotPoint[]): BuildChange[] {
     });
   }
   return changes;
-}
-
-/** EA's all-time record for a Squad Member since the club was founded (`members/career/stats`). */
-export interface CareerTotals {
-  takenAt: Date;
-  gamesPlayed: number | null;
-  goals: number | null;
-  assists: number | null;
-  manOfTheMatch: number | null;
-  averageRating: number | null;
-}
-
-export function careerTotals({ takenAt, stats }: SnapshotPoint): CareerTotals {
-  return {
-    takenAt,
-    gamesPlayed: snapshotNumber(stats, "gamesPlayed"),
-    goals: snapshotNumber(stats, "goals"),
-    assists: snapshotNumber(stats, "assists"),
-    manOfTheMatch: snapshotNumber(stats, "manOfTheMatch"),
-    averageRating: snapshotNumber(stats, "ratingAve"),
-  };
 }

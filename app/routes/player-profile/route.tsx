@@ -1,7 +1,7 @@
 /**
  * A Squad Member's profile (CLUBS-10): form charts, the Position Group split
- * and best Matches over the filtered Appearances, plus EA's own all-time
- * record and build history, which the filter does not touch.
+ * and best Matches over the filtered Appearances, plus EA's own season and
+ * career totals (CLUBS-19) and build history, which the filter does not touch.
  */
 import { env } from "cloudflare:workers";
 import { data } from "react-router";
@@ -13,6 +13,7 @@ import {
   FilterBar,
   LineChart,
   PageHeader,
+  RouteError,
   SectionHeading,
   StackedColumnChart,
   StatGrid,
@@ -20,18 +21,29 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import { formatLondonDate, formatLondonShortDate } from "~/lib/london-time";
+import { formatDecimal, formatPercentage } from "~/lib/number-format";
 import { getPlayerProfile, statsFilterFromRequest } from "~/stats";
 
 import type { Route } from "./+types/route";
-import { AllTimePanel } from "./all-time-panel";
 import { BestMatches } from "./best-matches";
 import { BuildPlate, BuildProgression } from "./build";
-import { formatPercent, formatRating } from "./format";
+import { EaTotals } from "./ea-totals";
 import { PositionGroupTable } from "./position-group-table";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  const name = loaderData?.profile.member.name ?? "Squad Member";
+  const name = loaderData?.profile.member.name ?? "Squad Member not found";
   return [{ title: `A Bloo Bloo — ${name}` }];
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return (
+    <RouteError
+      error={error}
+      subject="Squad Member"
+      notFoundDescription="No Squad Member has this ID. Squad Members appear here after their first Appearance."
+      back={{ to: "/squad", children: "Squad" }}
+    />
+  );
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -57,7 +69,7 @@ const CONTRIBUTION_SERIES = [
 
 export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
   const { filter, profile } = loaderData;
-  const { member, totals, form, build, career } = profile;
+  const { member, totals, form, build, career, season } = profile;
   const labels = form.map((p) => formatLondonShortDate(p.playedAt));
   const latestBuild = build.at(-1) ?? null;
 
@@ -97,7 +109,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         <StatGrid>
           <StatTile
             label="Average rating"
-            value={formatRating(totals.averageRating)}
+            value={formatDecimal(totals.averageRating)}
             trend={form
               .slice(-10)
               .flatMap((p) => (p.rating === null ? [] : [p.rating]))}
@@ -107,7 +119,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
           <StatTile label="Goals + assists" value={totals.goalContributions} />
           <StatTile
             label="Pass completion"
-            value={formatPercent(totals.passPercentage)}
+            value={formatPercentage(totals.passPercentage)}
           />
         </StatGrid>
       </section>
@@ -141,7 +153,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
                       values: form.map((p) => p.ratingRolling),
                     },
                   ]}
-                  formatValue={(v) => v.toFixed(1)}
+                  formatValue={formatDecimal}
                   height={260}
                 />
               </ChartFrame>
@@ -187,7 +199,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
                     values: form.map((p) => p.passPercentage),
                   },
                 ]}
-                formatValue={(v) => `${Math.round(v)}%`}
+                formatValue={formatPercentage}
                 height={200}
               />
             </ChartFrame>
@@ -195,22 +207,27 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         </>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <section aria-label="EA totals" className="mb-8">
+        <SectionHeading
+          title="EA totals"
+          subtitle="EA's own numbers, including Matches from before tracking began"
+        />
+        <EaTotals
+          career={career}
+          season={season}
+          trackedAppearances={totals.appearances}
+        />
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <section aria-label="By Position Group" className="min-w-0">
           <SectionHeading title="By Position Group" />
           <PositionGroupTable rows={profile.positionGroups} />
         </section>
-        <section aria-label="All-time (EA)" className="min-w-0">
-          <SectionHeading title="All-time (EA)" subtitle="Since club founded" />
-          <AllTimePanel
-            career={career}
-            trackedAppearances={totals.appearances}
-          />
-        </section>
         <section aria-label="Build progression" className="min-w-0">
           <SectionHeading
             title="Build progression"
-            subtitle="Overall, play style and position from EA"
+            subtitle="Overall and position from EA"
           />
           <BuildProgression history={build} />
         </section>

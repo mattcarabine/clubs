@@ -1,4 +1,10 @@
-import type { CSSProperties, ReactNode } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 export type TickerItem = {
   id: string;
@@ -17,10 +23,12 @@ type TickerProps = {
 };
 
 /**
- * A broadcast ticker strip. Items scroll continuously and pause on hover or
- * focus; with reduced motion they sit still and scroll by hand instead.
+ * A broadcast ticker strip. When the items are wider than the strip they
+ * scroll continuously and pause on hover or focus; when they fit, or with
+ * reduced motion, they sit still (and scroll by hand if they overflow).
  */
 export function Ticker({ label, items, durationSeconds = 40 }: TickerProps) {
+  const [viewport, overflows] = useOverflows<HTMLDivElement>(items);
   if (items.length === 0) return null;
 
   return (
@@ -35,37 +43,78 @@ export function Ticker({ label, items, durationSeconds = 40 }: TickerProps) {
         {label}
       </span>
       <div
-        className="group relative min-w-0 flex-1 overflow-hidden motion-reduce:overflow-x-auto"
+        ref={viewport}
+        className={`group relative min-w-0 flex-1 ${overflows ? "overflow-hidden motion-reduce:overflow-x-auto" : "overflow-x-auto"}`}
         // Focusable so keyboard users can pause it, or scroll it under reduced motion.
         // biome-ignore lint/a11y/noNoninteractiveTabindex: scrollable region
         tabIndex={0}
       >
-        <div
-          className="flex w-max animate-ticker group-focus-within:[animation-play-state:paused] group-hover:[animation-play-state:paused] motion-reduce:animate-none"
-          style={
-            { "--ticker-duration": `${durationSeconds}s` } as CSSProperties
-          }
-        >
+        {overflows ? (
+          <div
+            className="flex w-max animate-ticker group-focus-within:[animation-play-state:paused] group-hover:[animation-play-state:paused] motion-reduce:animate-none"
+            style={
+              { "--ticker-duration": `${durationSeconds}s` } as CSSProperties
+            }
+          >
+            <TickerTrack items={items} loop />
+            <TickerTrack items={items} loop hidden />
+          </div>
+        ) : (
           <TickerTrack items={items} />
-          <TickerTrack items={items} hidden />
-        </div>
+        )}
       </div>
     </section>
   );
 }
 
+/**
+ * Whether the items are wider than the element, re-checked on resize. False
+ * on the server and until measured, so the strip first renders still.
+ */
+function useOverflows<T extends HTMLElement>(items: readonly TickerItem[]) {
+  const ref = useRef<T>(null);
+  const [overflows, setOverflows] = useState(false);
+  // Callers rebuild the array on every render; re-measure only when the items change.
+  const itemIds = items.map((item) => item.id).join();
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: itemIds is the trigger, not a value read
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const check = () => {
+      // Measure the first copy's items, not the track: a looping track is padded to a screen wide.
+      const entries = element.querySelectorAll("ul:first-of-type > li");
+      const first = entries[0]?.getBoundingClientRect();
+      const last = entries[entries.length - 1]?.getBoundingClientRect();
+      setOverflows(
+        first !== undefined &&
+          last !== undefined &&
+          last.right - first.left > element.clientWidth,
+      );
+    };
+    const observer = new ResizeObserver(check);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [itemIds]);
+
+  return [ref, overflows] as const;
+}
+
 function TickerTrack({
   items,
+  loop = false,
   hidden = false,
 }: {
   items: TickerItem[];
+  /** One of the two back-to-back copies that scroll as a loop. */
+  loop?: boolean;
   hidden?: boolean;
 }) {
   return (
     <ul
       aria-hidden={hidden || undefined}
-      // Each copy is at least a screen wide so a short list never leaves a gap mid-loop.
-      className={`flex shrink-0 motion-safe:min-w-[100vw] items-center ${hidden ? "motion-reduce:hidden" : ""}`}
+      // Each looping copy is at least a screen wide so a short list never leaves a gap mid-loop.
+      className={`flex shrink-0 items-center ${loop ? "motion-safe:min-w-[100vw]" : ""} ${hidden ? "motion-reduce:hidden" : ""}`}
     >
       {items.map((item) => (
         <li

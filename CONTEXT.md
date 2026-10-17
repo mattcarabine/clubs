@@ -56,6 +56,16 @@ _Avoid_: Forfeit, rage quit
 One of EA's live Pro Clubs content seasons (e.g. "Closed Season 01"), lasting roughly six weeks, at the end of which EA's season totals reset.
 _Avoid_: Campaign, division season, year
 
+### Comparisons
+
+**Comparison**:
+Two Squad Members' stats side by side, shown in the app as "Compare to…".
+_Avoid_: Head-to-head (reserved for Our Club vs an Opponent), versus, matchup
+
+**Shared Match**:
+A Match in which both Squad Members in a Comparison made an Appearance; shown in the app as "Played together".
+_Avoid_: Partnership, joint match, common game
+
 ### Data capture
 
 **Poll**:

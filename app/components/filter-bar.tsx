@@ -19,12 +19,25 @@ import {
   writeMinAppearances,
   writeStatsFilter,
 } from "~/stats/filter";
+import {
+  parseStatsSource,
+  STATS_SOURCE_LABEL,
+  STATS_SOURCES,
+  type StatsSource,
+  writeStatsSource,
+} from "~/stats/source";
 
 type FilterBarProps = {
   /** The page's current filter, parsed in its loader with `statsFilterFromRequest`. */
   filter: StatsFilter;
   /** Shows the leaderboard minimum-Appearances stepper with this value (from `parseMinAppearances`). */
   minAppearances?: number;
+  /**
+   * Shows the Recorded / EA totals toggle with this value (from
+   * `statsSourceFromRequest`). On EA totals the Match filters are hidden,
+   * because EA's totals cannot be narrowed.
+   */
+  source?: StatsSource;
 };
 
 /**
@@ -33,6 +46,8 @@ type FilterBarProps = {
  * root loader, and shows once there are two to choose between. Every change
  * rewrites the URL, so the page's loader reruns with the new filter and the
  * view can be shared.
+ *
+ * With a `source`, it leads with the Recorded / EA totals toggle.
  *
  * While a filter change is loading, the chips show the pending URL and the
  * next change builds on it, so quick successive clicks all count.
@@ -46,6 +61,10 @@ export function FilterBar(props: FilterBarProps) {
     pending && props.minAppearances !== undefined
       ? parseMinAppearances(pending)
       : props.minAppearances;
+  const source =
+    pending && props.source !== undefined
+      ? parseStatsSource(pending)
+      : props.source;
 
   const apply = (write: (params: URLSearchParams) => URLSearchParams) =>
     setSearchParams((current) => write(pending ?? current), {
@@ -63,12 +82,46 @@ export function FilterBar(props: FilterBarProps) {
       ),
     );
 
+  const sourceToggle = source !== undefined && (
+    <FilterGroup label="Source">
+      {STATS_SOURCES.map((option) => (
+        <Chip
+          key={option}
+          pressed={source === option}
+          onClick={() => apply((params) => writeStatsSource(params, option))}
+        >
+          {STATS_SOURCE_LABEL[option]}
+        </Chip>
+      ))}
+    </FilterGroup>
+  );
+
+  if (source === "ea") {
+    return (
+      <section
+        aria-label="Stats filters"
+        aria-busy={pending !== null}
+        // Short, so it wraps on phones too rather than cutting the note off.
+        className="mb-6 flex flex-wrap items-end gap-x-6 gap-y-3 border-shale-700 border-t-2 bg-shale-900 px-3 py-3 sm:px-4"
+      >
+        {sourceToggle}
+        <p className="max-w-md text-ink-muted text-sm leading-snug sm:self-center">
+          EA's own totals, including Matches from before tracking began. The
+          Match filters don't apply to them.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-label="Stats filters"
       aria-busy={pending !== null}
-      className="mb-6 flex flex-wrap items-end gap-x-6 gap-y-3 border-shale-700 border-t-2 bg-shale-900 px-3 py-3 sm:px-4"
+      // One scrolling rail on phones, so the filters take one row, not a screen.
+      className="mb-6 flex items-end gap-x-6 gap-y-3 overflow-x-auto border-shale-700 border-t-2 bg-shale-900 px-3 py-3 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible sm:px-4"
     >
+      {sourceToggle}
+
       <FilterGroup label="Match Type">
         {MATCH_TYPES.map((type) => {
           const selected = filter.matchTypes.includes(type);
@@ -205,9 +258,11 @@ function usePendingSearchParams(): URLSearchParams | null {
 
 function FilterGroup({ label, children }: FilterGroupProps) {
   return (
-    <fieldset className="min-w-0">
-      <legend className="mb-1.5 text-ink-muted text-sm">{label}</legend>
-      <div className="flex flex-wrap gap-1">{children}</div>
+    <fieldset className="shrink-0 sm:min-w-0 sm:shrink">
+      <legend className="mb-1.5 whitespace-nowrap text-ink-muted text-sm">
+        {label}
+      </legend>
+      <div className="flex gap-1 sm:flex-wrap">{children}</div>
     </fieldset>
   );
 }
