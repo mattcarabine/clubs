@@ -11,15 +11,21 @@ export {
 export { LineChart, type LineSeries } from "./charts/line-chart";
 export { Sparkline } from "./charts/sparkline";
 export {
+  StackedColumnChart,
+  type StackedColumnSeries,
+} from "./charts/stacked-column-chart";
+export {
   DataTable,
   type DataTableColumn,
   type DataTableSort,
 } from "./data-table";
+export { DnfBadge } from "./dnf-badge";
 export { EmptyState } from "./empty-state";
 export { FilterBar } from "./filter-bar";
 export { FormGuide } from "./form-guide";
 export { PageHeader, SectionHeading } from "./headings";
 export { LastUpdatedBadge } from "./last-updated-badge";
+export { MatchScoreBar } from "./match-score-bar";
 export { OutcomeBadge } from "./outcome-badge";
 export { PlayerChip } from "./player-chip";
 export { ScoreBar, type ScoreBarSide } from "./score-bar";
