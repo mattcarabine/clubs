@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router";
 // The whole crest, 96px: the favicon and touch icon.
 import crestUrl from "../../assets/crest-96.png";
-// The crest cropped to the face, which is all that reads at lockup size.
-import crestMarkUrl from "../../assets/crest-mark.png";
+
+import { CrestMark } from "./crest-mark";
 
 export { crestUrl };
 
@@ -33,15 +33,7 @@ export function AppShell({ clubName, ticker, children }: AppShellProps) {
             to="/"
             className="flex shrink-0 items-center gap-3 px-4 pt-3 pb-2 md:py-3"
           >
-            <span className="clip-slant-r block bg-rave pr-2.5 [--slant:0.6rem]">
-              <img
-                src={crestMarkUrl}
-                alt=""
-                width={40}
-                height={40}
-                className="block size-10"
-              />
-            </span>
+            <CrestMark />
             <span className="font-display font-extrabold text-2xl text-ink uppercase italic leading-none tracking-wide">
               {clubName}
             </span>

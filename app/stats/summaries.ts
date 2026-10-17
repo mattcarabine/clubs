@@ -157,6 +157,22 @@ export function summariseAppearances(
   };
 }
 
+/** Both clubs' totals in one Match. */
+export interface MatchSides {
+  ours: PlayerTotals;
+  theirs: PlayerTotals;
+}
+
+/** Splits a Match's Appearances by club and totals each side. */
+export function summariseMatchSides(
+  appearances: readonly (AppearanceStats & { isOurClub: boolean })[],
+): MatchSides {
+  return {
+    ours: summariseAppearances(appearances.filter((a) => a.isOurClub)),
+    theirs: summariseAppearances(appearances.filter((a) => !a.isOurClub)),
+  };
+}
+
 /** Groups rows by key, keeping each group in input order. */
 export function groupBy<T, K>(
   rows: readonly T[],

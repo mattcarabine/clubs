@@ -124,13 +124,9 @@ export default function TestStats({ loaderData }: Route.ComponentProps) {
                       score: match.goalsAgainst,
                     }}
                     label={match.matchType}
-                    status={
-                      match.dnf ? (
-                        <span>DNF</span>
-                      ) : (
-                        formatLondonDateTime(match.playedAt)
-                      )
-                    }
+                    meta={[
+                      match.dnf ? "DNF" : formatLondonDateTime(match.playedAt),
+                    ]}
                     outcome={match.outcome}
                   />
                 </li>

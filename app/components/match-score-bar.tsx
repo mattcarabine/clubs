@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
-import type { MatchSummary } from "~/stats/matches";
+import { formatOptional, formatPercentage } from "~/lib/number-format";
+import type { MatchSkillRatings, MatchSummary } from "~/stats/matches";
+import type { MatchSides } from "~/stats/summaries";
 
 import { DnfBadge } from "./dnf-badge";
-import { ScoreBar } from "./score-bar";
+import { ScoreBar, type ScoreBarStat } from "./score-bar";
 
 type MatchScoreBarProps = {
   /** Our Club's name, always on the left in club blue. */
@@ -12,30 +14,89 @@ type MatchScoreBarProps = {
     "matchType" | "opponent" | "goalsFor" | "goalsAgainst" | "outcome" | "dnf"
   >;
   size?: "hero" | "compact";
-  /** Shown after the DNF badge in the tab row, e.g. the kick-off time or "FT". */
-  status?: ReactNode;
+  /** When the Match was played, e.g. a `<LondonTime>`. */
+  when?: ReactNode;
+  /** Hero only: each club's Skill Rating, under its name. */
+  skillRatings?: MatchSkillRatings;
+  /** Hero only: both clubs' totals, for the stat strip. Hidden unless both sides have Appearances. */
+  sides?: MatchSides;
 };
 
-/** A ScoreBar for one Match from Our Club's side: Match Type tab, DNF badge and result. */
+/**
+ * A ScoreBar for one Match from Our Club's side. The hero groups Match Type,
+ * "Full time" or DNF and the kick-off into one tab cluster; compact rows show
+ * the Match Type, a DNF badge and the kick-off.
+ */
 export function MatchScoreBar({
   clubName,
   match,
-  size,
-  status,
+  size = "compact",
+  when,
+  skillRatings,
+  sides,
 }: MatchScoreBarProps) {
+  const hero = size === "hero";
+  let status: ReactNode = null;
+  if (match.dnf) status = <DnfBadge />;
+  else if (hero) status = "Full time";
+  const ratings = hero ? skillRatings : undefined;
+  const hasRatings =
+    ratings !== undefined &&
+    (ratings.ours !== null || ratings.opponent !== null);
+
   return (
-    <ScoreBar
-      home={{ name: clubName, score: match.goalsFor, isOurClub: true }}
-      away={{ name: match.opponent.name, score: match.goalsAgainst }}
-      size={size}
-      label={match.matchType}
-      status={
-        <>
-          {match.dnf && <DnfBadge />}
-          {status}
-        </>
-      }
-      outcome={match.outcome}
-    />
+    <>
+      {hasRatings && (
+        <p className="sr-only">{`Skill ratings at this Match: ${clubName} ${formatOptional(ratings.ours)}, ${match.opponent.name} ${formatOptional(ratings.opponent)}`}</p>
+      )}
+      <ScoreBar
+        home={{
+          name: clubName,
+          score: match.goalsFor,
+          isOurClub: true,
+          detail: hasRatings && <SkillRating value={ratings.ours} />,
+        }}
+        away={{
+          name: match.opponent.name,
+          score: match.goalsAgainst,
+          detail: hasRatings && <SkillRating value={ratings.opponent} />,
+        }}
+        size={size}
+        label={match.matchType}
+        meta={[status, when]}
+        outcome={match.outcome}
+        dnf={match.dnf}
+        stats={hero && sides ? keyStats(sides) : undefined}
+      />
+    </>
   );
+}
+
+function SkillRating({ value }: { value: number | null }) {
+  return (
+    <>
+      Skill rating{" "}
+      <span className="font-display font-extrabold text-ink tabular">
+        {formatOptional(value)}
+      </span>
+    </>
+  );
+}
+
+/** Shots, pass % and tackles for both clubs, or none unless both sides have Appearances. */
+function keyStats({ ours, theirs }: MatchSides): ScoreBarStat[] | undefined {
+  if (ours.appearances === 0 || theirs.appearances === 0) return undefined;
+  return [
+    { label: "Shots", home: String(ours.shots), away: String(theirs.shots) },
+    {
+      label: "Pass %",
+      home: formatPercentage(ours.passPercentage),
+      away: formatPercentage(theirs.passPercentage),
+    },
+    {
+      label: "Tackles",
+      home: String(ours.tacklesMade),
+      away: String(theirs.tacklesMade),
+    },
+  ];
 }

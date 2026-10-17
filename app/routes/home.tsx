@@ -9,6 +9,7 @@ import { Link } from "react-router";
 import {
   EmptyState,
   FormGuide,
+  HERO_WIDTH,
   LastUpdatedBadge,
   LondonTime,
   MatchScoreBar,
@@ -17,11 +18,10 @@ import {
   type StatDelta,
   StatGrid,
   StatTile,
-  Ticker,
-  type TickerItem,
+  TopPerformersStrip,
 } from "~/components";
 import { getDb } from "~/db/client";
-import { formatDecimal, formatOptional } from "~/lib/number-format";
+import { formatCount, formatOptional } from "~/lib/number-format";
 import { useRevalidateWhileVisible } from "~/lib/use-revalidate-while-visible";
 import {
   type ClubSnapshotSummary,
@@ -30,8 +30,11 @@ import {
   getMatch,
   lastSuccessfulPoll,
   listMatches,
+  type MatchSides,
+  type MatchSkillRatings,
   type MatchSummary,
   summariseClubSnapshots,
+  summariseMatchSides,
   summariseRecord,
   type TopPerformer,
   topPerformers,
@@ -61,6 +64,8 @@ export async function loader() {
   return {
     clubName: env.EA_CLUB_NAME,
     recent,
+    skillRatings: detail?.skillRatings,
+    sides: detail ? summariseMatchSides(detail.appearances) : undefined,
     performers: topPerformers(
       detail?.appearances.filter((a) => a.isOurClub) ?? [],
     ),
@@ -70,7 +75,8 @@ export async function loader() {
 }
 
 export default function Matchday({ loaderData }: Route.ComponentProps) {
-  const { clubName, recent, performers, club, lastPoll } = loaderData;
+  const { clubName, recent, skillRatings, sides, performers, club, lastPoll } =
+    loaderData;
   useRevalidateWhileVisible(REVALIDATE_MS);
   const [latest, ...earlier] = recent;
 
@@ -85,6 +91,8 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
           <LatestMatch
             clubName={clubName}
             match={latest}
+            skillRatings={skillRatings}
+            sides={sides}
             performers={performers}
           />
           {club && <ClubSnapshot club={club} />}
@@ -111,43 +119,38 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
 function LatestMatch({
   clubName,
   match,
+  skillRatings,
+  sides,
   performers,
 }: {
   clubName: string;
   match: MatchSummary;
+  skillRatings?: MatchSkillRatings;
+  sides?: MatchSides;
   performers: TopPerformer[];
 }) {
   return (
-    <section aria-labelledby="latest-match">
+    <section aria-labelledby="latest-match" className={HERO_WIDTH}>
       <h2 id="latest-match" className="sr-only">
         Latest Match
       </h2>
-      <MatchLink clubName={clubName} match={match} hero />
-      <Ticker
-        label="Top performers"
-        items={performers.map(toTickerItem)}
-        durationSeconds={Math.max(20, performers.length * 8)}
-      />
+      <Link to={`/matches/${match.matchId}`} className="block hover:opacity-90">
+        <MatchScoreBar
+          clubName={clubName}
+          match={match}
+          size="hero"
+          when={<LondonTime date={match.playedAt} format="moment" />}
+          skillRatings={skillRatings}
+          sides={sides}
+        />
+      </Link>
+      {performers.length > 0 && (
+        <div className="mt-1">
+          <TopPerformersStrip performers={performers} />
+        </div>
+      )}
     </section>
   );
-}
-
-function toTickerItem(performer: TopPerformer): TickerItem {
-  const parts = [
-    performer.manOfTheMatch && "Man of the Match",
-    performer.goals > 0 && plural(performer.goals, "goal"),
-    performer.assists > 0 && plural(performer.assists, "assist"),
-    performer.rating !== null && `rated ${formatDecimal(performer.rating)}`,
-  ].filter(Boolean);
-  return {
-    id: performer.playerId,
-    headline: performer.name,
-    detail: parts.join(", "),
-  };
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 /** The skill rating's last move, or nothing when it has not moved. */
@@ -219,7 +222,7 @@ function Form({ matches }: { matches: MatchSummary[] }) {
         </dl>
         <p className="text-ink-soft text-sm">
           {record.goalsFor} scored, {record.goalsAgainst} conceded
-          {record.dnf > 0 && `, ${plural(record.dnf, "DNF")}`}
+          {record.dnf > 0 && `, ${formatCount(record.dnf, "DNF", "DNFs")}`}
         </p>
       </div>
     </section>
@@ -266,23 +269,20 @@ function RecentResults({
   );
 }
 
-/** A Match's score strip, linking to its page. The `hero` strip leads the page. */
+/** A Match's compact score strip, linking to its page. */
 function MatchLink({
   clubName,
   match,
-  hero = false,
 }: {
   clubName: string;
   match: MatchSummary;
-  hero?: boolean;
 }) {
   return (
     <Link to={`/matches/${match.matchId}`} className="block hover:opacity-90">
       <MatchScoreBar
         clubName={clubName}
         match={match}
-        size={hero ? "hero" : "compact"}
-        status={<LondonTime date={match.playedAt} format="moment" />}
+        when={<LondonTime date={match.playedAt} format="moment" />}
       />
     </Link>
   );
