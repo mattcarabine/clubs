@@ -8,6 +8,7 @@ import {
   afterResult,
   type ClubMatchTotals,
   dayType,
+  droppedPointsReasons,
   outcomeSplit,
   POSITION_OUTLIER_GAP,
   playerOutcomeSplit,
@@ -42,11 +43,13 @@ function match(
   outcome: Outcome,
   {
     ours,
+    opponent,
     secondsPlayed = FULL,
     playedAt,
     ...rest
-  }: Partial<Omit<SplitMatch, "ours">> & {
+  }: Partial<Omit<SplitMatch, "ours" | "opponent">> & {
     ours?: Partial<ClubMatchTotals>;
+    opponent?: Partial<ClubMatchTotals>;
   } = {},
 ): SplitMatch {
   sequence += 1;
@@ -56,7 +59,7 @@ function match(
     outcome,
     secondsPlayed,
     ours: totals(ours),
-    opponent: totals(),
+    opponent: totals(opponent),
     squadSize: 4,
     // Each Match its own Session unless a test says otherwise.
     session: sequence,
@@ -238,6 +241,80 @@ describe("afterResult", () => {
     const { findings } = outcomeSplit(run("WLWLLWWLWL"), []);
     expect(findings.map((f) => f.id)).toContain("after-any-next");
     expect(findings.map((f) => f.id)).not.toContain("after-same-session");
+  });
+});
+
+describe("droppedPointsReasons", () => {
+  /** Three Wins with 10, 12 and 14 shots (mean 12, standard deviation 1.63) and no goals. */
+  const wins = () =>
+    [10, 12, 14].map((shots) => match("W", { ours: { shots, goals: 0 } }));
+
+  it("is null with fewer than 3 Wins", () => {
+    expect(droppedPointsReasons(match("L"), wins().slice(0, 2))).toBeNull();
+  });
+
+  it("leads with the stat furthest from the Wins, in standard deviations, with both values", () => {
+    const reasons = droppedPointsReasons(
+      match("L", { ours: { shots: 6, goals: 0 } }),
+      wins(),
+    );
+    expect(reasons?.wins).toBe(3);
+    expect(reasons?.deviations[0]).toMatchObject({
+      id: "ours-shots",
+      club: "ours",
+      text: "6.0 fewer shots per 90 than in a typical Win (6.0 vs 12.0)",
+      standardDeviations: expect.closeTo(-6 / Math.sqrt(8 / 3)),
+    });
+  });
+
+  it("shows at most 3, biggest first, and names the Opponent's stats", () => {
+    const reasons = droppedPointsReasons(
+      match("L", {
+        ours: { shots: 2, goals: 0, saves: 6 },
+        opponent: { passesMade: 92, ratingSum: 32 },
+      }),
+      wins(),
+    );
+    // Every Win has the same saves, Opponent pass % and rating, so those
+    // differences are infinite and rank by relative change.
+    expect(reasons?.deviations.map((d) => d.text)).toEqual([
+      "4.0 more saves per 90 than in a typical Win (6.0 vs 2.0)",
+      "Opponent pass completion 12 points higher than in a typical Win (92% vs 80%)",
+      "Opponent average rating 1.0 higher than in a typical Win (8.0 vs 7.0)",
+    ]);
+  });
+
+  it("compares a DNF per 90 over how long it ran", () => {
+    // 9 shots in 45 minutes is 18 per 90; every other count doubles too, so zero them.
+    const none = { goals: 0, saves: 0, redCards: 0 };
+    const reasons = droppedPointsReasons(
+      match("L", {
+        secondsPlayed: FULL / 2,
+        ours: { ...none, shots: 9 },
+        opponent: { ...none, shots: 0 },
+      }),
+      [10, 12, 14].map((shots) =>
+        match("W", {
+          ours: { ...none, shots },
+          opponent: { ...none, shots: 0 },
+        }),
+      ),
+    );
+    expect(reasons?.deviations.map((d) => d.text)).toEqual([
+      "6.0 more shots per 90 than in a typical Win (18.0 vs 12.0)",
+    ]);
+  });
+
+  it("has no deviations when the Match was like every Win", () => {
+    expect(
+      droppedPointsReasons(
+        match("D"),
+        many(3, () => match("W")),
+      ),
+    ).toEqual({
+      wins: 3,
+      deviations: [],
+    });
   });
 });
 

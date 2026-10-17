@@ -1,19 +1,23 @@
 /**
- * The Outcome Split query (CLUBS-25): four parallel reads, then the pure
+ * The Outcome Split queries (CLUBS-25): parallel reads, then the pure
  * roll-ups in `outcome-split.ts`. Each club's Appearances are summed per
  * Match in SQL, so the Worker handles two rows per Match rather than one per
- * Appearance.
+ * Appearance. The Match page's "Why we dropped points" panel (CLUBS-27)
+ * reads the same totals.
  */
-import { asc, count, eq, max, type SQL, sql } from "drizzle-orm";
+import { asc, count, eq, max, or, type SQL, sql } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
 import type { Db } from "~/db/client";
 import { appearances, matches } from "~/db/schema";
 
-import type { StatsFilter } from "./filter";
-import { listMatches } from "./matches";
+import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
+import { listMatches, type MatchSummary } from "./matches";
 import {
   type ClubMatchTotals,
+  type DroppedPointsReasons,
+  droppedPointsReasons,
+  type MatchPerformance,
   type OutcomeSplit,
   outcomeSplit,
   type PlayerSplitRow,
@@ -44,7 +48,7 @@ export async function getOutcomeSplit(
 ): Promise<OutcomeSplitPage> {
   const [summaries, totals, squad, kickoffs] = await Promise.all([
     listMatches(db, filter, { order: "oldest" }),
-    clubMatchTotals(db, filter),
+    clubMatchTotals(db, matchScope(db, filter)),
     squadAppearances(db, filter),
     allKickoffs(db),
   ]);
@@ -60,9 +64,7 @@ export async function getOutcomeSplit(
       matchId: m.matchId,
       playedAt: m.playedAt,
       outcome: m.outcome,
-      secondsPlayed: sides?.secondsPlayed ?? 0,
-      ours: sides?.ours ?? NO_TOTALS,
-      opponent: sides?.opponent ?? NO_TOTALS,
+      ...performanceOf(sides),
       squadSize: sides?.squadSize ?? 0,
       session,
       sessionPlace: place,
@@ -72,6 +74,37 @@ export async function getOutcomeSplit(
     ...outcomeSplit(splitMatches, squad),
     players: playerSplits(squad, positionGroups),
     playedAt: summaries.map((m) => m.playedAt),
+  };
+}
+
+/**
+ * A Dropped Points Match against the average Win over the default filter
+ * (Competitive Matches, all time, DNFs included), whatever the page's
+ * filters. Null for a Win, or with fewer than 3 Wins to compare against.
+ */
+export async function getDroppedPointsReasons(
+  db: Db,
+  match: Pick<MatchSummary, "matchId" | "outcome">,
+): Promise<DroppedPointsReasons | null> {
+  if (match.outcome === "W") return null;
+  const baseline = matchScope(db, DEFAULT_STATS_FILTER);
+  const [summaries, totals] = await Promise.all([
+    listMatches(db, DEFAULT_STATS_FILTER),
+    // The baseline's totals and this Match's, which may be a Friendly, in one read.
+    clubMatchTotals(db, or(baseline, eq(matches.matchId, match.matchId))),
+  ]);
+  const wins = summaries
+    .filter((m) => m.outcome === "W")
+    .map((m) => performanceOf(totals.get(m.matchId)));
+  return droppedPointsReasons(performanceOf(totals.get(match.matchId)), wins);
+}
+
+/** A Match's totals as the Outcome Split reads them, zero for a Match with no Appearances. */
+function performanceOf(sides: MatchTotals | undefined): MatchPerformance {
+  return {
+    secondsPlayed: sides?.secondsPlayed ?? 0,
+    ours: sides?.ours ?? NO_TOTALS,
+    opponent: sides?.opponent ?? NO_TOTALS,
   };
 }
 
@@ -101,10 +134,10 @@ function total(column: SQLiteColumn): SQL<number> {
   return sql<number>`coalesce(sum(${column}), 0)`.mapWith(Number);
 }
 
-/** Each club's Appearance totals in every filtered Match, by Match ID. */
+/** Each club's Appearance totals in every Match `where` selects, by Match ID. */
 async function clubMatchTotals(
   db: Db,
-  filter: StatsFilter,
+  where: SQL | undefined,
 ): Promise<Map<string, MatchTotals>> {
   const rows = await db
     .select({
@@ -127,7 +160,7 @@ async function clubMatchTotals(
     })
     .from(appearances)
     .innerJoin(matches, eq(matches.matchId, appearances.matchId))
-    .where(matchScope(db, filter))
+    .where(where)
     .groupBy(appearances.matchId, appearances.clubId);
 
   const byMatch = new Map<string, MatchTotals>();
