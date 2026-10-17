@@ -131,6 +131,25 @@ export function DataTable<T>({
   );
 }
 
+/**
+ * A right-aligned, sortable numeric column. `format` turns the value into
+ * display text (e.g. "+3", "67%"); it sorts on the raw number either way.
+ */
+export function numberColumn<T, V extends number | null>(
+  id: string,
+  header: string,
+  value: (row: T) => V,
+  format?: (value: V) => ReactNode,
+): DataTableColumn<T> {
+  return {
+    id,
+    header,
+    align: "right",
+    cell: format ? (row) => format(value(row)) : value,
+    sortValue: value,
+  };
+}
+
 const ARIA_SORT = {
   asc: "ascending",
   desc: "descending",

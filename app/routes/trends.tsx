@@ -21,7 +21,12 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import { formatLondonShortDate } from "~/lib/london-time";
-import { formatPercent, formatSigned } from "~/lib/number-format";
+import {
+  formatCount,
+  formatDecimal,
+  formatPercentage,
+  formatSigned,
+} from "~/lib/number-format";
 import {
   clubSnapshots,
   type LineupRecord,
@@ -148,7 +153,7 @@ function MatchTrends({
       <section aria-label="Results" className="flex flex-col gap-4">
         <SectionHeading
           title="Results"
-          subtitle={`${record.played} ${record.played === 1 ? "Match" : "Matches"}: ${record.wins} won, ${record.draws} drawn, ${record.losses} lost.`}
+          subtitle={`${formatCount(record.played, "Match", "Matches")}: ${record.wins} won, ${record.draws} drawn, ${record.losses} lost.`}
         />
         <ChartFrame
           title="Run of results"
@@ -223,7 +228,7 @@ function MatchTrends({
                   values: timeline.rollingGoalsAgainst,
                 },
               ]}
-              formatValue={(v) => v.toFixed(1)}
+              formatValue={formatDecimal}
             />
           </ChartFrame>
         </section>
@@ -278,7 +283,7 @@ function SplitChart({
     <BarChart
       label={label}
       max={100}
-      formatValue={formatPercent}
+      formatValue={formatPercentage}
       data={buckets.map((b) => ({
         id: b.label,
         label: `${b.label} (${b.played})`,
@@ -316,7 +321,7 @@ const LINEUP_COLUMNS: DataTableColumn<LineupRecord>[] = [
     id: "win",
     header: "Win %",
     align: "right",
-    cell: (l) => formatPercent(l.winPercentage),
+    cell: (l) => formatPercentage(l.winPercentage),
     sortValue: (l) => l.winPercentage,
   },
   {
