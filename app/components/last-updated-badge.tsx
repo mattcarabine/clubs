@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import { formatRelativeTime, isStale } from "~/lib/relative-time";
+import {
+  formatRelativeTime,
+  isStale,
+  STALE_AFTER_MINUTES,
+} from "~/lib/relative-time";
 
 type LastUpdatedBadgeProps = {
   /** When the data was last refreshed (the latest Poll), as a Date or ISO string. */
   updatedAt: Date | string;
-  /** Polls run every 5 minutes, so three missed Polls means stale. */
+  /** Defaults to three missed Polls. */
   staleAfterMinutes?: number;
   /** Fixes "now", for the styleguide and tests. Live otherwise. */
   now?: Date;
@@ -15,7 +19,7 @@ const TICK_MS = 30_000;
 /** "Updated 4 min ago" with a live dot, turning amber with a warning once stale. */
 export function LastUpdatedBadge({
   updatedAt,
-  staleAfterMinutes = 15,
+  staleAfterMinutes = STALE_AFTER_MINUTES,
   now: fixedNow,
 }: LastUpdatedBadgeProps) {
   const then = new Date(updatedAt);
