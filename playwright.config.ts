@@ -1,33 +1,55 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 4173;
+import { APP_PORT, APP_URL, FAKE_EA_URL } from "./e2e/support/ports.ts";
+
+/** Data-only specs: run once, not per viewport. */
+const API_SPECS = /.*\.api\.spec\.ts/;
 
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: false,
+  // One worker: all tests share the Worker's D1 and the fake EA upstream.
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: APP_URL,
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    {
+      name: "api",
+      testMatch: API_SPECS,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "mobile",
+      testIgnore: API_SPECS,
+      use: { ...devices["Pixel 7"] },
+    },
     {
       name: "desktop",
+      testIgnore: API_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
       },
     },
   ],
-  webServer: {
-    // Production build served by the Workers runtime (workerd) via the Cloudflare Vite plugin.
-    command: `pnpm build && pnpm exec vite preview --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-  },
+  webServer: [
+    {
+      // Replays fixtures/ea; the Worker's test env points EA_BASE_URL here.
+      command: "node e2e/fake-ea/main.ts",
+      url: `${FAKE_EA_URL}/__control/health`,
+      reuseExistingServer: false,
+    },
+    {
+      // Production build in workerd (`test` Wrangler env) on a fresh, migrated local D1.
+      command: `pnpm e2e:server --port ${APP_PORT}`,
+      url: APP_URL,
+      reuseExistingServer: false,
+      timeout: 180_000,
+    },
+  ],
 });

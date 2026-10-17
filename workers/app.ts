@@ -1,17 +1,19 @@
 import { createRequestHandler } from "react-router";
 
+import { runPoll } from "../app/poll/run";
+import { handleTestRoute } from "./test-routes";
+
 const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),
   import.meta.env.MODE,
 );
 
 export default {
-  async fetch(request) {
-    return requestHandler(request);
+  async fetch(request, env) {
+    return (await handleTestRoute(request, env)) ?? requestHandler(request);
   },
 
-  async scheduled(_controller, _env, _ctx) {
-    // The Poll is implemented in CLUBS-4.
-    console.log(JSON.stringify({ event: "poll", status: "not_implemented" }));
+  async scheduled(_controller, env) {
+    await runPoll(env);
   },
 } satisfies ExportedHandler<Env>;

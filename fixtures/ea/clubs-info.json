@@ -1,0 +1,34 @@
+{
+  "332191": {
+    "name": "A Bloo Bloo",
+    "clubId": 332191,
+    "regionId": 4344147,
+    "teamId": 111144,
+    "customKit": {
+      "stadName": "Gillette Stadiu",
+      "kitId": "910491649",
+      "seasonalTeamId": "131397",
+      "seasonalKitId": "1076404224",
+      "selectedKitType": "0",
+      "customKitId": "7509",
+      "kitColor1": "15921906",
+      "kitColor2": "5775459",
+      "kitColor3": "5775459",
+      "kitColor4": "5775459",
+      "customAwayKitId": "7509",
+      "kitAColor1": "5775459",
+      "kitAColor2": "15921906",
+      "kitAColor3": "15921906",
+      "kitAColor4": "15921906",
+      "customThirdKitId": "7511",
+      "kitThrdColor1": "12706617",
+      "kitThrdColor2": "33627",
+      "kitThrdColor3": "396864",
+      "kitThrdColor4": "5775459",
+      "dCustomKit": "0",
+      "customKeeperKitId": "5005",
+      "crestColor": "0",
+      "crestAssetId": "99160118"
+    }
+  }
+}
