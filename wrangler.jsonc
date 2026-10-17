@@ -8,11 +8,13 @@
   "compatibility_date": "2026-10-06",
   "main": "./workers/app.ts",
   "vars": {
-    // Overridden in tests to point at the fake EA upstream (docs/adr/0004).
     "EA_BASE_URL": "https://proclubs.ea.com/api/fc/",
     "EA_PLATFORM": "common-gen5",
     "EA_CLUB_ID": "332191",
-    "EA_CLUB_NAME": "A Bloo Bloo"
+    "EA_CLUB_NAME": "A Bloo Bloo",
+    "EA_TIMEOUT_MS": "10000",
+    // "1" enables the /__test/* routes (workers/test-routes.ts). Only the test environment sets it.
+    "TEST_ROUTES": "0"
   },
   "triggers": {
     // One Poll every 5 minutes, matching EA's max-age=300 (docs/adr/0002).
@@ -29,5 +31,29 @@
   "observability": {
     "enabled": true
   },
-  "upload_source_maps": true
+  "upload_source_maps": true,
+  "env": {
+    // The E2E suite (CLOUDFLARE_ENV=test, see playwright.config.ts). Local only: never deployed.
+    // Vars and bindings are not inherited, so this repeats them with test values.
+    "test": {
+      "vars": {
+        // The fake EA upstream (e2e/fake-ea), on the port in e2e/support/ports.ts.
+        "EA_BASE_URL": "http://localhost:4180/api/fc/",
+        "EA_PLATFORM": "common-gen5",
+        "EA_CLUB_ID": "332191",
+        "EA_CLUB_NAME": "A Bloo Bloo",
+        "EA_TIMEOUT_MS": "1000",
+        "TEST_ROUTES": "1"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "clubs",
+          // Placeholder: the test env only ever uses a local D1, never the real one.
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
 }
