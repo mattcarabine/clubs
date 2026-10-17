@@ -18,10 +18,12 @@ import {
   ScoreBar,
   SectionHeading,
   Skeleton,
+  SmallSampleTag,
   Sparkline,
   StackedColumnChart,
   StatGrid,
   StatTile,
+  Tag,
   Ticker,
   TopPerformersStrip,
 } from "~/components";
@@ -482,6 +484,14 @@ export default function Styleguide() {
           <LastUpdatedBadge updatedAt={minutesAgo(0)} now={NOW} />
           <LastUpdatedBadge updatedAt={minutesAgo(4)} now={NOW} />
           <LastUpdatedBadge updatedAt={minutesAgo(95)} now={NOW} />
+        </div>
+      </Section>
+
+      <Section id="tag" title="Tag">
+        <div className="flex flex-wrap gap-3">
+          <Tag>Performance</Tag>
+          <Tag>Pass %</Tag>
+          <SmallSampleTag />
         </div>
       </Section>
 

@@ -13,6 +13,7 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
+import { type RecentChange, recentChanges } from "./recent-change";
 import {
   isOurAppearance,
   isShownMatch,
@@ -98,6 +99,8 @@ export interface LeaderboardRow extends PlayerTotals {
   playerId: string;
   name: string;
   former: boolean;
+  /** The biggest of the Squad Member's recent changes (CLUBS-37), or null. */
+  recentChange: RecentChange | null;
 }
 
 export interface LeaderboardOptions extends ScopeOptions {
@@ -130,12 +133,17 @@ export async function squadLeaderboard(
     (a) => a.playerId,
   );
   return [...byPlayer.entries()]
-    .map(([playerId, apps]) => ({
-      playerId,
-      name: apps[apps.length - 1].name,
-      former: isFormerSquadMember(playerId),
-      ...summariseAppearances(filterByPositionGroups(apps, positionGroups)),
-    }))
+    .map(([playerId, apps]) => {
+      const name = apps[apps.length - 1].name;
+      const selected = filterByPositionGroups(apps, positionGroups);
+      return {
+        playerId,
+        name,
+        former: isFormerSquadMember(playerId),
+        ...summariseAppearances(selected),
+        recentChange: recentChanges(selected, name).biggest,
+      };
+    })
     .filter((row) => includeFormer || !row.former)
     .sort(
       (a, b) => b.appearances - a.appearances || a.name.localeCompare(b.name),

@@ -37,6 +37,7 @@ import {
   describePositionGroups,
   getPlayerProfile,
   type PositionGroupSelection,
+  RECENT_WINDOW,
   statsFilterFromRequest,
 } from "~/stats";
 
@@ -46,6 +47,7 @@ import { BuildPlate, BuildProgression } from "./build";
 import { EaTotals } from "./ea-totals";
 import { OutcomeSplitPanel } from "./outcome-split-panel";
 import { PositionGroupTable } from "./position-group-table";
+import { RecentChangesPanel } from "./recent-changes";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const name = loaderData?.profile.member.name ?? "Squad Member not found";
@@ -163,6 +165,17 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         </div>
       ) : (
         <>
+          <section aria-label="Recent changes" className="mb-8">
+            <SectionHeading
+              title="Recent changes"
+              subtitle={`The last ${RECENT_WINDOW} Appearances against the ones before${positions.length ? `, as ${describePositionGroups(positions)}` : ""}`}
+            />
+            <RecentChangesPanel
+              name={member.name}
+              changes={profile.recentChanges}
+            />
+          </section>
+
           <div className="mb-8 grid gap-6 lg:grid-cols-3">
             <div className="min-w-0 lg:col-span-2">
               <ChartFrame

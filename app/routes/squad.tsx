@@ -13,6 +13,7 @@ import { type ReactNode, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import {
+  ChangeArrow,
   Chip,
   chipClassName,
   DataTable,
@@ -47,6 +48,8 @@ import {
   type PositionGroupSelection,
   parseStatsFilter,
   parseStatsSource,
+  RECENT_WINDOW,
+  type RecentChange,
   squadLeaderboard,
 } from "~/stats";
 
@@ -402,6 +405,7 @@ const KEY: readonly [string, string][] = [
   ["Form", "Average rating over the last 5 Appearances"],
   ["MOTM", "Man of the Match"],
   ["CS", "Clean sheets as Goalkeeper or Defender"],
+  ["Recent", `Biggest change over the last ${RECENT_WINDOW} Appearances`],
 ];
 
 const EA_KEY: readonly [string, string][] = [
@@ -528,7 +532,36 @@ const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
   recordedStat("motm", "MOTM", (r) => r.manOfTheMatch),
   recordedStat("cs", "CS", (r) => r.cleanSheets),
   recordedStat("saves", "Saves", (r) => r.saves),
+  {
+    id: "recent",
+    header: "Recent",
+    cell: (r) => <RecentChangeCell change={r.recentChange} />,
+    sortValue: (r) => recentChangeRank(r.recentChange),
+  },
 ];
+
+/** Sorts improving first, then no change, then dropping off. */
+function recentChangeRank(change: RecentChange | null): number {
+  if (!change) return 0;
+  return change.direction === "up" ? 1 : -1;
+}
+
+/** The biggest recent change as an arrow and the stat; the sentence is its tooltip. */
+function RecentChangeCell({ change }: { change: RecentChange | null }) {
+  if (!change) return NO_VALUE;
+  return (
+    <span
+      title={change.text}
+      className="relative inline-flex items-center gap-1.5 whitespace-nowrap"
+    >
+      <ChangeArrow direction={change.direction} className="text-[0.625rem]" />
+      <span className="sr-only">
+        {change.direction === "up" ? "Improving:" : "Dropping off:"}
+      </span>
+      {change.label}
+    </span>
+  );
+}
 
 /**
  * EA's season totals, led like the Recorded table: G+A and rating, then

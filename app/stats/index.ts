@@ -19,6 +19,7 @@ export * from "./outcome-split-query";
 export * from "./player";
 export * from "./player-profile";
 export * from "./positions";
+export * from "./recent-change";
 export * from "./scope";
 export * from "./seasons";
 export * from "./sessions";
