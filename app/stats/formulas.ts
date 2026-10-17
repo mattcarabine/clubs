@@ -102,7 +102,7 @@ export function points(outcomes: readonly Outcome[]): number {
   return outcomes.reduce((sum, outcome) => sum + POINTS[outcome], 0);
 }
 
-/** Running points total after each Outcome (oldest first), for charts. */
+/** Running points total after each Outcome (oldest first), e.g. across a Session. */
 export function cumulativePoints(outcomes: readonly Outcome[]): number[] {
   let total = 0;
   return outcomes.map((outcome) => {

@@ -18,6 +18,7 @@ import {
   formatPercentage,
   NO_VALUE,
 } from "~/lib/number-format";
+import { capitalise } from "~/lib/text";
 import { isFormerSquadMember } from "~/roster";
 
 import {
@@ -1088,10 +1089,6 @@ export const PLAYER_SPLIT_STATS: readonly PlayerSplitStat[] = [
     format: formatPercentage,
   },
 ];
-
-function capitalise(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
 function lowerFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);

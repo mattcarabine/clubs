@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { fixtureFileName, type MatchType } from "../../app/ea/endpoints.ts";
-import type { EaMatch } from "../../app/ea/types.ts";
+import type { EaMatch, EaPlayerStats } from "../../app/ea/types.ts";
 import type { AddMatchBody } from "../fake-ea/control.ts";
 
 export const OUR_CLUB_ID = "332191";
@@ -185,6 +185,8 @@ export type Lineup = {
   rating?: number;
   /** EA's Position Group for the Appearance, e.g. "forward". */
   pos?: string;
+  /** Any other EA fields to set, as EA sends them: `{ shots: "4" }`. */
+  stats?: EaPlayerStats;
 }[];
 
 /**
@@ -196,7 +198,7 @@ export function withLineup(body: AddMatchBody, lineup: Lineup): AddMatchBody {
   const recorded = body.match.players[OUR_CLUB_ID];
   const template = Object.values(recorded)[0];
   body.match.players[OUR_CLUB_ID] = Object.fromEntries(
-    lineup.map(({ player, goals = 0, rating, pos = template.pos }) => [
+    lineup.map(({ player, goals = 0, rating, pos = template.pos, stats }) => [
       player.id,
       {
         ...template,
@@ -204,6 +206,7 @@ export function withLineup(body: AddMatchBody, lineup: Lineup): AddMatchBody {
         goals: String(goals),
         rating: rating === undefined ? template.rating : rating.toFixed(2),
         pos,
+        ...stats,
       },
     ]),
   );

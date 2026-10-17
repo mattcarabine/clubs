@@ -23,6 +23,12 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
+import {
+  type FormIndicator,
+  formIndicator,
+  type RecentChanges,
+  recentChanges,
+} from "./recent-change";
 import { memberSnapshots } from "./snapshots";
 import {
   getSquadMember,
@@ -47,6 +53,10 @@ export interface PlayerProfile {
   bestMatches: SquadAppearance[];
   /** Wins against Dropped Points over the filtered Appearances in the selected Position Groups. */
   outcomeSplit: PlayerOutcomeSplit;
+  /** The last 10 filtered Appearances in the selected Position Groups against the ones before (CLUBS-37). */
+  recentChanges: RecentChanges;
+  /** Hot or Cold form over the same Appearances (CLUBS-40), or null for neither. */
+  formIndicator: FormIndicator | null;
   /** Build changes from `members/stats` Snapshots, oldest first; not filtered. */
   build: BuildChange[];
   /** The latest `members/career/stats` Snapshot, or null before the first; not filtered. */
@@ -88,6 +98,8 @@ export async function getPlayerProfile(
     positionGroups: positionGroupSplit(appearances),
     bestMatches: bestAppearances(selected),
     outcomeSplit: playerOutcomeSplit(appearances, positionGroups),
+    recentChanges: recentChanges(selected, member.name),
+    formIndicator: formIndicator(selected),
     build: buildHistory(seasonSnapshots),
     career: latestCareer ? eaCareerTotals(latestCareer) : null,
     season: latestSeason ? eaSeasonTotals(latestSeason) : null,

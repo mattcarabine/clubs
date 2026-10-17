@@ -1,5 +1,11 @@
 // The design system. Import from "~/components"; see CLAUDE.md "Visual design".
 export { AppShell, crestUrl, NAV_ITEMS } from "./app-shell";
+export {
+  CampaignPanel,
+  type CampaignPanelProgress,
+  type CampaignPanelStage,
+} from "./campaign-panel";
+export { ChangeArrow } from "./change-arrow";
 export { BarChart, type BarDatum } from "./charts/bar-chart";
 export {
   ChartFrame,
@@ -15,6 +21,11 @@ export {
   StackedColumnChart,
   type StackedColumnSeries,
 } from "./charts/stacked-column-chart";
+export {
+  StepChart,
+  type StepChartPoint,
+  type StepMarker,
+} from "./charts/step-chart";
 export { WinRateBarChart } from "./charts/win-rate-bar-chart";
 export { Chip, ChipGroup, chipClassName } from "./chip";
 export { CrestMark } from "./crest-mark";
@@ -28,6 +39,7 @@ export {
 export { DnfBadge } from "./dnf-badge";
 export { EmptyState } from "./empty-state";
 export { FilterBar } from "./filter-bar";
+export { FormBadge } from "./form-badge";
 export { FormGuide } from "./form-guide";
 export { HeadToHeadBar, type HeadToHeadRecord } from "./head-to-head-bar";
 export { PageHeader, SectionHeading } from "./headings";
@@ -58,5 +70,6 @@ export { ScrollRail } from "./scroll-rail";
 export { SessionHeader, SessionRecord } from "./session-header";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";
+export { SmallSampleTag, Tag } from "./tag";
 export { Ticker, type TickerItem } from "./ticker";
 export { TopPerformersStrip } from "./top-performers-strip";

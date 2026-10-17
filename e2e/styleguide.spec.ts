@@ -54,6 +54,17 @@ test("every component section renders", async ({ page }) => {
   ).toBeVisible();
   await expect(section("stat-tile").getByText("Win rate")).toBeVisible();
   await expect(
+    section("campaign-panel").getByText(
+      "Promotion Series: 4 Wins in a row needed",
+    ),
+  ).toBeVisible();
+  await expect(
+    section("campaign-panel").getByText("Relegation Match next"),
+  ).toBeVisible();
+  await expect(
+    section("charts").getByRole("img", { name: "Division over time" }),
+  ).toBeVisible();
+  await expect(
     section("form-guide").getByRole("list", {
       name: "Form, oldest to newest: Win, Win, Draw, Loss, Win, Win",
     }),
@@ -88,6 +99,13 @@ test("every component section renders", async ({ page }) => {
       name: "Goals and assists by Appearance",
     }),
   ).toBeVisible();
+  await expect(
+    section("form-badge").locator('[title="Last 5: 8.1 avg vs 7.3 usual"]'),
+  ).toHaveCount(2);
+  await expect(
+    section("form-badge").getByText("Cold", { exact: true }),
+  ).toBeVisible();
+  await expect(section("tag").getByText("Small sample")).toBeVisible();
   await expect(
     section("empty-state").getByText("No Matches yet"),
   ).toBeVisible();

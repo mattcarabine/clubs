@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import {
   BarChart,
+  CampaignPanel,
   ChartFrame,
   ChartLegend,
   DataTable,
   type DataTableColumn,
   DnfBadge,
   EmptyState,
+  FormBadge,
   FormGuide,
   HeadToHeadBar,
   LastUpdatedBadge,
@@ -19,10 +21,14 @@ import {
   SectionHeading,
   SessionHeader,
   Skeleton,
+  SmallSampleTag,
   Sparkline,
   StackedColumnChart,
   StatGrid,
   StatTile,
+  StepChart,
+  type StepChartPoint,
+  Tag,
   Ticker,
   TopPerformersStrip,
 } from "~/components";
@@ -44,6 +50,23 @@ export function meta(_: Route.MetaArgs) {
 }
 
 // Sample data only: every component here is fed by props, never by a query.
+const DIVISION_LEVELS = [
+  "Division 5",
+  "Division 4",
+  "Division 3",
+  "Division 2",
+  "Division 1",
+  "Elite",
+];
+
+const DIVISION_STEPS: StepChartPoint[] = [
+  { label: "1 Nov", level: 0, note: "Season start" },
+  { label: "2 Nov", level: 1, marker: "up", note: "Promotion" },
+  { label: "5 Nov", level: 2, marker: "up", note: "Promotion" },
+  { label: "9 Nov", level: 1, marker: "down", note: "Relegation" },
+  { label: "12 Nov", level: 2, marker: "up", note: "Promotion" },
+];
+
 const NOW = new Date("2026-10-17T21:30:00Z");
 const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000);
 
@@ -504,6 +527,51 @@ export default function Styleguide() {
         </div>
       </Section>
 
+      <Section id="campaign-panel" title="CampaignPanel">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <CampaignPanel
+            division="Division 4"
+            progress={{
+              points: 7,
+              pointsTarget: 10,
+              chances: { left: 2, total: 3 },
+              league: ["W", "D", "L", "W"],
+              stage: { kind: "league" },
+            }}
+          />
+          <CampaignPanel
+            division="Division 2"
+            progress={{
+              points: 17,
+              pointsTarget: 17,
+              chances: { left: 3, total: 3 },
+              league: ["W", "W", "W", "D", "W", "W", "D"],
+              stage: {
+                kind: "promotion-series",
+                matches: 4,
+                winsNeeded: 4,
+                results: ["W", "W"],
+              },
+            }}
+          />
+          <CampaignPanel
+            division="Division 3"
+            progress={{
+              points: 5,
+              pointsTarget: 13,
+              chances: { left: 0, total: 3 },
+              league: ["L", "W", "D", "D", "L", "L"],
+              stage: { kind: "relegation-match", divisionBelow: "Division 4" },
+            }}
+          />
+          <CampaignPanel division="Division 2">
+            <p className="text-ink-soft text-sm">
+              Before tracking starts: the Division alone, with a note.
+            </p>
+          </CampaignPanel>
+        </div>
+      </Section>
+
       <Section id="player-chip" title="PlayerChip">
         <div className="flex flex-wrap gap-2">
           <PlayerChip
@@ -527,6 +595,26 @@ export default function Styleguide() {
           <LastUpdatedBadge updatedAt={minutesAgo(0)} now={NOW} />
           <LastUpdatedBadge updatedAt={minutesAgo(4)} now={NOW} />
           <LastUpdatedBadge updatedAt={minutesAgo(95)} now={NOW} />
+        </div>
+      </Section>
+
+      <Section id="form-badge" title="FormBadge">
+        <div className="flex flex-wrap items-center gap-3">
+          <FormBadge status="hot" detail="Last 5: 8.1 avg vs 7.3 usual" />
+          <FormBadge status="cold" detail="Last 5: 6.4 avg vs 7.2 usual" />
+          <FormBadge
+            status="hot"
+            detail="Last 5: 8.1 avg vs 7.3 usual"
+            compact
+          />
+        </div>
+      </Section>
+
+      <Section id="tag" title="Tag">
+        <div className="flex flex-wrap gap-3">
+          <Tag>Performance</Tag>
+          <Tag>Pass %</Tag>
+          <SmallSampleTag />
         </div>
       </Section>
 
@@ -572,6 +660,18 @@ export default function Styleguide() {
               label="Goals and assists by Appearance"
               labels={APPEARANCE_DATES}
               series={CONTRIBUTION_SERIES}
+            />
+          </ChartFrame>
+          <ChartFrame
+            title="Division timeline"
+            subtitle="Each Season start, Promotion and Relegation"
+          >
+            <StepChart
+              label="Division over time"
+              levels={DIVISION_LEVELS}
+              points={DIVISION_STEPS}
+              endLabel="Now"
+              markerLabels={{ up: "Promotion", down: "Relegation" }}
             />
           </ChartFrame>
         </div>
