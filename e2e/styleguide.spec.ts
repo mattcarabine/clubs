@@ -1,4 +1,6 @@
-import { expect, test } from "@playwright/test";
+// page.evaluate callbacks run in the browser, so they need DOM types.
+/// <reference lib="dom" />
+import { expect, test } from "./support/test.ts";
 
 // CLUBS-5: every design-system component renders on /styleguide, on phone and
 // desktop, without horizontal page scroll.
