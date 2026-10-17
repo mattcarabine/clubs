@@ -99,3 +99,13 @@ test("has no horizontal page scroll, down to a 375px phone", async ({
     expect(fits, `no horizontal scroll at ${width}px`).toBe(true);
   }
 });
+
+test("the head-to-head bar reads the record in words", async ({ page }) => {
+  await expect(
+    page
+      .getByTestId("sg-head-to-head-bar")
+      .getByText(
+        "A Bloo Bloo against Northside Athletic: 4 wins, 1 draw, 2 losses",
+      ),
+  ).toBeAttached();
+});
