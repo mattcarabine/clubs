@@ -94,6 +94,7 @@ Every component is presentational: it takes props and never fetches. Shared doma
 - `StatTile` inside `StatGrid`: a headline number with an optional delta (`tone` is whether the change is good for us) and a sparkline trend. Use `featured` on one tile at most.
 - `DataTable`: sortable via `sortValue`. The first column is the sticky row header; the table scrolls inside its own container on phones.
 - `FormGuide`: W/D/L run, oldest first. `OutcomeBadge` is one block.
+- `HeadToHeadBar`: Our Club and an Opponent either side of won/drawn/lost blocks, over a meter of their share. Use `size="hero"` for the lead strip; on phones the blocks drop below the names.
 - `PlayerChip`: a Squad Member's initials, name, Position Group and optional stat; `former` for Former Squad Members, `to` to link.
 - `LastUpdatedBadge`: "Updated 4 min ago" from the latest Poll; it turns amber and says "Stale" after 15 minutes (three missed Polls).
 - `EmptyState`: says what is missing and what will fill it.

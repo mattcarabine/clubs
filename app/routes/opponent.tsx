@@ -1,0 +1,229 @@
+import { env } from "cloudflare:workers";
+import { data, Link } from "react-router";
+
+import {
+  DataTable,
+  type DataTableColumn,
+  EmptyState,
+  FilterBar,
+  FormGuide,
+  HeadToHeadBar,
+  numberColumn,
+  PageHeader,
+  ScoreBar,
+  SectionHeading,
+  StatGrid,
+  StatTile,
+} from "~/components";
+import { getDb } from "~/db/client";
+import { formatLondonDate } from "~/lib/london-time";
+import {
+  formatCount,
+  formatDecimal,
+  formatPercentage,
+  formatSigned,
+} from "~/lib/number-format";
+import {
+  getOpponent,
+  type LeaderboardRow,
+  listMatches,
+  squadLeaderboard,
+  statsFilterFromRequest,
+  summariseRecord,
+} from "~/stats";
+
+import type { Route } from "./+types/opponent";
+
+/** How many recent results the form strip in the header shows. */
+const FORM_LENGTH = 5;
+
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [
+    {
+      title: `A Bloo Bloo — ${loaderData?.opponent.name ?? "Opponent"}`,
+    },
+  ];
+}
+
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const db = getDb(env.DB);
+  const filter = statsFilterFromRequest(request);
+  const scope = { opponentClubId: params.clubId };
+  const [opponent, matches, performers] = await Promise.all([
+    getOpponent(db, params.clubId),
+    listMatches(db, filter, scope),
+    // Everyone who has played them counts, including Former Squad Members.
+    squadLeaderboard(db, filter, {
+      ...scope,
+      minAppearances: 1,
+      includeFormer: true,
+    }),
+  ]);
+  if (!opponent) throw data("Not Found", { status: 404 });
+  return {
+    clubName: env.EA_CLUB_NAME,
+    filter,
+    opponent,
+    matches,
+    record: summariseRecord(matches),
+    performers,
+  };
+}
+
+const PERFORMER_COLUMNS: DataTableColumn<LeaderboardRow>[] = [
+  {
+    id: "name",
+    header: "Squad Member",
+    cell: (p) => (
+      <span className="inline-flex items-baseline gap-2">
+        <Link
+          to={`/players/${p.playerId}`}
+          className="text-sound-300 hover:text-ink hover:underline"
+        >
+          {p.name}
+        </Link>
+        {p.former && (
+          <span className="font-normal text-ink-muted text-xs">Former</span>
+        )}
+      </span>
+    ),
+    sortValue: (p) => p.name,
+    firstSort: "asc",
+  },
+  numberColumn("appearances", "Apps", (p) => p.appearances),
+  numberColumn("goals", "G", (p) => p.goals),
+  numberColumn("assists", "A", (p) => p.assists),
+  numberColumn("goalContributions", "G+A", (p) => p.goalContributions),
+  numberColumn(
+    "averageRating",
+    "Rating",
+    (p) => p.averageRating,
+    formatDecimal,
+  ),
+  numberColumn("manOfTheMatch", "MOTM", (p) => p.manOfTheMatch),
+];
+
+export default function Opponent({ loaderData }: Route.ComponentProps) {
+  const { clubName, filter, opponent, matches, record, performers } =
+    loaderData;
+  const firstMet = matches.at(-1)?.playedAt;
+  const form = matches
+    .slice(0, FORM_LENGTH)
+    .reverse()
+    .map((m) => m.outcome);
+
+  return (
+    <>
+      <PageHeader
+        title={opponent.name}
+        subtitle={
+          firstMet
+            ? `Head-to-head since ${formatLondonDate(firstMet)}`
+            : "Head-to-head"
+        }
+        aside={<FormGuide results={form} size="md" />}
+      />
+      <FilterBar filter={filter} />
+
+      {matches.length === 0 ? (
+        <EmptyState
+          title="No Matches against them"
+          description="No Matches against this Opponent fit these filters. Widen the Match Types or dates."
+          action={
+            <Link to="/opponents" className="text-sound-300 hover:underline">
+              Back to all Opponents
+            </Link>
+          }
+        />
+      ) : (
+        <div className="grid gap-8">
+          <section aria-label="Head-to-head record" className="grid gap-3">
+            <HeadToHeadBar
+              size="hero"
+              label="Head-to-head"
+              status={formatCount(record.played, "Match", "Matches")}
+              ourClub={clubName}
+              opponent={opponent.name}
+              record={record}
+            />
+            <StatGrid>
+              <StatTile
+                label="Goal difference"
+                value={formatSigned(record.goalDifference)}
+                featured
+              />
+              <StatTile label="Goals for" value={record.goalsFor} />
+              <StatTile label="Goals against" value={record.goalsAgainst} />
+              <StatTile
+                label="Win rate"
+                value={formatPercentage(record.winPercentage)}
+              />
+            </StatGrid>
+          </section>
+
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+            <section aria-label="Matches" className="min-w-0">
+              <SectionHeading
+                title="Matches"
+                subtitle="Every meeting, newest first."
+              />
+              <ol className="flex flex-col gap-4">
+                {matches.map((match) => (
+                  <li key={match.matchId}>
+                    <Link
+                      to={`/matches/${match.matchId}`}
+                      className="block transition-[filter] hover:brightness-110"
+                    >
+                      <ScoreBar
+                        home={{
+                          name: clubName,
+                          score: match.goalsFor,
+                          isOurClub: true,
+                        }}
+                        away={{
+                          name: opponent.name,
+                          score: match.goalsAgainst,
+                        }}
+                        label={match.matchType}
+                        status={
+                          <>
+                            {match.dnf && <span>DNF</span>}
+                            <time dateTime={match.playedAt.toISOString()}>
+                              {formatLondonDate(match.playedAt)}
+                            </time>
+                          </>
+                        }
+                        outcome={match.outcome}
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            </section>
+
+            {/* Stays in view beside a long Match list on desktop. */}
+            <section
+              aria-label="Top performers"
+              className="min-w-0 lg:sticky lg:top-6 lg:self-start"
+            >
+              <SectionHeading
+                title="Top performers"
+                subtitle="Our Squad Members in these Matches, most goals and assists first."
+              />
+              <DataTable
+                caption="Top performers against them"
+                columns={PERFORMER_COLUMNS}
+                rows={performers}
+                rowKey={(p) => p.playerId}
+                initialSort={{
+                  columnId: "goalContributions",
+                  direction: "desc",
+                }}
+              />
+            </section>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
