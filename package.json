@@ -6,7 +6,7 @@
     "dev": "react-router dev",
     "build": "react-router build",
     "preview": "pnpm run build && vite preview",
-    "deploy": "pnpm run build && wrangler deploy",
+    "deploy": "pnpm run build && pnpm run db:migrate:remote && wrangler deploy",
     "typecheck": "wrangler types && react-router typegen && tsc -b",
     "lint": "biome check .",
     "format": "biome check --write .",
