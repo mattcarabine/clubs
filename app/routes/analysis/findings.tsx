@@ -1,3 +1,4 @@
+import { SmallSampleTag, Tag } from "~/components";
 import type { Finding } from "~/stats/outcome-split";
 
 type FindingListProps = {
@@ -30,14 +31,8 @@ export function FindingList({ findings }: FindingListProps) {
           </span>
           <div className="flex min-w-0 flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="clip-slant bg-shale-800 px-2 py-0.5 font-display font-bold text-ink-soft text-xs uppercase tracking-wide [--slant:0.2rem]">
-                {finding.factor}
-              </span>
-              {finding.smallSample && (
-                <span className="clip-slant bg-shale-700 px-2 py-0.5 font-display font-bold text-ink text-xs uppercase tracking-wide [--slant:0.2rem]">
-                  Small sample
-                </span>
-              )}
+              <Tag>{finding.factor}</Tag>
+              {finding.smallSample && <SmallSampleTag />}
             </div>
             <p
               className={`text-ink ${i === 0 ? "font-semibold text-lg sm:text-xl" : ""}`}

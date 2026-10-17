@@ -5,6 +5,7 @@ export {
   type CampaignPanelProgress,
   type CampaignPanelStage,
 } from "./campaign-panel";
+export { ChangeArrow } from "./change-arrow";
 export { BarChart, type BarDatum } from "./charts/bar-chart";
 export {
   ChartFrame,
@@ -66,5 +67,6 @@ export {
 export { ScrollRail } from "./scroll-rail";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";
+export { SmallSampleTag, Tag } from "./tag";
 export { Ticker, type TickerItem } from "./ticker";
 export { TopPerformersStrip } from "./top-performers-strip";
