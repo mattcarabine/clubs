@@ -13,7 +13,9 @@ pnpm exec biome check --staged --no-errors-on-unmatched
 # Schema changes must ship with their generated migration.
 if echo "$staged" | grep -q '^app/db/schema.ts$'; then
   pnpm exec drizzle-kit generate >/dev/null
-  if [ -n "$(git status --porcelain -- migrations)" ]; then
+  # Only unstaged or untracked changes count: a staged migration is the match.
+  if ! git diff --quiet -- migrations ||
+    [ -n "$(git ls-files --others --exclude-standard -- migrations)" ]; then
     echo "app/db/schema.ts changed without a matching migration; one was generated in migrations/. Review and stage it." >&2
     exit 1
   fi

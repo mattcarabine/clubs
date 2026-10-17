@@ -17,7 +17,10 @@ import type { AddMatchBody } from "../fake-ea/control.ts";
 
 export const OUR_CLUB_ID = "332191";
 
-const FIXTURES_DIR = path.resolve(import.meta.dirname, "../../fixtures/ea");
+export const FIXTURES_DIR = path.resolve(
+  import.meta.dirname,
+  "../../fixtures/ea",
+);
 
 /** The recorded league Matches, newest first. */
 export function recordedLeagueMatches(): EaMatch[] {
