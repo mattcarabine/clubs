@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router";
 
+import { fadeAttributes, useScrollFade } from "~/lib/use-scroll-fade";
 import type { loader as rootLoader } from "~/root";
 
 import {
@@ -59,6 +60,7 @@ export function FilterBar(props: FilterBarProps) {
   const seasons = useSeasonNumbers();
   const [pickingDates, setPickingDates] = useState(false);
   const pickerId = useId();
+  const [railRef, railEdges] = useScrollFade<HTMLDivElement>();
   const source =
     pending && props.source !== undefined
       ? parseStatsSource(pending)
@@ -115,8 +117,13 @@ export function FilterBar(props: FilterBarProps) {
       aria-busy={pending !== null}
       className="mb-6 border-shale-700 border-t-2 bg-shale-900"
     >
-      {/* One scrolling rail on phones, so the filters take one row, not a screen. */}
-      <div className="flex items-end gap-x-6 gap-y-3 overflow-x-auto px-3 py-3 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible sm:px-4">
+      {/* One scrolling rail on phones, so the filters take one row, not a
+          screen; its clipped edge fades so it reads as scrollable. */}
+      <div
+        ref={railRef}
+        {...fadeAttributes(railEdges)}
+        className="scroll-fade flex items-end gap-x-6 gap-y-3 overflow-x-auto px-3 py-3 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-4"
+      >
         {sourceToggle}
 
         <FilterGroup label="Match Type">

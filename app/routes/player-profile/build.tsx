@@ -1,6 +1,5 @@
-import { EmptyState } from "~/components";
+import { EmptyState, LondonTime } from "~/components";
 import type { PositionGroup } from "~/lib/domain";
-import { formatLondonDate } from "~/lib/london-time";
 import { formatOptional, NO_VALUE } from "~/lib/number-format";
 import type { BuildChange, BuildState } from "~/stats";
 
@@ -72,7 +71,7 @@ export function BuildProgression({ history }: BuildProgressionProps) {
               {entry.position ?? NO_VALUE}
             </span>
             <span className="block text-ink-muted text-sm">
-              {formatLondonDate(entry.takenAt)}
+              <LondonTime date={entry.takenAt} format="day" />
             </span>
           </span>
           <OverallChange change={entry.overallChange} />

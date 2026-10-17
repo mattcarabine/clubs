@@ -95,6 +95,37 @@
   clip-path: polygon(var(--slant) 0, 100% 0, 100% 100%, 0 100%);
 }
 
+/*
+ * Fades a sideways scroller's content out at an edge with more past it, so a
+ * clipped row reads as "scrolls" rather than "cut off". A mask, not a colour
+ * gradient: it shows whatever surface sits behind. `useScrollFade` sets the
+ * data attributes.
+ */
+@utility scroll-fade {
+  &[data-fade-start],
+  &[data-fade-end] {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black var(--fade-start, 0px),
+      black calc(100% - var(--fade-end, 0px)),
+      transparent
+    );
+  }
+  &[data-fade-start] {
+    --fade-start: 1.5rem;
+  }
+  &[data-fade-end] {
+    --fade-end: 1.5rem;
+  }
+  /* A mask clips outlines: drop it while a keyboard user is in the scroller,
+     so the focus ring and the focused control show in full. */
+  &:focus-visible,
+  &:has(:focus-visible) {
+    mask-image: none;
+  }
+}
+
 /* Numbers that line up in columns. Big standalone numerals stay proportional. */
 @utility tabular {
   font-variant-numeric: tabular-nums;

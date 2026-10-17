@@ -7,11 +7,11 @@ import {
   EmptyState,
   FilterBar,
   HeadToHeadBar,
+  LondonTime,
   numberColumn,
   PageHeader,
 } from "~/components";
 import { getDb } from "~/db/client";
-import { formatLondonDate } from "~/lib/london-time";
 import {
   formatCount,
   formatPercentage,
@@ -41,14 +41,10 @@ const COLUMNS: DataTableColumn<OpponentRecord>[] = [
     id: "opponent",
     header: "Opponent",
     cell: (o) => (
-      <Link
-        to={`/opponents/${o.clubId}`}
-        // Long club names truncate on phones so the stats stay in view.
-        className="block max-w-36 truncate text-sound-300 hover:text-ink hover:underline sm:max-w-none"
-        title={o.name}
-      >
+      // Long club names truncate on phones so the stats stay in view.
+      <span className="block max-w-36 truncate sm:max-w-none" title={o.name}>
         {o.name}
-      </Link>
+      </span>
     ),
     sortValue: (o) => o.name,
     firstSort: "asc",
@@ -75,11 +71,7 @@ const COLUMNS: DataTableColumn<OpponentRecord>[] = [
     id: "lastMet",
     header: "Last met",
     align: "right",
-    cell: (o) => (
-      <time dateTime={o.lastMet.toISOString()}>
-        {formatLondonDate(o.lastMet)}
-      </time>
-    ),
+    cell: (o) => <LondonTime date={o.lastMet} format="day" />,
     sortValue: (o) => o.lastMet.getTime(),
   },
 ];
@@ -122,6 +114,7 @@ export default function Opponents({ loaderData }: Route.ComponentProps) {
             columns={COLUMNS}
             rows={opponents}
             rowKey={(o) => o.clubId}
+            rowHref={(o) => `/opponents/${o.clubId}`}
             initialSort={{ columnId: "played", direction: "desc" }}
           />
         </div>

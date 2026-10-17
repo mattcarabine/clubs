@@ -1,5 +1,15 @@
 import { type ReactNode, useState } from "react";
+import { Link } from "react-router";
+
 import { type SortDirection, type SortValue, sortBy } from "~/lib/sort";
+import { fadeAttributes, useScrollFade } from "~/lib/use-scroll-fade";
+
+import {
+  LINKED_ROW,
+  LINKED_ROW_HEADER,
+  ROW_HEADER_LINK,
+  useRowLink,
+} from "./row-link";
 
 export type DataTableColumn<T> = {
   id: string;
@@ -22,6 +32,11 @@ type DataTableProps<T> = {
   columns: readonly DataTableColumn<T>[];
   rows: readonly T[];
   rowKey: (row: T) => string;
+  /**
+   * Makes each row a link: the row header becomes the link (for keyboards and
+   * screen readers) and a click anywhere on the row follows it.
+   */
+  rowHref?: (row: T) => string;
   initialSort?: DataTableSort;
   /** Shown instead of the table when there are no rows. */
   empty?: ReactNode;
@@ -36,10 +51,13 @@ export function DataTable<T>({
   columns,
   rows,
   rowKey,
+  rowHref,
   initialSort,
   empty,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState(initialSort);
+  const [scrollerRef, edges] = useScrollFade<HTMLElement>();
+  const rowLink = useRowLink();
   const sortColumn = columns.find((c) => c.id === sort?.columnId);
   const sorted =
     sort && sortColumn?.sortValue
@@ -60,7 +78,10 @@ export function DataTable<T>({
   return (
     <div className="min-w-0 border-shale-700 border-t-2 bg-shale-900">
       <section
-        className="overflow-x-auto"
+        ref={scrollerRef}
+        // Only the end fades: the pinned first column must stay crisp.
+        {...fadeAttributes({ start: false, end: edges.end })}
+        className="scroll-fade overflow-x-auto"
         // Focusable so keyboard users can scroll it sideways.
         // biome-ignore lint/a11y/noNoninteractiveTabindex: scrollable region
         tabIndex={0}
@@ -79,16 +100,20 @@ export function DataTable<T>({
                     scope="col"
                     aria-sort={direction && ARIA_SORT[direction]}
                     className={[
-                      "whitespace-nowrap border-shale-700 border-b bg-shale-800 px-3 py-2 font-display font-bold text-base text-ink-muted uppercase tracking-wide",
+                      "border-shale-700 border-b bg-shale-800 px-2 py-2 font-display font-bold text-base text-ink-muted uppercase leading-tight tracking-wide first:pl-3 sm:px-3",
                       alignClass(column.align),
-                      i === 0 ? "sticky left-0 z-10" : "",
+                      // The pinned header may wrap on phones, so a long label
+                      // ("Squad Member") never widens the pinned column.
+                      i === 0
+                        ? "sticky left-0 z-10 sm:whitespace-nowrap"
+                        : "whitespace-nowrap",
                     ].join(" ")}
                   >
                     {column.sortValue ? (
                       <button
                         type="button"
                         onClick={() => toggle(column)}
-                        className={`inline-flex items-center gap-1 uppercase hover:text-ink ${direction ? "text-ink" : ""}`}
+                        className={`inline-flex items-center gap-1 text-left uppercase hover:text-ink ${direction ? "text-ink" : ""}`}
                       >
                         {column.header}
                         <SortIcon direction={direction} />
@@ -102,28 +127,42 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {sorted.map((row) => (
-              <tr key={rowKey(row)} className="group">
-                {columns.map((column, i) => {
-                  const Cell = i === 0 ? "th" : "td";
-                  return (
-                    <Cell
-                      key={column.id}
-                      scope={i === 0 ? "row" : undefined}
-                      className={[
-                        "whitespace-nowrap border-shale-700 border-b px-3 py-2.5 group-last:border-b-0 group-hover:bg-shale-800",
-                        alignClass(column.align),
-                        i === 0
-                          ? "sticky left-0 z-10 bg-shale-900 font-semibold text-ink shadow-[1px_0_0_var(--color-shale-700)]"
-                          : "text-ink-soft",
-                      ].join(" ")}
-                    >
-                      {column.cell(row)}
-                    </Cell>
-                  );
-                })}
-              </tr>
-            ))}
+            {sorted.map((row) => {
+              const href = rowHref?.(row);
+              return (
+                <tr
+                  key={rowKey(row)}
+                  className={href ? LINKED_ROW : "group"}
+                  onClick={rowLink(href)}
+                >
+                  {columns.map((column, i) => {
+                    const Cell = i === 0 ? "th" : "td";
+                    const content = column.cell(row);
+                    return (
+                      <Cell
+                        key={column.id}
+                        scope={i === 0 ? "row" : undefined}
+                        className={[
+                          "whitespace-nowrap border-shale-700 border-b px-2 py-2.5 group-last:border-b-0 group-hover:bg-shale-800 first:pl-3 sm:px-3",
+                          alignClass(column.align),
+                          i === 0
+                            ? `sticky left-0 z-10 bg-shale-900 font-semibold text-ink shadow-[1px_0_0_var(--color-shale-700)] ${href ? LINKED_ROW_HEADER : ""}`
+                            : "text-ink-soft",
+                        ].join(" ")}
+                      >
+                        {i === 0 && href ? (
+                          <Link to={href} className={ROW_HEADER_LINK}>
+                            {content}
+                          </Link>
+                        ) : (
+                          content
+                        )}
+                      </Cell>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>

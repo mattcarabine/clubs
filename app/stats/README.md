@@ -43,7 +43,7 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 | `ea-totals.ts` | `eaMemberTotals` (each Squad Member's latest `members/stats` and `members/career/stats` Snapshot, in one query), the pure `eaSeasonTotals` / `eaCareerTotals` that read a Snapshot into numbers, and `eaCleanSheets`. Not filtered. |
 | `source.ts` | `StatsSource` (`"recorded"` or `"ea"`) and its URL format: `parseStatsSource`, `statsSourceFromRequest`, `writeStatsSource`, `STATS_SOURCE_LABEL`. |
 
-Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (`formatLondonDateTime`, `londonParts`, `londonDateKey`, ...).
+Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (`formatLondonDateTime` and the rest of the time-format convention in CLAUDE.md, `londonParts`, `londonDateKey`, ...).
 
 ## The filter
 

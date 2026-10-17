@@ -4,15 +4,19 @@ import { data, Link } from "react-router";
 
 import {
   BackLink,
+  LINKED_ROW,
+  LINKED_ROW_HEADER,
+  LondonTime,
   MatchScoreBar,
   PageHeader,
   PlayerChip,
+  ROW_HEADER_LINK,
   RouteError,
   SectionHeading,
+  useRowLink,
 } from "~/components";
 import { getDb } from "~/db/client";
 import type { PositionGroup } from "~/lib/domain";
-import { formatLondonDateTime } from "~/lib/london-time";
 import { formatDecimal, formatPercentage, NO_VALUE } from "~/lib/number-format";
 import {
   getMatch,
@@ -62,11 +66,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
       <BackLink to="/matches">All Matches</BackLink>
       <PageHeader
         title={`v ${opponent.name}`}
-        subtitle={
-          <time dateTime={match.playedAt.toISOString()}>
-            {formatLondonDateTime(match.playedAt)}
-          </time>
-        }
+        subtitle={<LondonTime date={match.playedAt} format="moment" />}
         aside={
           <Link
             to={`/opponents/${opponent.clubId}`}
@@ -93,7 +93,10 @@ export default function Match({ loaderData }: Route.ComponentProps) {
       </section>
 
       <div className="grid gap-8 lg:grid-cols-3">
-        <section aria-label="Match stats" className="min-w-0">
+        <section
+          aria-label="Match stats"
+          className="min-w-0 lg:sticky lg:top-24 lg:self-start"
+        >
           <SectionHeading title="Match stats" />
           <TeamComparison
             clubName={clubName}
@@ -407,20 +410,20 @@ function Lineup({
 }
 
 function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
+  const rowLink = useRowLink();
+  // Our Squad Members' rows link to their profiles; Opponents' players have none.
+  const href = a.isOurClub ? playerPath(a.playerId) : undefined;
   const cell =
     "whitespace-nowrap border-shale-700 border-b px-2.5 py-2.5 text-right group-hover:bg-shale-800";
   return (
-    <tr className="group">
+    <tr className={href ? LINKED_ROW : "group"} onClick={rowLink(href)}>
       <th
         scope="row"
-        className="sticky left-0 z-10 whitespace-nowrap border-shale-700 border-b bg-shale-900 px-3 py-2.5 text-left font-semibold text-ink shadow-[1px_0_0_var(--color-shale-700)] group-hover:bg-shale-800"
+        className={`sticky left-0 z-10 whitespace-nowrap border-shale-700 border-b bg-shale-900 px-3 py-2.5 text-left font-semibold text-ink shadow-[1px_0_0_var(--color-shale-700)] group-hover:bg-shale-800 ${href ? LINKED_ROW_HEADER : ""}`}
       >
         <span className="flex items-center gap-2">
-          {a.isOurClub ? (
-            <Link
-              to={playerPath(a.playerId)}
-              className="text-sound-300 underline-offset-4 hover:underline"
-            >
+          {href ? (
+            <Link to={href} className={ROW_HEADER_LINK}>
               {a.name}
             </Link>
           ) : (

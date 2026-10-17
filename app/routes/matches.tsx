@@ -6,15 +6,12 @@ import {
   EmptyState,
   FilterBar,
   FormGuide,
+  LondonTime,
   MatchScoreBar,
   PageHeader,
 } from "~/components";
 import { getDb } from "~/db/client";
-import {
-  formatLondonDate,
-  formatLondonTime,
-  londonDateKey,
-} from "~/lib/london-time";
+import { formatLondonDate, londonDateKey } from "~/lib/london-time";
 import { pageCount, parsePage, withPage } from "~/lib/pagination";
 import {
   countMatches,
@@ -124,7 +121,7 @@ function MatchDay({
               <MatchScoreBar
                 clubName={clubName}
                 match={match}
-                status={formatLondonTime(match.playedAt)}
+                status={<LondonTime date={match.playedAt} format="time" />}
               />
             </Link>
           </li>
