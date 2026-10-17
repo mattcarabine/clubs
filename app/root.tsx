@@ -14,7 +14,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { AppShell, crestUrl, isNotFound, PageHeader } from "~/components";
 import { getDb } from "~/db/client";
-import { listSeasons } from "~/stats";
+import { firstMatchDate, listSeasons } from "~/stats";
 
 const FALLBACK_CLUB_NAME = "A Bloo Bloo";
 
@@ -45,11 +45,17 @@ export function meta({ error }: Route.MetaArgs) {
 }
 
 export async function loader() {
-  const seasons = await listSeasons(getDb(env.DB));
+  const db = getDb(env.DB);
+  const [seasons, firstMatch] = await Promise.all([
+    listSeasons(db),
+    firstMatchDate(db),
+  ]);
   return {
     clubName: env.EA_CLUB_NAME,
     /** Season numbers, oldest first, for every page's FilterBar. */
     seasons: seasons.map((season) => season.number),
+    /** The FilterBar's date picker mutes the days before it. */
+    firstMatchDate: firstMatch,
   };
 }
 

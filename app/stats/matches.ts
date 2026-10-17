@@ -1,10 +1,11 @@
 /** Match queries: lists, counts, a single Match with both line-ups, and the club record. */
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, min } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
 import { appearances, clubs, matches, players } from "~/db/schema";
 import type { MatchKind, MatchResult } from "~/ea/parse";
 import type { MatchType, Outcome, PositionGroup } from "~/lib/domain";
+import { type CalendarDate, londonDateKey } from "~/lib/london-time";
 import { displayName } from "~/roster";
 
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
@@ -103,6 +104,15 @@ export async function latestMatch(
 ): Promise<MatchSummary | null> {
   const [match] = await listMatches(db, filter, { ...scope, limit: 1 });
   return match ?? null;
+}
+
+/** The London date of the first recorded Match, or null before any. Ignores the filter. */
+export async function firstMatchDate(db: Db): Promise<CalendarDate | null> {
+  const [row] = await db
+    .select({ playedAt: min(matches.playedAt) })
+    .from(matches)
+    .where(isShownMatch);
+  return row?.playedAt ? londonDateKey(row.playedAt) : null;
 }
 
 /** Our Club's W/D/L, goals and points over the Matches a filter selects. */

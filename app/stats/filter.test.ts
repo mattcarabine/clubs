@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_STATS_FILTER,
+  dateRangeLabel,
   dateWindow,
   isDefaultStatsFilter,
   parseStatsFilter,
+  presetRange,
   type StatsFilter,
   statsFilterFromRequest,
   toggleMatchType,
@@ -266,5 +268,32 @@ describe("dateWindow", () => {
     );
     // BST ends on 25 Oct, so 26 Oct starts at midnight UTC.
     expect(window.end?.toISOString()).toBe("2026-10-26T00:00:00.000Z");
+  });
+});
+
+describe("presetRange", () => {
+  it("covers today and the days before it", () => {
+    expect(presetRange("7d", "2026-10-18")).toEqual({
+      from: "2026-10-12",
+      to: "2026-10-18",
+    });
+    expect(presetRange("1y", "2026-10-18").from).toBe("2025-10-19");
+  });
+});
+
+describe("dateRangeLabel", () => {
+  const now = new Date("2026-10-18T12:00:00Z");
+
+  it("names each kind of range", () => {
+    expect(dateRangeLabel({ kind: "all" }, now)).toBe("All dates");
+    expect(dateRangeLabel({ kind: "preset", preset: "1y" }, now)).toBe(
+      "Last 12 months",
+    );
+    expect(
+      dateRangeLabel(
+        { kind: "custom", from: "2026-10-03", to: "2026-10-07" },
+        now,
+      ),
+    ).toBe("3 Oct – 7 Oct");
   });
 });
