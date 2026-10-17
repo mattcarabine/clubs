@@ -192,27 +192,6 @@ test("Last 10 counts only the 10 most recent Matches", async ({
   await expect(tile(page, "W-D-L")).toHaveText("4-0-6");
 });
 
-test("the minimum Appearances stepper hides Squad Members below it", async ({
-  page,
-  fakeEa,
-  triggerPoll,
-}) => {
-  for (let i = 0; i < 3; i++) await fakeEa.addMatch(win());
-  await triggerPoll();
-
-  await page.goto("/test/stats");
-  const squad = page.getByRole("table", { name: "Squad Members" });
-  await expect(squad.getByRole("row").nth(1)).toBeAttached();
-
-  await page.getByRole("button", { name: "More minimum Appearances" }).click();
-  await expect.poll(() => searchParam(page, "minApps")).toBe("4");
-  await expect(page.getByText("No Squad Members")).toBeVisible();
-
-  await page.getByRole("button", { name: "Fewer minimum Appearances" }).click();
-  await expect.poll(() => searchParam(page, "minApps")).toBeNull();
-  await expect(squad.getByRole("row").nth(1)).toBeAttached();
-});
-
 test("on a phone the FilterBar is one scrolling row, not a screenful", async ({
   page,
 }) => {

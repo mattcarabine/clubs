@@ -7,7 +7,7 @@ import type { MatchType, Outcome } from "~/lib/domain";
 import { displayName, isFormerSquadMember } from "~/roster";
 
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
-import { DEFAULT_MIN_APPEARANCES, type StatsFilter } from "./filter";
+import type { StatsFilter } from "./filter";
 import { isOurAppearance, matchScope, type ScopeOptions } from "./scope";
 import {
   type AppearanceStats,
@@ -91,8 +91,6 @@ export interface LeaderboardRow extends PlayerTotals {
 }
 
 export interface LeaderboardOptions extends ScopeOptions {
-  /** Hide Squad Members with fewer Appearances (default 3). */
-  minAppearances?: number;
   /** Include Former Squad Members (default: current squad only). */
   includeFormer?: boolean;
 }
@@ -101,11 +99,7 @@ export interface LeaderboardOptions extends ScopeOptions {
 export async function squadLeaderboard(
   db: Db,
   filter: StatsFilter,
-  {
-    minAppearances = DEFAULT_MIN_APPEARANCES,
-    includeFormer = false,
-    ...scope
-  }: LeaderboardOptions = {},
+  { includeFormer = false, ...scope }: LeaderboardOptions = {},
 ): Promise<LeaderboardRow[]> {
   const byPlayer = groupBy(
     await squadAppearances(db, filter, scope),
@@ -118,10 +112,7 @@ export async function squadLeaderboard(
       former: isFormerSquadMember(playerId),
       ...summariseAppearances(apps),
     }))
-    .filter(
-      (row) =>
-        row.appearances >= minAppearances && (includeFormer || !row.former),
-    )
+    .filter((row) => includeFormer || !row.former)
     .sort(
       (a, b) => b.appearances - a.appearances || a.name.localeCompare(b.name),
     );
