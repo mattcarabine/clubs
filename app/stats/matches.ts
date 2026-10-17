@@ -121,7 +121,7 @@ export async function listKickoffs(db: Db): Promise<Kickoff[]> {
     .select({ matchId: matches.matchId, playedAt: matches.playedAt })
     .from(matches)
     .where(isShownMatch)
-    .orderBy(asc(matches.playedAt));
+    .orderBy(asc(matches.playedAt), asc(matches.matchId));
 }
 
 /** One player's line in a Match, on either side. */

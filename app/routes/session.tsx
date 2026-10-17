@@ -1,7 +1,7 @@
 /**
- * A Session (CLUBS-34): one night's run of Matches, whatever the filter. Its
+ * A Session (CLUBS-34): one evening's run of Matches, whatever the filter. Its
  * record and Matches in order, a leaderboard of the Squad Members who played,
- * the night's running points, and its per-90s beside Our Club's usual.
+ * the running points across it, and its per-90s beside Our Club's usual.
  */
 import { env } from "cloudflare:workers";
 import { data, Link } from "react-router";
@@ -129,8 +129,8 @@ export default function Session({ loaderData }: Route.ComponentProps) {
 
         {/* One Match is a one-point chart: say nothing rather than draw it. */}
         {matches.length > 1 && (
-          <section aria-label="The night's form" className="min-w-0">
-            <SectionHeading title="The night's form" />
+          <section aria-label="Session form" className="min-w-0">
+            <SectionHeading title="Session form" />
             <ChartFrame
               title={formatCount(record.points, "point", "points")}
               subtitle="Running points, 3 for a Win and 1 for a draw"

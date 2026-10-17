@@ -106,7 +106,7 @@ function SessionMatches({
         matchCount={session.matchCount}
         shownCount={matches.length}
         record={session.record}
-        // The night's results, oldest first like every form strip.
+        // The Session's results, oldest first like every form strip.
         form={matches.map((m) => m.outcome).reverse()}
         topPerformer={session.topPerformer}
       />

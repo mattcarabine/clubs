@@ -237,7 +237,7 @@ test("the Session page shows its Matches in order, a leaderboard and its record"
   await expect(cells(TREV.name).nth(1)).toHaveText("0");
   await expect(cells(TREV.name).nth(4)).toHaveText("6.5");
   await expect(
-    page.getByRole("region", { name: "The night's form" }),
+    page.getByRole("region", { name: "Session form" }),
   ).toContainText("3 points");
 });
 
