@@ -33,11 +33,13 @@
     "@cloudflare/vite-plugin": "^1.64.0",
     "@playwright/test": "^1.64.1",
     "@react-router/dev": "^8.4.0",
+    "@secretlint/secretlint-rule-preset-recommend": "^13.0.7",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "drizzle-kit": "^0.31.11",
+    "secretlint": "^13.0.7",
     "simple-git-hooks": "^2.14.0",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
@@ -50,7 +52,7 @@
     "node": ">=24"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm exec biome check --staged --no-errors-on-unmatched && pnpm typecheck",
+    "pre-commit": "sh scripts/pre-commit.sh",
     "pre-push": "pnpm typecheck && pnpm lint && pnpm test"
   }
 }
