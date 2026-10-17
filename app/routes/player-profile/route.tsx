@@ -14,6 +14,7 @@ import {
   LineChart,
   PageHeader,
   SectionHeading,
+  StackedColumnChart,
   StatGrid,
   StatTile,
 } from "~/components";
@@ -26,7 +27,6 @@ import { AllTimePanel } from "./all-time-panel";
 import { BestMatches } from "./best-matches";
 import { BuildPlate, BuildProgression } from "./build";
 import { formatPercent, formatRating } from "./format";
-import { GoalContributionsChart } from "./goal-contributions-chart";
 import { PositionGroupTable } from "./position-group-table";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -158,14 +158,19 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
               subtitle={`${totals.goals} goals and ${totals.assists} assists, by Appearance`}
               legend={<ChartLegend entries={CONTRIBUTION_SERIES} mark="box" />}
             >
-              <GoalContributionsChart
+              <StackedColumnChart
                 label="Goal contributions"
-                data={form.map((p, i) => ({
-                  id: p.matchId,
-                  label: labels[i],
-                  goals: p.goals,
-                  assists: p.assists,
-                }))}
+                labels={labels}
+                series={[
+                  {
+                    ...CONTRIBUTION_SERIES[0],
+                    values: form.map((p) => p.goals),
+                  },
+                  {
+                    ...CONTRIBUTION_SERIES[1],
+                    values: form.map((p) => p.assists),
+                  },
+                ]}
               />
             </ChartFrame>
             <ChartFrame

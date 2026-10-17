@@ -73,6 +73,13 @@ test("the rating chart plots every Appearance with a 5-Match rolling average", a
   // Columns: point, Match rating, 5-Match average.
   await expect(points.last().locator("td")).toHaveText(["8.5", "8.0"]);
   await expect(points.first().locator("td")).toHaveText(["6.0", "6.0"]);
+
+  // Goal contributions and pass % chart the same 6 Appearances.
+  for (const name of ["Goal contributions", "Pass completion"]) {
+    await expect(
+      page.getByRole("table", { name }).locator("tbody tr"),
+    ).toHaveCount(6);
+  }
 });
 
 test("the All-time (EA) panel shows EA's career games apart from tracked Appearances", async ({

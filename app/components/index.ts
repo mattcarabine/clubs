@@ -11,6 +11,10 @@ export {
 export { LineChart, type LineSeries } from "./charts/line-chart";
 export { Sparkline } from "./charts/sparkline";
 export {
+  StackedColumnChart,
+  type StackedColumnSeries,
+} from "./charts/stacked-column-chart";
+export {
   DataTable,
   type DataTableColumn,
   type DataTableSort,
