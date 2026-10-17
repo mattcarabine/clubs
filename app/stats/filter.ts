@@ -86,16 +86,11 @@ export function writeStatsFilter(
   params: URLSearchParams,
   filter: StatsFilter,
 ): URLSearchParams {
-  const next = new URLSearchParams(params);
-  next.delete(PAGE_PARAM);
+  const next = withoutPage(params);
   setOrDelete(
     next,
     FILTER_PARAMS.matchTypes,
-    sameMatchTypes(filter.matchTypes, DEFAULT_STATS_FILTER.matchTypes)
-      ? null
-      : canonicalMatchTypes(filter.matchTypes)
-          .map((type) => type.toLowerCase())
-          .join(","),
+    writeMatchTypes(filter.matchTypes),
   );
   setOrDelete(next, FILTER_PARAMS.includeDnf, filter.includeDnf ? null : "0");
   setOrDelete(
@@ -139,8 +134,7 @@ export function writeMinAppearances(
   params: URLSearchParams,
   minAppearances: number,
 ): URLSearchParams {
-  const next = new URLSearchParams(params);
-  next.delete(PAGE_PARAM);
+  const next = withoutPage(params);
   setOrDelete(
     next,
     FILTER_PARAMS.minAppearances,
@@ -164,6 +158,14 @@ function parseRange(raw: string | null): DateRange {
     : DEFAULT_STATS_FILTER.range;
 }
 
+/** The `types` param value, or null for the default Match Types. */
+function writeMatchTypes(types: readonly MatchType[]): string | null {
+  if (sameMatchTypes(types, DEFAULT_STATS_FILTER.matchTypes)) return null;
+  return canonicalMatchTypes(types)
+    .map((type) => type.toLowerCase())
+    .join(",");
+}
+
 function canonicalMatchTypes(types: readonly MatchType[]): MatchType[] {
   return MATCH_TYPES.filter((type) => types.includes(type));
 }
@@ -175,11 +177,18 @@ function sameMatchTypes(
   return a.length === b.length && a.every((type) => b.includes(type));
 }
 
+/** A copy of `params` without the page number, which a filter change resets. */
+function withoutPage(params: URLSearchParams): URLSearchParams {
+  const next = new URLSearchParams(params);
+  next.delete(PAGE_PARAM);
+  return next;
+}
+
 function setOrDelete(
   params: URLSearchParams,
   key: string,
   value: string | null,
-) {
+): void {
   if (value === null) params.delete(key);
   else params.set(key, value);
 }

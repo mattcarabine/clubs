@@ -54,16 +54,21 @@ const summaryColumns = {
   dnf: matches.dnf,
 };
 
+/** Matches joined to their Opponent, selecting the columns `toSummary` reads. */
+function selectSummaries(db: Db) {
+  return db
+    .select(summaryColumns)
+    .from(matches)
+    .innerJoin(clubs, eq(clubs.clubId, matches.opponentClubId));
+}
+
 /** The Matches a filter selects, newest first unless `order` says otherwise. */
 export async function listMatches(
   db: Db,
   filter: StatsFilter,
   { order = "newest", limit, offset, ...scope }: MatchListOptions = {},
 ): Promise<MatchSummary[]> {
-  let query = db
-    .select(summaryColumns)
-    .from(matches)
-    .innerJoin(clubs, eq(clubs.clubId, matches.opponentClubId))
+  let query = selectSummaries(db)
     .where(matchScope(db, filter, scope))
     .orderBy(
       order === "newest" ? desc(matches.playedAt) : asc(matches.playedAt),
@@ -127,11 +132,7 @@ export async function getMatch(
   db: Db,
   matchId: string,
 ): Promise<MatchDetail | null> {
-  const [match] = await db
-    .select(summaryColumns)
-    .from(matches)
-    .innerJoin(clubs, eq(clubs.clubId, matches.opponentClubId))
-    .where(eq(matches.matchId, matchId));
+  const [match] = await selectSummaries(db).where(eq(matches.matchId, matchId));
   if (!match) return null;
 
   const rows = await db

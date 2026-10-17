@@ -48,6 +48,13 @@ function filterButton(page: Page, name: string) {
     .getByRole("button", { name, exact: true });
 }
 
+async function expectPressed(page: Page, name: string, pressed: boolean) {
+  await expect(filterButton(page, name)).toHaveAttribute(
+    "aria-pressed",
+    String(pressed),
+  );
+}
+
 function searchParam(page: Page, key: string) {
   return new URL(page.url()).searchParams.get(key);
 }
@@ -72,26 +79,11 @@ test("toggling filters updates the URL and the totals", async ({
   await page.goto("/test/stats");
 
   // Defaults: Competitive Matches, DNF included, all dates.
-  await expect(filterButton(page, "League")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(filterButton(page, "Playoff")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(filterButton(page, "Friendly")).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await expect(filterButton(page, "Include DNF")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(filterButton(page, "All")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expectPressed(page, "League", true);
+  await expectPressed(page, "Playoff", true);
+  await expectPressed(page, "Friendly", false);
+  await expectPressed(page, "Include DNF", true);
+  await expectPressed(page, "All", true);
   await expectRecord(page, {
     played: "5",
     wdl: "3-1-1",
@@ -164,18 +156,9 @@ test("a filtered URL restores the filter on load", async ({
 
   await page.goto("/test/stats?types=friendly&dnf=0");
 
-  await expect(filterButton(page, "Friendly")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(filterButton(page, "League")).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await expect(filterButton(page, "Include DNF")).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
+  await expectPressed(page, "Friendly", true);
+  await expectPressed(page, "League", false);
+  await expectPressed(page, "Include DNF", false);
   await expectRecord(page, {
     played: "1",
     wdl: "0-1-0",

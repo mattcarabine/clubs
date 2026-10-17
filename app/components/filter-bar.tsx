@@ -1,11 +1,9 @@
 import type { ReactNode } from "react";
 import { useNavigation, useSearchParams } from "react-router";
 
-import type { MatchType } from "~/lib/domain";
 import {
   DATE_RANGE_LABEL,
   DATE_RANGES,
-  type DateRange,
   MATCH_TYPES,
   type StatsFilter,
   toggleMatchType,
@@ -41,7 +39,7 @@ export function FilterBar({ filter, minAppearances }: FilterBarProps) {
       className="mb-6 flex flex-wrap items-end gap-x-6 gap-y-3 border-shale-700 border-t-2 bg-shale-900 px-3 py-3 sm:px-4"
     >
       <FilterGroup label="Match Type">
-        {MATCH_TYPES.map((type: MatchType) => {
+        {MATCH_TYPES.map((type) => {
           const selected = filter.matchTypes.includes(type);
           return (
             <Chip
@@ -69,7 +67,7 @@ export function FilterBar({ filter, minAppearances }: FilterBarProps) {
       </FilterGroup>
 
       <FilterGroup label="Dates">
-        {DATE_RANGES.map((range: DateRange) => (
+        {DATE_RANGES.map((range) => (
           <Chip
             key={range}
             pressed={filter.range === range}
@@ -111,13 +109,12 @@ export function FilterBar({ filter, minAppearances }: FilterBarProps) {
   );
 }
 
-function FilterGroup({
-  label,
-  children,
-}: {
+type FilterGroupProps = {
   label: string;
   children: ReactNode;
-}) {
+};
+
+function FilterGroup({ label, children }: FilterGroupProps) {
   return (
     <fieldset className="min-w-0">
       <legend className="mb-1.5 text-ink-muted text-sm">{label}</legend>
