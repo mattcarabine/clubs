@@ -54,12 +54,15 @@ export function PlayerChip({
     </>
   );
 
+  // Dense on phones: just the name, no box or end padding.
+  const boxBackground = dense ? "sm:bg-shale-800" : "bg-shale-800";
+  const boxEndPadding = dense ? "sm:pr-3" : "pr-3";
   const className = [
     "inline-flex h-9 max-w-full min-w-0 items-center gap-2 text-sm",
-    // Dense on phones: just the name, no box.
-    dense ? "sm:bg-shale-800" : "bg-shale-800",
+    boxBackground,
     former ? "text-ink-soft" : "text-ink",
-    stat != null ? "" : dense ? "sm:pr-3" : "pr-3",
+    // A stat pads the end itself.
+    stat != null ? "" : boxEndPadding,
   ].join(" ");
 
   return to ? (

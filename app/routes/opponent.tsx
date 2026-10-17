@@ -19,7 +19,6 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import type { Outcome } from "~/lib/domain";
-import { formatLondonDate } from "~/lib/london-time";
 import {
   formatCount,
   formatDecimal,
@@ -113,9 +112,13 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
       <PageHeader
         title={opponent.name}
         subtitle={
-          firstMet
-            ? `Head-to-head since ${formatLondonDate(firstMet)}`
-            : "Head-to-head"
+          firstMet ? (
+            <>
+              Head-to-head since <LondonTime date={firstMet} format="day" />
+            </>
+          ) : (
+            "Head-to-head"
+          )
         }
         aside={form.length >= MIN_FORM && <OpponentForm results={form} />}
       />
