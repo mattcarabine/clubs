@@ -1,0 +1,33 @@
+/**
+ * Wrangler configuration: https://developers.cloudflare.com/workers/wrangler/configuration/
+ * Must stay within the Workers free plan (see docs/adr/0001).
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "clubs",
+  "compatibility_date": "2026-10-06",
+  "main": "./workers/app.ts",
+  "vars": {
+    // Overridden in tests to point at the fake EA upstream (docs/adr/0004).
+    "EA_BASE_URL": "https://proclubs.ea.com/api/fc/",
+    "EA_PLATFORM": "common-gen5",
+    "EA_CLUB_ID": "332191",
+    "EA_CLUB_NAME": "A Bloo Bloo"
+  },
+  "triggers": {
+    // One Poll every 5 minutes, matching EA's max-age=300 (docs/adr/0002).
+    "crons": ["*/5 * * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "clubs",
+      "database_id": "e2844f1a-2c5f-4267-82cc-1717b4c7415a",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true
+}
