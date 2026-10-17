@@ -158,7 +158,8 @@ type ChipProps = {
   children: ReactNode;
 };
 
-function Chip({ pressed, ...props }: ChipProps) {
+/** A slanted filter button: a toggle when `pressed` is set, else a plain action. */
+export function Chip({ pressed, ...props }: ChipProps) {
   return (
     <button
       type="button"

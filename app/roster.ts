@@ -1,3 +1,5 @@
+import { env } from "cloudflare:workers";
+
 /**
  * The Roster: hand-maintained overrides for Squad Members, keyed by EA's
  * stable player ID (see `players.player_id`). Everyone who has made an
@@ -18,7 +20,20 @@ export interface RosterEntry {
 export const ROSTER: Readonly<Record<string, RosterEntry>> = {};
 
 export function rosterEntry(playerId: string): RosterEntry {
-  return ROSTER[playerId] ?? {};
+  return ROSTER[playerId] ?? testRoster()[playerId] ?? {};
+}
+
+let parsedTestRoster: Readonly<Record<string, RosterEntry>> | undefined;
+
+/**
+ * Extra Roster entries for the E2E suite, from the `TEST_ROSTER` var (JSON).
+ * Only the `test` Wrangler env sets it, and it is ignored unless the test
+ * routes are on, so it can never change the real Roster.
+ */
+function testRoster(): Readonly<Record<string, RosterEntry>> {
+  if (env.TEST_ROUTES !== "1") return {};
+  parsedTestRoster ??= JSON.parse(env.TEST_ROSTER ?? "{}");
+  return parsedTestRoster ?? {};
 }
 
 /** The name to show for a Squad Member: nickname, then persona name, then ID. */
