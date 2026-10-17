@@ -51,6 +51,7 @@ import type { PositionGroupSelection } from "~/stats/positions";
 
 import type { Route } from "./+types/route";
 import { FindingList } from "./findings";
+import { StrengthSection } from "./strength";
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: "A Bloo Bloo — Analysis" }];
@@ -199,6 +200,8 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
           </ChartFrame>
         </section>
       </div>
+
+      <StrengthSection byStrength={split.byStrength} />
 
       <AfterResultSection splits={split.afterResult} />
 

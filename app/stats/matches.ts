@@ -22,6 +22,12 @@ export interface Club {
   name: string;
 }
 
+/** Both clubs' Skill Ratings at a Match; null when it was never rated. */
+export interface MatchSkillRatings {
+  ours: number | null;
+  opponent: number | null;
+}
+
 /** One Match from Our Club's point of view. */
 export interface MatchSummary {
   matchId: string;
@@ -33,6 +39,7 @@ export interface MatchSummary {
   outcome: Outcome;
   /** Flag these in the UI: EA awarded the result because a side quit. */
   dnf: boolean;
+  skillRatings: MatchSkillRatings;
 }
 
 export interface MatchListOptions extends ScopeOptions {
@@ -52,6 +59,8 @@ const summaryColumns = {
   goalsAgainst: matches.goalsAgainst,
   result: matches.result,
   dnf: matches.dnf,
+  ourSkillRating: matches.ourSkillRating,
+  opponentSkillRating: matches.opponentSkillRating,
 };
 
 /** Matches joined to their Opponent, selecting the columns `toSummary` reads. */
@@ -125,14 +134,7 @@ export interface MatchAppearance
   positionGroup: PositionGroup | null;
 }
 
-/** Both clubs' Skill Ratings at a Match; null when it was never rated. */
-export interface MatchSkillRatings {
-  ours: number | null;
-  opponent: number | null;
-}
-
 export interface MatchDetail extends MatchSummary {
-  skillRatings: MatchSkillRatings;
   /** Our Club's Appearances, then the Opponent's. */
   appearances: MatchAppearance[];
 }
@@ -143,11 +145,7 @@ export async function getMatch(
   matchId: string,
 ): Promise<MatchDetail | null> {
   const [match] = await db
-    .select({
-      ...summaryColumns,
-      ourSkillRating: matches.ourSkillRating,
-      opponentSkillRating: matches.opponentSkillRating,
-    })
+    .select(summaryColumns)
     .from(matches)
     .innerJoin(clubs, eq(clubs.clubId, matches.opponentClubId))
     .where(and(eq(matches.matchId, matchId), isShownMatch));
@@ -176,10 +174,6 @@ export async function getMatch(
 
   return {
     ...toSummary(match),
-    skillRatings: {
-      ours: match.ourSkillRating,
-      opponent: match.opponentSkillRating,
-    },
     appearances: lineups,
   };
 }
@@ -194,6 +188,8 @@ interface SummaryRow {
   goalsAgainst: number;
   result: MatchResult;
   dnf: boolean;
+  ourSkillRating: number | null;
+  opponentSkillRating: number | null;
 }
 
 function toSummary(row: SummaryRow): MatchSummary {
@@ -209,5 +205,9 @@ function toSummary(row: SummaryRow): MatchSummary {
     goalsAgainst: row.goalsAgainst,
     outcome: toOutcome(row.result),
     dnf: row.dnf,
+    skillRatings: {
+      ours: row.ourSkillRating,
+      opponent: row.opponentSkillRating,
+    },
   };
 }

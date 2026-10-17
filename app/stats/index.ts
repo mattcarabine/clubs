@@ -26,6 +26,7 @@ export * from "./recent-change";
 export * from "./scope";
 export * from "./seasons";
 export * from "./sessions";
+export * from "./skill-rating";
 export * from "./snapshots";
 export * from "./source";
 export * from "./squad";

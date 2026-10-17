@@ -27,6 +27,7 @@ import {
 import { ALL_POSITIONS, type PositionGroupSelection } from "./positions";
 import { isShownMatch, matchScope } from "./scope";
 import { type Kickoff, sessionPlaces } from "./sessions";
+import { ratingGap } from "./skill-rating";
 import { squadAppearances } from "./squad";
 
 export interface OutcomeSplitOptions {
@@ -68,6 +69,7 @@ export async function getOutcomeSplit(
       squadSize: sides?.squadSize ?? 0,
       session,
       sessionPlace: place,
+      ratingGap: ratingGap(m.skillRatings),
     };
   });
   return {
