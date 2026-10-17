@@ -43,6 +43,11 @@ To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in 
 - Stat formulas and queries live in the shared `app/stats/` layer. Pages never write their own SQL or repeat a formula. Read [app/stats/README.md](app/stats/README.md) before building a page or adding a query. Every stats page parses a `StatsFilter` in its loader and mounts `FilterBar`.
 - **Two-places rule:** anything used twice goes in a shared module (`app/components/`, `app/stats/`, `app/lib/`).
 - Display times in Europe/London, through `~/lib/london-time`.
+- **Date filtering (CLUBS-21):** every date filter goes through the shared `StatsFilter` / FilterBar date range, never a page-specific control.
+  - **Options:** "All" (the default), the presets Last 7 days, Last 30 days and Last year, and a custom from/to picker.
+  - **Boundaries:** dates are Europe/London calendar days, inclusive at both ends.
+  - **URL:** presets serialise as `?range=7d|30d|1y`, so shared links stay relative; custom ranges as `?from=YYYY-MM-DD&to=YYYY-MM-DD`.
+  - **Bad input:** an invalid range falls back to "All".
 - Every page must work at 375px wide with no horizontal page scroll, and use the extra width on desktop.
 
 ## Workflow
@@ -101,7 +106,7 @@ Every component is presentational: it takes props and never fetches. Shared doma
 - `LastUpdatedBadge`: "Updated 4 min ago" from the latest Poll; it turns amber and says "Stale" after 15 minutes (three missed Polls).
 - `EmptyState`: says what is missing and what will fill it. Sparse data is the norm, so hide a summary that would be meaningless (e.g. "Most played" when every Opponent was met once, a one-point chart) rather than showing it.
 - `BackLink` / `RouteError`: a detail page's "‹ All Matches" link, and its `ErrorBoundary` (back link plus a 404 or failed-to-load `EmptyState`). Every `:id` route has one; the root boundary handles unknown addresses.
-- `FilterBar`: the global stats filter (Match Type, DNF, dates, optional minimum Appearances) as slanted toggle chips; it rewrites the URL so the loader reruns. On phones it is one row that scrolls sideways, so it never takes a screenful.
+- `FilterBar`: the global stats filter (Match Type, DNF, dates, optional minimum Appearances) as slanted toggle chips; it rewrites the URL so the loader reruns. Pass `source` (from `statsSourceFromRequest`) to lead with the Recorded / EA totals toggle (`?source=ea`); on EA totals it hides the Match filters and says why. On phones it is one row that scrolls sideways, so it never takes a screenful.
 - `Skeleton` / `LoadingState`: placeholders; `LoadingState` announces loading once.
 - Charts: `ChartFrame` (titled panel) and `ChartLegend`, with `LineChart`, `StackedColumnChart`, `BarChart` and `Sparkline`.
 
