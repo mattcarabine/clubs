@@ -16,6 +16,7 @@ import {
   formatCount,
   formatDecimal,
   formatPercentage,
+  NO_VALUE,
 } from "~/lib/number-format";
 import { isFormerSquadMember } from "~/roster";
 
@@ -239,10 +240,16 @@ export function splitBy<T extends { outcome: Outcome }>(
   return { group: winRecord(group), rest: winRecord(rest) };
 }
 
+/** One bucket a factor sorts Matches into. */
+interface BucketOption {
+  id: string;
+  label: string;
+}
+
 /** Buckets in the given order, skipping empty ones. */
 function buckets<T extends { outcome: Outcome }>(
   matches: readonly T[],
-  order: readonly { id: string; label: string }[],
+  order: readonly BucketOption[],
   bucketOf: (match: T) => string,
 ): SplitBucket[] {
   const byBucket = groupBy(matches, bucketOf);
@@ -365,18 +372,15 @@ export function positionOutliers(
 }
 
 /** The squad sizes Matches were played with, fewest first, as buckets. */
-function squadSizes(
-  matches: readonly SplitMatch[],
-): { id: string; label: string }[] {
+function squadSizes(matches: readonly SplitMatch[]): BucketOption[] {
   return [...new Set(matches.map((m) => m.squadSize))]
     .sort((a, b) => a - b)
-    .map((size) => ({
-      id: String(size),
-      label: `${size} playing`,
-    }));
+    .map((size) => ({ id: String(size), label: `${size} playing` }));
 }
 
-const squadSizeOf = (m: SplitMatch) => String(m.squadSize);
+function squadSizeOf(match: SplitMatch): string {
+  return String(match.squadSize);
+}
 
 // ---------------------------------------------------------------------------
 // Findings
@@ -413,12 +417,21 @@ function isSmall(a: number, b: number): boolean {
   return Math.min(a, b) < SMALL_SAMPLE_MATCHES;
 }
 
+/** How a split's finding names its group and the rest. */
+interface SplitWords {
+  /** Follows "of Matches": "with Star Striker". */
+  group: string;
+  rest: string;
+  /** Follow each side's count: ["with", "without"]. */
+  counts: [string, string];
+}
+
 /** A split as a finding, or null when either side is too small. */
 function splitFinding(
   id: string,
   factor: Factor,
   split: GroupSplit,
-  words: { group: string; rest: string; counts: [string, string] },
+  words: SplitWords,
 ): RankedFinding | null {
   if (!isComparable(split)) return null;
   const { group, rest } = split;
@@ -439,24 +452,25 @@ function bucketFindings(
   factor: Factor,
   idPrefix: string,
   matches: readonly SplitMatch[],
-  order: readonly { id: string; label: string }[],
+  order: readonly BucketOption[],
   bucketOf: (m: SplitMatch) => string,
-  words: (bucket: { id: string; label: string }) => {
-    group: string;
-    rest: string;
-    counts: [string, string];
-  },
+  words: (bucket: BucketOption) => SplitWords,
 ): RankedFinding[] {
   const options = order.length === 2 ? order.slice(1) : order;
-  return options.flatMap(({ id, label }) => {
-    const finding = splitFinding(
-      `${idPrefix}-${id}`,
-      factor,
-      splitBy(matches, (m) => bucketOf(m) === id),
-      words({ id, label }),
-    );
-    return finding ? [finding] : [];
-  });
+  return withoutNulls(
+    options.map((bucket) =>
+      splitFinding(
+        `${idPrefix}-${bucket.id}`,
+        factor,
+        splitBy(matches, (m) => bucketOf(m) === bucket.id),
+        words(bucket),
+      ),
+    ),
+  );
+}
+
+function withoutNulls<T>(items: readonly (T | null)[]): T[] {
+  return items.filter((item): item is T => item !== null);
 }
 
 // ---------------------------------------------------------------------------
@@ -509,15 +523,16 @@ export function outcomeSplit(
 
   const findings: RankedFinding[] = ready
     ? [
-        ...performance.flatMap((p) => (p.finding ? [p.finding] : [])),
-        ...withWithoutRows.flatMap((row) => {
-          const f = splitFinding(`with-${row.playerId}`, "Personnel", row, {
-            group: `with ${row.name}`,
-            rest: "without",
-            counts: ["with", "without"],
-          });
-          return f ? [f] : [];
-        }),
+        ...withoutNulls(performance.map((p) => p.finding)),
+        ...withoutNulls(
+          withWithoutRows.map((row) =>
+            splitFinding(`with-${row.playerId}`, "Personnel", row, {
+              group: `with ${row.name}`,
+              rest: "without",
+              counts: ["with", "without"],
+            }),
+          ),
+        ),
         ...bucketFindings(
           "Personnel",
           "squad",
@@ -537,20 +552,22 @@ export function outcomeSplit(
             };
           },
         ),
-        ...outliers.flatMap((o) => {
-          if (withCounts.has(`${o.playerId}:${o.group.played}`)) return [];
-          const f = splitFinding(
-            `outlier-${o.playerId}-${o.positionGroup}`,
-            "Personnel",
-            o,
-            {
-              group: `with ${o.name} at ${o.positionGroup}`,
-              rest: "otherwise",
-              counts: ["with", "otherwise"],
-            },
-          );
-          return f ? [f] : [];
-        }),
+        ...withoutNulls(
+          outliers
+            .filter((o) => !withCounts.has(`${o.playerId}:${o.group.played}`))
+            .map((o) =>
+              splitFinding(
+                `outlier-${o.playerId}-${o.positionGroup}`,
+                "Personnel",
+                o,
+                {
+                  group: `with ${o.name} at ${o.positionGroup}`,
+                  rest: "otherwise",
+                  counts: ["with", "otherwise"],
+                },
+              ),
+            ),
+        ),
         ...bucketFindings(
           "Circumstances",
           "time",
@@ -631,7 +648,8 @@ function performanceSplit(
   }
   const wins = weightedMean(samples.wins);
   const dropped = weightedMean(samples.dropped);
-  const format = (v: number | null) => (v === null ? "–" : metric.format(v));
+  const format = (v: number | null) =>
+    v === null ? NO_VALUE : metric.format(v);
   const values = { wins: format(wins), dropped: format(dropped) };
 
   const n = { wins: samples.wins.length, dropped: samples.dropped.length };
@@ -724,14 +742,16 @@ export function playerSplits(
       former: isFormerSquadMember(playerId),
       ...playerOutcomeSplit(apps, positionGroups),
     }))
-    .filter((row) => row.wins.appearances + row.dropped.appearances > 0)
+    .filter((row) => totalAppearances(row) > 0)
     .sort(
       (a, b) =>
-        b.wins.appearances +
-          b.dropped.appearances -
-          (a.wins.appearances + a.dropped.appearances) ||
+        totalAppearances(b) - totalAppearances(a) ||
         a.name.localeCompare(b.name),
     );
+}
+
+function totalAppearances({ wins, dropped }: PlayerOutcomeSplit): number {
+  return wins.appearances + dropped.appearances;
 }
 
 /** One stat in a Squad Member's Outcome Split, as the profile panel and the per-player table show it. */
@@ -744,7 +764,9 @@ export interface PlayerSplitStat {
   format: (value: number | null) => string;
 }
 
-const perNinetyFormat = (value: number | null) => formatDecimal(value, 2);
+function perNinetyFormat(value: number | null): string {
+  return formatDecimal(value, 2);
+}
 
 /** The stats both views set side by side, in order. */
 export const PLAYER_SPLIT_STATS: readonly PlayerSplitStat[] = [

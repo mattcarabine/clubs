@@ -26,13 +26,12 @@ export function sessionPlaces(
   );
   const places = new Map<string, number>();
   let place = 0;
-  sorted.forEach((kickoff, i) => {
-    const previous = sorted[i - 1];
-    const gap = previous
-      ? kickoff.playedAt.getTime() - previous.playedAt.getTime()
-      : Infinity;
+  let previousKickoff = -Infinity;
+  for (const { matchId, playedAt } of sorted) {
+    const gap = playedAt.getTime() - previousKickoff;
     place = gap <= gapMinutes * 60_000 ? place + 1 : 1;
-    places.set(kickoff.matchId, place);
-  });
+    places.set(matchId, place);
+    previousKickoff = playedAt.getTime();
+  }
   return places;
 }

@@ -28,6 +28,7 @@ import {
   formatCount,
   formatPercentage,
   formatSigned,
+  NO_VALUE,
 } from "~/lib/number-format";
 import { playerPath } from "~/lib/paths";
 import {
@@ -90,12 +91,17 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
 
 /** "Needs 2 more Wins and 1 more Dropped Points Match." */
 function notEnoughMatches(record: { wins: number; dropped: number }): string {
-  const needed = [
-    record.wins < MIN_SPLIT_MATCHES &&
-      `${MIN_SPLIT_MATCHES - record.wins} more ${MIN_SPLIT_MATCHES - record.wins === 1 ? "Win" : "Wins"}`,
-    record.dropped < MIN_SPLIT_MATCHES &&
-      `${MIN_SPLIT_MATCHES - record.dropped} more ${MIN_SPLIT_MATCHES - record.dropped === 1 ? "Match" : "Matches"} with Dropped Points`,
-  ].filter(Boolean);
+  const winsNeeded = MIN_SPLIT_MATCHES - record.wins;
+  const droppedNeeded = MIN_SPLIT_MATCHES - record.dropped;
+  const needed: string[] = [];
+  if (winsNeeded > 0) {
+    needed.push(formatCount(winsNeeded, "more Win", "more Wins"));
+  }
+  if (droppedNeeded > 0) {
+    needed.push(
+      `${formatCount(droppedNeeded, "more Match", "more Matches")} with Dropped Points`,
+    );
+  }
   return `The Outcome Split needs at least ${MIN_SPLIT_MATCHES} Wins and ${MIN_SPLIT_MATCHES} Dropped Points in these filters: ${needed.join(" and ")}.`;
 }
 
@@ -315,7 +321,7 @@ function splitColumns<T extends GroupSplit>(
       formatPercentage,
     ),
     numberColumn("gap", "Gap", winRateGap, (gap) =>
-      gap === null ? "–" : `${formatSigned(Math.round(gap))} pts`,
+      gap === null ? NO_VALUE : `${formatSigned(Math.round(gap))} pts`,
     ),
   ];
 }
@@ -326,12 +332,19 @@ function winRateGap({ group, rest }: GroupSplit): number | null {
     : group.winPercentage - rest.winPercentage;
 }
 
-const withWithoutColumns: DataTableColumn<WithWithout>[] = [
-  {
+/** The Squad Member's name, marking a Former Squad Member. */
+function squadMemberColumn<
+  T extends { name: string; former: boolean },
+>(): DataTableColumn<T> {
+  return {
     id: "name",
     header: "Squad Member",
     cell: (r) => (r.former ? `${r.name} (former)` : r.name),
-  },
+  };
+}
+
+const withWithoutColumns: DataTableColumn<WithWithout>[] = [
+  squadMemberColumn(),
   ...splitColumns<WithWithout>("with", "without"),
 ];
 
@@ -345,11 +358,7 @@ const outlierColumns: DataTableColumn<PositionOutlier>[] = [
 ];
 
 const PLAYER_COLUMNS: DataTableColumn<PlayerSplitRow>[] = [
-  {
-    id: "name",
-    header: "Squad Member",
-    cell: (r) => (r.former ? `${r.name} (former)` : r.name),
-  },
+  squadMemberColumn(),
   ...PLAYER_SPLIT_STATS.flatMap((stat) =>
     (["wins", "dropped"] as const).map((side) =>
       numberColumn<PlayerSplitRow, number | null>(
