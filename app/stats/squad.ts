@@ -171,3 +171,33 @@ export async function getSquadMember(
     trackedSince: row.trackedSince,
   };
 }
+
+/** A Squad Member to pick from, e.g. in Compare's player switchers. */
+export interface SquadMemberOption {
+  playerId: string;
+  name: string;
+  former: boolean;
+}
+
+/**
+ * Every Squad Member who has ever made an Appearance for Our Club, Former
+ * ones included, by name. Not filtered: a picker offers the whole Squad.
+ */
+export async function listSquadMembers(db: Db): Promise<SquadMemberOption[]> {
+  const rows = await db
+    .selectDistinct({
+      playerId: players.playerId,
+      personaName: players.personaName,
+    })
+    .from(players)
+    .innerJoin(appearances, eq(appearances.playerId, players.playerId))
+    .innerJoin(matches, eq(matches.matchId, appearances.matchId))
+    .where(isOurAppearance);
+  return rows
+    .map(({ playerId, personaName }) => ({
+      playerId,
+      name: displayName(playerId, personaName),
+      former: isFormerSquadMember(playerId),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}

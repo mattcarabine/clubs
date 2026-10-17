@@ -45,6 +45,17 @@ type DataTableProps<T> = {
    * Colour alone never carries meaning, so say it in the row too.
    */
   highlight?: (row: T) => boolean;
+  /** Puts a tick box in each row header, e.g. to pick Squad Members to compare. */
+  select?: RowSelection<T>;
+};
+
+export type RowSelection<T> = {
+  isSelected: (row: T) => boolean;
+  /** E.g. once the most that can be picked are ticked. */
+  isDisabled?: (row: T) => boolean;
+  onToggle: (row: T) => void;
+  /** Names each tick box for screen readers, e.g. "Compare Kabeeble". */
+  label: (row: T) => string;
 };
 
 /**
@@ -60,6 +71,7 @@ export function DataTable<T>({
   initialSort,
   empty,
   highlight,
+  select,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState(initialSort);
   const [scrollerRef, edges] = useScrollFade<HTMLElement>();
@@ -158,10 +170,10 @@ export function DataTable<T>({
                             : cellClass(highlighted),
                         ].join(" ")}
                       >
-                        {i === 0 && href ? (
-                          <Link to={href} className={ROW_HEADER_LINK}>
+                        {i === 0 ? (
+                          <RowHeader href={href} select={select} row={row}>
                             {content}
-                          </Link>
+                          </RowHeader>
                         ) : (
                           content
                         )}
@@ -175,6 +187,41 @@ export function DataTable<T>({
         </table>
       </section>
     </div>
+  );
+}
+
+/** The row header's content: the row's link, after its tick box when rows can be picked. */
+function RowHeader<T>({
+  href,
+  select,
+  row,
+  children,
+}: {
+  href: string | undefined;
+  select: RowSelection<T> | undefined;
+  row: T;
+  children: ReactNode;
+}) {
+  const content = href ? (
+    <Link to={href} className={ROW_HEADER_LINK}>
+      {children}
+    </Link>
+  ) : (
+    children
+  );
+  if (!select) return content;
+  return (
+    <span className="flex items-center gap-2.5">
+      <input
+        type="checkbox"
+        checked={select.isSelected(row)}
+        disabled={select.isDisabled?.(row)}
+        onChange={() => select.onToggle(row)}
+        aria-label={select.label(row)}
+        className="size-4 shrink-0 cursor-pointer accent-rave disabled:cursor-not-allowed disabled:opacity-40"
+      />
+      {content}
+    </span>
   );
 }
 

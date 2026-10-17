@@ -8,11 +8,12 @@
  * overview and highlights the selection.
  */
 import { env } from "cloudflare:workers";
-import { data } from "react-router";
+import { data, Link, useSearchParams } from "react-router";
 
 import {
   ChartFrame,
   ChartLegend,
+  chipClassName,
   EmptyState,
   FilterBar,
   LineChart,
@@ -32,6 +33,7 @@ import {
   formatPercentage,
 } from "~/lib/number-format";
 import {
+  comparePath,
   describePositionGroups,
   getPlayerProfile,
   type PositionGroupSelection,
@@ -115,11 +117,14 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
           </>
         }
         aside={
-          <BuildPlate
-            build={latestBuild}
-            // The usual Position Group, whatever the selection.
-            positionGroup={profile.positionGroups[0]?.positionGroup ?? null}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <BuildPlate
+              build={latestBuild}
+              // The usual Position Group, whatever the selection.
+              positionGroup={profile.positionGroups[0]?.positionGroup ?? null}
+            />
+            <CompareLink playerId={member.playerId} />
+          </div>
         }
       />
 
@@ -264,6 +269,19 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         </section>
       </div>
     </>
+  );
+}
+
+/** "Compare to…": this Squad Member as A on the compare page, with the filter carried over. */
+function CompareLink({ playerId }: { playerId: string }) {
+  const [searchParams] = useSearchParams();
+  return (
+    <Link
+      to={comparePath(searchParams, [playerId])}
+      className={`${chipClassName(false)} inline-flex items-center`}
+    >
+      Compare to…
+    </Link>
   );
 }
 

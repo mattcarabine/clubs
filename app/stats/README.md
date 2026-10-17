@@ -36,13 +36,15 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 | `scope.ts` | `matchScope(db, filter, { opponentClubId, now })`: the SQL condition behind every query, and `isOurAppearance`. |
 | `convert.ts` | Stored values to `~/lib/domain` ones (`"win"` to `"W"`, `"league"` to `"League"`, and so on). |
 | `matches.ts` | `listMatches`, `countMatches`, `latestMatch`, `clubRecord`, `getMatch` (both line-ups). |
-| `squad.ts` | `squadAppearances` (Our Club's Appearances with Match context, oldest first), `squadLeaderboard`, `getSquadMember`. |
+| `squad.ts` | `squadAppearances` (Our Club's Appearances with Match context, oldest first), `squadLeaderboard`, `getSquadMember`, `listSquadMembers` (the whole Squad, Former included, for pickers). |
 | `opponents.ts` | `opponentRecords` (head-to-head per Opponent), `getOpponent`. Head-to-head Match lists and top performers use `listMatches` / `squadLeaderboard` with `{ opponentClubId }`. |
 | `positions.ts` | Position Group selections (CLUBS-23), each passed as a parameter so a page can hold several (Compare's `posA` / `posB`): `PositionGroupSelection` (empty is All Positions), `parsePositionGroups` / `writePositionGroups` (the `midfielder,forward` URL value, for any param), `togglePositionGroup`, `inPositionGroups`, `filterByPositionGroups`, `describePositionGroups` ("Midfielder or Forward"). |
 | `seasons.ts` | `listSeasons`: every Season the Poll has detected, oldest first. The root loader passes their numbers to every `FilterBar`. |
 | `snapshots.ts` | `clubSnapshots`, `memberSnapshots`, `snapshotNumber`, `lastSuccessfulPoll`. Not filtered: they are EA's own totals. |
 | `ea-totals.ts` | `eaMemberTotals` (each Squad Member's latest `members/stats` and `members/career/stats` Snapshot, in one query), the pure `eaSeasonTotals` / `eaCareerTotals` that read a Snapshot into numbers, and `eaCleanSheets`. Not filtered. |
 | `source.ts` | `StatsSource` (`"recorded"` or `"ea"`) and its URL format: `parseStatsSource`, `statsSourceFromRequest`, `writeStatsSource`, `STATS_SOURCE_LABEL`. |
+| `comparison-params.ts` | Compare's URL format (CLUBS-20), client-safe: `parseComparisonParams` (`players=A,B`, `scope=together`, `posA` / `posB`), `writeComparisonPlayers` / `writeComparisonScope` / `writeComparisonPositionGroups`, and `comparePath`, which opens Compare from the Squad table or a profile carrying the filter and source over (the global `pos` becomes each side's). |
+| `comparison.ts` | `getComparison` (Recorded: each side's totals, form and record, three parallel queries at most) and `getEaComparison` (EA season totals). The pure `compareSides` applies the scope: "Played together" narrows both sides to their Shared Matches (`sharedMatchIds`, whatever positions), then each side counts its own Position Groups; the shared record covers every Shared Match. `isSmallSample` flags figures on fewer than 3 Matches. |
 
 Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (`formatLondonDateTime` and the rest of the time-format convention in CLAUDE.md, `londonParts`, `londonDateKey`, ...).
 

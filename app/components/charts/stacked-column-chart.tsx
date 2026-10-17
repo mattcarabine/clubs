@@ -1,5 +1,5 @@
 import { type CSSProperties, type KeyboardEvent, useState } from "react";
-
+import { ChartDataTable } from "./chart-data-table";
 import { MAX_SERIES, SERIES_COLORS } from "./chart-frame";
 import { axisLabelIndices, niceTicks } from "./scale";
 import { useElementWidth } from "./use-element-width";
@@ -164,30 +164,12 @@ export function StackedColumnChart({
           )}
         </div>
       </div>
-      <table className="sr-only">
-        <caption>{label}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Point</th>
-            {shown.map((s) => (
-              <th key={s.id} scope="col">
-                {s.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {labels.map((l, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: labels may repeat
-            <tr key={i}>
-              <th scope="row">{l}</th>
-              {shown.map((s) => (
-                <td key={s.id}>{s.values[i] ?? 0}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ChartDataTable
+        caption={label}
+        labels={labels}
+        series={shown}
+        formatCell={(v) => v ?? 0}
+      />
     </div>
   );
 }
