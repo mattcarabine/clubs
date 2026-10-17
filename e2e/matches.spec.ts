@@ -138,7 +138,7 @@ test.describe("Match detail", () => {
     await expect(page).toHaveURL(/\/matches\/800000000000001$/);
     const score = page.getByRole("region", { name: "Score" });
     await expect(score.getByTitle("Did not finish")).toBeVisible();
-    await expect(score.getByRole("img", { name: "Win" })).toBeVisible();
+    await expect(score.getByText("DNF win", { exact: true })).toBeVisible();
     await expect(
       page.getByRole("complementary", { name: "DNF" }),
     ).toContainText(
@@ -163,13 +163,13 @@ test.describe("Match detail", () => {
     await page.goto("/matches/800000000000002");
     const score = page.getByRole("region", { name: "Score" });
     await expect(score.getByText("Friendly", { exact: true })).toBeVisible();
-    await expect(score.getByRole("img", { name: "Win" })).toBeVisible();
+    await expect(score.getByText("Win", { exact: true })).toBeVisible();
 
     await page.goto("/matches/800000000000003");
     await expect(
       page
         .getByRole("region", { name: "Score" })
-        .getByRole("img", { name: "Loss" }),
+        .getByText("Loss", { exact: true }),
     ).toBeVisible();
   });
 
