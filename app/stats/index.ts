@@ -11,6 +11,7 @@ export * from "./formulas";
 export * from "./matches";
 export * from "./opponents";
 export * from "./scope";
+export * from "./seasons";
 export * from "./snapshots";
 export * from "./squad";
 export * from "./summaries";

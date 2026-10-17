@@ -12,6 +12,8 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { AppShell, crestUrl, PageHeader } from "~/components";
+import { getDb } from "~/db/client";
+import { listSeasons } from "~/stats";
 
 const FALLBACK_CLUB_NAME = "A Bloo Bloo";
 
@@ -31,8 +33,13 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-export function loader() {
-  return { clubName: env.EA_CLUB_NAME };
+export async function loader() {
+  const seasons = await listSeasons(getDb(env.DB));
+  return {
+    clubName: env.EA_CLUB_NAME,
+    /** Season numbers, oldest first, for every page's FilterBar. */
+    seasons: seasons.map((season) => season.number),
+  };
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {

@@ -51,6 +51,13 @@ describe("parseStatsFilter", () => {
     ]);
   });
 
+  it("reads a Season, defaulting to all Seasons", () => {
+    expect(parseStatsFilter(params("season=2")).season).toBe(2);
+    for (const raw of ["", "0", "-1", "2.5", "current"]) {
+      expect(parseStatsFilter(params(`season=${raw}`)).season).toBeUndefined();
+    }
+  });
+
   it("reads a loader's request", () => {
     const request = new Request("https://stats.test/squad?dnf=0");
     expect(statsFilterFromRequest(request).includeDnf).toBe(false);
@@ -70,9 +77,10 @@ describe("writeStatsFilter", () => {
       matchTypes: ["Friendly", "League"],
       includeDnf: false,
       range: "last10",
+      season: 2,
     };
     expect(writeStatsFilter(params(""), filter).toString()).toBe(
-      "types=league%2Cfriendly&dnf=0&range=last10",
+      "types=league%2Cfriendly&dnf=0&range=last10&season=2",
     );
   });
 
@@ -100,6 +108,7 @@ describe("writeStatsFilter", () => {
         includeDnf: true,
         range: "last10",
       },
+      { ...DEFAULT_STATS_FILTER, season: 3 },
     ];
     for (const filter of filters) {
       expect(parseStatsFilter(writeStatsFilter(params(""), filter))).toEqual(
@@ -120,6 +129,9 @@ describe("isDefaultStatsFilter", () => {
     expect(
       isDefaultStatsFilter({ ...DEFAULT_STATS_FILTER, includeDnf: false }),
     ).toBe(false);
+    expect(isDefaultStatsFilter({ ...DEFAULT_STATS_FILTER, season: 1 })).toBe(
+      false,
+    );
   });
 });
 

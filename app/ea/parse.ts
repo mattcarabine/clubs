@@ -214,6 +214,15 @@ export function coerceStats(
   );
 }
 
+/** A numeric field of a Snapshot, or null when EA sent none or a non-number. */
+export function snapshotNumber(
+  stats: Record<string, unknown>,
+  key: string,
+): number | null {
+  const value = stats[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 /** Endpoints whose responses are EA's running totals, kept as Snapshots. */
 export const SNAPSHOT_ENDPOINTS = [
   "members/stats",

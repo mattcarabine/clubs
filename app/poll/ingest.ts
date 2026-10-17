@@ -22,6 +22,7 @@ import {
   parseMatches,
   parseSnapshotEntries,
 } from "../ea/parse.ts";
+import { seasonStatements } from "./seasons.ts";
 
 /** A Raw Payload being stored by this Poll, with its assigned ID. */
 export interface StoredPayload {
@@ -60,6 +61,7 @@ export async function ingestPayloads(
     ourClubId,
     ourPlayers,
   );
+  statements.push(...(await seasonStatements(db, snapshotRows, ourClubId)));
   if (snapshotRows.length)
     statements.push(bulkInsert(db, snapshots, snapshotRows));
 
