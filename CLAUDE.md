@@ -38,9 +38,9 @@ To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in 
 - `app/ea/` and `app/poll/` must also run under Node (ADR 0005): relative imports there use `.ts` extensions, and no Worker-only APIs outside `app/poll/record.ts` and `app/poll/run.ts`.
 
 ## Conventions
-- Stat formulas and queries live in the shared `app/stats/` layer. Pages never write their own SQL or repeat a formula.
+- Stat formulas and queries live in the shared `app/stats/` layer. Pages never write their own SQL or repeat a formula. Read [app/stats/README.md](app/stats/README.md) before building a page or adding a query. Every stats page parses a `StatsFilter` in its loader and mounts `FilterBar`.
 - **Two-places rule:** anything used twice goes in a shared module (`app/components/`, `app/stats/`, `app/lib/`).
-- Display times in Europe/London.
+- Display times in Europe/London, through `~/lib/london-time`.
 - Every page must work at 375px wide with no horizontal page scroll, and use the extra width on desktop.
 
 ## Workflow
@@ -91,6 +91,7 @@ Every component is presentational: it takes props and never fetches. Shared doma
 - `PlayerChip`: a Squad Member's initials, name, Position Group and optional stat; `former` for Former Squad Members, `to` to link.
 - `LastUpdatedBadge`: "Updated 4 min ago" from the latest Poll; it turns amber and says "Stale" after 15 minutes (three missed Polls).
 - `EmptyState`: says what is missing and what will fill it.
+- `FilterBar`: the global stats filter (Match Type, DNF, dates, optional minimum Appearances) as slanted toggle chips; it rewrites the URL so the loader reruns.
 - `Skeleton` / `LoadingState`: placeholders; `LoadingState` announces loading once.
 - Charts: `ChartFrame` (titled panel) and `ChartLegend`, with `LineChart`, `BarChart` and `Sparkline`.
 

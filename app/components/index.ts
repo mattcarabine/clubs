@@ -16,6 +16,7 @@ export {
   type DataTableSort,
 } from "./data-table";
 export { EmptyState } from "./empty-state";
+export { FilterBar } from "./filter-bar";
 export { FormGuide } from "./form-guide";
 export { PageHeader, SectionHeading } from "./headings";
 export { LastUpdatedBadge } from "./last-updated-badge";

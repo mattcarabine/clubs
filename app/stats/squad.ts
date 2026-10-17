@@ -1,0 +1,163 @@
+/** Squad Member queries: Appearances, leaderboards and the Squad Member record. */
+import { and, asc, eq, min } from "drizzle-orm";
+
+import type { Db } from "~/db/client";
+import { appearances, clubs, matches, players } from "~/db/schema";
+import type { MatchType, Outcome } from "~/lib/domain";
+import { displayName, isFormerSquadMember } from "~/roster";
+
+import { toMatchType, toOutcome, toPositionGroup } from "./convert";
+import { DEFAULT_MIN_APPEARANCES, type StatsFilter } from "./filter";
+import { isOurAppearance, matchScope, type ScopeOptions } from "./scope";
+import {
+  type AppearanceStats,
+  groupBy,
+  type PlayerTotals,
+  summariseAppearances,
+} from "./summaries";
+
+/** One Appearance for Our Club, with its Match's context. */
+export interface SquadAppearance extends AppearanceStats {
+  playerId: string;
+  name: string;
+  matchId: string;
+  matchType: MatchType;
+  playedAt: Date;
+  opponentClubId: string;
+  opponentName: string;
+  goalsFor: number;
+  goalsAgainst: number;
+  outcome: Outcome;
+  dnf: boolean;
+}
+
+export interface SquadAppearanceOptions extends ScopeOptions {
+  /** Only this Squad Member's Appearances. */
+  playerId?: string;
+}
+
+/**
+ * Our Club's Appearances in the Matches a filter selects, oldest first. The
+ * building block for anything per Squad Member or per line-up.
+ */
+export async function squadAppearances(
+  db: Db,
+  filter: StatsFilter,
+  { playerId, ...scope }: SquadAppearanceOptions = {},
+): Promise<SquadAppearance[]> {
+  const rows = await db
+    .select({
+      appearance: appearances,
+      personaName: players.personaName,
+      match: matches,
+      opponentName: clubs.name,
+    })
+    .from(appearances)
+    .innerJoin(matches, eq(matches.matchId, appearances.matchId))
+    .innerJoin(players, eq(players.playerId, appearances.playerId))
+    .innerJoin(clubs, eq(clubs.clubId, matches.opponentClubId))
+    .where(
+      and(
+        isOurAppearance,
+        matchScope(db, filter, scope),
+        playerId ? eq(appearances.playerId, playerId) : undefined,
+      ),
+    )
+    .orderBy(asc(matches.playedAt), asc(appearances.playerId));
+
+  return rows.map(({ appearance, personaName, match, opponentName }) => {
+    const { matchId, clubId: _, positionGroup, ...stats } = appearance;
+    return {
+      ...stats,
+      positionGroup: toPositionGroup(positionGroup),
+      name: displayName(appearance.playerId, personaName),
+      matchId,
+      matchType: toMatchType(match.matchType),
+      playedAt: match.playedAt,
+      opponentClubId: match.opponentClubId,
+      opponentName: opponentName ?? match.opponentClubId,
+      goalsFor: match.goalsFor,
+      goalsAgainst: match.goalsAgainst,
+      outcome: toOutcome(match.result),
+      dnf: match.dnf,
+    };
+  });
+}
+
+export interface LeaderboardRow extends PlayerTotals {
+  playerId: string;
+  name: string;
+  former: boolean;
+}
+
+export interface LeaderboardOptions extends ScopeOptions {
+  /** Hide Squad Members with fewer Appearances (default 3). */
+  minAppearances?: number;
+  /** Include Former Squad Members (default: current squad only). */
+  includeFormer?: boolean;
+}
+
+/** One row per Squad Member with totals over the filtered Matches, most Appearances first. */
+export async function squadLeaderboard(
+  db: Db,
+  filter: StatsFilter,
+  {
+    minAppearances = DEFAULT_MIN_APPEARANCES,
+    includeFormer = false,
+    ...scope
+  }: LeaderboardOptions = {},
+): Promise<LeaderboardRow[]> {
+  const byPlayer = groupBy(
+    await squadAppearances(db, filter, scope),
+    (a) => a.playerId,
+  );
+  return [...byPlayer.entries()]
+    .map(([playerId, apps]) => ({
+      playerId,
+      name: apps[apps.length - 1].name,
+      former: isFormerSquadMember(playerId),
+      ...summariseAppearances(apps),
+    }))
+    .filter(
+      (row) =>
+        row.appearances >= minAppearances && (includeFormer || !row.former),
+    )
+    .sort(
+      (a, b) => b.appearances - a.appearances || a.name.localeCompare(b.name),
+    );
+}
+
+export interface SquadMember {
+  playerId: string;
+  name: string;
+  /** EA's latest persona name, which can differ from a Roster nickname. */
+  personaName: string | null;
+  former: boolean;
+  /** When we first recorded an Appearance for Our Club: "Tracking since". */
+  trackedSince: Date;
+}
+
+/** A Squad Member, or null when the ID has never appeared for Our Club. */
+export async function getSquadMember(
+  db: Db,
+  playerId: string,
+): Promise<SquadMember | null> {
+  const [row] = await db
+    .select({
+      personaName: players.personaName,
+      trackedSince: min(matches.playedAt),
+    })
+    .from(players)
+    .innerJoin(appearances, eq(appearances.playerId, players.playerId))
+    .innerJoin(matches, eq(matches.matchId, appearances.matchId))
+    .where(and(eq(players.playerId, playerId), isOurAppearance))
+    .groupBy(players.playerId);
+  if (!row?.trackedSince) return null;
+  return {
+    playerId,
+    name: displayName(playerId, row.personaName),
+    personaName: row.personaName,
+    former: isFormerSquadMember(playerId),
+    trackedSince: row.trackedSince,
+  };
+}
