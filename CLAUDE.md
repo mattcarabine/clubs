@@ -10,6 +10,8 @@ Read before changing anything:
 - React Router v8 in framework mode (SSR) through `@cloudflare/vite-plugin`.
 - Read bindings in loaders with `import { env } from "cloudflare:workers"`.
 - D1 binding `DB`, accessed through Drizzle (`app/db/`). Edit `app/db/schema.ts`, run `pnpm db:generate` to write a migration to `migrations/`, then apply it with `pnpm db:migrate:local` (or `:remote`). Never hand-edit generated migrations.
+- D1 caps bound parameters at 100 per statement and the free plan caps queries at 50 per invocation: write many rows with `bulkInsert` (`app/db/bulk.ts`), and batch writes with `db.batch`.
+- The Poll stores a Raw Payload only when its hash changes, and derives Matches, Appearances, clubs, players and Snapshots from it in the same batch (`app/poll/record.ts`, `app/poll/ingest.ts`). Parsing EA's strings lives in `app/ea/parse.ts`.
 - The Worker entry point, `workers/app.ts`, has the `fetch` handler (React Router) and the `scheduled` handler (the Poll).
 - Tailwind v4.
 - Biome handles lint and format; 2-space indent, double quotes.
