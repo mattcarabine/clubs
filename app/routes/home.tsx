@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-
+import { PageHeader } from "~/components";
 import type { Route } from "./+types/home";
 
 export function meta(_: Route.MetaArgs) {
@@ -11,9 +11,5 @@ export function loader() {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  return (
-    <main className="p-4">
-      <h1>{loaderData.clubName}</h1>
-    </main>
-  );
+  return <PageHeader title={loaderData.clubName} subtitle="Matchday" />;
 }
