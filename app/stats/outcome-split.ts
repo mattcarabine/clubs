@@ -83,6 +83,8 @@ export interface SplitMatch {
   opponent: ClubMatchTotals;
   /** How many Squad Members played. */
   squadSize: number;
+  /** Which Session it was in: equal for Matches in the same Session. */
+  session: number;
   /** 1 for the first Match in its Session. */
   sessionPlace: number;
 }
@@ -223,6 +225,12 @@ export function winRecord(outcomes: readonly Outcome[]): WinRecord {
   };
 }
 
+/** A Win record as a labelled bar for `WinRateBarChart`. */
+export function winRateBucket(label: string, record: WinRecord): SplitBucket {
+  const { played, wins, winPercentage } = record;
+  return { label, played, wins, winPercentage: winPercentage ?? 0 };
+}
+
 /** The Matches in a group against every other Match. */
 export interface GroupSplit {
   group: WinRecord;
@@ -255,11 +263,9 @@ function buckets<T extends { outcome: Outcome }>(
   const byBucket = groupBy(matches, bucketOf);
   return order.flatMap(({ id, label }) => {
     const group = byBucket.get(id);
-    if (!group) return [];
-    const { played, wins, winPercentage } = winRecord(
-      group.map((m) => m.outcome),
-    );
-    return [{ label, played, wins, winPercentage: winPercentage ?? 0 }];
+    return group
+      ? [winRateBucket(label, winRecord(group.map((m) => m.outcome)))]
+      : [];
   });
 }
 
@@ -383,9 +389,88 @@ function squadSizeOf(match: SplitMatch): string {
 }
 
 // ---------------------------------------------------------------------------
+// After a result (CLUBS-26): does a bad result lead to another?
+
+/** Which Match counts as the one after a result. */
+export const AFTER_RESULT_SCOPES = [
+  { id: "any-next", label: "Any next Match" },
+  { id: "same-session", label: "Same Session" },
+] as const;
+
+export type AfterResultScope = (typeof AFTER_RESULT_SCOPES)[number]["id"];
+
+/** Our Win rate in the Match after a Win against the Match after Dropped Points. */
+export interface AfterResultSplit {
+  scope: AfterResultScope;
+  label: string;
+  afterWin: WinRecord;
+  afterDropped: WinRecord;
+  /** Both sides have `MIN_SPLIT_MATCHES`; otherwise the split is hidden and makes no finding. */
+  comparable: boolean;
+}
+
+/**
+ * Each Match (oldest first, already filtered) paired with the next one: the
+ * next in the list whatever the gap, or only when it is in the same Session.
+ * With only League selected, the Match after a League Match is the next
+ * League Match.
+ */
+export function afterResult(
+  matches: readonly Pick<SplitMatch, "outcome" | "session">[],
+): AfterResultSplit[] {
+  const pairs = matches
+    .slice(1)
+    .map((next, i) => ({ previous: matches[i], next }));
+  return AFTER_RESULT_SCOPES.map(({ id, label }) => {
+    const afterWin: Outcome[] = [];
+    const afterDropped: Outcome[] = [];
+    for (const { previous, next } of pairs) {
+      if (id === "same-session" && previous.session !== next.session) continue;
+      (previous.outcome === "W" ? afterWin : afterDropped).push(next.outcome);
+    }
+    const winRecords = {
+      afterWin: winRecord(afterWin),
+      afterDropped: winRecord(afterDropped),
+    };
+    return {
+      scope: id,
+      label,
+      ...winRecords,
+      comparable: isComparable({
+        group: winRecords.afterDropped,
+        rest: winRecords.afterWin,
+      }),
+    };
+  });
+}
+
+/** "After Dropped Points in the same Session we win 20% (5 Matches) vs 60% after a Win (5)". */
+function afterResultFinding({
+  scope,
+  afterWin,
+  afterDropped,
+}: AfterResultSplit): RankedFinding | null {
+  const when = scope === "same-session" ? " in the same Session" : "";
+  const droppedCount = formatCount(afterDropped.played, "Match", "Matches");
+  return winRateFinding(
+    `after-${scope}`,
+    "After a result",
+    { group: afterDropped, rest: afterWin },
+    {
+      text: `After Dropped Points${when} we win ${formatPercentage(afterDropped.winPercentage)} (${droppedCount}) vs ${formatPercentage(afterWin.winPercentage)} after a Win (${afterWin.played})`,
+      counts: `${droppedCount} after Dropped Points, ${afterWin.played} after a Win${when}`,
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Findings
 
-export type Factor = "Performance" | "Personnel" | "Circumstances";
+export type Factor =
+  | "Performance"
+  | "Personnel"
+  | "Circumstances"
+  | "After a result";
 
 /** One plain-English difference between Wins and Dropped Points. */
 export interface Finding {
@@ -426,25 +511,39 @@ interface SplitWords {
   counts: [string, string];
 }
 
-/** A split as a finding, or null when either side is too small. */
-function splitFinding(
+/** A Win-rate split as a finding ranked by Cohen's h, or null when either side is too small. */
+function winRateFinding(
   id: string,
   factor: Factor,
   split: GroupSplit,
-  words: SplitWords,
+  { text, counts }: Pick<Finding, "text" | "counts">,
 ): RankedFinding | null {
   if (!isComparable(split)) return null;
   const { group, rest } = split;
   return {
     id,
     factor,
-    text: `We win ${formatPercentage(group.winPercentage)} of Matches ${words.group}, against ${formatPercentage(rest.winPercentage)} ${words.rest}`,
-    counts: `${formatCount(group.played, "Match", "Matches")} ${words.counts[0]}, ${rest.played} ${words.counts[1]}`,
+    text,
+    counts,
     smallSample: isSmall(group.played, rest.played),
     strength: Math.abs(
       winRateEffectSize(group.winPercentage ?? 0, rest.winPercentage ?? 0),
     ),
   };
+}
+
+/** A group against the rest as a finding, or null when either side is too small. */
+function splitFinding(
+  id: string,
+  factor: Factor,
+  split: GroupSplit,
+  words: SplitWords,
+): RankedFinding | null {
+  const { group, rest } = split;
+  return winRateFinding(id, factor, split, {
+    text: `We win ${formatPercentage(group.winPercentage)} of Matches ${words.group}, against ${formatPercentage(rest.winPercentage)} ${words.rest}`,
+    counts: `${formatCount(group.played, "Match", "Matches")} ${words.counts[0]}, ${rest.played} ${words.counts[1]}`,
+  });
 }
 
 /** Each bucket against the rest; a two-bucket factor gives one finding, not its mirror. */
@@ -488,6 +587,8 @@ export interface OutcomeSplit {
   byTimeOfDay: SplitBucket[];
   byDayType: SplitBucket[];
   bySessionPlace: SplitBucket[];
+  /** Win % after a Win against after Dropped Points, one per `AFTER_RESULT_SCOPES`. */
+  afterResult: AfterResultSplit[];
   /** Win % over the last `ROLLING_WIN_WINDOW` Matches at each Match, oldest first. */
   rollingWinPercentage: number[];
 }
@@ -515,6 +616,7 @@ export function outcomeSplit(
   const withWithoutRows = withAndWithout(matches, appearances);
   const outliers = positionOutliers(matches, appearances);
   const sizes = squadSizes(matches);
+  const afterResultSplits = afterResult(matches);
   // A Squad Member who only ever plays one Position Group would say the same
   // thing twice: once with and without them, once as an outlier.
   const withCounts = new Set(
@@ -604,6 +706,7 @@ export function outcomeSplit(
             counts: [label, "otherwise"],
           }),
         ),
+        ...withoutNulls(afterResultSplits.map(afterResultFinding)),
       ]
     : [];
 
@@ -628,6 +731,7 @@ export function outcomeSplit(
     bySessionPlace: buckets(matches, SESSION_PLACES, (m) =>
       sessionPlaceBucket(m.sessionPlace),
     ),
+    afterResult: afterResultSplits,
     rollingWinPercentage: rollingWinPercentage(outcomes),
   };
 }

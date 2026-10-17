@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { Outcome, PositionGroup } from "~/lib/domain";
 
 import {
+  type AfterResultScope,
+  type AfterResultSplit,
+  afterResult,
   type ClubMatchTotals,
   dayType,
   outcomeSplit,
@@ -55,6 +58,8 @@ function match(
     ours: totals(ours),
     opponent: totals(),
     squadSize: 4,
+    // Each Match its own Session unless a test says otherwise.
+    session: sequence,
     sessionPlace: 1,
     ...rest,
   };
@@ -153,6 +158,86 @@ describe("outcomeSplit", () => {
       [],
     );
     expect(split.rollingWinPercentage).toEqual([100, 50, 200 / 3, 50]);
+  });
+});
+
+/** Matches from a string like "WLWLL", oldest first, each in its own Session. */
+function run(outcomes: string): SplitMatch[] {
+  return [...outcomes].map((o) => match(o as Outcome));
+}
+
+/** Matches from a string like "WLWLL", all in one Session. */
+function session(outcomes: string, id: number): SplitMatch[] {
+  return [...outcomes].map((o) => match(o as Outcome, { session: id }));
+}
+
+describe("afterResult", () => {
+  const scope = (splits: AfterResultSplit[], id: AfterResultScope) =>
+    splits.find((s) => s.scope === id);
+
+  it("pairs each Match with the next one in the list", () => {
+    // W→L, L→W, W→L, L→L, L→W, W→W, W→L, L→W, W→L
+    const anyNext = scope(afterResult(run("WLWLLWWLWL")), "any-next");
+    expect(anyNext).toMatchObject({
+      label: "Any next Match",
+      afterWin: { played: 5, wins: 1, winPercentage: 20 },
+      afterDropped: { played: 4, wins: 3, winPercentage: 75 },
+      comparable: true,
+    });
+  });
+
+  it("counts draws as Dropped Points", () => {
+    const anyNext = scope(afterResult(run("DWDWDW")), "any-next");
+    expect(anyNext?.afterDropped).toEqual({
+      played: 3,
+      wins: 3,
+      winPercentage: 100,
+    });
+  });
+
+  it("keeps only pairs in the same Session under Same Session", () => {
+    // The L ending Session 1 and the W starting Session 2 are a pair only under Any next Match.
+    const splits = afterResult([...session("WLWL", 1), ...session("WLW", 2)]);
+    expect(scope(splits, "any-next")).toMatchObject({
+      afterWin: { played: 3, wins: 0 },
+      afterDropped: { played: 3, wins: 3 },
+    });
+    expect(scope(splits, "same-session")).toMatchObject({
+      afterWin: { played: 3, wins: 0 },
+      afterDropped: { played: 2, wins: 2 },
+      comparable: false,
+    });
+  });
+
+  it("is not comparable with fewer than 3 Matches on either side", () => {
+    const [anyNext] = afterResult(run("WWWLLL"));
+    expect(anyNext.afterWin.played).toBe(3);
+    expect(anyNext.afterDropped.played).toBe(2);
+    expect(anyNext.comparable).toBe(false);
+  });
+
+  it("joins the findings in plain English, ranked by Win-rate gap", () => {
+    // Same Session: 5 after Dropped Points (1 won), 5 after a Win (3 won).
+    const matches = [...session("WWWWLL", 1), ...session("WLLLLW", 2)];
+    const { findings } = outcomeSplit(matches, []);
+    const sameSession = findings.find((f) => f.id === "after-same-session");
+    expect(sameSession).toEqual({
+      id: "after-same-session",
+      factor: "After a result",
+      text: "After Dropped Points in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
+      counts:
+        "5 Matches after Dropped Points, 5 after a Win in the same Session",
+      smallSample: true,
+    });
+    expect(findings.find((f) => f.id === "after-any-next")?.text).toBe(
+      "After Dropped Points we win 33% (6 Matches) vs 60% after a Win (5)",
+    );
+  });
+
+  it("leaves a split with fewer than 3 on either side out of the findings", () => {
+    const { findings } = outcomeSplit(run("WLWLLWWLWL"), []);
+    expect(findings.map((f) => f.id)).toContain("after-any-next");
+    expect(findings.map((f) => f.id)).not.toContain("after-same-session");
   });
 });
 

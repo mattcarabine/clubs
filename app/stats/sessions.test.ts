@@ -14,11 +14,11 @@ describe("sessionPlaces", () => {
       { matchId: "e", playedAt: at("21:45") },
     ]);
     expect(Object.fromEntries(places)).toEqual({
-      a: 1,
-      b: 2,
-      c: 3,
-      d: 1,
-      e: 2,
+      a: { session: 0, place: 1 },
+      b: { session: 0, place: 2 },
+      c: { session: 0, place: 3 },
+      d: { session: 1, place: 1 },
+      e: { session: 1, place: 2 },
     });
   });
 
@@ -27,8 +27,8 @@ describe("sessionPlaces", () => {
       { matchId: "late", playedAt: at("20:00") },
       { matchId: "early", playedAt: at("19:30") },
     ]);
-    expect(places.get("early")).toBe(1);
-    expect(places.get("late")).toBe(2);
+    expect(places.get("early")).toEqual({ session: 0, place: 1 });
+    expect(places.get("late")).toEqual({ session: 0, place: 2 });
   });
 
   it("uses a 45-minute gap", () => {
