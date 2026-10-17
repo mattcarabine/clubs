@@ -35,7 +35,10 @@ export function BarChart({
             key={d.id}
             className="group grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]"
           >
-            <span className="truncate text-ink-soft text-sm">{d.label}</span>
+            {/* Wraps onto a second line on phones rather than hiding the label's end. */}
+            <span className="line-clamp-2 break-words text-ink-soft text-sm">
+              {d.label}
+            </span>
             {/* The right padding reserves room for the value at the longest bar's tip. */}
             <span className="flex items-center pr-14">
               <span

@@ -95,6 +95,9 @@ export interface SplitMatch {
 
 type Club = "ours" | "opponent";
 
+/** Both clubs, Our Club first. */
+const CLUBS: readonly Club[] = ["ours", "opponent"];
+
 interface PerformanceMetric {
   id: string;
   /** The row label: "Shots per 90". */
@@ -625,9 +628,7 @@ export function outcomeSplit(
   const ready = Math.min(record.wins, record.dropped) >= MIN_SPLIT_MATCHES;
 
   const performance = PERFORMANCE_METRICS.flatMap((metric) =>
-    (["ours", "opponent"] as const).map((club) =>
-      performanceSplit(metric, club, matches),
-    ),
+    CLUBS.map((club) => performanceSplit(metric, club, matches)),
   );
   const withWithoutRows = withAndWithout(matches, appearances);
   const outliers = positionOutliers(matches, appearances);
@@ -840,9 +841,7 @@ export function droppedPointsReasons(
   if (wins.length < MIN_SPLIT_MATCHES) return null;
   const candidates = withoutNulls(
     PERFORMANCE_METRICS.flatMap((metric) =>
-      (["ours", "opponent"] as const).map((club) =>
-        deviationFrom(metric, club, match, wins),
-      ),
+      CLUBS.map((club) => deviationFrom(metric, club, match, wins)),
     ),
   );
   return {
@@ -870,25 +869,21 @@ function deviationFrom(
   const winSamples = withoutNulls(
     wins.map((w) => metric.sample(w[club], w.secondsPlayed)),
   );
+  if (!sample || winSamples.length < MIN_SPLIT_MATCHES) return null;
   const typical = weightedMean(winSamples);
-  const score = sample && standardScore(sample.value, winSamples);
-  if (
-    !sample ||
-    !score ||
-    typical === null ||
-    winSamples.length < MIN_SPLIT_MATCHES
-  ) {
-    return null;
-  }
-  const [ours, usual] = [metric.format(sample.value), metric.format(typical)];
+  const score = standardScore(sample.value, winSamples);
+  // A score of 0 is no difference at all.
+  if (typical === null || !score) return null;
+  const shown = metric.format(sample.value);
+  const typicalShown = metric.format(typical);
   // A gap too small to show ("7.7 vs 7.7") says nothing in words either.
-  if (ours === usual) return null;
+  if (shown === typicalShown) return null;
   const diff = sample.value - typical;
   return {
     deviation: {
       id: `${club}-${metric.id}`,
       club,
-      text: `${metric.compare(club, diff)} than in a typical Win (${ours} vs ${usual})`,
+      text: `${metric.compare(club, diff)} than in a typical Win (${shown} vs ${typicalShown})`,
       standardDeviations: score,
     },
     relativeChange: typical === 0 ? Infinity : Math.abs(diff / typical),
