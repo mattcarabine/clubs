@@ -78,7 +78,9 @@ test("the EA totals block shows EA's career games apart from tracked Appearances
   await page.goto(PROFILE);
   const eaTotals = section(page, "EA totals");
   await expect(
-    section(page, "Career").getByRole("definition").filter({ hasText: /^80$/ }),
+    section(page, "Career (EA)")
+      .getByRole("definition")
+      .filter({ hasText: /^80$/ }),
   ).toBeVisible();
   await expect(eaTotals.getByText("2 Appearances")).toBeVisible();
   await expect(

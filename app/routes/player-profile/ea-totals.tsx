@@ -45,7 +45,7 @@ export function EaTotals({
     <div>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-6">
         <TotalsPanel
-          title="Career"
+          title="Career (EA)"
           detail="Since the club was founded"
           gamesPlayed={career?.gamesPlayed ?? null}
           figures={career ? careerFigures(career) : null}

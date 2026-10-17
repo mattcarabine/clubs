@@ -70,7 +70,7 @@ test.describe("player profile", () => {
     await expect(figure("Clean sheets (DEF)")).toHaveText("0");
 
     await expect(
-      region(page, "Career")
+      region(page, "Career (EA)")
         .getByRole("definition")
         .filter({ hasText: /^112$/ }),
     ).toBeVisible();
