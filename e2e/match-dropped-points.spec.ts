@@ -57,13 +57,13 @@ test("a loss with far fewer shots than the Wins leads with shots and both values
 }) => {
   await record(fakeEa, triggerPoll, [
     ...seededWins(),
-    // Friendlies are outside the baseline, however many shots.
+    // Friendlies are never counted, however many shots.
     withOnlyShots(lasting(friendly({ goalsFor: 3, goalsAgainst: 0 }), 90), 40),
     withOnlyShots(lasting(loss({ matchId: LOSS_ID }), 90), 2),
   ]);
 
   // Page filters never change the baseline.
-  await page.goto(`/matches/${LOSS_ID}?types=friendly`);
+  await page.goto(`/matches/${LOSS_ID}?types=playoff`);
   await expect(panel(page)).toContainText(
     "Against the average of 3 Wins: Competitive Matches, all time, DNFs included.",
   );

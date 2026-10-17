@@ -94,10 +94,7 @@ function CampaignProgress({
   return (
     <>
       {stage.kind === "relegation-match" && (
-        <p
-          role="status"
-          className="border-loss border-l-4 bg-shale-800 px-4 py-3 text-ink"
-        >
+        <p className="border-loss border-l-4 bg-shale-800 px-4 py-3 text-ink">
           <span className="block font-display font-extrabold text-2xl uppercase tracking-wide">
             Relegation Match next
           </span>

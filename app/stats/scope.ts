@@ -21,7 +21,17 @@ import type { Db } from "~/db/client";
 import { appearances, matches, seasons } from "~/db/schema";
 
 import { toMatchKind } from "./convert";
-import { dateWindow, type StatsFilter } from "./filter";
+import { dateWindow, MATCH_TYPES, type StatsFilter } from "./filter";
+
+/**
+ * The Matches the app ever shows: League and Playoff. The Poll still stores
+ * Friendlies (ADR 0003), so every query that ignores the filter (a single
+ * Match, an Opponent, a Squad Member, Sessions) still applies this.
+ */
+export const isShownMatch = inArray(
+  matches.matchType,
+  MATCH_TYPES.map(toMatchKind),
+);
 
 /** Narrows a query beyond the global filter. */
 export interface ScopeOptions {

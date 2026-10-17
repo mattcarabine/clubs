@@ -218,15 +218,6 @@ describe("replayCampaigns", () => {
     expect(campaigns[0].points).toBe(3);
   });
 
-  it("ignores Friendlies", () => {
-    const matches = run("WW").map((m) => ({
-      ...m,
-      matchType: "Friendly" as const,
-    }));
-    const [campaign] = replayCampaigns(matches, [SEASON_START]).campaigns;
-    expect(campaign.leagueMatches).toEqual([]);
-  });
-
   it("a new Season ends the Campaign and resets to Division 5, out of the Playoffs", () => {
     const next = new Date(SEASON_START.getTime() + 100 * HOUR_MS);
     const { campaigns, inPlayoffs } = replayCampaigns(

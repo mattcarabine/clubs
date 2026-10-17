@@ -32,8 +32,8 @@ describe("parseStatsSource", () => {
 describe("writeStatsSource", () => {
   it("writes EA totals and keeps the filter, resetting the page", () => {
     expect(
-      writeStatsSource(params("types=friendly&page=3"), "ea").toString(),
-    ).toBe("types=friendly&source=ea");
+      writeStatsSource(params("types=playoff&page=3"), "ea").toString(),
+    ).toBe("types=playoff&source=ea");
   });
 
   it("leaves Recorded out of the URL", () => {

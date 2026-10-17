@@ -1,7 +1,7 @@
 /**
  * Sessions (CONTEXT.md): runs of Matches with no more than 45 minutes
  * between consecutive kick-offs. A Match's Session is worked out over every
- * recorded Match, whatever the filter, so hiding Friendlies never makes the
+ * shown Match, whatever the filter, so leaving out Playoffs never makes the
  * League Match after one "1st".
  */
 
