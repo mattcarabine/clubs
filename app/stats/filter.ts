@@ -2,7 +2,7 @@
  * The global stats filter: which Matches every stat on a page counts. It
  * lives in the URL so a filtered view can be shared and survives a reload.
  *
- *   ?types=league,friendly&dnf=0&range=30d&season=2
+ *   ?types=league&dnf=0&range=30d&season=2
  *   ?from=2026-10-05&to=2026-10-12
  *   ?pos=midfielder,forward
  *
@@ -29,17 +29,17 @@ import {
   writePositionGroups,
 } from "./positions";
 
+/**
+ * The Match Types a filter can select: the Competitive ones. Friendlies are
+ * never shown, so `?types=friendly` is ignored like any unknown value.
+ */
 export const MATCH_TYPES = [
   "League",
   "Playoff",
-  "Friendly",
 ] as const satisfies readonly MatchType[];
 
 /** League and Playoff: the default scope for all stats (CONTEXT.md). */
-export const COMPETITIVE_MATCH_TYPES: readonly MatchType[] = [
-  "League",
-  "Playoff",
-];
+export const COMPETITIVE_MATCH_TYPES: readonly MatchType[] = MATCH_TYPES;
 
 /**
  * The relative date presets. Each covers today and the days before it, as

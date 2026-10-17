@@ -1,5 +1,5 @@
 /** Match queries: lists, counts, a single Match with both line-ups, and the club record. */
-import { asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
 import { appearances, clubs, matches, players } from "~/db/schema";
@@ -9,7 +9,7 @@ import { displayName } from "~/roster";
 
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
 import type { StatsFilter } from "./filter";
-import { matchScope, type ScopeOptions } from "./scope";
+import { isShownMatch, matchScope, type ScopeOptions } from "./scope";
 import {
   type AppearanceStats,
   type RecordSummary,
@@ -137,7 +137,7 @@ export interface MatchDetail extends MatchSummary {
   appearances: MatchAppearance[];
 }
 
-/** A Match with both clubs' Appearances, or null for an unknown ID. Ignores the filter. */
+/** A Match with both clubs' Appearances, or null for an unknown ID or a Friendly. Ignores the filter. */
 export async function getMatch(
   db: Db,
   matchId: string,
@@ -150,7 +150,7 @@ export async function getMatch(
     })
     .from(matches)
     .innerJoin(clubs, eq(clubs.clubId, matches.opponentClubId))
-    .where(eq(matches.matchId, matchId));
+    .where(and(eq(matches.matchId, matchId), isShownMatch));
   if (!match) return null;
 
   const rows = await db
