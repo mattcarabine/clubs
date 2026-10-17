@@ -78,6 +78,16 @@ export function axisLabelIndices(
   return picked;
 }
 
+/** Pins the first and last x labels inside the plot; centres the rest. */
+export function tickAnchor(
+  index: number,
+  last: number,
+): "start" | "middle" | "end" {
+  if (index === 0) return "start";
+  if (index === last) return "end";
+  return "middle";
+}
+
 /** Compact tick label: 950, 1.2K, 12K, 3.4M. */
 export function formatCompact(value: number): string {
   const abs = Math.abs(value);

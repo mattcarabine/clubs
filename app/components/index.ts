@@ -1,5 +1,10 @@
 // The design system. Import from "~/components"; see CLAUDE.md "Visual design".
 export { AppShell, crestUrl, NAV_ITEMS } from "./app-shell";
+export {
+  CampaignPanel,
+  type CampaignPanelProgress,
+  type CampaignPanelStage,
+} from "./campaign-panel";
 export { ChangeArrow } from "./change-arrow";
 export { BarChart, type BarDatum } from "./charts/bar-chart";
 export {
@@ -16,6 +21,11 @@ export {
   StackedColumnChart,
   type StackedColumnSeries,
 } from "./charts/stacked-column-chart";
+export {
+  StepChart,
+  type StepChartPoint,
+  type StepMarker,
+} from "./charts/step-chart";
 export { WinRateBarChart } from "./charts/win-rate-bar-chart";
 export { Chip, ChipGroup, chipClassName } from "./chip";
 export { CrestMark } from "./crest-mark";

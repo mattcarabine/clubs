@@ -6,6 +6,7 @@ import path from "node:path";
 import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
+import { leaderboardWithGamesPlayed } from "./support/leaderboard.ts";
 import { draw, loss, OUR_CLUB_ID, win } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
@@ -144,18 +145,59 @@ test("says what will fill the page before any Matches", async ({ page }) => {
   await expect(page.getByText("No skill rating yet")).toBeVisible();
 });
 
+test("charts no points total; the other Results charts stay", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.addMatch(win());
+  await fakeEa.addMatch(loss());
+  await triggerPoll();
+  await page.goto("/trends");
+
+  const results = page.getByRole("region", { name: "Results" });
+  await expect(results.getByText("Run of results")).toBeVisible();
+  await expect(
+    results.getByRole("slider", { name: "Cumulative goal difference" }),
+  ).toBeVisible();
+  await expect(page.getByText(/Cumulative points/)).toHaveCount(0);
+  await expect(
+    page.getByRole("slider", { name: "Cumulative points" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("slider", { name: /Goals per Match/ }),
+  ).toBeVisible();
+});
+
 test("has no horizontal page scroll, down to a 375px phone", async ({
   page,
   fakeEa,
   triggerPoll,
   viewport,
 }) => {
-  for (let d = 1; d <= 6; d++) {
-    const playedAt = new Date(`2026-09-${10 + d}T19:30:00Z`);
-    await fakeEa.addMatch(d % 3 ? win({ playedAt }) : loss({ playedAt }));
+  // A tracked Season with a Promotion, so the Campaign panel, timeline and
+  // history all render.
+  await fakeEa.setPayload(
+    "currentSeasonLeaderboard/search",
+    leaderboardWithGamesPlayed(31),
+  );
+  await triggerPoll();
+  await fakeEa.setPayload(
+    "currentSeasonLeaderboard/search",
+    leaderboardWithGamesPlayed(0, { currentDivision: 5 }),
+  );
+  await triggerPoll();
+  const start = Date.now();
+  for (const [i, build] of [win, win, draw, win, loss].entries()) {
+    await fakeEa.addMatch(
+      build({ playedAt: new Date(start + (i + 1) * 60_000) }),
+    );
   }
   await triggerPoll();
   await page.goto("/trends");
+  await expect(
+    page.getByRole("table", { name: "Campaign history" }),
+  ).toBeVisible();
 
   for (const width of [viewport?.width ?? 1440, 375]) {
     await page.setViewportSize({ width, height: viewport?.height ?? 800 });

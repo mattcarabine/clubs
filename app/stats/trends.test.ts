@@ -21,21 +21,20 @@ const match = (
 ): TrendMatch => ({ outcome, goalsFor, goalsAgainst, dnf: false, playedAt });
 
 describe("resultsTimeline", () => {
-  it("runs points and goal difference after each Match", () => {
+  it("runs goal difference after each Match", () => {
     const timeline = resultsTimeline([
       match("W", 3, 1),
       match("L", 0, 2),
       match("D", 1, 1),
     ]);
     expect(timeline.outcomes).toEqual(["W", "L", "D"]);
-    expect(timeline.points).toEqual([3, 3, 4]);
     expect(timeline.goalDifference).toEqual([2, 0, 0]);
     expect(timeline.rollingGoalsFor).toEqual([3, 1.5, 4 / 3]);
     expect(timeline.rollingGoalsAgainst).toEqual([1, 1.5, 4 / 3]);
   });
 
   it("is empty with no Matches", () => {
-    expect(resultsTimeline([]).points).toEqual([]);
+    expect(resultsTimeline([]).outcomes).toEqual([]);
   });
 });
 

@@ -7,7 +7,7 @@
 import type { Outcome } from "~/lib/domain";
 import { londonParts, WEEKDAYS } from "~/lib/london-time";
 
-import { cumulativePoints, rollingAverage } from "./formulas";
+import { rollingAverage } from "./formulas";
 import { type SnapshotPoint, snapshotNumber } from "./snapshots";
 import { groupBy, type RecordInput, summariseRecord } from "./summaries";
 
@@ -19,7 +19,6 @@ export interface TrendMatch extends RecordInput {
 /** Running totals after each Match, for the results timeline. */
 export interface ResultsTimeline {
   outcomes: Outcome[];
-  points: number[];
   goalDifference: number[];
   /** Goals per Match averaged over the last `ROLLING_WINDOW` Matches. */
   rollingGoalsFor: (number | null)[];
@@ -29,10 +28,8 @@ export interface ResultsTimeline {
 export function resultsTimeline(
   matches: readonly TrendMatch[],
 ): ResultsTimeline {
-  const outcomes = matches.map((m) => m.outcome);
   return {
-    outcomes,
-    points: cumulativePoints(outcomes),
+    outcomes: matches.map((m) => m.outcome),
     goalDifference: cumulativeGoalDifference(matches),
     rollingGoalsFor: rollingAverage(matches.map((m) => m.goalsFor)),
     rollingGoalsAgainst: rollingAverage(matches.map((m) => m.goalsAgainst)),

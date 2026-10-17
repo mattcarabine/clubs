@@ -12,6 +12,7 @@ import {
   formatCompact,
   linearScale,
   niceTicks,
+  tickAnchor,
 } from "./scale";
 import { useElementWidth } from "./use-element-width";
 
@@ -287,13 +288,6 @@ const ARROW_STEP: Partial<Record<string, 1 | -1>> = {
   ArrowRight: 1,
   ArrowLeft: -1,
 };
-
-/** Pins the first and last x labels inside the plot; centres the rest. */
-function tickAnchor(index: number, last: number): "start" | "middle" | "end" {
-  if (index === 0) return "start";
-  if (index === last) return "end";
-  return "middle";
-}
 
 function lastDefined(values: readonly (number | null)[]): number {
   for (let i = values.length - 1; i >= 0; i--) {
