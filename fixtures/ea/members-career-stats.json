@@ -1,0 +1,65 @@
+{
+  "members": [
+    {
+      "name": "Kabeeble",
+      "proPos": "14",
+      "gamesPlayed": "112",
+      "goals": "98",
+      "assists": "65",
+      "manOfTheMatch": "16",
+      "ratingAve": "7.6",
+      "prevGoals": "0",
+      "favoritePosition": "midfielder"
+    },
+    {
+      "name": "Loltown95",
+      "proPos": "25",
+      "gamesPlayed": "112",
+      "goals": "86",
+      "assists": "94",
+      "manOfTheMatch": "33",
+      "ratingAve": "7.9",
+      "prevGoals": "2",
+      "favoritePosition": "forward"
+    },
+    {
+      "name": "tinbs_irl",
+      "proPos": "25",
+      "gamesPlayed": "106",
+      "goals": "21",
+      "assists": "13",
+      "manOfTheMatch": "10",
+      "ratingAve": "7.3",
+      "prevGoals": "0",
+      "favoritePosition": "forward"
+    },
+    {
+      "name": "JONTEeu",
+      "proPos": "14",
+      "gamesPlayed": "99",
+      "goals": "52",
+      "assists": "46",
+      "manOfTheMatch": "3",
+      "ratingAve": "7.3",
+      "prevGoals": "1",
+      "favoritePosition": "midfielder"
+    },
+    {
+      "name": "IGrav97",
+      "proPos": "5",
+      "gamesPlayed": "62",
+      "goals": "44",
+      "assists": "38",
+      "manOfTheMatch": "13",
+      "ratingAve": "8.0",
+      "prevGoals": "1",
+      "favoritePosition": "defender"
+    }
+  ],
+  "positionCount": {
+    "midfielder": 2,
+    "goalkeeper": 0,
+    "forward": 2,
+    "defender": 1
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1792260781026,
+      "tag": "0000_poll_runs_and_raw_payloads",
+      "breakpoints": true
+    }
+  ]
+}
