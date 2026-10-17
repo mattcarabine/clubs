@@ -103,7 +103,7 @@ test("sorting by goals per 90 ranks the sharper finisher first", async ({
   triggerPoll,
 }) => {
   await recordAlphaAndBravo(fakeEa, triggerPoll);
-  await page.goto("/squad?minApps=1");
+  await page.goto("/squad");
 
   // Default order: most Appearances first.
   await expect(bodyRows(page).first()).toContainText(BRAVO.name);
@@ -118,24 +118,35 @@ test("sorting by goals per 90 ranks the sharper finisher first", async ({
   await expect(bodyRows(page).nth(1)).toContainText(BRAVO.name);
 });
 
-test("the minimum Appearances hides Squad Members below it", async ({
+// CLUBS-24: there is no threshold, so one Appearance is enough to be listed.
+test("a Squad Member with one Appearance is listed by default", async ({
   page,
   fakeEa,
   triggerPoll,
 }) => {
-  await recordAlphaAndBravo(fakeEa, triggerPoll);
+  await fakeEa.addMatch(withLineup(win(), [{ player: ALPHA, goals: 1 }]));
+  await triggerPoll();
+
   await page.goto("/squad");
-
-  // Default minimum of 3: Alpha has only 2 Appearances.
-  await expect(memberRow(page, BRAVO.name)).toBeVisible();
-  await expect(memberRow(page, ALPHA.name)).toHaveCount(0);
-
-  const fewer = page.getByRole("button", { name: "Fewer minimum Appearances" });
-  await fewer.click();
-  await expect(page).toHaveURL(/minApps=2/);
-  await fewer.click();
-  await expect(page).toHaveURL(/minApps=1/);
   await expect(memberRow(page, ALPHA.name)).toBeVisible();
+  await expect(await memberCell(page, ALPHA.name, "Apps")).toHaveText("1");
+  await expect(page.getByText("1 Squad Member", { exact: true })).toBeVisible();
+});
+
+test("an old link with the removed threshold param loads and ignores it", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.addMatch(withLineup(win(), [{ player: ALPHA }]));
+  await triggerPoll();
+
+  const response = await page.goto("/squad?minApps=5");
+  expect(response?.status()).toBe(200);
+  await expect(memberRow(page, ALPHA.name)).toBeVisible();
+  await expect(page.getByRole("group", { name: /appearances/i })).toHaveCount(
+    0,
+  );
 });
 
 test("Former Squad Members show only when included", async ({

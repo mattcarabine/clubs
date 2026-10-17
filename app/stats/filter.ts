@@ -51,15 +51,11 @@ export const DEFAULT_STATS_FILTER: StatsFilter = {
   range: "all",
 };
 
-/** Leaderboards hide Squad Members with fewer Appearances than this. */
-export const DEFAULT_MIN_APPEARANCES = 3;
-
 /** The URL search params the filter owns. */
 export const FILTER_PARAMS = {
   matchTypes: "types",
   includeDnf: "dnf",
   range: "range",
-  minAppearances: "minApps",
   season: "season",
 } as const;
 
@@ -129,29 +125,6 @@ export function toggleMatchType(
   return selected.length
     ? { ...filter, matchTypes: canonicalMatchTypes(selected) }
     : filter;
-}
-
-/** The leaderboard minimum; a missing, negative or non-integer value gives the default. */
-export function parseMinAppearances(params: URLSearchParams): number {
-  const raw = params.get(FILTER_PARAMS.minAppearances);
-  if (raw === null || !/^\d+$/.test(raw)) return DEFAULT_MIN_APPEARANCES;
-  return Number(raw);
-}
-
-/** A copy of `params` with the leaderboard minimum written in (omitted when default). */
-export function writeMinAppearances(
-  params: URLSearchParams,
-  minAppearances: number,
-): URLSearchParams {
-  const next = withoutPage(params);
-  setOrDelete(
-    next,
-    FILTER_PARAMS.minAppearances,
-    minAppearances === DEFAULT_MIN_APPEARANCES
-      ? null
-      : String(Math.max(0, Math.floor(minAppearances))),
-  );
-  return next;
 }
 
 function parseMatchTypes(raw: string | null): readonly MatchType[] {

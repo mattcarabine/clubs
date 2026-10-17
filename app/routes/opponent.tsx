@@ -58,11 +58,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getOpponent(db, params.clubId),
     listMatches(db, filter, scope),
     // Everyone who has played them counts, including Former Squad Members.
-    squadLeaderboard(db, filter, {
-      ...scope,
-      minAppearances: 1,
-      includeFormer: true,
-    }),
+    squadLeaderboard(db, filter, { ...scope, includeFormer: true }),
   ]);
   if (!opponent) throw data("Not Found", { status: 404 });
   return {

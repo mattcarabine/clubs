@@ -1,15 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_MIN_APPEARANCES,
   DEFAULT_STATS_FILTER,
   isDefaultStatsFilter,
-  parseMinAppearances,
   parseStatsFilter,
   type StatsFilter,
   statsFilterFromRequest,
   toggleMatchType,
-  writeMinAppearances,
   writeStatsFilter,
 } from "./filter";
 
@@ -151,30 +148,5 @@ describe("toggleMatchType", () => {
       matchTypes: ["League"],
     };
     expect(toggleMatchType(leagueOnly, "League")).toBe(leagueOnly);
-  });
-});
-
-describe("minimum Appearances", () => {
-  it("defaults to 3", () => {
-    expect(parseMinAppearances(params(""))).toBe(DEFAULT_MIN_APPEARANCES);
-    expect(DEFAULT_MIN_APPEARANCES).toBe(3);
-  });
-
-  it("reads a whole number, including 0", () => {
-    expect(parseMinAppearances(params("minApps=1"))).toBe(1);
-    expect(parseMinAppearances(params("minApps=0"))).toBe(0);
-  });
-
-  it("ignores negative or non-numeric values", () => {
-    expect(parseMinAppearances(params("minApps=-1"))).toBe(3);
-    expect(parseMinAppearances(params("minApps=2.5"))).toBe(3);
-    expect(parseMinAppearances(params("minApps=lots"))).toBe(3);
-  });
-
-  it("writes only a non-default value and resets the page", () => {
-    expect(writeMinAppearances(params("page=2"), 1).toString()).toBe(
-      "minApps=1",
-    );
-    expect(writeMinAppearances(params("minApps=1"), 3).size).toBe(0);
   });
 });

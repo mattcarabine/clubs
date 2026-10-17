@@ -117,12 +117,7 @@ test.describe("Squad table", () => {
     await expect(
       filters(page).getByRole("group", { name: "Source" }),
     ).toBeVisible();
-    for (const control of [
-      "Match Type",
-      "Dates",
-      "DNF",
-      "Minimum Appearances",
-    ]) {
+    for (const control of ["Match Type", "Dates", "DNF"]) {
       await expect(
         filters(page).getByRole("group", { name: control }),
       ).toHaveCount(0);
