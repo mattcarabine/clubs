@@ -5,6 +5,8 @@
  *
  * - `POST /__test/reset` empties every table, so each test starts clean.
  * - `GET /__test/tables/:name` returns all rows of one table as JSON.
+ * - `POST /__test/poll-runs/age?minutes=N` moves every Poll run N minutes
+ *   into the past, e.g. to make the latest Poll stale.
  */
 
 const PREFIX = "/__test/";
@@ -27,6 +29,22 @@ export async function handleTestRoute(
         ...tables.map((table) => env.DB.prepare(`DELETE FROM "${table}"`)),
       ]);
     }
+    return new Response(null, { status: 204 });
+  }
+
+  if (route === "poll-runs/age" && request.method === "POST") {
+    const minutes = Number(new URL(request.url).searchParams.get("minutes"));
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      return Response.json(
+        { error: "minutes must be a positive number" },
+        { status: 400 },
+      );
+    }
+    await env.DB.prepare(
+      "UPDATE poll_runs SET started_at = started_at - ?1, finished_at = finished_at - ?1",
+    )
+      .bind(Math.round(minutes * 60_000))
+      .run();
     return new Response(null, { status: 204 });
   }
 
