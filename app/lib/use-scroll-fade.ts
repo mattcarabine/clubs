@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 /** Which ends of a sideways scroller have content hidden past them. */
 export type ScrollEdges = { start: boolean; end: boolean };
@@ -14,14 +14,19 @@ const SLACK_PX = 2;
  * out and show that the row scrolls. Spread the returned attributes on the
  * element that has the ref; leave out `start` where a sticky first column
  * must stay crisp. Nothing fades on the server or when everything fits.
+ *
+ * The ref is a callback ref, so a scroller that mounts later (a table that
+ * first rendered its empty state) is still measured.
  */
 export function useScrollFade<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
+  const [element, ref] = useState<T | null>(null);
   const [edges, setEdges] = useState<ScrollEdges>(NONE);
 
   useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
+    if (!element) {
+      setEdges(NONE);
+      return;
+    }
     const measure = () => {
       const { scrollLeft, scrollWidth, clientWidth } = element;
       const start = scrollLeft > SLACK_PX;
@@ -42,7 +47,7 @@ export function useScrollFade<T extends HTMLElement>() {
       element.removeEventListener("scroll", measure);
       observer.disconnect();
     };
-  }, []);
+  }, [element]);
 
   return [ref, edges] as const;
 }
