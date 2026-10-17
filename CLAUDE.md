@@ -48,6 +48,12 @@ To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in 
 - Before opening a PR: run the code-simplifier agent and then the code-reviewer agent over the diff.
 - The orchestrator merges a PR once CI is green. Workers Builds then deploys `main`.
 
+## Production
+- The Worker serves https://clubs.marabine.co.uk, declared as a custom domain in `routes` in `wrangler.jsonc`. Keep it there: a deploy without it would detach the domain.
+- Workers Builds runs `pnpm run deploy` on every push to `main`: build, then `wrangler d1 migrations apply DB --remote`, then `wrangler deploy`.
+- **Migrations must be backward compatible.** They reach production D1 before the new code does, so the code that is still live (including its 5-minute Poll) must keep working against the migrated schema. Add columns as nullable or with defaults, and add tables freely. To rename or drop something, first ship code that no longer uses it, then remove it in a later PR.
+- The site is private and never indexed: every Worker response gets `X-Robots-Tag: noindex, nofollow` (`workers/app.ts`), static assets get it from `public/_headers`, and `public/robots.txt` disallows everything.
+
 ## Visual design
 A TV sports-broadcast look: angled score bars, ticker strips and bold condensed numerals on blue-slate surfaces. The palette is inspired by the Seattle Sounders but uses none of their marks, and nothing is copied from Sky Sports or any other broadcaster. Dark is the only theme. See every component live at `/styleguide`.
 
