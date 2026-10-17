@@ -93,6 +93,13 @@ test("every component section renders", async ({ page }) => {
     }),
   ).toBeVisible();
   await expect(
+    section("form-badge").locator('[title="Last 5: 8.1 avg vs 7.3 usual"]'),
+  ).toHaveCount(2);
+  await expect(
+    section("form-badge").getByText("Cold", { exact: true }),
+  ).toBeVisible();
+  await expect(section("tag").getByText("Small sample")).toBeVisible();
+  await expect(
     section("empty-state").getByText("No Matches yet"),
   ).toBeVisible();
   await expect(

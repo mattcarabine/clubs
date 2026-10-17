@@ -8,6 +8,7 @@ import {
   type DataTableColumn,
   DnfBadge,
   EmptyState,
+  FormBadge,
   FormGuide,
   HeadToHeadBar,
   LastUpdatedBadge,
@@ -549,6 +550,18 @@ export default function Styleguide() {
           <LastUpdatedBadge updatedAt={minutesAgo(0)} now={NOW} />
           <LastUpdatedBadge updatedAt={minutesAgo(4)} now={NOW} />
           <LastUpdatedBadge updatedAt={minutesAgo(95)} now={NOW} />
+        </div>
+      </Section>
+
+      <Section id="form-badge" title="FormBadge">
+        <div className="flex flex-wrap items-center gap-3">
+          <FormBadge status="hot" detail="Last 5: 8.1 avg vs 7.3 usual" />
+          <FormBadge status="cold" detail="Last 5: 6.4 avg vs 7.2 usual" />
+          <FormBadge
+            status="hot"
+            detail="Last 5: 8.1 avg vs 7.3 usual"
+            compact
+          />
         </div>
       </Section>
 

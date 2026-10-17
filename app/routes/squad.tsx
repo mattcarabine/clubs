@@ -20,6 +20,7 @@ import {
   type DataTableColumn,
   EmptyState,
   FilterBar,
+  FormBadge,
   PageHeader,
   PlayerChip,
   type RowSelection,
@@ -44,6 +45,7 @@ import {
   type EaSeasonTotals,
   eaCleanSheets,
   eaMemberTotals,
+  type FormIndicator,
   type LeaderboardRow,
   type PositionGroupSelection,
   parseStatsFilter,
@@ -470,20 +472,33 @@ function seasonStat(
  * The pinned Squad Member column. On phones it is just the name, capped in
  * width, so the headline stats beside it fit without scrolling.
  */
-function nameColumn<Row extends SquadRow>(): DataTableColumn<Row> {
+function nameColumn<Row extends SquadRow>(
+  /** Hot or Cold form beside the name (CLUBS-40), within the same width on phones. */
+  form?: (row: Row) => FormIndicator | null,
+): DataTableColumn<Row> {
   return {
     id: "name",
     header: "Squad Member",
-    cell: (r) => (
-      <span className="block max-w-24 sm:max-w-none">
-        <PlayerChip
-          name={r.name}
-          positionGroup={r.positionGroup ?? undefined}
-          former={r.former}
-          dense
-        />
-      </span>
-    ),
+    cell: (r) => {
+      const indicator = form?.(r);
+      return (
+        <span className="flex max-w-24 items-center gap-1.5 sm:max-w-none">
+          <PlayerChip
+            name={r.name}
+            positionGroup={r.positionGroup ?? undefined}
+            former={r.former}
+            dense
+          />
+          {indicator && (
+            <FormBadge
+              status={indicator.status}
+              detail={indicator.text}
+              compact
+            />
+          )}
+        </span>
+      );
+    },
     sortValue: (r) => r.name,
     firstSort: "asc",
   };
@@ -512,7 +527,7 @@ function recordedStat(
  * shows them beside the name before the table scrolls.
  */
 const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
-  nameColumn(),
+  nameColumn((r) => r.formIndicator),
   recordedStat("ga", "G+A", (r) => r.goalContributions),
   recordedStat("rating", "Rating", (r) => r.averageRating, formatDecimal),
   {

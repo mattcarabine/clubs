@@ -13,7 +13,12 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
-import { type RecentChange, recentChanges } from "./recent-change";
+import {
+  type FormIndicator,
+  formIndicator,
+  type RecentChange,
+  recentChanges,
+} from "./recent-change";
 import {
   isOurAppearance,
   isShownMatch,
@@ -101,6 +106,8 @@ export interface LeaderboardRow extends PlayerTotals {
   former: boolean;
   /** The biggest of the Squad Member's recent changes (CLUBS-37), or null. */
   recentChange: RecentChange | null;
+  /** Hot or Cold form (CLUBS-40), or null for neither. */
+  formIndicator: FormIndicator | null;
 }
 
 export interface LeaderboardOptions extends ScopeOptions {
@@ -142,12 +149,52 @@ export async function squadLeaderboard(
         former: isFormerSquadMember(playerId),
         ...summariseAppearances(selected),
         recentChange: recentChanges(selected, name).biggest,
+        formIndicator: formIndicator(selected),
       };
     })
     .filter((row) => includeFormer || !row.former)
     .sort(
       (a, b) => b.appearances - a.appearances || a.name.localeCompare(b.name),
     );
+}
+
+/** A current Squad Member in Hot or Cold form. */
+export interface SquadFormRow {
+  playerId: string;
+  name: string;
+  formIndicator: FormIndicator;
+}
+
+/**
+ * The current Squad Members in Hot or Cold form over the filtered Matches
+ * (CLUBS-40), biggest gap first, for Matchday's strip. One query.
+ */
+export async function squadForm(
+  db: Db,
+  filter: StatsFilter,
+): Promise<SquadFormRow[]> {
+  const byPlayer = groupBy(
+    await squadAppearances(db, filter),
+    (a) => a.playerId,
+  );
+  const rows: SquadFormRow[] = [];
+  for (const [playerId, apps] of byPlayer) {
+    if (isFormerSquadMember(playerId)) continue;
+    const indicator = formIndicator(apps);
+    if (!indicator) continue;
+    rows.push({
+      playerId,
+      name: apps[apps.length - 1].name,
+      formIndicator: indicator,
+    });
+  }
+  return rows.sort(
+    (a, b) => formGap(b.formIndicator) - formGap(a.formIndicator),
+  );
+}
+
+function formGap({ recent, usual }: FormIndicator): number {
+  return Math.abs(recent - usual);
 }
 
 export interface SquadMember {
