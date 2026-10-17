@@ -107,7 +107,7 @@ From Google Fonts, loaded in `app/root.tsx`. **Sofia Sans Extra Condensed** (`fo
 
 ### Components (`import { … } from "~/components"`)
 Every component is presentational: it takes props and never fetches. Shared domain types (`Outcome`, `PositionGroup`, `MatchType`) live in `~/lib/domain`.
-- `AppShell`: header with crest lockup and nav (Matchday, Squad, Matches, Opponents, Trends, Analysis), optional `ticker` slot. The six items fit a 375px phone without scrolling the nav (`px-1.5` links under `sm`); check that again before adding a seventh. `root.tsx` already wraps every route in it.
+- `AppShell`: header with crest lockup and nav (Matchday, Squad, Matches, Opponents, Trends, Analysis), optional `ticker` slot. The six items fit a 375px phone without scrolling the nav (`px-1.5` links with normal tracking under `sm`); check that again before adding a seventh. `root.tsx` already wraps every route in it.
 - `PageHeader` / `SectionHeading`: the page's single h1 (with an optional `aside`, e.g. a badge) and section h2s.
 - `ScoreBar`: the broadcast score strip. Use `size="hero"` for the lead Match and `compact` in lists; mark Our Club with `isOurClub`.
 - `Ticker`: a strip of `{ id, headline, detail }` items, made for the `AppShell` `ticker` slot. It scrolls only when the items overflow it, and sits still when they fit.

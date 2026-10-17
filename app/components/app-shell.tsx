@@ -55,7 +55,7 @@ export function AppShell({ clubName, ticker, children }: AppShellProps) {
                     end={item.to === "/"}
                     className={({ isActive }) =>
                       [
-                        "relative flex items-center whitespace-nowrap px-1.5 py-2.5 font-display font-bold text-base uppercase tracking-wide transition-colors sm:px-3 sm:text-lg",
+                        "relative flex items-center whitespace-nowrap px-1.5 py-2.5 font-display font-bold text-base uppercase tracking-normal transition-colors sm:px-3 sm:text-lg sm:tracking-wide",
                         "after:absolute after:inset-x-1.5 after:bottom-0 sm:after:inset-x-2 after:h-1 after:-skew-x-12 after:transition-colors",
                         isActive
                           ? "text-ink after:bg-rave"
