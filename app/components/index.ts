@@ -16,12 +16,14 @@ export {
   type DataTableSort,
   numberColumn,
 } from "./data-table";
+export { DnfBadge } from "./dnf-badge";
 export { EmptyState } from "./empty-state";
 export { FilterBar } from "./filter-bar";
 export { FormGuide } from "./form-guide";
 export { HeadToHeadBar, type HeadToHeadRecord } from "./head-to-head-bar";
 export { PageHeader, SectionHeading } from "./headings";
 export { LastUpdatedBadge } from "./last-updated-badge";
+export { MatchScoreBar } from "./match-score-bar";
 export { OutcomeBadge } from "./outcome-badge";
 export { PlayerChip } from "./player-chip";
 export { ScoreBar, type ScoreBarSide } from "./score-bar";

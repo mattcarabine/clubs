@@ -100,7 +100,7 @@ export default function Opponents({ loaderData }: Route.ComponentProps) {
         <div className="grid gap-8">
           <Link
             to={`/opponents/${mostPlayed.clubId}`}
-            className="block transition-[filter] hover:brightness-110"
+            className="block transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-rave focus-visible:outline-offset-4"
           >
             <HeadToHeadBar
               size="hero"

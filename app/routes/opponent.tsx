@@ -8,9 +8,9 @@ import {
   FilterBar,
   FormGuide,
   HeadToHeadBar,
+  MatchScoreBar,
   numberColumn,
   PageHeader,
-  ScoreBar,
   SectionHeading,
   StatGrid,
   StatTile,
@@ -172,28 +172,16 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
                   <li key={match.matchId}>
                     <Link
                       to={`/matches/${match.matchId}`}
-                      className="block transition-[filter] hover:brightness-110"
+                      className="block transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-rave focus-visible:outline-offset-4"
                     >
-                      <ScoreBar
-                        home={{
-                          name: clubName,
-                          score: match.goalsFor,
-                          isOurClub: true,
-                        }}
-                        away={{
-                          name: opponent.name,
-                          score: match.goalsAgainst,
-                        }}
-                        label={match.matchType}
+                      <MatchScoreBar
+                        clubName={clubName}
+                        match={match}
                         status={
-                          <>
-                            {match.dnf && <span>DNF</span>}
-                            <time dateTime={match.playedAt.toISOString()}>
-                              {formatLondonDate(match.playedAt)}
-                            </time>
-                          </>
+                          <time dateTime={match.playedAt.toISOString()}>
+                            {formatLondonDate(match.playedAt)}
+                          </time>
                         }
-                        outcome={match.outcome}
                       />
                     </Link>
                   </li>
