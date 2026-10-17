@@ -17,11 +17,17 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import type { PositionGroup } from "~/lib/domain";
-import { formatDecimal, formatPercentage, NO_VALUE } from "~/lib/number-format";
+import {
+  formatDecimal,
+  formatOptional,
+  formatPercentage,
+  NO_VALUE,
+} from "~/lib/number-format";
 import { playerPath } from "~/lib/paths";
 import {
   getMatch,
   type MatchAppearance,
+  type MatchSkillRatings,
   type PlayerTotals,
   summariseAppearances,
 } from "~/stats";
@@ -85,6 +91,11 @@ export default function Match({ loaderData }: Route.ComponentProps) {
           size="hero"
           status={match.dnf ? undefined : "FT"}
         />
+        <SkillRatings
+          clubName={clubName}
+          opponentName={opponent.name}
+          ratings={match.skillRatings}
+        />
         {match.dnf &&
           (match.outcome === "W" ? (
             <DnfNote winner={clubName} quitter={opponent.name} />
@@ -147,6 +158,43 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       notFoundDescription="No recorded Match has this ID. It may be older than the first Poll."
       back={{ to: "/matches", children: "All Matches" }}
     />
+  );
+}
+
+/**
+ * Each club's Skill Rating at the Match, under its side of the score bar.
+ * Matches recorded before ratings were captured may have none: then nothing.
+ */
+function SkillRatings({
+  clubName,
+  opponentName,
+  ratings,
+}: {
+  clubName: string;
+  opponentName: string;
+  ratings: MatchSkillRatings;
+}) {
+  if (ratings.ours === null && ratings.opponent === null) return null;
+  const ours = formatOptional(ratings.ours);
+  const theirs = formatOptional(ratings.opponent);
+  return (
+    <div className="mt-2">
+      <p className="sr-only">{`Skill ratings at this Match: ${clubName} ${ours}, ${opponentName} ${theirs}`}</p>
+      <div
+        aria-hidden
+        className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline gap-3 px-2 sm:px-6"
+      >
+        <span className="text-right font-display font-extrabold text-2xl text-ink tabular leading-none">
+          {ours}
+        </span>
+        <span className="font-display font-bold text-ink-muted text-sm uppercase tracking-wide">
+          Skill rating
+        </span>
+        <span className="font-display font-extrabold text-2xl text-ink-soft tabular leading-none">
+          {theirs}
+        </span>
+      </div>
+    </div>
   );
 }
 

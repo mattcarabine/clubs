@@ -14,6 +14,14 @@ _Avoid_: Team, my club
 Any club Our Club has played a Match against.
 _Avoid_: Rival, enemy, other team
 
+**Skill Rating**:
+EA's rating of a club's strength (`skillRating` in `clubs/overallStats`). Each Match records both clubs' Skill Ratings at the time it was played.
+_Avoid_: Elo, SR, club rating, strength
+
+**Opponent Rating**:
+The Opponent's Skill Rating at a Match, read within an hour of it. Matches recorded before ratings were captured are backfilled with the Opponent's current rating instead.
+_Avoid_: Opposition strength, enemy rating
+
 **Squad Member**:
 Anyone who has made an Appearance for Our Club, identified by their stable EA player ID (persona names can change; IDs don't). Our Club has no guests.
 _Avoid_: Member, user, teammate, guest

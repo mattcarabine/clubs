@@ -55,6 +55,9 @@ export const SNAPSHOT_FIELDS = {
   "currentSeasonLeaderboard/search": ["clubId", "gamesPlayed"],
 } as const;
 
+/** Fields of an Opponent's `clubs/overallStats` entry that the Poll reads. */
+export const OPPONENT_RATING_FIELDS = ["clubId", "skillRating"] as const;
+
 type JsonObject = Record<string, unknown>;
 
 /**
@@ -156,6 +159,26 @@ function clubTotalsProblems(
     `${endpoint}[${index}]`,
     json[index],
     SNAPSHOT_FIELDS[endpoint],
+  );
+}
+
+/**
+ * Problems with an Opponents' `clubs/overallStats` response: it must list at
+ * least one of the requested clubs, each with a skill rating. A requested club
+ * may be missing (EA leaves out clubs it no longer knows).
+ */
+export function opponentRatingsProblems(
+  json: unknown,
+  clubIds: readonly string[],
+): string[] {
+  const at = "clubs/overallStats (Opponents)";
+  if (!Array.isArray(json)) return [`${at}: expected an array`];
+  const entries = json.filter(
+    (club: unknown) => isRecord(club) && clubIds.includes(String(club.clubId)),
+  );
+  if (entries.length === 0) return [`${at}: none of the requested clubs`];
+  return entries.flatMap((club: JsonObject) =>
+    missing(`${at}[${club.clubId}]`, club, OPPONENT_RATING_FIELDS),
   );
 }
 

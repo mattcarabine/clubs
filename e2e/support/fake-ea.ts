@@ -2,6 +2,7 @@ import type { EaEndpoint } from "../../app/ea/endpoints.ts";
 import {
   type AddMatchBody,
   CONTROL_PREFIX,
+  type FailureTarget,
   type RecordedRequest,
 } from "../fake-ea/control.ts";
 import { FAKE_EA_URL } from "./ports.ts";
@@ -18,11 +19,16 @@ export const fakeEa = {
   setPayload: (endpoint: EaEndpoint, body: unknown, variant = "") =>
     post("payload", { endpoint, variant, body }),
 
-  /** Fail the next `count` EA requests with this HTTP status (e.g. 403 for an Akamai block). */
-  failNext: (status: number, count = 1) => post("fail-next", { status, count }),
+  /**
+   * Fail the next `count` EA requests (matching `target`, if given) with this
+   * HTTP status, e.g. 403 for an Akamai block.
+   */
+  failNext: (status: number, count = 1, target?: FailureTarget) =>
+    post("fail-next", { status, count, target }),
 
-  /** Never answer the next `count` EA requests, so the Worker's fetch times out. */
-  timeoutNext: (count = 1) => post("fail-next", { timeout: true, count }),
+  /** Never answer the next `count` EA requests (matching `target`), so the Worker's fetch times out. */
+  timeoutNext: (count = 1, target?: FailureTarget) =>
+    post("fail-next", { timeout: true, count, target }),
 
   /** Every EA request received since the last reset, oldest first. */
   async requests(): Promise<RecordedRequest[]> {

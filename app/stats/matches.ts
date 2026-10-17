@@ -125,7 +125,14 @@ export interface MatchAppearance
   positionGroup: PositionGroup | null;
 }
 
+/** Both clubs' Skill Ratings at a Match; null when it was never rated. */
+export interface MatchSkillRatings {
+  ours: number | null;
+  opponent: number | null;
+}
+
 export interface MatchDetail extends MatchSummary {
+  skillRatings: MatchSkillRatings;
   /** Our Club's Appearances, then the Opponent's. */
   appearances: MatchAppearance[];
 }
@@ -135,7 +142,15 @@ export async function getMatch(
   db: Db,
   matchId: string,
 ): Promise<MatchDetail | null> {
-  const [match] = await selectSummaries(db).where(eq(matches.matchId, matchId));
+  const [match] = await db
+    .select({
+      ...summaryColumns,
+      ourSkillRating: matches.ourSkillRating,
+      opponentSkillRating: matches.opponentSkillRating,
+    })
+    .from(matches)
+    .innerJoin(clubs, eq(clubs.clubId, matches.opponentClubId))
+    .where(eq(matches.matchId, matchId));
   if (!match) return null;
 
   const rows = await db
@@ -159,7 +174,14 @@ export async function getMatch(
     })
     .sort((a, b) => Number(b.isOurClub) - Number(a.isOurClub));
 
-  return { ...toSummary(match), appearances: lineups };
+  return {
+    ...toSummary(match),
+    skillRatings: {
+      ours: match.ourSkillRating,
+      opponent: match.opponentSkillRating,
+    },
+    appearances: lineups,
+  };
 }
 
 interface SummaryRow {
