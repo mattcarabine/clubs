@@ -9,6 +9,8 @@ import { type CollectedPoll, collectPoll, type PollConfig } from "./collect.ts";
 import { type PollSummary, recordPoll } from "./record.ts";
 
 export function pollConfigFromEnv(env: Env): PollConfig {
+  // The `test` env leaves it out: each E2E run passes its fake EA's URL in.
+  if (!env.EA_BASE_URL) throw new Error("EA_BASE_URL is not set");
   return {
     club: {
       platform: env.EA_PLATFORM,
