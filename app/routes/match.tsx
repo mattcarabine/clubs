@@ -23,7 +23,6 @@ import type { PositionGroup } from "~/lib/domain";
 import {
   formatCount,
   formatDecimal,
-  formatOptional,
   formatPercentage,
   NO_VALUE,
 } from "~/lib/number-format";
@@ -34,9 +33,8 @@ import {
   getDroppedPointsReasons,
   getMatch,
   type MatchAppearance,
-  type MatchSkillRatings,
-  type PlayerTotals,
-  summariseAppearances,
+  type MatchSides,
+  summariseMatchSides,
 } from "~/stats";
 // The component groups line-ups, so import the pure helper directly to keep
 // the query modules out of the client bundle.
@@ -67,10 +65,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     ours,
     theirs,
     droppedPoints,
-    totals: {
-      ours: summariseAppearances(ours),
-      theirs: summariseAppearances(theirs),
-    },
+    totals: summariseMatchSides(match.appearances),
   };
 }
 
@@ -99,12 +94,9 @@ export default function Match({ loaderData }: Route.ComponentProps) {
           clubName={clubName}
           match={match}
           size="hero"
-          status={match.dnf ? undefined : "FT"}
-        />
-        <SkillRatings
-          clubName={clubName}
-          opponentName={opponent.name}
-          ratings={match.skillRatings}
+          when={<LondonTime date={match.playedAt} format="moment" />}
+          skillRatings={match.skillRatings}
+          sides={totals}
         />
         {match.dnf &&
           (match.outcome === "W" ? (
@@ -178,43 +170,6 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   );
 }
 
-/**
- * Each club's Skill Rating at the Match, under its side of the score bar.
- * Matches recorded before ratings were captured may have none: then nothing.
- */
-function SkillRatings({
-  clubName,
-  opponentName,
-  ratings,
-}: {
-  clubName: string;
-  opponentName: string;
-  ratings: MatchSkillRatings;
-}) {
-  if (ratings.ours === null && ratings.opponent === null) return null;
-  const ours = formatOptional(ratings.ours);
-  const theirs = formatOptional(ratings.opponent);
-  return (
-    <div className="mt-2">
-      <p className="sr-only">{`Skill ratings at this Match: ${clubName} ${ours}, ${opponentName} ${theirs}`}</p>
-      <div
-        aria-hidden
-        className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline gap-3 px-2 sm:px-6"
-      >
-        <span className="text-right font-display font-extrabold text-2xl text-ink tabular leading-none">
-          {ours}
-        </span>
-        <span className="font-display font-bold text-ink-muted text-sm uppercase tracking-wide">
-          Skill rating
-        </span>
-        <span className="font-display font-extrabold text-2xl text-ink-soft tabular leading-none">
-          {theirs}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function DnfNote({ winner, quitter }: { winner: string; quitter: string }) {
   return (
     <aside
@@ -284,8 +239,6 @@ function WhyWeDroppedPoints({
   );
 }
 
-type Side = { ours: PlayerTotals; theirs: PlayerTotals };
-
 type ComparisonRow = {
   label: string;
   ours: number | null;
@@ -302,7 +255,7 @@ function TeamComparison({
   clubName: string;
   opponentName: string;
   goals: [number, number];
-  totals: Side;
+  totals: MatchSides;
 }) {
   const rows: ComparisonRow[] = [
     { label: "Goals", ours: goals[0], theirs: goals[1] },

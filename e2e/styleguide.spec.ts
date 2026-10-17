@@ -32,8 +32,23 @@ test("every component section renders", async ({ page }) => {
     section("score-bar").getByText("A Bloo Bloo 3, Northside Athletic 1"),
   ).toBeAttached();
   await expect(
-    section("score-bar").getByText("Northside Athletic", { exact: true }),
+    section("score-bar")
+      .getByText("Northside Athletic", { exact: true })
+      .first(),
   ).toBeVisible();
+  // CLUBS-31: a hero for every result, and strips of 1 and 6 performers.
+  for (const result of ["Win", "Draw", "Loss", "DNF win", "DNF loss"]) {
+    await expect(
+      section("score-bar").getByText(result, { exact: true }).first(),
+    ).toBeVisible();
+  }
+  const strips = section("top-performers").getByRole("region", {
+    name: "Top performers",
+  });
+  await expect(strips).toHaveCount(2);
+  await expect(strips.first().getByRole("listitem")).toHaveCount(1);
+  // A looping strip's second copy is hidden from the accessibility tree.
+  await expect(strips.nth(1).getByRole("listitem")).toHaveCount(6);
   await expect(
     section("ticker").getByRole("region", { name: "Latest" }),
   ).toBeVisible();
