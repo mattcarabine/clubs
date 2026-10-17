@@ -66,13 +66,14 @@ test("the top performers strip scrolls only when it does not fit", async ({
   const ticker = page.getByRole("region", { name: "Top performers" });
   const scrolling = ticker.locator(".animate-ticker");
 
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-  await expect(ticker.getByText("tinbs_irl")).toBeVisible();
-  await expect(scrolling).toHaveCount(0);
-
+  // A phone first: scrolling there proves the page has hydrated and measured.
   await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto("/");
   await expect(scrolling).toHaveCount(1);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(scrolling).toHaveCount(0);
+  await expect(ticker.getByText("tinbs_irl")).toBeVisible();
 });
 
 test("shows the latest Match's top performers, form and season snapshot", async ({

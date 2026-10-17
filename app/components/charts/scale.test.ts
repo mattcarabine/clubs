@@ -45,6 +45,10 @@ describe("niceTicks with integer steps", () => {
     expect(niceTicks(0, 10, 4, { integer: true })).toEqual([0, 2, 4, 6, 8, 10]);
   });
 
+  it("labels a count that tops out at 1 as 0 and 1, not 0.5", () => {
+    expect(niceTicks(0, 1, 3, { integer: true })).toEqual([0, 1]);
+  });
+
   it("keeps larger nice steps", () => {
     expect(niceTicks(0, 100, 4, { integer: true })).toEqual([
       0, 25, 50, 75, 100,

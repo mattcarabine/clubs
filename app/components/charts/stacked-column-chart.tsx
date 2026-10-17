@@ -39,7 +39,9 @@ export function StackedColumnChart({
   const totals = labels.map((_, i) =>
     shown.reduce((sum, s) => sum + (s.values[i] ?? 0), 0),
   );
-  const ticks = niceTicks(0, Math.max(1, ...totals), 3);
+  const ticks = niceTicks(0, Math.max(1, ...totals), 3, {
+    integer: true,
+  });
   const top = ticks[ticks.length - 1];
   const pct = (value: number) => `${(value / top) * 100}%`;
 
