@@ -13,6 +13,7 @@ import {
   PageHeader,
   ScoreBar,
   SectionHeading,
+  type StatDelta,
   StatGrid,
   StatTile,
   Ticker,
@@ -125,16 +126,7 @@ function LatestMatch({
       <h2 id="latest-match" className="sr-only">
         Latest Match
       </h2>
-      <MatchLink match={match}>
-        <ScoreBar
-          size="hero"
-          home={{ name: clubName, score: match.goalsFor, isOurClub: true }}
-          away={{ name: match.opponent.name, score: match.goalsAgainst }}
-          label={match.matchType}
-          status={<MatchStatus match={match} relative />}
-          outcome={match.outcome}
-        />
-      </MatchLink>
+      <MatchScoreBar clubName={clubName} match={match} hero />
       <Ticker
         label="Top performers"
         items={performers.map(toTickerItem)}
@@ -195,8 +187,17 @@ function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
+/** The skill rating's last move, or nothing when it has not moved. */
+function skillRatingDelta(change: number | null): StatDelta | undefined {
+  if (change === null || change === 0) return undefined;
+  const sign = change > 0 ? "+" : "";
+  return {
+    text: `${sign}${change} since last change`,
+    tone: change > 0 ? "positive" : "negative",
+  };
+}
+
 function ClubSnapshot({ club }: { club: ClubSnapshotSummary }) {
-  const change = club.skillRatingChange;
   return (
     <section aria-label="Season snapshot">
       <SectionHeading
@@ -209,14 +210,7 @@ function ClubSnapshot({ club }: { club: ClubSnapshotSummary }) {
           value={club.skillRating ?? "–"}
           featured
           trend={club.skillRatingTrend}
-          delta={
-            change === null || change === 0
-              ? undefined
-              : {
-                  text: `${change > 0 ? "+" : ""}${change} since last change`,
-                  tone: change > 0 ? "positive" : "negative",
-                }
-          }
+          delta={skillRatingDelta(club.skillRatingChange)}
         />
         <StatTile
           label="Won, drawn, lost"
@@ -298,19 +292,7 @@ function RecentResults({
       <ul className="flex flex-col gap-3">
         {matches.map((match) => (
           <li key={match.matchId}>
-            <MatchLink match={match}>
-              <ScoreBar
-                home={{
-                  name: clubName,
-                  score: match.goalsFor,
-                  isOurClub: true,
-                }}
-                away={{ name: match.opponent.name, score: match.goalsAgainst }}
-                label={match.matchType}
-                status={<MatchStatus match={match} />}
-                outcome={match.outcome}
-              />
-            </MatchLink>
+            <MatchScoreBar clubName={clubName} match={match} />
           </li>
         ))}
       </ul>
@@ -318,16 +300,29 @@ function RecentResults({
   );
 }
 
-function MatchLink({
+/**
+ * A Match's score strip, linking to its page. The `hero` strip leads the page
+ * and says how long ago the Match was played.
+ */
+function MatchScoreBar({
+  clubName,
   match,
-  children,
+  hero = false,
 }: {
+  clubName: string;
   match: MatchSummary;
-  children: React.ReactNode;
+  hero?: boolean;
 }) {
   return (
     <Link to={`/matches/${match.matchId}`} className="block hover:opacity-90">
-      {children}
+      <ScoreBar
+        size={hero ? "hero" : "compact"}
+        home={{ name: clubName, score: match.goalsFor, isOurClub: true }}
+        away={{ name: match.opponent.name, score: match.goalsAgainst }}
+        label={match.matchType}
+        status={<MatchStatus match={match} relative={hero} />}
+        outcome={match.outcome}
+      />
     </Link>
   );
 }

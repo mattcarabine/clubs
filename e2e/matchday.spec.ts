@@ -107,13 +107,9 @@ test("picks up a new result after 60s without a reload", async ({
   await page.clock.install();
   await triggerPoll();
   await page.goto("/");
-  const { opponentName } = newestFixtureMatch();
+  const { goalsFor, goalsAgainst, opponentName } = newestFixtureMatch();
   await expect(latestMatch(page)).toContainText(
-    scoreLine(
-      newestFixtureMatch().goalsFor,
-      opponentName,
-      newestFixtureMatch().goalsAgainst,
-    ),
+    scoreLine(goalsFor, opponentName, goalsAgainst),
   );
   // Survives only if the page is not reloaded.
   await page.evaluate(() => {
