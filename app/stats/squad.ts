@@ -13,7 +13,12 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
-import { type RecentChange, recentChanges } from "./recent-change";
+import {
+  type FormIndicator,
+  formIndicator,
+  type RecentChange,
+  recentChanges,
+} from "./recent-change";
 import { isOurAppearance, matchScope, type ScopeOptions } from "./scope";
 import {
   type AppearanceStats,
@@ -96,6 +101,8 @@ export interface LeaderboardRow extends PlayerTotals {
   former: boolean;
   /** The biggest of the Squad Member's recent changes (CLUBS-37), or null. */
   recentChange: RecentChange | null;
+  /** Hot or Cold form (CLUBS-40), or null for neither. */
+  formIndicator: FormIndicator | null;
 }
 
 export interface LeaderboardOptions extends ScopeOptions {
@@ -137,6 +144,7 @@ export async function squadLeaderboard(
         former: isFormerSquadMember(playerId),
         ...summariseAppearances(selected),
         recentChange: recentChanges(selected, name).biggest,
+        formIndicator: formIndicator(selected),
       };
     })
     .filter((row) => includeFormer || !row.former)

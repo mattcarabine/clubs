@@ -114,6 +114,11 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
         players={players}
         positionGroups={comparison.positionGroups}
         source={source}
+        formIndicators={
+          loaderData.source === "recorded"
+            ? loaderData.sides.map((s) => s.formIndicator)
+            : undefined
+        }
       />
       {!a ? (
         <EmptyState

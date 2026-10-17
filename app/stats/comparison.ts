@@ -17,6 +17,7 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
+import { type FormIndicator, formIndicator } from "./recent-change";
 import {
   listSquadMembers,
   type SquadAppearance,
@@ -51,6 +52,11 @@ export interface ComparedTotals {
   form: FormPoint[];
   /** Our Club's record in the Matches this side's Appearances count. */
   record: RecordSummary;
+  /**
+   * Hot or Cold form (CLUBS-40) over all this side's Appearances in its
+   * Position Groups, Shared or not: form is the Squad Member's own.
+   */
+  formIndicator: FormIndicator | null;
 }
 
 export interface ComparedSides {
@@ -94,6 +100,9 @@ export function compareSides(
         totals: summariseAppearances(counted),
         form: formSeries(counted),
         record: summariseRecord(counted),
+        formIndicator: formIndicator(
+          filterByPositionGroups(appearances, positionGroups),
+        ),
       };
     }),
     // A Squad Member appears once per Match, so A's Appearances are the Matches.

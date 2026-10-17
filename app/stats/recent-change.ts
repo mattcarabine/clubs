@@ -9,10 +9,13 @@
  * changes with enough Appearances on both sides and an effect of at least
  * `MIN_RECENT_EFFECT` are reported.
  *
- * Pure and client-safe; the profile and the Squad table share it, and Hot
- * and Cold form (CLUBS-40) build on `splitRecent`.
+ * Hot and Cold form (CLUBS-40) use the same split: the average rating over
+ * the last `FORM_WINDOW` Appearances against every one before.
+ *
+ * Pure and client-safe, shared by the profile, the Squad table, Compare and
+ * Matchday.
  */
-import type { Outcome } from "~/lib/domain";
+import type { FormStatus, Outcome } from "~/lib/domain";
 import {
   formatCount,
   formatDecimal,
@@ -21,7 +24,9 @@ import {
 import { capitalise } from "~/lib/text";
 
 import {
+  average,
   effectSize,
+  FORM_WINDOW,
   per90,
   percentage,
   ROLLING_WINDOW,
@@ -335,4 +340,56 @@ function points(gap: number): string {
 /** "Kabeeble's", "James's". */
 function possessive(name: string): string {
   return `${name}'s`;
+}
+
+// ---------------------------------------------------------------------------
+// Hot and Cold form (CLUBS-40)
+
+/** How far the last `FORM_WINDOW` ratings must average above (Hot) or below (Cold) the usual. */
+export const HOT_COLD_GAP = 0.5;
+
+/** Hot or Cold needs this many Appearances before the last `FORM_WINDOW`. */
+export const MIN_FORM_BASELINE = 10;
+
+/** A Squad Member in Hot or Cold form, with the two averages behind it. */
+export interface FormIndicator {
+  status: FormStatus;
+  /** Average rating over the last `FORM_WINDOW` Appearances. */
+  recent: number;
+  /** Average rating over every Appearance before them. */
+  usual: number;
+  /** "Last 5: 8.1 avg vs 7.3 usual". */
+  text: string;
+}
+
+/**
+ * Hot or Cold form over a Squad Member's Appearances (oldest first, already
+ * filtered), or null: too few baseline Appearances, no ratings, or a gap
+ * under `HOT_COLD_GAP`.
+ */
+export function formIndicator(
+  appearances: readonly Pick<AppearanceStats, "rating">[],
+): FormIndicator | null {
+  const { recent, baseline } = splitRecent(appearances, FORM_WINDOW);
+  if (baseline.length < MIN_FORM_BASELINE) return null;
+  const recentAverage = average(recent.map((a) => a.rating));
+  const usual = average(baseline.map((a) => a.rating));
+  if (recentAverage === null || usual === null) return null;
+  const status = formStatus(recentAverage - usual);
+  if (!status) return null;
+  return {
+    status,
+    recent: recentAverage,
+    usual,
+    text: `Last ${recent.length}: ${formatDecimal(recentAverage)} avg vs ${formatDecimal(usual)} usual`,
+  };
+}
+
+/** Floating-point slack, so a gap of exactly `HOT_COLD_GAP` counts. */
+const EPSILON = 1e-9;
+
+function formStatus(gap: number): FormStatus | null {
+  if (gap >= HOT_COLD_GAP - EPSILON) return "hot";
+  if (gap <= -HOT_COLD_GAP + EPSILON) return "cold";
+  return null;
 }

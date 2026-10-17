@@ -16,6 +16,7 @@ import {
   chipClassName,
   EmptyState,
   FilterBar,
+  FormBadge,
   LineChart,
   LondonTime,
   PageHeader,
@@ -100,6 +101,14 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
     <>
       <PageHeader
         title={member.name}
+        badge={
+          profile.formIndicator && (
+            <FormBadge
+              status={profile.formIndicator.status}
+              detail={profile.formIndicator.text}
+            />
+          )
+        }
         subtitle={
           <>
             {member.personaName && member.personaName !== member.name && (

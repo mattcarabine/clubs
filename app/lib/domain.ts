@@ -31,3 +31,11 @@ export const POSITION_GROUP_ABBR: Record<PositionGroup, string> = {
   Midfielder: "MID",
   Forward: "FWD",
 };
+
+/** Hot form or Cold form: a Squad Member's last 5 ratings well above or below their usual. */
+export type FormStatus = "hot" | "cold";
+
+export const FORM_STATUS_LABEL: Record<FormStatus, string> = {
+  hot: "Hot",
+  cold: "Cold",
+};
