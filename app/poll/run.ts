@@ -26,7 +26,7 @@ export async function runPoll(env: Env): Promise<void> {
   let poll: CollectedPoll | undefined;
   try {
     poll = await collectPoll(pollConfigFromEnv(env));
-    log(await recordPoll(db, poll), poll);
+    log(await recordPoll(db, poll, env.EA_CLUB_ID), poll);
   } catch (error) {
     // Recording itself failed (e.g. D1 unavailable): make a best effort to
     // leave a trace, but never let the scheduled handler throw.

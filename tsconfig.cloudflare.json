@@ -8,6 +8,8 @@
     "workers/**/*",
     "worker-configuration.d.ts"
   ],
+  // app/ea also runs under Node; its tests use Node APIs and are checked by tsconfig.node.json.
+  "exclude": ["app/ea/**/*.test.ts"],
   "compilerOptions": {
     "composite": true,
     "strict": true,

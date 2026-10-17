@@ -21,9 +21,11 @@ export async function handleTestRoute(
 
   if (route === "reset" && request.method === "POST") {
     if (tables.length) {
-      await env.DB.batch(
-        tables.map((table) => env.DB.prepare(`DELETE FROM "${table}"`)),
-      );
+      // Deferred so tables can be emptied in any order despite foreign keys.
+      await env.DB.batch([
+        env.DB.prepare("PRAGMA defer_foreign_keys = on"),
+        ...tables.map((table) => env.DB.prepare(`DELETE FROM "${table}"`)),
+      ]);
     }
     return new Response(null, { status: 204 });
   }
