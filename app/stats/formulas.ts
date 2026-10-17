@@ -136,3 +136,88 @@ export function currentStreak(
 export function minutesPlayed(secondsPlayed: number): number {
   return Math.floor(secondsPlayed / 60);
 }
+
+/** The window for the rolling Win % line on the Analysis page. */
+export const ROLLING_WIN_WINDOW = 10;
+
+/**
+ * Win % over the last `window` Matches at each point of a run of Outcomes
+ * (oldest first). Early points cover what is available, so the line starts
+ * at the first Match.
+ */
+export function rollingWinPercentage(
+  outcomes: readonly Outcome[],
+  window = ROLLING_WIN_WINDOW,
+): number[] {
+  return rollingAverage(
+    outcomes.map((o) => (o === "W" ? 100 : 0)),
+    window,
+  ).map((value) => value ?? 0);
+}
+
+/** One per-Match value and how much it counts, e.g. a per-90 weighted by how long the Match ran. */
+export interface WeightedValue {
+  value: number;
+  weight: number;
+}
+
+/**
+ * The weighted mean, or null with no weight. Per-90s weighted by seconds
+ * played average to the total scaled by the total time, so a short DNF
+ * counts only for as long as it ran.
+ */
+export function weightedMean(values: readonly WeightedValue[]): number | null {
+  let sum = 0;
+  let weight = 0;
+  for (const v of values) {
+    sum += v.value * v.weight;
+    weight += v.weight;
+  }
+  return weight > 0 ? sum / weight : null;
+}
+
+/** The weighted (population) variance about the weighted mean, or null with no weight. */
+export function weightedVariance(
+  values: readonly WeightedValue[],
+): number | null {
+  const mean = weightedMean(values);
+  if (mean === null) return null;
+  return weightedMean(
+    values.map((v) => ({ value: (v.value - mean) ** 2, weight: v.weight })),
+  );
+}
+
+/**
+ * Effect size (Cohen's d): how far apart two samples' weighted means are, in
+ * units of their pooled spread, signed `a - b`. Each side's variance is
+ * pooled by how many values it has. Null when either side has no weight.
+ * When neither side varies at all, any difference is infinite (and none is
+ * 0), so it still ranks first.
+ */
+export function effectSize(
+  a: readonly WeightedValue[],
+  b: readonly WeightedValue[],
+): number | null {
+  const meanA = weightedMean(a);
+  const meanB = weightedMean(b);
+  const varA = weightedVariance(a);
+  const varB = weightedVariance(b);
+  if (meanA === null || meanB === null || varA === null || varB === null) {
+    return null;
+  }
+  const diff = meanA - meanB;
+  const spread = Math.sqrt(
+    (a.length * varA + b.length * varB) / (a.length + b.length),
+  );
+  if (spread === 0) return diff === 0 ? 0 : Math.sign(diff) * Infinity;
+  return diff / spread;
+}
+
+/**
+ * The effect size of a gap between two Win % (Cohen's h, signed `a - b`), so
+ * a Win-rate gap ranks on the same scale as `effectSize`. Takes 0 to 100.
+ */
+export function winRateEffectSize(a: number, b: number): number {
+  const arcsine = (p: number) => 2 * Math.asin(Math.sqrt(p / 100));
+  return arcsine(a) - arcsine(b);
+}

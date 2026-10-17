@@ -8,6 +8,7 @@ import {
   eaSeasonTotals,
 } from "./ea-totals";
 import type { StatsFilter } from "./filter";
+import { type PlayerOutcomeSplit, playerOutcomeSplit } from "./outcome-split";
 import {
   type BuildChange,
   bestAppearances,
@@ -44,6 +45,8 @@ export interface PlayerProfile {
   positionGroups: PositionGroupSplit[];
   /** The 5 highest-rated filtered Appearances in the selected Position Groups, best first. */
   bestMatches: SquadAppearance[];
+  /** Wins against Dropped Points over the filtered Appearances in the selected Position Groups. */
+  outcomeSplit: PlayerOutcomeSplit;
   /** Build changes from `members/stats` Snapshots, oldest first; not filtered. */
   build: BuildChange[];
   /** The latest `members/career/stats` Snapshot, or null before the first; not filtered. */
@@ -84,6 +87,7 @@ export async function getPlayerProfile(
     form: formSeries(selected),
     positionGroups: positionGroupSplit(appearances),
     bestMatches: bestAppearances(selected),
+    outcomeSplit: playerOutcomeSplit(appearances, positionGroups),
     build: buildHistory(seasonSnapshots),
     career: latestCareer ? eaCareerTotals(latestCareer) : null,
     season: latestSeason ? eaSeasonTotals(latestSeason) : null,

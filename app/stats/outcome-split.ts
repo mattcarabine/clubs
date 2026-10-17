@@ -1,0 +1,808 @@
+/**
+ * The Outcome Split (CLUBS-25): what changes between Wins and Dropped Points.
+ * Pure roll-ups of Matches and Appearances into the Analysis page and the
+ * profile's "Wins vs Dropped Points" panel; `outcome-split-query.ts` feeds
+ * them from D1.
+ *
+ * Count stats are per 90 over how long each Match ran, so a DNF stopped at
+ * 45 minutes counts as half a Match rather than skewing the averages; rates
+ * (pass %, tackle %, conversion) and ratings are not adjusted. Every finding
+ * is ranked on one scale: Cohen's d for the averages, Cohen's h for the
+ * Win-rate gaps (`formulas.ts`).
+ */
+import type { Outcome, PositionGroup } from "~/lib/domain";
+import { londonParts } from "~/lib/london-time";
+import {
+  formatCount,
+  formatDecimal,
+  formatPercentage,
+} from "~/lib/number-format";
+import { isFormerSquadMember } from "~/roster";
+
+import {
+  effectSize,
+  per90,
+  percentage,
+  rollingWinPercentage,
+  type WeightedValue,
+  weightedMean,
+  winPercentage,
+  winRateEffectSize,
+} from "./formulas";
+import {
+  filterByPositionGroups,
+  type PositionGroupSelection,
+} from "./positions";
+import type { SquadAppearance } from "./squad";
+import { groupBy, type PlayerTotals, summariseAppearances } from "./summaries";
+import type { SplitBucket } from "./trends";
+
+/** Each side needs this many Matches before the page, or any factor, is shown. */
+export const MIN_SPLIT_MATCHES = 3;
+
+/** Findings with fewer Matches than this on either side are marked "Small sample". */
+export const SMALL_SAMPLE_MATCHES = 10;
+
+/** The smallest Win-rate gap, in percentage points, that makes a position outlier. */
+export const POSITION_OUTLIER_GAP = 25;
+
+/** How many findings lead the page. */
+export const TOP_FINDINGS = 5;
+
+/** Wins or Dropped Points (a Match drawn or lost). */
+export type OutcomeSide = "wins" | "dropped";
+
+export function outcomeSide(outcome: Outcome): OutcomeSide {
+  return outcome === "W" ? "wins" : "dropped";
+}
+
+/** One club's totals over its Appearances in one Match. */
+export interface ClubMatchTotals {
+  goals: number;
+  shots: number;
+  passesMade: number;
+  passAttempts: number;
+  tacklesMade: number;
+  tackleAttempts: number;
+  saves: number;
+  redCards: number;
+  ratingSum: number;
+  /** Appearances with a rating. */
+  ratings: number;
+}
+
+/** One Match, as the Outcome Split reads it. */
+export interface SplitMatch {
+  matchId: string;
+  playedAt: Date;
+  outcome: Outcome;
+  /** How long the Match ran: the longest Appearance in it, on either side. */
+  secondsPlayed: number;
+  ours: ClubMatchTotals;
+  opponent: ClubMatchTotals;
+  /** How many Squad Members played. */
+  squadSize: number;
+  /** 1 for the first Match in its Session. */
+  sessionPlace: number;
+}
+
+// ---------------------------------------------------------------------------
+// Performance
+
+type Club = "ours" | "opponent";
+
+interface PerformanceMetric {
+  id: string;
+  /** The row label: "Shots per 90". */
+  label: string;
+  /** The per-Match value and its weight, or null when it cannot be computed. */
+  sample: (
+    totals: ClubMatchTotals,
+    secondsPlayed: number,
+  ) => WeightedValue | null;
+  format: (value: number) => string;
+  /** The finding's sentence after "In Dropped Points". */
+  describe: (club: Club, diff: number) => string;
+}
+
+const SUBJECT: Record<Club, string> = { ours: "we", opponent: "Opponents" };
+const POSSESSIVE: Record<Club, string> = {
+  ours: "our",
+  opponent: "Opponents'",
+};
+
+function perNinety(
+  id: string,
+  noun: string,
+  /** Reads after "we" or "Opponents": "take". */
+  verb: string,
+  pick: (t: ClubMatchTotals) => number,
+): PerformanceMetric {
+  return {
+    id,
+    label: `${capitalise(noun)} per 90`,
+    sample: (totals, seconds) => {
+      const value = per90(pick(totals), seconds);
+      return value === null ? null : { value, weight: seconds };
+    },
+    format: (value) => formatDecimal(value),
+    describe: (club, diff) =>
+      `${SUBJECT[club]} ${verb} ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "fewer" : "more"} ${noun} per 90`,
+  };
+}
+
+function rate(
+  id: string,
+  label: string,
+  made: (t: ClubMatchTotals) => number,
+  attempts: (t: ClubMatchTotals) => number,
+): PerformanceMetric {
+  return {
+    id,
+    label,
+    sample: (totals) => {
+      const value = percentage(made(totals), attempts(totals));
+      return value === null ? null : { value, weight: attempts(totals) };
+    },
+    format: formatPercentage,
+    describe: (club, diff) =>
+      `${POSSESSIVE[club]} ${label.toLowerCase()} is ${Math.round(Math.abs(diff))} points ${diff < 0 ? "lower" : "higher"}`,
+  };
+}
+
+const RATING: PerformanceMetric = {
+  id: "rating",
+  label: "Average rating",
+  sample: (totals) =>
+    totals.ratings === 0
+      ? null
+      : { value: totals.ratingSum / totals.ratings, weight: totals.ratings },
+  format: (value) => formatDecimal(value),
+  describe: (club, diff) =>
+    `${POSSESSIVE[club]} average rating is ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "lower" : "higher"}`,
+};
+
+/** Every performance stat, in table order. */
+export const PERFORMANCE_METRICS: readonly PerformanceMetric[] = [
+  perNinety("goals", "goals", "score", (t) => t.goals),
+  perNinety("shots", "shots", "take", (t) => t.shots),
+  rate(
+    "conversion",
+    "Conversion",
+    (t) => t.goals,
+    (t) => t.shots,
+  ),
+  rate(
+    "pass",
+    "Pass completion",
+    (t) => t.passesMade,
+    (t) => t.passAttempts,
+  ),
+  rate(
+    "tackle",
+    "Tackle success",
+    (t) => t.tacklesMade,
+    (t) => t.tackleAttempts,
+  ),
+  perNinety("saves", "saves", "make", (t) => t.saves),
+  perNinety("red-cards", "red cards", "get", (t) => t.redCards),
+  RATING,
+];
+
+/** One club's average for one stat in Wins and in Dropped Points. */
+export interface SplitValues {
+  wins: string;
+  dropped: string;
+}
+
+/** One row of the Outcome Split table. */
+export interface PerformanceRow {
+  id: string;
+  label: string;
+  ours: SplitValues;
+  opponent: SplitValues;
+}
+
+// ---------------------------------------------------------------------------
+// Splits: a group of Matches against all the others
+
+/** How often Our Club won a set of Matches. */
+export interface WinRecord {
+  played: number;
+  wins: number;
+  /** 0 to 100, or null with no Matches. */
+  winPercentage: number | null;
+}
+
+export function winRecord(outcomes: readonly Outcome[]): WinRecord {
+  return {
+    played: outcomes.length,
+    wins: outcomes.filter((o) => o === "W").length,
+    winPercentage: winPercentage(outcomes),
+  };
+}
+
+/** The Matches in a group against every other Match. */
+export interface GroupSplit {
+  group: WinRecord;
+  rest: WinRecord;
+}
+
+/** Splits Matches by whether they are in a group. */
+export function splitBy<T extends { outcome: Outcome }>(
+  matches: readonly T[],
+  inGroup: (match: T) => boolean,
+): GroupSplit {
+  const group: Outcome[] = [];
+  const rest: Outcome[] = [];
+  for (const m of matches) (inGroup(m) ? group : rest).push(m.outcome);
+  return { group: winRecord(group), rest: winRecord(rest) };
+}
+
+/** Buckets in the given order, skipping empty ones. */
+function buckets<T extends { outcome: Outcome }>(
+  matches: readonly T[],
+  order: readonly { id: string; label: string }[],
+  bucketOf: (match: T) => string,
+): SplitBucket[] {
+  const byBucket = groupBy(matches, bucketOf);
+  return order.flatMap(({ id, label }) => {
+    const group = byBucket.get(id);
+    if (!group) return [];
+    const { played, wins, winPercentage } = winRecord(
+      group.map((m) => m.outcome),
+    );
+    return [{ label, played, wins, winPercentage: winPercentage ?? 0 }];
+  });
+}
+
+/** London kick-off time bands. */
+export const TIME_OF_DAY = [
+  { id: "early", label: "Before 18:00" },
+  { id: "18", label: "18:00–20:00" },
+  { id: "20", label: "20:00–22:00" },
+  { id: "late", label: "22:00 or later" },
+] as const;
+
+export function timeOfDay(playedAt: Date): (typeof TIME_OF_DAY)[number]["id"] {
+  const { hour } = londonParts(playedAt);
+  if (hour < 18) return "early";
+  if (hour < 20) return "18";
+  if (hour < 22) return "20";
+  return "late";
+}
+
+export const DAY_TYPES = [
+  { id: "weekday", label: "Weekday" },
+  { id: "weekend", label: "Weekend" },
+] as const;
+
+/** Weekday or weekend, by the London date. */
+export function dayType(playedAt: Date): (typeof DAY_TYPES)[number]["id"] {
+  const { weekday } = londonParts(playedAt);
+  return weekday === "Sat" || weekday === "Sun" ? "weekend" : "weekday";
+}
+
+export const SESSION_PLACES = [
+  { id: "1", label: "1st" },
+  { id: "2", label: "2nd" },
+  { id: "3", label: "3rd" },
+  { id: "4", label: "4th or later" },
+] as const;
+
+export function sessionPlaceBucket(place: number): string {
+  return String(Math.min(place, 4));
+}
+
+// ---------------------------------------------------------------------------
+// Personnel
+
+/** Our Club's record with and without one Squad Member. */
+export interface WithWithout extends GroupSplit {
+  playerId: string;
+  name: string;
+  former: boolean;
+}
+
+/** A Squad Member at one Position Group, against every other Match. */
+export interface PositionOutlier extends GroupSplit {
+  playerId: string;
+  name: string;
+  positionGroup: PositionGroup;
+}
+
+/** The Appearance fields personnel splits read. */
+type PersonnelAppearance = Pick<
+  SquadAppearance,
+  "matchId" | "playerId" | "name" | "positionGroup"
+>;
+
+/** Each Squad Member's Win % with and without them, most Matches first. */
+export function withAndWithout(
+  matches: readonly SplitMatch[],
+  appearances: readonly PersonnelAppearance[],
+): WithWithout[] {
+  return [...groupBy(appearances, (a) => a.playerId).entries()]
+    .map(([playerId, apps]) => {
+      const played = new Set(apps.map((a) => a.matchId));
+      return {
+        playerId,
+        name: apps[apps.length - 1].name,
+        former: isFormerSquadMember(playerId),
+        ...splitBy(matches, (m) => played.has(m.matchId)),
+      };
+    })
+    .sort(
+      (a, b) => b.group.played - a.group.played || a.name.localeCompare(b.name),
+    );
+}
+
+/**
+ * "Squad Member at Position Group" against every other Match, kept only with
+ * at least `MIN_SPLIT_MATCHES` on each side and a Win-rate gap of at least
+ * `POSITION_OUTLIER_GAP` points. Biggest gap first.
+ */
+export function positionOutliers(
+  matches: readonly SplitMatch[],
+  appearances: readonly PersonnelAppearance[],
+): PositionOutlier[] {
+  const rated = appearances.filter(
+    (a): a is PersonnelAppearance & { positionGroup: PositionGroup } =>
+      a.positionGroup !== null,
+  );
+  return [...groupBy(rated, (a) => `${a.playerId}:${a.positionGroup}`).values()]
+    .map((apps) => {
+      const played = new Set(apps.map((a) => a.matchId));
+      return {
+        playerId: apps[0].playerId,
+        name: apps[apps.length - 1].name,
+        positionGroup: apps[0].positionGroup,
+        ...splitBy(matches, (m) => played.has(m.matchId)),
+      };
+    })
+    .filter((o) => isComparable(o) && Math.abs(gap(o)) >= POSITION_OUTLIER_GAP)
+    .sort((a, b) => Math.abs(gap(b)) - Math.abs(gap(a)));
+}
+
+/** The squad sizes Matches were played with, fewest first, as buckets. */
+function squadSizes(
+  matches: readonly SplitMatch[],
+): { id: string; label: string }[] {
+  return [...new Set(matches.map((m) => m.squadSize))]
+    .sort((a, b) => a - b)
+    .map((size) => ({
+      id: String(size),
+      label: `${size} playing`,
+    }));
+}
+
+const squadSizeOf = (m: SplitMatch) => String(m.squadSize);
+
+// ---------------------------------------------------------------------------
+// Findings
+
+export type Factor = "Performance" | "Personnel" | "Circumstances";
+
+/** One plain-English difference between Wins and Dropped Points. */
+export interface Finding {
+  id: string;
+  factor: Factor;
+  text: string;
+  /** The Matches behind it: "12 Wins, 9 Dropped Points". */
+  counts: string;
+  /** Either side has fewer than `SMALL_SAMPLE_MATCHES` Matches. */
+  smallSample: boolean;
+}
+
+interface RankedFinding extends Finding {
+  /** |Cohen's d| or |Cohen's h|: one scale for every factor. */
+  strength: number;
+}
+
+/** Both sides have enough Matches to say anything. */
+function isComparable({ group, rest }: GroupSplit): boolean {
+  return group.played >= MIN_SPLIT_MATCHES && rest.played >= MIN_SPLIT_MATCHES;
+}
+
+/** Group Win % minus the rest's, in points. */
+function gap({ group, rest }: GroupSplit): number {
+  return (group.winPercentage ?? 0) - (rest.winPercentage ?? 0);
+}
+
+function isSmall(a: number, b: number): boolean {
+  return Math.min(a, b) < SMALL_SAMPLE_MATCHES;
+}
+
+/** A split as a finding, or null when either side is too small. */
+function splitFinding(
+  id: string,
+  factor: Factor,
+  split: GroupSplit,
+  words: { group: string; rest: string; counts: [string, string] },
+): RankedFinding | null {
+  if (!isComparable(split)) return null;
+  const { group, rest } = split;
+  return {
+    id,
+    factor,
+    text: `We win ${formatPercentage(group.winPercentage)} of Matches ${words.group}, against ${formatPercentage(rest.winPercentage)} ${words.rest}`,
+    counts: `${formatCount(group.played, "Match", "Matches")} ${words.counts[0]}, ${rest.played} ${words.counts[1]}`,
+    smallSample: isSmall(group.played, rest.played),
+    strength: Math.abs(
+      winRateEffectSize(group.winPercentage ?? 0, rest.winPercentage ?? 0),
+    ),
+  };
+}
+
+/** Each bucket against the rest; a two-bucket factor gives one finding, not its mirror. */
+function bucketFindings(
+  factor: Factor,
+  idPrefix: string,
+  matches: readonly SplitMatch[],
+  order: readonly { id: string; label: string }[],
+  bucketOf: (m: SplitMatch) => string,
+  words: (bucket: { id: string; label: string }) => {
+    group: string;
+    rest: string;
+    counts: [string, string];
+  },
+): RankedFinding[] {
+  const options = order.length === 2 ? order.slice(1) : order;
+  return options.flatMap(({ id, label }) => {
+    const finding = splitFinding(
+      `${idPrefix}-${id}`,
+      factor,
+      splitBy(matches, (m) => bucketOf(m) === id),
+      words({ id, label }),
+    );
+    return finding ? [finding] : [];
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The whole Outcome Split
+
+export interface OutcomeSplit {
+  record: { wins: number; dropped: number };
+  /** Whether both sides have `MIN_SPLIT_MATCHES`; otherwise only `record` is meaningful. */
+  ready: boolean;
+  findings: Finding[];
+  performance: PerformanceRow[];
+  withWithout: WithWithout[];
+  bySquadSize: SplitBucket[];
+  positionOutliers: PositionOutlier[];
+  byTimeOfDay: SplitBucket[];
+  byDayType: SplitBucket[];
+  bySessionPlace: SplitBucket[];
+  /** Win % over the last `ROLLING_WIN_WINDOW` Matches at each Match, oldest first. */
+  rollingWinPercentage: number[];
+}
+
+/**
+ * The Outcome Split of Our Club's Matches (oldest first) and Appearances.
+ * The Appearances are every Squad Member's in those Matches: personnel
+ * splits are about who played, so a Position Group selection never narrows
+ * them.
+ */
+export function outcomeSplit(
+  matches: readonly SplitMatch[],
+  appearances: readonly PersonnelAppearance[],
+): OutcomeSplit {
+  const outcomes = matches.map((m) => m.outcome);
+  const wins = outcomes.filter((o) => o === "W").length;
+  const record = { wins, dropped: outcomes.length - wins };
+  const ready = Math.min(record.wins, record.dropped) >= MIN_SPLIT_MATCHES;
+
+  const performance = PERFORMANCE_METRICS.flatMap((metric) =>
+    (["ours", "opponent"] as const).map((club) =>
+      performanceSplit(metric, club, matches),
+    ),
+  );
+  const withWithoutRows = withAndWithout(matches, appearances);
+  const outliers = positionOutliers(matches, appearances);
+  const sizes = squadSizes(matches);
+  // A Squad Member who only ever plays one Position Group would say the same
+  // thing twice: once with and without them, once as an outlier.
+  const withCounts = new Set(
+    withWithoutRows.map((row) => `${row.playerId}:${row.group.played}`),
+  );
+
+  const findings: RankedFinding[] = ready
+    ? [
+        ...performance.flatMap((p) => (p.finding ? [p.finding] : [])),
+        ...withWithoutRows.flatMap((row) => {
+          const f = splitFinding(`with-${row.playerId}`, "Personnel", row, {
+            group: `with ${row.name}`,
+            rest: "without",
+            counts: ["with", "without"],
+          });
+          return f ? [f] : [];
+        }),
+        ...bucketFindings(
+          "Personnel",
+          "squad",
+          matches,
+          sizes,
+          squadSizeOf,
+          ({ id }) => {
+            const squad = formatCount(
+              Number(id),
+              "Squad Member",
+              "Squad Members",
+            );
+            return {
+              group: `with ${squad} playing`,
+              rest: "otherwise",
+              counts: [`with ${squad}`, "otherwise"],
+            };
+          },
+        ),
+        ...outliers.flatMap((o) => {
+          if (withCounts.has(`${o.playerId}:${o.group.played}`)) return [];
+          const f = splitFinding(
+            `outlier-${o.playerId}-${o.positionGroup}`,
+            "Personnel",
+            o,
+            {
+              group: `with ${o.name} at ${o.positionGroup}`,
+              rest: "otherwise",
+              counts: ["with", "otherwise"],
+            },
+          );
+          return f ? [f] : [];
+        }),
+        ...bucketFindings(
+          "Circumstances",
+          "time",
+          matches,
+          TIME_OF_DAY,
+          (m) => timeOfDay(m.playedAt),
+          ({ label }) => ({
+            group: `kicking off ${lowerFirst(label)}`,
+            rest: "at other times",
+            counts: ["then", "at other times"],
+          }),
+        ),
+        ...bucketFindings(
+          "Circumstances",
+          "day",
+          matches,
+          DAY_TYPES,
+          (m) => dayType(m.playedAt),
+          () => ({
+            group: "at weekends",
+            rest: "on weekdays",
+            counts: ["at weekends", "on weekdays"],
+          }),
+        ),
+        ...bucketFindings(
+          "Circumstances",
+          "session",
+          matches,
+          SESSION_PLACES,
+          (m) => sessionPlaceBucket(m.sessionPlace),
+          ({ label }) => ({
+            group: `played ${label} in a Session`,
+            rest: "otherwise",
+            counts: [label, "otherwise"],
+          }),
+        ),
+      ]
+    : [];
+
+  return {
+    record,
+    ready,
+    findings: findings
+      .sort((a, b) => b.strength - a.strength || a.id.localeCompare(b.id))
+      .slice(0, TOP_FINDINGS)
+      .map(({ strength: _, ...finding }) => finding),
+    performance: PERFORMANCE_METRICS.map((metric, i) => ({
+      id: metric.id,
+      label: metric.label,
+      ours: performance[i * 2].values,
+      opponent: performance[i * 2 + 1].values,
+    })),
+    withWithout: withWithoutRows,
+    bySquadSize: buckets(matches, sizes, squadSizeOf),
+    positionOutliers: outliers,
+    byTimeOfDay: buckets(matches, TIME_OF_DAY, (m) => timeOfDay(m.playedAt)),
+    byDayType: buckets(matches, DAY_TYPES, (m) => dayType(m.playedAt)),
+    bySessionPlace: buckets(matches, SESSION_PLACES, (m) =>
+      sessionPlaceBucket(m.sessionPlace),
+    ),
+    rollingWinPercentage: rollingWinPercentage(outcomes),
+  };
+}
+
+/** One club's stat in Wins and Dropped Points, and its finding when both sides are big enough. */
+function performanceSplit(
+  metric: PerformanceMetric,
+  club: Club,
+  matches: readonly SplitMatch[],
+): { values: SplitValues; finding: RankedFinding | null } {
+  const samples: Record<OutcomeSide, WeightedValue[]> = {
+    wins: [],
+    dropped: [],
+  };
+  for (const m of matches) {
+    const sample = metric.sample(m[club], m.secondsPlayed);
+    if (sample) samples[outcomeSide(m.outcome)].push(sample);
+  }
+  const wins = weightedMean(samples.wins);
+  const dropped = weightedMean(samples.dropped);
+  const format = (v: number | null) => (v === null ? "–" : metric.format(v));
+  const values = { wins: format(wins), dropped: format(dropped) };
+
+  const n = { wins: samples.wins.length, dropped: samples.dropped.length };
+  const effect = effectSize(samples.dropped, samples.wins);
+  if (
+    wins === null ||
+    dropped === null ||
+    effect === null ||
+    // A gap too small to show ("7.7 vs 7.7") says nothing in words either.
+    values.wins === values.dropped ||
+    Math.min(n.wins, n.dropped) < MIN_SPLIT_MATCHES
+  ) {
+    return { values, finding: null };
+  }
+  return {
+    values,
+    finding: {
+      id: `${club}-${metric.id}`,
+      factor: "Performance",
+      text: `In Dropped Points ${metric.describe(club, dropped - wins)} (${values.dropped} vs ${values.wins})`,
+      counts: `${formatCount(n.wins, "Win", "Wins")}, ${n.dropped} Dropped Points`,
+      smallSample: isSmall(n.wins, n.dropped),
+      strength: Math.abs(effect),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// One Squad Member
+
+/** A Squad Member's record at one Position Group. */
+export interface PositionGroupWinRecord extends WinRecord {
+  /** Null for Appearances where EA sent no position. */
+  positionGroup: PositionGroup | null;
+}
+
+/** A Squad Member's stats in Wins against Dropped Points. */
+export interface PlayerOutcomeSplit {
+  wins: PlayerTotals;
+  dropped: PlayerTotals;
+  /** Win % by Position Group, most Appearances first. */
+  byPositionGroup: PositionGroupWinRecord[];
+}
+
+/**
+ * One Squad Member's Outcome Split over their Appearances (oldest first), in
+ * the selected Position Groups. Per-90s use their own minutes. Shared by the
+ * Analysis page's per-player table and the profile's panel.
+ */
+export function playerOutcomeSplit(
+  appearances: readonly SquadAppearance[],
+  positionGroups: PositionGroupSelection,
+): PlayerOutcomeSplit {
+  const selected = filterByPositionGroups(appearances, positionGroups);
+  return {
+    wins: summariseAppearances(
+      selected.filter((a) => outcomeSide(a.outcome) === "wins"),
+    ),
+    dropped: summariseAppearances(
+      selected.filter((a) => outcomeSide(a.outcome) === "dropped"),
+    ),
+    byPositionGroup: [...groupBy(selected, (a) => a.positionGroup).entries()]
+      .map(([positionGroup, apps]) => ({
+        positionGroup,
+        ...winRecord(apps.map((a) => a.outcome)),
+      }))
+      .sort((a, b) => b.played - a.played),
+  };
+}
+
+/** A row of the Analysis page's per-player table. */
+export interface PlayerSplitRow extends PlayerOutcomeSplit {
+  playerId: string;
+  name: string;
+  former: boolean;
+}
+
+/**
+ * Every Squad Member with an Appearance in the selected Position Groups,
+ * most Appearances first.
+ */
+export function playerSplits(
+  appearances: readonly SquadAppearance[],
+  positionGroups: PositionGroupSelection,
+): PlayerSplitRow[] {
+  return [...groupBy(appearances, (a) => a.playerId).entries()]
+    .map(([playerId, apps]) => ({
+      playerId,
+      name: apps[apps.length - 1].name,
+      former: isFormerSquadMember(playerId),
+      ...playerOutcomeSplit(apps, positionGroups),
+    }))
+    .filter((row) => row.wins.appearances + row.dropped.appearances > 0)
+    .sort(
+      (a, b) =>
+        b.wins.appearances +
+          b.dropped.appearances -
+          (a.wins.appearances + a.dropped.appearances) ||
+        a.name.localeCompare(b.name),
+    );
+}
+
+/** One stat in a Squad Member's Outcome Split, as the profile panel and the per-player table show it. */
+export interface PlayerSplitStat {
+  id: string;
+  label: string;
+  /** A column header's prefix: "G/90". */
+  short: string;
+  value: (totals: PlayerTotals) => number | null;
+  format: (value: number | null) => string;
+}
+
+const perNinetyFormat = (value: number | null) => formatDecimal(value, 2);
+
+/** The stats both views set side by side, in order. */
+export const PLAYER_SPLIT_STATS: readonly PlayerSplitStat[] = [
+  {
+    id: "apps",
+    label: "Appearances",
+    short: "Apps",
+    value: (t) => t.appearances,
+    format: (v) => String(v ?? 0),
+  },
+  {
+    id: "rating",
+    label: "Average rating",
+    short: "Rating",
+    value: (t) => t.averageRating,
+    format: (v) => formatDecimal(v),
+  },
+  {
+    id: "goals",
+    label: "Goals per 90",
+    short: "G/90",
+    value: (t) => t.goalsPer90,
+    format: perNinetyFormat,
+  },
+  {
+    id: "assists",
+    label: "Assists per 90",
+    short: "A/90",
+    value: (t) => t.assistsPer90,
+    format: perNinetyFormat,
+  },
+  {
+    id: "shots",
+    label: "Shots per 90",
+    short: "Shots/90",
+    value: (t) => t.shotsPer90,
+    format: perNinetyFormat,
+  },
+  {
+    id: "pass",
+    label: "Pass completion",
+    short: "Pass %",
+    value: (t) => t.passPercentage,
+    format: formatPercentage,
+  },
+  {
+    id: "tackle",
+    label: "Tackle success",
+    short: "Tackle %",
+    value: (t) => t.tacklePercentage,
+    format: formatPercentage,
+  },
+];
+
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}

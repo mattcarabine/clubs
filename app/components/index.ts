@@ -15,6 +15,7 @@ export {
   StackedColumnChart,
   type StackedColumnSeries,
 } from "./charts/stacked-column-chart";
+export { WinRateBarChart } from "./charts/win-rate-bar-chart";
 export { Chip, ChipGroup, chipClassName } from "./chip";
 export {
   DataTable,

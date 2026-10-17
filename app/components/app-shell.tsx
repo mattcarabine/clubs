@@ -13,6 +13,7 @@ export const NAV_ITEMS = [
   { to: "/matches", label: "Matches" },
   { to: "/opponents", label: "Opponents" },
   { to: "/trends", label: "Trends" },
+  { to: "/analysis", label: "Analysis" },
 ] as const;
 
 type AppShellProps = {
@@ -46,7 +47,7 @@ export function AppShell({ clubName, ticker, children }: AppShellProps) {
             </span>
           </NavLink>
           <nav aria-label="Primary" className="min-w-0 overflow-x-auto">
-            <ul className="flex h-full px-2 md:px-0">
+            <ul className="flex h-full px-1 sm:px-2 md:px-0">
               {NAV_ITEMS.map((item) => (
                 <li key={item.to} className="flex">
                   <NavLink
@@ -54,8 +55,8 @@ export function AppShell({ clubName, ticker, children }: AppShellProps) {
                     end={item.to === "/"}
                     className={({ isActive }) =>
                       [
-                        "relative flex items-center whitespace-nowrap px-2 py-2.5 font-display font-bold text-base uppercase tracking-wide transition-colors sm:px-3 sm:text-lg",
-                        "after:absolute after:inset-x-2 after:bottom-0 after:h-1 after:-skew-x-12 after:transition-colors",
+                        "relative flex items-center whitespace-nowrap px-1.5 py-2.5 font-display font-bold text-base uppercase tracking-wide transition-colors sm:px-3 sm:text-lg",
+                        "after:absolute after:inset-x-1.5 after:bottom-0 sm:after:inset-x-2 after:h-1 after:-skew-x-12 after:transition-colors",
                         isActive
                           ? "text-ink after:bg-rave"
                           : "text-ink-muted after:bg-transparent hover:text-ink",

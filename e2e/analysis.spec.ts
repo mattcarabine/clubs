@@ -1,0 +1,530 @@
+// page.evaluate callbacks run in the browser, so they need DOM types.
+/// <reference lib="dom" />
+import type { Page } from "@playwright/test";
+
+import type { AddMatchBody } from "./fake-ea/control.ts";
+import { leaderboardWithGamesPlayed } from "./support/leaderboard.ts";
+import {
+  dnf,
+  draw,
+  friendly,
+  lasting,
+  loss,
+  type MatchOptions,
+  win,
+  withLineup,
+  withShots,
+} from "./support/match-builders.ts";
+import { expect, test } from "./support/test.ts";
+
+// CLUBS-25: /analysis, the Outcome Split of Wins against Dropped Points, and
+// the profile's "Wins vs Dropped Points" panel.
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Squad Members that exist only in these specs. */
+const STAR = { id: "900000021", name: "Star Striker" };
+const ROCK = { id: "900000022", name: "Rock Keeper" };
+const BENCH = { id: "900000023", name: "Bench Warmer" };
+
+test.beforeEach(async ({ fakeEa }) => {
+  // Only the Matches each test adds, so every count is exact.
+  for (const variant of ["leagueMatch", "playoffMatch", "friendlyMatch"]) {
+    await fakeEa.setPayload("clubs/matches", [], variant);
+  }
+});
+
+type Fake = { addMatch(body: AddMatchBody): Promise<void> };
+
+/** EA lists at most this many recent Matches per request. */
+const EA_PAGE = 10;
+
+/** Adds Matches in order, oldest first, with a Poll after each page EA would list. */
+async function record(
+  fakeEa: Fake,
+  triggerPoll: () => Promise<void>,
+  builds: AddMatchBody[],
+) {
+  for (const [i, body] of builds.entries()) {
+    await fakeEa.addMatch(body);
+    if ((i + 1) % EA_PAGE === 0 || i === builds.length - 1) await triggerPoll();
+  }
+}
+
+/** `count` days ago at 19:00 UTC: each Match its own Session. */
+function daysAgo(count: number): MatchOptions {
+  const date = new Date(Date.now() - count * DAY_MS);
+  date.setUTCHours(19, 0, 0, 0);
+  return { playedAt: date };
+}
+
+function region(page: Page, name: string) {
+  return page.getByRole("region", { name, exact: true });
+}
+
+function findings(page: Page) {
+  return page.getByRole("list", { name: "Top findings" }).getByRole("listitem");
+}
+
+function barList(page: Page, name: string) {
+  return page.getByRole("list", { name }).getByRole("listitem");
+}
+
+/** The row of a table whose row header matches `name`. */
+function tableRow(page: Page, table: string, name: string | RegExp) {
+  return page
+    .getByRole("table", { name: table })
+    .locator("tbody tr")
+    .filter({ has: page.getByRole("rowheader", { name }) });
+}
+
+/** 3 Wins and 3 losses, a day apart, a full 90 minutes each. */
+function basicSplit(): AddMatchBody[] {
+  return [
+    ...[1, 2, 3].map((i) => lasting(win(daysAgo(10 - i)), 90)),
+    ...[4, 5, 6].map((i) => lasting(loss(daysAgo(10 - i)), 90)),
+  ];
+}
+
+test("with no Matches it says how many more are needed and shows no findings", async ({
+  page,
+}) => {
+  await page.goto("/analysis");
+  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(
+    page.getByText("3 more Wins and 3 more Matches with Dropped Points", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(region(page, "Top findings")).toHaveCount(0);
+});
+
+test("with fewer than 3 Dropped Points it says how many more are needed", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await record(fakeEa, triggerPoll, [
+    win(daysAgo(5)),
+    win(daysAgo(4)),
+    win(daysAgo(3)),
+    loss(daysAgo(2)),
+    loss(daysAgo(1)),
+  ]);
+
+  await page.goto("/analysis");
+  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(
+    page.getByText(": 1 more Match with Dropped Points."),
+  ).toBeVisible();
+  await expect(findings(page)).toHaveCount(0);
+});
+
+test("the top finding names shots with both per-90 values and the counts", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // Only shots differ: 12 in every Win, 9 in every loss.
+  const wins = [9, 8, 7].map((d) =>
+    withShots(lasting(win(daysAgo(d)), 90), 12),
+  );
+  const losses = [6, 5, 4].map((d) =>
+    withShots(lasting(loss(daysAgo(d)), 90), 9),
+  );
+  await record(fakeEa, triggerPoll, [...wins, ...losses]);
+
+  await page.goto("/analysis");
+  const top = findings(page).first();
+  await expect(top).toContainText(
+    "In Dropped Points we take 3.0 fewer shots per 90 (9.0 vs 12.0)",
+  );
+  await expect(top).toContainText("3 Wins, 3 Dropped Points");
+  await expect(top).toContainText("Small sample");
+});
+
+test("draws count as Dropped Points and DNF Matches count by their outcome", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await record(fakeEa, triggerPoll, [
+    win(daysAgo(6)),
+    win(daysAgo(5)),
+    dnf({ ourWin: true, ...daysAgo(4) }),
+    draw(daysAgo(3)),
+    dnf({ ourWin: false, ...daysAgo(2) }),
+  ]);
+
+  // 3 Wins (one a DNF) and 2 Dropped Points (a draw and a DNF loss).
+  await page.goto("/analysis");
+  await expect(
+    page.getByText(": 1 more Match with Dropped Points."),
+  ).toBeVisible();
+
+  await fakeEa.addMatch(draw(daysAgo(1)));
+  await triggerPoll();
+  await page.reload();
+  await expect(region(page, "Top findings")).toContainText(
+    "3 Wins and 3 Dropped Points",
+  );
+});
+
+test("a DNF stopped at 45 minutes adds per-90 values, not raw totals", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await record(fakeEa, triggerPoll, [
+    ...[7, 6, 5].map((d) => withShots(lasting(win(daysAgo(d)), 90), 10)),
+    // 5 shots in 45 minutes is 10 per 90; a raw average would give 8.75.
+    withShots(lasting(dnf({ ourWin: true, ...daysAgo(4) }), 45), 5),
+    ...[3, 2, 1].map((d) => withShots(lasting(loss(daysAgo(d)), 90), 4)),
+  ]);
+
+  await page.goto("/analysis");
+  const shots = tableRow(
+    page,
+    "Performance in Wins and Dropped Points",
+    "Shots per 90",
+  );
+  await expect(shots.getByRole("cell").nth(0)).toHaveText("10.0");
+  await expect(shots.getByRole("cell").nth(1)).toHaveText("4.0");
+});
+
+test("findings from 10 Matches a side drop the Small sample mark", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const builds = Array.from({ length: 20 }, (_, i) =>
+    i < 10
+      ? withShots(lasting(win(daysAgo(30 - i)), 90), 12)
+      : withShots(lasting(loss(daysAgo(30 - i)), 90), 9),
+  );
+  await record(fakeEa, triggerPoll, builds);
+
+  await page.goto("/analysis");
+  const top = findings(page).first();
+  await expect(top).toContainText("fewer shots per 90 (9.0 vs 12.0)");
+  await expect(top).toContainText("10 Wins, 10 Dropped Points");
+  await expect(top).not.toContainText("Small sample");
+});
+
+test("a Squad Member who plays only in Wins shows 100% with and 0% without", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await record(fakeEa, triggerPoll, [
+    ...[6, 5, 4].map((d) =>
+      withLineup(win(daysAgo(d)), [{ player: STAR }, { player: ROCK }]),
+    ),
+    ...[3, 2, 1].map((d) => withLineup(loss(daysAgo(d)), [{ player: ROCK }])),
+  ]);
+
+  await page.goto("/analysis");
+  await expect(
+    tableRow(page, "With and without", STAR.name).getByRole("cell"),
+  ).toHaveText(["3", "100%", "3", "0%", "+100 pts"]);
+  await expect(
+    tableRow(page, "With and without", ROCK.name).getByRole("cell"),
+  ).toHaveText(["6", "50%", "0", "–", "–"]);
+});
+
+/** STAR at Forward in 3 Matches and at Midfielder in the rest, with these outcomes. */
+async function recordPositions(
+  fakeEa: Fake,
+  triggerPoll: () => Promise<void>,
+  forward: ("W" | "L")[],
+  midfield: ("W" | "L")[],
+) {
+  const build = (o: "W" | "L", d: number, pos: string) =>
+    withLineup((o === "W" ? win : loss)(daysAgo(d)), [
+      { player: STAR, pos },
+      { player: ROCK, pos: "goalkeeper" },
+    ]);
+  let day = 20;
+  await record(fakeEa, triggerPoll, [
+    ...forward.map((o) => build(o, day--, "forward")),
+    ...midfield.map((o) => build(o, day--, "midfielder")),
+  ]);
+}
+
+test("a position outlier appears when its thresholds are met", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // At Forward 67% (3 Matches), otherwise 33% (3): a 33-point gap.
+  await recordPositions(fakeEa, triggerPoll, ["W", "W", "L"], ["L", "L", "W"]);
+
+  await page.goto("/analysis");
+  const outliers = page.getByRole("table", { name: "Position outliers" });
+  await expect(outliers.getByRole("rowheader")).toHaveText([
+    `${STAR.name} at Forward`,
+    `${STAR.name} at Midfielder`,
+  ]);
+  await expect(
+    tableRow(page, "Position outliers", `${STAR.name} at Forward`).getByRole(
+      "cell",
+    ),
+  ).toHaveText(["3", "67%", "3", "33%", "+33 pts"]);
+});
+
+test("a position outlier does not appear under the gap", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // At Forward 67% (3 Matches), otherwise 50% (4): a 17-point gap.
+  await recordPositions(
+    fakeEa,
+    triggerPoll,
+    ["W", "W", "L"],
+    ["W", "L", "W", "L"],
+  );
+
+  await page.goto("/analysis");
+  await expect(region(page, "Personnel")).toBeVisible();
+  await expect(
+    page.getByRole("table", { name: "Position outliers" }),
+  ).toHaveCount(0);
+});
+
+test("Matches 30 minutes apart share a Session and 60 minutes apart start a new one", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const at = (day: number, minutes: number) => ({
+    playedAt: new Date(Date.UTC(2026, 8, day, 19, 0) + minutes * 60_000),
+  });
+  await record(fakeEa, triggerPoll, [
+    win(at(1, 0)), // 1st
+    win(at(1, 30)), // 2nd: 30 minutes on
+    loss(at(1, 90)), // 1st: 60 minutes on
+    win(at(2, 0)), // 1st
+    loss(at(2, 30)), // 2nd
+    draw(at(2, 90)), // 1st
+  ]);
+
+  await page.goto("/analysis");
+  await expect(barList(page, "Win % by place in Session")).toHaveText([
+    /^1st \(4\)\s*50%$/,
+    /^2nd \(2\)\s*50%$/,
+  ]);
+});
+
+test("kick-off and weekday groups use London time across a BST change", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // BST ended on Sun 26 Oct 2025.
+  await record(fakeEa, triggerPoll, [
+    win({ playedAt: new Date("2025-10-21T19:00:00Z") }), // Tue 20:00 BST
+    loss({ playedAt: new Date("2025-10-25T16:30:00Z") }), // Sat 17:30 BST
+    win({ playedAt: new Date("2025-10-24T23:30:00Z") }), // Sat 00:30 BST
+    win({ playedAt: new Date("2025-10-28T20:00:00Z") }), // Tue 20:00 GMT
+    draw({ playedAt: new Date("2025-10-31T22:30:00Z") }), // Fri 22:30 GMT
+    loss({ playedAt: new Date("2025-11-01T17:30:00Z") }), // Sat 17:30 GMT
+  ]);
+
+  await page.goto("/analysis");
+  await expect(barList(page, "Win % by kick-off time")).toHaveText([
+    /^Before 18:00 \(3\)\s*33%$/,
+    /^20:00–22:00 \(2\)\s*100%$/,
+    /^22:00 or later \(1\)\s*0%$/,
+  ]);
+  await expect(barList(page, "Win % on weekdays and weekends")).toHaveText([
+    /^Weekday \(3\)\s*67%$/,
+    /^Weekend \(3\)\s*33%$/,
+  ]);
+});
+
+test("each FilterBar dimension changes the results", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const summary = () => region(page, "Top findings").locator("p").first();
+
+  // Season 1: an old Win, 40 days ago. Season 2 starts at the second Poll,
+  // so every Match played before now is in Season 1.
+  await fakeEa.addMatch(win(daysAgo(40)));
+  await fakeEa.setPayload(
+    "currentSeasonLeaderboard/search",
+    leaderboardWithGamesPlayed(31),
+  );
+  await triggerPoll();
+  await fakeEa.setPayload(
+    "currentSeasonLeaderboard/search",
+    leaderboardWithGamesPlayed(2),
+  );
+  await triggerPoll();
+
+  // 3 Wins and 3 losses in the last 10 days, then a Friendly loss and a DNF
+  // loss in Season 2.
+  await record(fakeEa, triggerPoll, [
+    ...basicSplit(),
+    friendly({ goalsFor: 0, goalsAgainst: 2, playedAt: new Date() }),
+    dnf({ ourWin: false, playedAt: new Date(Date.now() + 60_000) }),
+  ]);
+
+  await page.goto("/analysis");
+  await expect(summary()).toContainText("4 Wins and 4 Dropped Points");
+
+  await page.goto("/analysis?types=league,playoff,friendly");
+  await expect(summary()).toContainText("4 Wins and 5 Dropped Points");
+
+  await page.goto("/analysis?dnf=0");
+  await expect(summary()).toContainText("4 Wins and 3 Dropped Points");
+
+  await page.goto("/analysis?range=30d");
+  await expect(summary()).toContainText("3 Wins and 4 Dropped Points");
+
+  await page.goto("/analysis?season=2");
+  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+});
+
+test("the Position Group filter changes only the per-player section", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await recordPositions(fakeEa, triggerPoll, ["W", "W", "L"], ["L", "L", "W"]);
+
+  await page.goto("/analysis");
+  const outcomeSplit = region(page, "Outcome Split");
+  const before = await outcomeSplit.textContent();
+  const star = () =>
+    tableRow(page, "Squad Members in Wins and Dropped Points", STAR.name);
+  await expect(star().getByRole("cell").nth(0)).toHaveText("3"); // Apps W
+  await expect(star().getByRole("cell").nth(1)).toHaveText("3"); // Apps DP
+
+  const picker = region(page, "Squad Members").getByRole("group", {
+    name: "Position Group",
+  });
+  await expect(async () => {
+    await picker.getByRole("button", { name: "Forward", exact: true }).click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("pos"), {
+        timeout: 1000,
+      })
+      .toBe("forward");
+  }).toPass();
+
+  await expect(star().getByRole("cell").nth(0)).toHaveText("2");
+  await expect(star().getByRole("cell").nth(1)).toHaveText("1");
+  // Rock only kept goal, so drops out of the table.
+  await expect(
+    tableRow(page, "Squad Members in Wins and Dropped Points", ROCK.name),
+  ).toHaveCount(0);
+  // Everything else is unchanged.
+  expect(await outcomeSplit.textContent()).toBe(before);
+  await expect(
+    tableRow(page, "With and without", ROCK.name).getByRole("cell").first(),
+  ).toHaveText("6");
+});
+
+test("the trend chart shows a rolling 10-Match Win %", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // 10 Wins, then 3 losses: the last point covers 7 Wins in 10.
+  await record(fakeEa, triggerPoll, [
+    ...Array.from({ length: 10 }, (_, i) => win(daysAgo(20 - i))),
+    ...[3, 2, 1].map((d) => loss(daysAgo(d))),
+  ]);
+
+  await page.goto("/analysis");
+  const trend = region(page, "Trend");
+  await expect(trend.getByRole("slider")).toBeVisible();
+  const cells = trend
+    .getByRole("table", { name: "Rolling 10-Match Win %" })
+    .getByRole("cell");
+  await expect(cells).toHaveCount(13);
+  await expect(cells.nth(9)).toHaveText("100%");
+  await expect(cells.nth(12)).toHaveText("70%");
+  // The dashed 50% reference line.
+  await expect(trend.locator("svg line[stroke-dasharray]")).toHaveCount(1);
+});
+
+test("the profile panel shows Wins against Dropped Points and follows ?pos=", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await recordPositions(fakeEa, triggerPoll, ["W", "W", "L"], ["L", "L", "W"]);
+
+  const panel = () => region(page, "Wins vs Dropped Points");
+  const apps = () =>
+    panel()
+      .getByRole("table", { name: "Wins against Dropped Points" })
+      .locator("tbody tr")
+      .filter({ has: page.getByRole("rowheader", { name: "Appearances" }) })
+      .getByRole("cell");
+  const byPosition = () =>
+    panel()
+      .getByRole("table", { name: "Win % at each Position Group" })
+      .getByRole("rowheader");
+
+  await page.goto(`/players/${STAR.id}`);
+  await expect(apps()).toHaveText(["3", "3"]);
+  await expect(byPosition()).toHaveText(["Forward", "Midfielder"]);
+
+  await page.goto(`/players/${STAR.id}?pos=forward`);
+  await expect(apps()).toHaveText(["2", "1"]);
+  await expect(byPosition()).toHaveText(["Forward"]);
+});
+
+test.describe("on a 375px phone", () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test("Analysis fits without horizontal page scroll and the nav includes it", async ({
+    page,
+    fakeEa,
+    triggerPoll,
+  }) => {
+    await recordPositions(
+      fakeEa,
+      triggerPoll,
+      ["W", "W", "L"],
+      ["L", "L", "W"],
+    );
+    await fakeEa.addMatch(withLineup(win(daysAgo(1)), [{ player: BENCH }]));
+    await triggerPoll();
+
+    for (const path of [
+      "/analysis",
+      "/analysis?pos=forward",
+      `/players/${STAR.id}`,
+    ]) {
+      await page.goto(path);
+      await expect(page.locator("h1")).toBeVisible();
+      const fits = await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      );
+      expect(fits, path).toBe(true);
+    }
+
+    const nav = page.getByRole("navigation", { name: "Primary" });
+    const analysis = nav.getByRole("link", { name: "Analysis" });
+    await expect(analysis).toBeVisible();
+    // Every nav item fits on screen without scrolling the nav.
+    const box = await analysis.boundingBox();
+    expect(box && box.x + box.width).toBeLessThanOrEqual(375);
+  });
+});
+
+test("the nav links to Analysis", async ({ page }) => {
+  await page.goto("/");
+  await page
+    .getByRole("navigation", { name: "Primary" })
+    .getByRole("link", { name: "Analysis" })
+    .click();
+  await expect(page).toHaveURL(/\/analysis$/);
+  await expect(page.locator("h1")).toHaveText("Analysis");
+});

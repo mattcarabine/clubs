@@ -18,6 +18,7 @@ import {
 import { getDb } from "~/db/client";
 import type { PositionGroup } from "~/lib/domain";
 import { formatDecimal, formatPercentage, NO_VALUE } from "~/lib/number-format";
+import { playerPath } from "~/lib/paths";
 import {
   getMatch,
   type MatchAppearance,
@@ -442,10 +443,6 @@ function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
       ))}
     </tr>
   );
-}
-
-function playerPath(playerId: string): string {
-  return `/players/${playerId}`;
 }
 
 function MotmMarker() {
