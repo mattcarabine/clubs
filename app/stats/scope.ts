@@ -5,12 +5,12 @@
  */
 import {
   and,
-  desc,
   eq,
   exists,
   gt,
   gte,
   inArray,
+  lt,
   lte,
   ne,
   notExists,
@@ -21,11 +21,7 @@ import type { Db } from "~/db/client";
 import { appearances, matches, seasons } from "~/db/schema";
 
 import { toMatchKind } from "./convert";
-import type { StatsFilter } from "./filter";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const RECENT_DAYS = 30;
-const RECENT_MATCHES = 10;
+import { dateWindow, type StatsFilter } from "./filter";
 
 /** Narrows a query beyond the global filter. */
 export interface ScopeOptions {
@@ -36,33 +32,22 @@ export interface ScopeOptions {
 }
 
 /**
- * The condition selecting the Matches a filter counts. "Last 10" is the
- * latest 10 Matches that pass every other condition (including
- * `opponentClubId`), so a head-to-head page shows its own last 10.
+ * The condition selecting the Matches a filter counts. The date range and
+ * the Season are both applied, so the effective window is their intersection.
  */
 export function matchScope(
   db: Db,
   filter: StatsFilter,
   { opponentClubId, now = new Date() }: ScopeOptions = {},
 ): SQL | undefined {
-  const base = and(
+  const { start, end } = dateWindow(filter.dates, now);
+  return and(
     inArray(matches.matchType, filter.matchTypes.map(toMatchKind)),
     filter.includeDnf ? undefined : eq(matches.dnf, false),
-    filter.range === "30d"
-      ? gte(matches.playedAt, new Date(now.getTime() - RECENT_DAYS * DAY_MS))
-      : undefined,
+    start ? gte(matches.playedAt, start) : undefined,
+    end ? lt(matches.playedAt, end) : undefined,
     opponentClubId ? eq(matches.opponentClubId, opponentClubId) : undefined,
     filter.season === undefined ? undefined : inSeason(db, filter.season),
-  );
-  if (filter.range !== "last10") return base;
-  return inArray(
-    matches.matchId,
-    db
-      .select({ matchId: matches.matchId })
-      .from(matches)
-      .where(base)
-      .orderBy(desc(matches.playedAt), desc(matches.matchId))
-      .limit(RECENT_MATCHES),
   );
 }
 

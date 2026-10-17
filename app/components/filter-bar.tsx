@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId, useState } from "react";
 import {
   useLocation,
   useNavigation,
@@ -9,8 +9,10 @@ import {
 import type { loader as rootLoader } from "~/root";
 
 import {
-  DATE_RANGE_LABEL,
-  DATE_RANGES,
+  ALL_DATES,
+  DATE_PRESET_LABEL,
+  DATE_PRESETS,
+  type DateRange,
   MATCH_TYPES,
   parseStatsFilter,
   type StatsFilter,
@@ -24,6 +26,9 @@ import {
   type StatsSource,
   writeStatsSource,
 } from "~/stats/source";
+
+import { Chip } from "./chip";
+import { DateRangePicker, formatDateRange } from "./date-range-picker";
 
 type FilterBarProps = {
   /** The page's current filter, parsed in its loader with `statsFilterFromRequest`. */
@@ -52,6 +57,8 @@ export function FilterBar(props: FilterBarProps) {
   const pending = usePendingSearchParams();
   const filter = pending ? parseStatsFilter(pending) : props.filter;
   const seasons = useSeasonNumbers();
+  const [pickingDates, setPickingDates] = useState(false);
+  const pickerId = useId();
   const source =
     pending && props.source !== undefined
       ? parseStatsSource(pending)
@@ -65,6 +72,11 @@ export function FilterBar(props: FilterBarProps) {
     apply((params) =>
       writeStatsFilter(params, change(parseStatsFilter(params))),
     );
+  const setDates = (dates: DateRange) => {
+    setPickingDates(false);
+    updateFilter((f) => ({ ...f, dates }));
+  };
+  const { dates } = filter;
 
   const sourceToggle = source !== undefined && (
     <FilterGroup label="Source">
@@ -101,59 +113,96 @@ export function FilterBar(props: FilterBarProps) {
     <section
       aria-label="Stats filters"
       aria-busy={pending !== null}
-      // One scrolling rail on phones, so the filters take one row, not a screen.
-      className="mb-6 flex items-end gap-x-6 gap-y-3 overflow-x-auto border-shale-700 border-t-2 bg-shale-900 px-3 py-3 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible sm:px-4"
+      className="mb-6 border-shale-700 border-t-2 bg-shale-900"
     >
-      {sourceToggle}
+      {/* One scrolling rail on phones, so the filters take one row, not a screen. */}
+      <div className="flex items-end gap-x-6 gap-y-3 overflow-x-auto px-3 py-3 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible sm:px-4">
+        {sourceToggle}
 
-      <FilterGroup label="Match Type">
-        {MATCH_TYPES.map((type) => {
-          const selected = filter.matchTypes.includes(type);
-          return (
-            <Chip
-              key={type}
-              pressed={selected}
-              // The last selected Match Type cannot be turned off.
-              disabled={selected && filter.matchTypes.length === 1}
-              onClick={() => updateFilter((f) => toggleMatchType(f, type))}
-            >
-              {type}
-            </Chip>
-          );
-        })}
-      </FilterGroup>
-
-      <FilterGroup label="DNF">
-        <Chip
-          pressed={filter.includeDnf}
-          onClick={() =>
-            updateFilter((f) => ({ ...f, includeDnf: !f.includeDnf }))
-          }
-        >
-          Include DNF
-        </Chip>
-      </FilterGroup>
-
-      <FilterGroup label="Dates">
-        {DATE_RANGES.map((range) => (
-          <Chip
-            key={range}
-            pressed={filter.range === range}
-            onClick={() => updateFilter((f) => ({ ...f, range }))}
-          >
-            {DATE_RANGE_LABEL[range]}
-          </Chip>
-        ))}
-      </FilterGroup>
-
-      {(seasons.length > 1 || filter.season !== undefined) && (
-        <FilterGroup label="Season">
-          <SeasonSelect
-            seasons={seasons}
-            value={filter.season}
-            onChange={(season) => updateFilter((f) => ({ ...f, season }))}
-          />
+        <FilterGroup label="Match Type">
+          {MATCH_TYPES.map((type) => {
+            const selected = filter.matchTypes.includes(type);
+            return (
+              <Chip
+                key={type}
+                pressed={selected}
+                // The last selected Match Type cannot be turned off.
+                disabled={selected && filter.matchTypes.length === 1}
+                onClick={() => updateFilter((f) => toggleMatchType(f, type))}
+              >
+                {type}
+              </Chip>
+            );
+          })}
         </FilterGroup>
+
+        <FilterGroup label="DNF">
+          <Chip
+            pressed={filter.includeDnf}
+            onClick={() =>
+              updateFilter((f) => ({ ...f, includeDnf: !f.includeDnf }))
+            }
+          >
+            Include DNF
+          </Chip>
+        </FilterGroup>
+
+        <FilterGroup label="Dates">
+          <Chip
+            pressed={dates.kind === "all"}
+            onClick={() => setDates(ALL_DATES)}
+          >
+            All
+          </Chip>
+          {DATE_PRESETS.map((preset) => (
+            <Chip
+              key={preset}
+              pressed={dates.kind === "preset" && dates.preset === preset}
+              onClick={() => setDates({ kind: "preset", preset })}
+            >
+              {DATE_PRESET_LABEL[preset]}
+            </Chip>
+          ))}
+          <Chip
+            pressed={dates.kind === "custom"}
+            aria-expanded={pickingDates}
+            aria-controls={pickerId}
+            onClick={() => setPickingDates((open) => !open)}
+          >
+            {dates.kind === "custom"
+              ? formatDateRange(dates.from, dates.to)
+              : "Custom"}
+            <svg
+              aria-hidden
+              viewBox="0 0 10 6"
+              className={`mb-0.5 ml-1.5 inline-block h-1.5 w-2.5 transition-transform motion-reduce:transition-none ${pickingDates ? "rotate-180" : ""}`}
+            >
+              <path d="M0 0h10L5 6z" fill="currentColor" />
+            </svg>
+          </Chip>
+        </FilterGroup>
+
+        {(seasons.length > 1 || filter.season !== undefined) && (
+          <FilterGroup label="Season">
+            <SeasonSelect
+              seasons={seasons}
+              value={filter.season}
+              onChange={(season) => updateFilter((f) => ({ ...f, season }))}
+            />
+          </FilterGroup>
+        )}
+      </div>
+
+      {/* Below the rail, not in it, so a phone never scrolls it out of view. */}
+      {pickingDates && (
+        <DateRangePicker
+          // A range applied elsewhere (Back, a shared link) restarts the draft.
+          key={dates.kind === "custom" ? `${dates.from}/${dates.to}` : "none"}
+          id={pickerId}
+          applied={dates.kind === "custom" ? dates : undefined}
+          onApply={({ from, to }) => setDates({ kind: "custom", from, to })}
+          onCancel={() => setPickingDates(false)}
+        />
       )}
     </section>
   );
@@ -224,32 +273,5 @@ function FilterGroup({ label, children }: FilterGroupProps) {
       </legend>
       <div className="flex gap-1 sm:flex-wrap">{children}</div>
     </fieldset>
-  );
-}
-
-type ChipProps = {
-  pressed: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-};
-
-/** A slanted filter toggle button. */
-export function Chip({ pressed, ...props }: ChipProps) {
-  return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      className={[
-        "clip-slant min-h-9 px-3.5 font-display font-bold text-base uppercase tracking-wide transition-colors [--slant:0.35rem]",
-        // clip-slant would cut off an outer focus ring, so draw it inside, in ink to show on rave too.
-        "focus-visible:-outline-offset-4 focus-visible:outline-ink",
-        "disabled:cursor-not-allowed",
-        pressed
-          ? "bg-rave text-shale-950"
-          : "bg-shale-800 text-ink-soft hover:bg-shale-700 hover:text-ink disabled:hover:bg-shale-800",
-      ].join(" ")}
-      {...props}
-    />
   );
 }

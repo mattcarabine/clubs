@@ -3,6 +3,7 @@
  * lives in the URL so a filtered view can be shared and survives a reload.
  *
  *   ?types=league,friendly&dnf=0&range=30d&season=2
+ *   ?from=2026-10-05&to=2026-10-12
  *
  * Defaults (Competitive Matches, DNF included, all dates, all Seasons) are
  * left out of the URL, so an unfiltered page has a clean address.
@@ -12,6 +13,13 @@
  * SQL in `scope.ts`, and add a control to `FilterBar`.
  */
 import type { MatchType } from "~/lib/domain";
+import {
+  addCalendarDays,
+  type CalendarDate,
+  isCalendarRange,
+  londonDateKey,
+  londonDayStart,
+} from "~/lib/london-time";
 
 export const MATCH_TYPES = [
   "League",
@@ -25,22 +33,68 @@ export const COMPETITIVE_MATCH_TYPES: readonly MatchType[] = [
   "Playoff",
 ];
 
-export const DATE_RANGES = ["all", "last10", "30d"] as const;
-/** All Matches, the last 10 Matches, or Matches in the last 30 days. */
-export type DateRange = (typeof DATE_RANGES)[number];
+/**
+ * The relative date presets. Each covers today and the days before it, as
+ * London calendar days, so a shared `?range=7d` link always means the last
+ * 7 days from whenever it is opened.
+ */
+export const DATE_PRESETS = ["7d", "30d", "1y"] as const;
+export type DatePreset = (typeof DATE_PRESETS)[number];
 
-export const DATE_RANGE_LABEL: Record<DateRange, string> = {
-  all: "All",
-  last10: "Last 10",
+export const DATE_PRESET_LABEL: Record<DatePreset, string> = {
+  "7d": "Last 7 days",
   "30d": "Last 30 days",
+  "1y": "Last year",
 };
+
+/** How many London calendar days, today included, each preset covers. */
+const DATE_PRESET_DAYS: Record<DatePreset, number> = {
+  "7d": 7,
+  "30d": 30,
+  "1y": 365,
+};
+
+/**
+ * Which dates count: all of them, a relative preset, or a custom range of
+ * London calendar days, inclusive at both ends (CLAUDE.md "Date filtering").
+ */
+export type DateRange =
+  | { kind: "all" }
+  | { kind: "preset"; preset: DatePreset }
+  | { kind: "custom"; from: CalendarDate; to: CalendarDate };
+
+export const ALL_DATES: DateRange = { kind: "all" };
+
+/** The instants a range covers: `start` inclusive, `end` exclusive; absent means unbounded. */
+export interface DateWindow {
+  start?: Date;
+  end?: Date;
+}
+
+/** Turns a range into instants, with presets counted back from `now`'s London date. */
+export function dateWindow(range: DateRange, now: Date): DateWindow {
+  switch (range.kind) {
+    case "all":
+      return {};
+    case "preset": {
+      const today = londonDateKey(now);
+      const first = addCalendarDays(today, 1 - DATE_PRESET_DAYS[range.preset]);
+      return { start: londonDayStart(first) };
+    }
+    case "custom":
+      return {
+        start: londonDayStart(range.from),
+        end: londonDayStart(addCalendarDays(range.to, 1)),
+      };
+  }
+}
 
 export interface StatsFilter {
   /** Never empty; always in `MATCH_TYPES` order. */
   matchTypes: readonly MatchType[];
   /** DNF Matches count by default; pages still flag them. */
   includeDnf: boolean;
-  range: DateRange;
+  dates: DateRange;
   /** One Season's number; absent means all Seasons. */
   season?: number;
 }
@@ -48,7 +102,7 @@ export interface StatsFilter {
 export const DEFAULT_STATS_FILTER: StatsFilter = {
   matchTypes: COMPETITIVE_MATCH_TYPES,
   includeDnf: true,
-  range: "all",
+  dates: ALL_DATES,
 };
 
 /** The URL search params the filter owns. */
@@ -56,6 +110,8 @@ export const FILTER_PARAMS = {
   matchTypes: "types",
   includeDnf: "dnf",
   range: "range",
+  from: "from",
+  to: "to",
   season: "season",
 } as const;
 
@@ -67,7 +123,7 @@ export function parseStatsFilter(params: URLSearchParams): StatsFilter {
   return {
     matchTypes: parseMatchTypes(params.get(FILTER_PARAMS.matchTypes)),
     includeDnf: params.get(FILTER_PARAMS.includeDnf) !== "0",
-    range: parseRange(params.get(FILTER_PARAMS.range)),
+    dates: parseDates(params),
     season: parseSeason(params.get(FILTER_PARAMS.season)),
   };
 }
@@ -92,10 +148,21 @@ export function writeStatsFilter(
     writeMatchTypes(filter.matchTypes),
   );
   setOrDelete(next, FILTER_PARAMS.includeDnf, filter.includeDnf ? null : "0");
+  const { dates } = filter;
   setOrDelete(
     next,
     FILTER_PARAMS.range,
-    filter.range === DEFAULT_STATS_FILTER.range ? null : filter.range,
+    dates.kind === "preset" ? dates.preset : null,
+  );
+  setOrDelete(
+    next,
+    FILTER_PARAMS.from,
+    dates.kind === "custom" ? dates.from : null,
+  );
+  setOrDelete(
+    next,
+    FILTER_PARAMS.to,
+    dates.kind === "custom" ? dates.to : null,
   );
   setOrDelete(
     next,
@@ -109,7 +176,7 @@ export function isDefaultStatsFilter(filter: StatsFilter): boolean {
   return (
     sameMatchTypes(filter.matchTypes, DEFAULT_STATS_FILTER.matchTypes) &&
     filter.includeDnf === DEFAULT_STATS_FILTER.includeDnf &&
-    filter.range === DEFAULT_STATS_FILTER.range &&
+    filter.dates.kind === "all" &&
     filter.season === undefined
   );
 }
@@ -134,10 +201,19 @@ function parseMatchTypes(raw: string | null): readonly MatchType[] {
   return types.length ? types : DEFAULT_STATS_FILTER.matchTypes;
 }
 
-function parseRange(raw: string | null): DateRange {
-  return (DATE_RANGES as readonly string[]).includes(raw ?? "")
-    ? (raw as DateRange)
-    : DEFAULT_STATS_FILTER.range;
+/**
+ * A preset from `range`, else a custom range from `from` and `to`. Anything
+ * invalid (an unknown preset, a malformed or missing date, `from` after `to`)
+ * falls back to all dates.
+ */
+function parseDates(params: URLSearchParams): DateRange {
+  const preset = params.get(FILTER_PARAMS.range);
+  if ((DATE_PRESETS as readonly (string | null)[]).includes(preset)) {
+    return { kind: "preset", preset: preset as DatePreset };
+  }
+  const from = params.get(FILTER_PARAMS.from) ?? "";
+  const to = params.get(FILTER_PARAMS.to) ?? "";
+  return isCalendarRange(from, to) ? { kind: "custom", from, to } : ALL_DATES;
 }
 
 /** A positive Season number, or undefined (all Seasons) for anything else. */
