@@ -148,12 +148,31 @@ test("build progression lists each overall with its date", async ({
   await expect(page.locator("header dl")).toContainText("80");
 });
 
-test("an unknown player ID shows the 404 page", async ({ page }) => {
+test("an unknown player ID is a 404 with a way back to the Squad", async ({
+  page,
+}) => {
   const response = await page.goto("/players/999999999");
   expect(response?.status()).toBe(404);
+  await expect(page).toHaveTitle("A Bloo Bloo — Squad Member not found");
+  await expect(page.getByText("Squad Member not found")).toBeVisible();
   await expect(
-    page.getByRole("heading", { level: 1, name: "Page not found" }),
-  ).toBeVisible();
+    page.getByRole("link", { name: "Squad" }).last(),
+  ).toHaveAttribute("href", "/squad");
+});
+
+test("the build plate shows position, not EA's unnamed play style code", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.addMatch(win());
+  await triggerPoll();
+
+  await page.goto(PROFILE);
+  const plate = page.locator("header dl");
+  await expect(plate).toContainText("Position");
+  await expect(plate).not.toContainText("Play style");
+  await expect(page.getByText(/Style \d/)).toHaveCount(0);
 });
 
 test("best Matches link to their Match pages, best rating first", async ({

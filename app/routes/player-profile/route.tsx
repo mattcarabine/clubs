@@ -13,6 +13,7 @@ import {
   FilterBar,
   LineChart,
   PageHeader,
+  RouteError,
   SectionHeading,
   StackedColumnChart,
   StatGrid,
@@ -20,18 +21,29 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import { formatLondonDate, formatLondonShortDate } from "~/lib/london-time";
+import { formatDecimal, formatPercentage } from "~/lib/number-format";
 import { getPlayerProfile, statsFilterFromRequest } from "~/stats";
 
 import type { Route } from "./+types/route";
 import { AllTimePanel } from "./all-time-panel";
 import { BestMatches } from "./best-matches";
 import { BuildPlate, BuildProgression } from "./build";
-import { formatPercent, formatRating } from "./format";
 import { PositionGroupTable } from "./position-group-table";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  const name = loaderData?.profile.member.name ?? "Squad Member";
+  const name = loaderData?.profile.member.name ?? "Squad Member not found";
   return [{ title: `A Bloo Bloo — ${name}` }];
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return (
+    <RouteError
+      error={error}
+      subject="Squad Member"
+      notFoundDescription="No Squad Member has this ID. Squad Members appear here after their first Appearance."
+      back={{ to: "/squad", children: "Squad" }}
+    />
+  );
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -97,7 +109,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         <StatGrid>
           <StatTile
             label="Average rating"
-            value={formatRating(totals.averageRating)}
+            value={formatDecimal(totals.averageRating)}
             trend={form
               .slice(-10)
               .flatMap((p) => (p.rating === null ? [] : [p.rating]))}
@@ -107,7 +119,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
           <StatTile label="Goals + assists" value={totals.goalContributions} />
           <StatTile
             label="Pass completion"
-            value={formatPercent(totals.passPercentage)}
+            value={formatPercentage(totals.passPercentage)}
           />
         </StatGrid>
       </section>
@@ -141,7 +153,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
                       values: form.map((p) => p.ratingRolling),
                     },
                   ]}
-                  formatValue={(v) => v.toFixed(1)}
+                  formatValue={formatDecimal}
                   height={260}
                 />
               </ChartFrame>
@@ -187,7 +199,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
                     values: form.map((p) => p.passPercentage),
                   },
                 ]}
-                formatValue={(v) => `${Math.round(v)}%`}
+                formatValue={formatPercentage}
                 height={200}
               />
             </ChartFrame>
@@ -210,7 +222,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         <section aria-label="Build progression" className="min-w-0">
           <SectionHeading
             title="Build progression"
-            subtitle="Overall, play style and position from EA"
+            subtitle="Overall and position from EA"
           />
           <BuildProgression history={build} />
         </section>

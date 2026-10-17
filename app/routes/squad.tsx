@@ -17,6 +17,7 @@ import {
   PlayerChip,
 } from "~/components";
 import { getDb } from "~/db/client";
+import { formatDecimal, formatPercentage, NO_VALUE } from "~/lib/number-format";
 import { sortBy } from "~/lib/sort";
 import {
   type LeaderboardRow,
@@ -118,8 +119,12 @@ type Leader = {
 const LEADERS: readonly Leader[] = [
   { label: "Goals", pick: (r) => r.goals, format: String },
   { label: "Assists", pick: (r) => r.assists, format: String },
-  { label: "Average rating", pick: (r) => r.averageRating, format: rating },
-  { label: "Form", pick: (r) => r.form, format: rating },
+  {
+    label: "Average rating",
+    pick: (r) => r.averageRating,
+    format: formatDecimal,
+  },
+  { label: "Form", pick: (r) => r.form, format: formatDecimal },
 ];
 
 /** The broadcast "leaders" strip: who tops each headline stat. */
@@ -136,7 +141,7 @@ function Leaders({ rows }: { rows: readonly LeaderboardRow[] }) {
             <LeaderTile
               key={leader.label}
               label={leader.label}
-              value={value === null ? "–" : leader.format(value)}
+              value={value === null ? NO_VALUE : leader.format(value)}
               featured={i === 0}
             >
               {value !== null && (
@@ -224,7 +229,7 @@ function stat(
     align: "right",
     cell: (row) => {
       const v = value(row);
-      return v === null ? "–" : format(v);
+      return v === null ? NO_VALUE : format(v);
     },
     sortValue: value,
   };
@@ -261,9 +266,9 @@ const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
   stat("assists90", "A/90", (r) => r.assistsPer90, per90),
   stat("ga90", "G+A/90", (r) => r.goalContributionsPer90, per90),
   stat("shots", "Shots", (r) => r.shots),
-  stat("pass", "Pass %", (r) => r.passPercentage, percent),
-  stat("tackle", "Tkl %", (r) => r.tacklePercentage, percent),
-  stat("rating", "Rating", (r) => r.averageRating, rating),
+  stat("pass", "Pass %", (r) => r.passPercentage, formatPercentage),
+  stat("tackle", "Tkl %", (r) => r.tacklePercentage, formatPercentage),
+  stat("rating", "Rating", (r) => r.averageRating, formatDecimal),
   {
     ...stat("form", "Form", (r) => r.form),
     cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
@@ -305,7 +310,7 @@ function FormCell({
   form: number | null;
   average: number | null;
 }) {
-  if (form === null) return "–";
+  if (form === null) return NO_VALUE;
   const trend = formTrend(form, average);
   return (
     // Relative so the sr-only text is placed within the table's scroll
@@ -316,20 +321,12 @@ function FormCell({
           {trend.arrow}
         </span>
       )}
-      <span className="font-semibold text-ink">{rating(form)}</span>
+      <span className="font-semibold text-ink">{formatDecimal(form)}</span>
       {trend && <span className="sr-only">{trend.label} average rating</span>}
     </span>
   );
 }
 
-function rating(value: number): string {
-  return value.toFixed(1);
-}
-
 function per90(value: number): string {
-  return value.toFixed(2);
-}
-
-function percent(value: number): string {
-  return `${Math.round(value)}%`;
+  return formatDecimal(value, 2);
 }

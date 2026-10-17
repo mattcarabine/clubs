@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import {
   isRouteErrorResponse,
+  Link,
   Links,
   Meta,
   Outlet,
@@ -11,7 +12,7 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
-import { AppShell, crestUrl, PageHeader } from "~/components";
+import { AppShell, crestUrl, isNotFound, PageHeader } from "~/components";
 import { getDb } from "~/db/client";
 import { listSeasons } from "~/stats";
 
@@ -32,6 +33,16 @@ export const links: Route.LinksFunction = () => [
     href: "https://fonts.googleapis.com/css2?family=Sofia+Sans+Extra+Condensed:ital,wght@0,600..800;1,800&family=Sofia+Sans:wght@400..700&display=swap",
   },
 ];
+
+/** Only used when no route below matched or every boundary failed: each page sets its own title. */
+export function meta({ error }: Route.MetaArgs) {
+  if (!error) return [];
+  return [
+    {
+      title: `${FALLBACK_CLUB_NAME} — ${isNotFound(error) ? "Page not found" : "Something went wrong"}`,
+    },
+  ];
+}
 
 export async function loader() {
   const seasons = await listSeasons(getDb(env.DB));
@@ -81,12 +92,12 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let details = "An unexpected error occurred.";
   let stack: string | undefined;
 
-  if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "Page not found" : "Error";
-    details =
-      error.status === 404
-        ? "There is nothing at this address. Use the menu to pick a page."
-        : error.statusText || details;
+  if (isNotFound(error)) {
+    message = "Page not found";
+    details = "There is nothing at this address.";
+  } else if (isRouteErrorResponse(error)) {
+    message = "Error";
+    details = error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;
@@ -95,6 +106,12 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   return (
     <AppShell clubName={clubName}>
       <PageHeader title={message} subtitle={details} />
+      <Link
+        to="/"
+        className="font-display font-bold text-lg text-sound-300 uppercase tracking-wide hover:text-ink"
+      >
+        Back to Matchday
+      </Link>
       {stack && (
         <pre className="w-full overflow-x-auto bg-shale-900 p-4 text-sm">
           <code>{stack}</code>

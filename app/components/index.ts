@@ -30,6 +30,7 @@ export { LastUpdatedBadge } from "./last-updated-badge";
 export { MatchScoreBar } from "./match-score-bar";
 export { OutcomeBadge } from "./outcome-badge";
 export { PlayerChip } from "./player-chip";
+export { BackLink, isNotFound, RouteError } from "./route-error";
 export { ScoreBar, type ScoreBarSide } from "./score-bar";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";

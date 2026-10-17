@@ -58,6 +58,23 @@ test("shows the latest Match's score and Opponent from the fixture", async ({
   await expect(page.getByText("Updated just now")).toBeVisible();
 });
 
+test("the top performers strip scrolls only when it does not fit", async ({
+  page,
+  triggerPoll,
+}) => {
+  await triggerPoll();
+  const ticker = page.getByRole("region", { name: "Top performers" });
+  const scrolling = ticker.locator(".animate-ticker");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await expect(ticker.getByText("tinbs_irl")).toBeVisible();
+  await expect(scrolling).toHaveCount(0);
+
+  await page.setViewportSize({ width: 375, height: 800 });
+  await expect(scrolling).toHaveCount(1);
+});
+
 test("shows the latest Match's top performers, form and season snapshot", async ({
   page,
   triggerPoll,
