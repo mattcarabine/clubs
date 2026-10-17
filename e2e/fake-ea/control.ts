@@ -7,6 +7,9 @@ import type { EaMatch } from "../../app/ea/types.ts";
 
 export const CONTROL_PREFIX = "/__control/";
 
+/** Where the fake serves EA's API, as on `proclubs.ea.com`. */
+export const EA_PREFIX = "/api/fc/";
+
 /** `POST /__control/matches`: serve one more Match of this Match Type. */
 export interface AddMatchBody {
   matchType: MatchType;

@@ -37,10 +37,10 @@
   "env": {
     // The E2E suite (CLOUDFLARE_ENV=test, see playwright.config.ts). Local only: never deployed.
     // Vars and bindings are not inherited, so this repeats them with test values.
+    // EA_BASE_URL is left out on purpose: each run passes its own fake EA upstream's
+    // URL at runtime (e2e/support/ports.ts), so parallel worktrees never share one.
     "test": {
       "vars": {
-        // The fake EA upstream (e2e/fake-ea), on the port in e2e/support/ports.ts.
-        "EA_BASE_URL": "http://localhost:4180/api/fc/",
         "EA_PLATFORM": "common-gen5",
         "EA_CLUB_ID": "332191",
         "EA_CLUB_NAME": "A Bloo Bloo",

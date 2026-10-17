@@ -3,6 +3,9 @@
  * only when `TEST_ROUTES` is "1", which is set solely in the `test` Wrangler
  * environment; everywhere else they fall through to the app's 404.
  *
+ * - `GET /__test/health?ea=URL` is 200 when the Worker's `EA_BASE_URL` is URL,
+ *   409 otherwise, so an E2E run never reuses a server that polls another
+ *   checkout's fake EA upstream.
  * - `POST /__test/reset` empties every table, so each test starts clean.
  * - `GET /__test/tables/:name` returns all rows of one table as JSON.
  * - `POST /__test/poll-runs/age?minutes=N` moves every Poll run N minutes
@@ -15,11 +18,16 @@ export async function handleTestRoute(
   request: Request,
   env: Env,
 ): Promise<Response | null> {
-  const { pathname } = new URL(request.url);
+  const { pathname, searchParams } = new URL(request.url);
   if (env.TEST_ROUTES !== "1" || !pathname.startsWith(PREFIX)) return null;
 
-  const tables = await appTables(env.DB);
   const route = pathname.slice(PREFIX.length);
+  if (route === "health" && request.method === "GET") {
+    const ours = searchParams.get("ea") === env.EA_BASE_URL;
+    return new Response(null, { status: ours ? 200 : 409 });
+  }
+
+  const tables = await appTables(env.DB);
 
   if (route === "reset" && request.method === "POST") {
     if (tables.length) {
@@ -33,7 +41,7 @@ export async function handleTestRoute(
   }
 
   if (route === "poll-runs/age" && request.method === "POST") {
-    const minutes = Number(new URL(request.url).searchParams.get("minutes"));
+    const minutes = Number(searchParams.get("minutes"));
     if (!Number.isFinite(minutes) || minutes <= 0) {
       return Response.json(
         { error: "minutes must be a positive number" },

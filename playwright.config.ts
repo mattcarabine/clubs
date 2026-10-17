@@ -1,6 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { APP_PORT, APP_URL, FAKE_EA_URL } from "./e2e/support/ports.ts";
+import {
+  APP_PORT,
+  APP_URL,
+  E2E_INSTANCE,
+  FAKE_EA_BASE_URL,
+  FAKE_EA_URL,
+} from "./e2e/support/ports.ts";
 
 /** Data-only specs: run once, not per viewport. */
 const API_SPECS = /.*\.api\.spec\.ts/;
@@ -37,18 +43,23 @@ export default defineConfig({
       },
     },
   ],
+  // Ports are per checkout (e2e/support/ports.ts). Locally, a server already on
+  // one is reused only if its health check proves it belongs to this checkout;
+  // another worktree's answers 409, so the clash fails the run instead.
   webServer: [
     {
-      // Replays fixtures/ea; the Worker's test env points EA_BASE_URL here.
+      // Replays fixtures/ea.
       command: "node e2e/fake-ea/main.ts",
-      url: `${FAKE_EA_URL}/__control/health`,
-      reuseExistingServer: false,
+      url: `${FAKE_EA_URL}/__control/health?instance=${E2E_INSTANCE}`,
+      reuseExistingServer: !process.env.CI,
     },
     {
-      // Production build in workerd (`test` Wrangler env) on a fresh, migrated local D1.
+      // Production build in workerd (`test` Wrangler env) on a fresh, migrated
+      // local D1, polling this run's fake EA upstream.
       command: `pnpm e2e:server --port ${APP_PORT}`,
-      url: APP_URL,
-      reuseExistingServer: false,
+      env: { EA_BASE_URL: FAKE_EA_BASE_URL },
+      url: `${APP_URL}/__test/health?ea=${encodeURIComponent(FAKE_EA_BASE_URL)}`,
+      reuseExistingServer: !process.env.CI,
       timeout: 180_000,
     },
   ],
