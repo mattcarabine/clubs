@@ -4,6 +4,8 @@ export default [
   index("routes/home.tsx"),
   route("styleguide", "routes/styleguide.tsx"),
   route("trends", "routes/trends.tsx"),
+  route("matches", "routes/matches.tsx"),
+  route("matches/:matchId", "routes/match.tsx"),
   // Test-only: 404s outside the `test` Wrangler env and dev (see the route).
   route("test/stats", "routes/test-stats.tsx"),
 ] satisfies RouteConfig;
