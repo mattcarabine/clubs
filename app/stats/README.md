@@ -32,7 +32,7 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 |---|---|
 | `formulas.ts` | Pure maths: `per90`, `passPercentage`, `tacklePercentage`, `average`, `form` (last 5 ratings), `rollingAverage`, `outcomeFromScore`, `oppositeOutcome`, `points`, `cumulativePoints`, `winPercentage`, `currentStreak`, `minutesPlayed`. Uncomputable values are `null`, never `NaN`. |
 | `summaries.ts` | Pure roll-ups: `summariseRecord` (W/D/L, goals, points, DNFs), `summariseAppearances` (a Squad Member's totals, per-90s, %s, Form), `groupBy`. |
-| `filter.ts` | `StatsFilter` and the URL format: `parseStatsFilter`, `statsFilterFromRequest`, `writeStatsFilter`, `toggleMatchType`. |
+| `filter.ts` | `StatsFilter` and the URL format: `parseStatsFilter`, `statsFilterFromRequest`, `writeStatsFilter`, `toggleMatchType`. The date filter: `DateRange` (all, a `DATE_PRESETS` preset, or custom London dates) and `dateWindow`, which turns it into instants. |
 | `scope.ts` | `matchScope(db, filter, { opponentClubId, now })`: the SQL condition behind every query, and `isOurAppearance`. |
 | `convert.ts` | Stored values to `~/lib/domain` ones (`"win"` to `"W"`, `"league"` to `"League"`, and so on). |
 | `matches.ts` | `listMatches`, `countMatches`, `latestMatch`, `clubRecord`, `getMatch` (both line-ups). |
@@ -47,10 +47,10 @@ Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (
 
 ## The filter
 
-- URL: `?types=league,playoff,friendly&dnf=0&range=last10|30d|all&season=2`. Defaults (Competitive Matches, DNF included, all dates, all Seasons) are left out of the URL.
+- URL: `?types=league,playoff,friendly&dnf=0&range=7d|30d|1y&season=2`, or `?from=2026-10-05&to=2026-10-12` for a custom range. Defaults (Competitive Matches, DNF included, all dates, all Seasons) are left out of the URL.
+- Dates (CLAUDE.md "Date filtering"): Europe/London calendar days, inclusive at both ends, so `to=2026-10-12` takes in a Match at 23:30 London that day. A preset covers today and the days before it (7, 30 or 365), counted from the request's London date, so a shared `range=7d` link stays relative. An invalid range (an unknown preset, a malformed date, `from` after `to`, only one of the two) falls back to all dates. Calendar-date helpers (`isCalendarDate`, `addCalendarDays`, `londonDayStart`) live in `~/lib/london-time`.
 - Season: `filter.season` is a Season number, absent for all Seasons. A Match belongs to the latest Season that started at or before it was played, worked out in `matchScope` at query time, so Matches stored before a boundary was detected still land in the right Season. The Poll detects a new Season when the current-season leaderboard Snapshot's `gamesPlayed` goes down (`app/poll/seasons.ts`); Season 1 starts at the epoch. The FilterBar shows the Season picker once there are two Seasons.
 - Changing the filter resets `page`; other params are kept.
-- "Last 10" means Our Club's 10 latest Matches that pass the other conditions (including `opponentClubId`), not each Squad Member's last 10 Appearances. Say so in UI copy where it matters.
 - `squadLeaderboard` lists every Squad Member with at least one Appearance in the filtered Matches; there is no minimum.
 - DNF Matches are counted by default. Every `MatchSummary` and `SquadAppearance` carries `dnf`, so flag them in the UI.
 

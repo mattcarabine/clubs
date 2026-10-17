@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addCalendarDays,
   formatLondonDate,
   formatLondonDateTime,
   formatLondonShortDate,
   formatLondonTime,
+  isCalendarDate,
+  isCalendarRange,
   londonDateKey,
+  londonDayStart,
   londonParts,
 } from "./london-time";
 
@@ -82,5 +86,89 @@ describe("formatting", () => {
   it("writes a time and a chart-axis date in London time", () => {
     expect(formatLondonTime(date)).toBe("20:05");
     expect(formatLondonShortDate(date)).toBe("14 Oct");
+  });
+});
+
+describe("isCalendarDate", () => {
+  it("accepts real YYYY-MM-DD dates", () => {
+    expect(isCalendarDate("2026-10-12")).toBe(true);
+    expect(isCalendarDate("2028-02-29")).toBe(true);
+  });
+
+  it("rejects malformed or impossible dates", () => {
+    for (const raw of [
+      "",
+      "2026-1-5",
+      "2026-02-30",
+      "2026-13-01",
+      "12/10/2026",
+      "2026-10-12T00:00",
+    ]) {
+      expect(isCalendarDate(raw), raw).toBe(false);
+    }
+  });
+});
+
+describe("isCalendarRange", () => {
+  it("accepts real dates in order, including a single day", () => {
+    expect(isCalendarRange("2026-10-05", "2026-10-12")).toBe(true);
+    expect(isCalendarRange("2026-10-12", "2026-10-12")).toBe(true);
+  });
+
+  it("rejects a reversed range or an invalid end", () => {
+    expect(isCalendarRange("2026-10-12", "2026-10-05")).toBe(false);
+    expect(isCalendarRange("", "2026-10-12")).toBe(false);
+    expect(isCalendarRange("2026-10-05", "2026-02-30")).toBe(false);
+  });
+});
+
+describe("addCalendarDays", () => {
+  it("crosses month and year ends", () => {
+    expect(addCalendarDays("2026-10-31", 1)).toBe("2026-11-01");
+    expect(addCalendarDays("2027-01-01", -1)).toBe("2026-12-31");
+    expect(addCalendarDays("2026-10-17", -6)).toBe("2026-10-11");
+  });
+
+  it("is unaffected by the clock change", () => {
+    expect(addCalendarDays("2026-10-24", 2)).toBe("2026-10-26");
+  });
+});
+
+describe("londonDayStart", () => {
+  it("is 23:00 UTC the evening before in BST", () => {
+    expect(londonDayStart("2026-10-12").toISOString()).toBe(
+      "2026-10-11T23:00:00.000Z",
+    );
+  });
+
+  it("is midnight UTC in GMT", () => {
+    expect(londonDayStart("2026-11-03").toISOString()).toBe(
+      "2026-11-03T00:00:00.000Z",
+    );
+  });
+
+  it("handles the days the clocks change", () => {
+    // BST ends 25 Oct 2026 at 01:00 UTC; London midnight is still BST.
+    expect(londonDayStart("2026-10-25").toISOString()).toBe(
+      "2026-10-24T23:00:00.000Z",
+    );
+    // BST starts 29 Mar 2026 at 01:00 UTC; London midnight is still GMT.
+    expect(londonDayStart("2026-03-29").toISOString()).toBe(
+      "2026-03-29T00:00:00.000Z",
+    );
+    expect(londonDayStart("2026-03-30").toISOString()).toBe(
+      "2026-03-29T23:00:00.000Z",
+    );
+  });
+
+  it("round-trips with londonDateKey", () => {
+    for (const date of [
+      "2026-01-01",
+      "2026-06-30",
+      "2026-10-25",
+      "2026-12-31",
+    ]) {
+      expect(londonDateKey(londonDayStart(date))).toBe(date);
+    }
   });
 });

@@ -170,28 +170,6 @@ test("a filtered URL restores the filter on load", async ({
   await expect(filterButton(page, "Friendly")).toBeDisabled();
 });
 
-test("Last 10 counts only the 10 most recent Matches", async ({
-  page,
-  fakeEa,
-  triggerPoll,
-}) => {
-  // EA returns at most 10 Matches per Poll, so record 12 over two Polls.
-  const start = Date.now() - 2 * DAY_MS;
-  const at = (minutes: number) => new Date(start + minutes * 60_000);
-  for (let i = 0; i < 6; i++) await fakeEa.addMatch(win({ playedAt: at(i) }));
-  await triggerPoll();
-  for (let i = 6; i < 12; i++) await fakeEa.addMatch(loss({ playedAt: at(i) }));
-  await triggerPoll();
-
-  await page.goto("/test/stats");
-  await expect(tile(page, "Played")).toHaveText("12");
-
-  await filterButton(page, "Last 10").click();
-  await expect.poll(() => searchParam(page, "range")).toBe("last10");
-  await expect(tile(page, "Played")).toHaveText("10");
-  await expect(tile(page, "W-D-L")).toHaveText("4-0-6");
-});
-
 test("on a phone the FilterBar is one scrolling row, not a screenful", async ({
   page,
 }) => {

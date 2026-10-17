@@ -49,7 +49,7 @@ To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in 
   | Day | `Wed 14 Oct` | A date on its own: Last met, Tracking since, "as of", Matches day headings | `formatLondonDate` / `<LondonTime format="day">` |
   | Moment | `Wed 14 Oct, 22:54` | When a Match was played, wherever it is listed or titled | `formatLondonDateTime` / `<LondonTime format="moment">` |
   | Time | `22:54` | Only under a heading that already names the day | `formatLondonTime` / `<LondonTime format="time">` |
-  | Axis date | `14 Oct` | Chart axis labels only | `formatLondonShortDate` |
+  | Short date | `14 Oct` | Only where space is tightest: chart axis labels and the FilterBar's custom date-range chip | `formatLondonShortDate` |
   | Relative | `4 min ago` | Only how old our data is (`LastUpdatedBadge`), never when a Match was played | `formatRelativeTime` |
 
   Days and moments add the year only outside the current London year (`Tue 14 Oct 2025`). The clock is 24-hour. Render dates with `<LondonTime>` so they are a `<time dateTime>`.
@@ -118,7 +118,7 @@ Every component is presentational: it takes props and never fetches. Shared doma
 - `LastUpdatedBadge`: "Updated 4 min ago" from the latest Poll; it turns amber and says "Stale" after 15 minutes (three missed Polls).
 - `EmptyState`: says what is missing and what will fill it. Sparse data is the norm, so hide a summary that would be meaningless (e.g. "Most played" when every Opponent was met once, a one-point chart, a By Position Group table with one group) rather than showing it, and don't leave half a row empty: a sparse panel takes its own full-width row instead of sitting beside a chart (Trends' one-reading skill rating), and a short side column beside a long one is `lg:sticky lg:top-24 lg:self-start`.
 - `BackLink` / `RouteError`: a detail page's "‹ All Matches" link, and its `ErrorBoundary` (back link plus a 404 or failed-to-load `EmptyState`). Every `:id` route has one; the root boundary handles unknown addresses.
-- `FilterBar`: the global stats filter (Match Type, DNF, dates, Season) as slanted toggle chips; it rewrites the URL so the loader reruns. Pass `source` (from `statsSourceFromRequest`) to lead with the Recorded / EA totals toggle (`?source=ea`); on EA totals it hides the Match filters and says why. On phones it is one row that scrolls sideways, so it never takes a screenful.
+- `FilterBar`: the global stats filter (Match Type, DNF, dates, Season) as slanted toggle chips (`Chip` / `chipClassName` in `app/components/chip.tsx`); it rewrites the URL so the loader reruns. Its "Custom" date chip opens a "Custom dates" strip under the chip rail, never inside it, so a phone cannot scroll it away: two native date fields styled as chips (`[color-scheme:dark]`, 16px text so iOS does not zoom) with Apply / Cancel. An applied range shows on the chip as "5 Oct – 12 Oct". Pass `source` (from `statsSourceFromRequest`) to lead with the Recorded / EA totals toggle (`?source=ea`); on EA totals it hides the Match filters and says why. On phones it is one row that scrolls sideways, so it never takes a screenful.
 - `Skeleton` / `LoadingState`: placeholders; `LoadingState` announces loading once.
 - Charts: `ChartFrame` (titled panel) and `ChartLegend`, with `LineChart`, `StackedColumnChart`, `BarChart` and `Sparkline`.
 

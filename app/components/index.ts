@@ -14,6 +14,7 @@ export {
   StackedColumnChart,
   type StackedColumnSeries,
 } from "./charts/stacked-column-chart";
+export { Chip } from "./chip";
 export {
   DataTable,
   type DataTableColumn,
@@ -22,7 +23,7 @@ export {
 } from "./data-table";
 export { DnfBadge } from "./dnf-badge";
 export { EmptyState } from "./empty-state";
-export { Chip, FilterBar } from "./filter-bar";
+export { FilterBar } from "./filter-bar";
 export { FormGuide } from "./form-guide";
 export { HeadToHeadBar, type HeadToHeadRecord } from "./head-to-head-bar";
 export { PageHeader, SectionHeading } from "./headings";

@@ -62,6 +62,60 @@ export function londonDateKey(date: Date): string {
   return `${year}-${pad(month)}-${pad(day)}`;
 }
 
+/** A London calendar date as `YYYY-MM-DD`, as `londonDateKey` writes it. */
+export type CalendarDate = string;
+
+/** True for a real `YYYY-MM-DD` date: "2026-02-30" and "2026-1-5" are not. */
+export function isCalendarDate(raw: string): raw is CalendarDate {
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(raw) && utcCalendarDate(utcMidnight(raw)) === raw
+  );
+}
+
+/** True when both are real dates and `from` is not after `to`. */
+export function isCalendarRange(from: string, to: string): boolean {
+  return isCalendarDate(from) && isCalendarDate(to) && from <= to;
+}
+
+/** The calendar date `days` after (or, if negative, before) `date`. */
+export function addCalendarDays(
+  date: CalendarDate,
+  days: number,
+): CalendarDate {
+  return utcCalendarDate(utcMidnight(date) + days * DAY_MS);
+}
+
+/**
+ * The moment a London calendar day begins: 00:00 GMT in winter, 23:00 UTC
+ * the evening before in BST. The clocks change at 01:00 UTC, never near
+ * London midnight, so the offset at UTC midnight is the one that applies.
+ */
+export function londonDayStart(date: CalendarDate): Date {
+  const midnight = utcMidnight(date);
+  const london = londonParts(new Date(midnight));
+  const wallClock = Date.UTC(
+    london.year,
+    london.month - 1,
+    london.day,
+    london.hour,
+    london.minute,
+  );
+  return new Date(midnight - (wallClock - midnight));
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Epoch milliseconds at 00:00 UTC on a `YYYY-MM-DD` date. */
+function utcMidnight(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+/** The UTC calendar date of an instant, as `YYYY-MM-DD`. */
+function utcCalendarDate(epochMs: number): CalendarDate {
+  return new Date(epochMs).toISOString().slice(0, 10);
+}
+
 const dateFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: LONDON_TIME_ZONE,
   weekday: "short",
@@ -109,7 +163,7 @@ export function formatLondonTime(date: Date): string {
   return timeFormat.format(date);
 }
 
-/** "14 Oct", for chart axes only, where labels must stay short. */
+/** "14 Oct", only where space is tightest: chart axes and the date-range chip. */
 export function formatLondonShortDate(date: Date): string {
   return shortDateFormat.format(date);
 }
