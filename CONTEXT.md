@@ -45,8 +45,8 @@ One player's participation in one Match, with that player's stats for it.
 _Avoid_: Cap, game played, player-match
 
 **Position Group**:
-The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfielder or Forward.
-_Avoid_: Position, role
+The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfielder or Forward. These exact names are used in the app too; with no Position Group selected, a view covers "All Positions".
+_Avoid_: Position, role, attack, midfield, defence, GK/DEF/MID/FWD
 
 **DNF**:
 A Match ended early because one side quit; EA awards the result to the side that stayed.
