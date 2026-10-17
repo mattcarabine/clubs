@@ -3,12 +3,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
-import {
-  friendly,
-  type Lineup,
-  win,
-  withLineup,
-} from "./support/match-builders.ts";
+import { type Lineup, win, withLineup } from "./support/match-builders.ts";
 import { membersPayload } from "./support/members.ts";
 import { expect, test } from "./support/test.ts";
 
@@ -382,22 +377,22 @@ test("changing the FilterBar changes both columns", async ({
   const both: Lineup = [{ player: ALPHA }, { player: BRAVO }];
   await recordMatches(fakeEa, triggerPoll, [both]);
   await recordMatches(fakeEa, triggerPoll, [both, both], (playedAt) =>
-    friendly({ playedAt }),
+    win({ playedAt, matchType: "playoffMatch" }),
   );
 
   await page.goto(`/compare?players=${ALPHA.id},${BRAVO.id}`);
   const table = headline(page);
-  await expectFigures(table, "Appearances", ["1", "1"]);
+  await expectFigures(table, "Appearances", ["3", "3"]);
 
   await clickUntil(
     page,
     filters(page)
       .getByRole("group", { name: "Match Type" })
-      .getByRole("button", { name: "Friendly" }),
+      .getByRole("button", { name: "Playoff" }),
     "types",
-    "league,playoff,friendly",
+    "league",
   );
-  await expectFigures(table, "Appearances", ["3", "3"]);
+  await expectFigures(table, "Appearances", ["1", "1"]);
 });
 
 test("each side counts its own Position Groups", async ({

@@ -41,7 +41,7 @@ One completed game between Our Club and an Opponent, identified by EA's match ID
 _Avoid_: Game, fixture, result
 
 **Match Type**:
-EA's classification of a Match: League, Playoff or Friendly.
+EA's classification of a Match: League, Playoff or Friendly. The app shows only League and Playoff Matches: the Poll still stores Friendlies, but no page or stat includes them.
 _Avoid_: Mode, competition
 
 **Competitive Match**:

@@ -5,7 +5,6 @@ import type { Page } from "@playwright/test";
 import type { EaPlayerStats } from "../app/ea/types.ts";
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import {
-  friendly,
   type MatchOptions,
   win,
   withLineup,
@@ -21,7 +20,7 @@ const FINDER = { id: "900000041", name: "Form Finder" };
 
 test.beforeEach(async ({ fakeEa }) => {
   // Only the Matches each test adds, so every count is exact.
-  for (const variant of ["leagueMatch", "playoffMatch", "friendlyMatch"]) {
+  for (const variant of ["leagueMatch", "playoffMatch"]) {
     await fakeEa.setPayload("clubs/matches", [], variant);
   }
 });
@@ -44,6 +43,10 @@ function appearances(...spells: Spell[]): AddMatchBody[] {
       ]),
     ),
   );
+}
+
+function playoff(options: MatchOptions): AddMatchBody {
+  return win({ ...options, matchType: "playoffMatch" });
 }
 
 /** Pass % with passes made held level, so passes per 90 do not change. */
@@ -172,21 +175,21 @@ test("the Position Group and Match Type filters change the result", async ({
     triggerPoll,
     appearances(
       { count: 10, stats: passing(90), pos: "midfielder" },
-      // Recent: Friendlies as Forward.
-      { count: 10, stats: passing(70), pos: "forward", build: friendly },
+      // Recent: Playoff Matches as Forward.
+      { count: 10, stats: passing(70), pos: "forward", build: playoff },
     ),
   );
 
-  // Competitive only by default: just the 10 Midfielder Appearances.
   await page.goto(profile);
-  await expect(section(page)).toContainText("Not enough Appearances yet");
-
-  await page.goto(`${profile}?types=league,playoff,friendly`);
   await expect(
     changes(page, "Improving").filter({ hasText: "Pass %" }),
   ).toHaveCount(1);
 
-  await page.goto(`${profile}?types=league,playoff,friendly&pos=forward`);
+  // League only: just the 10 Midfielder Appearances.
+  await page.goto(`${profile}?types=league`);
+  await expect(section(page)).toContainText("Not enough Appearances yet");
+
+  await page.goto(`${profile}?pos=forward`);
   await expect(section(page)).toContainText("Not enough Appearances yet");
   await expect(section(page)).toContainText(
     "Form Finder has 10 in these filters",

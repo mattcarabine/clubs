@@ -9,7 +9,11 @@ export const OUTCOME_LABEL: Record<Outcome, string> = {
   L: "Loss",
 };
 
-export type MatchType = "League" | "Playoff" | "Friendly";
+/**
+ * The Match Types the app shows. EA also has Friendlies, which the Poll still
+ * stores (ADR 0003) but no page, list, count or stat ever shows.
+ */
+export type MatchType = "League" | "Playoff";
 
 export type PositionGroup =
   | "Goalkeeper"

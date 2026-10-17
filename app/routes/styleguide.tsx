@@ -259,7 +259,7 @@ export default function Styleguide() {
               away={{ name: "A Bloo Bloo", score: 3, isOurClub: true }}
             />
             <ScoreBar
-              label="Friendly"
+              label="League"
               status="Full time"
               outcome="D"
               home={{ name: "A Bloo Bloo", score: 2, isOurClub: true }}

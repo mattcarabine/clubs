@@ -2,7 +2,7 @@
 /// <reference lib="dom" />
 import type { Page } from "@playwright/test";
 
-import { dnf, draw, friendly, loss, win } from "./support/match-builders.ts";
+import { dnf, draw, loss, win } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-6: the FilterBar rewrites the URL and the page's totals follow it.
@@ -69,7 +69,7 @@ test("toggling filters updates the URL and the totals", async ({
     win(),
     loss(),
     dnf(),
-    friendly({ goalsFor: 2, goalsAgainst: 1 }),
+    win({ matchType: "playoffMatch", goalsFor: 2, goalsAgainst: 1 }),
     draw({ playedAt: new Date(Date.now() - 40 * DAY_MS) }),
   ]) {
     await fakeEa.addMatch(match);
@@ -81,16 +81,16 @@ test("toggling filters updates the URL and the totals", async ({
   // Defaults: Competitive Matches, DNF included, all dates.
   await expectPressed(page, "League", true);
   await expectPressed(page, "Playoff", true);
-  await expectPressed(page, "Friendly", false);
   await expectPressed(page, "Include DNF", true);
   await expectPressed(page, "All", true);
-  await expectRecord(page, {
-    played: "5",
-    wdl: "3-1-1",
-    goals: "12-7",
-    points: "10",
+  const everything = {
+    played: "6",
+    wdl: "4-1-1",
+    goals: "14-8",
+    points: "13",
     dnf: "1",
-  });
+  };
+  await expectRecord(page, everything);
   // The DNF Match is counted and flagged.
   await expect(
     page
@@ -98,43 +98,8 @@ test("toggling filters updates the URL and the totals", async ({
       .getByText("DNF", { exact: true }),
   ).toHaveCount(1);
 
-  await filterButton(page, "Friendly").click();
-  await expect
-    .poll(() => searchParam(page, "types"))
-    .toBe("league,playoff,friendly");
-  await expectRecord(page, {
-    played: "6",
-    wdl: "4-1-1",
-    goals: "14-8",
-    points: "13",
-    dnf: "1",
-  });
-
-  await filterButton(page, "Include DNF").click();
-  await expect.poll(() => searchParam(page, "dnf")).toBe("0");
-  await expectRecord(page, {
-    played: "5",
-    wdl: "3-1-1",
-    goals: "11-8",
-    points: "10",
-    dnf: "0",
-  });
-
-  await filterButton(page, "Last 30 days").click();
-  await expect.poll(() => searchParam(page, "range")).toBe("30d");
-  await expectRecord(page, {
-    played: "4",
-    wdl: "3-0-1",
-    goals: "9-6",
-    points: "9",
-    dnf: "0",
-  });
-
-  // Back to the defaults: the filter leaves the URL entirely.
-  await filterButton(page, "Friendly").click();
-  await filterButton(page, "Include DNF").click();
-  await filterButton(page, "All").click();
-  await expect.poll(() => new URL(page.url()).search).toBe("");
+  await filterButton(page, "Playoff").click();
+  await expect.poll(() => searchParam(page, "types")).toBe("league");
   await expectRecord(page, {
     played: "5",
     wdl: "3-1-1",
@@ -142,6 +107,33 @@ test("toggling filters updates the URL and the totals", async ({
     points: "10",
     dnf: "1",
   });
+
+  await filterButton(page, "Include DNF").click();
+  await expect.poll(() => searchParam(page, "dnf")).toBe("0");
+  await expectRecord(page, {
+    played: "4",
+    wdl: "2-1-1",
+    goals: "9-7",
+    points: "7",
+    dnf: "0",
+  });
+
+  await filterButton(page, "Last 30 days").click();
+  await expect.poll(() => searchParam(page, "range")).toBe("30d");
+  await expectRecord(page, {
+    played: "3",
+    wdl: "2-0-1",
+    goals: "7-5",
+    points: "6",
+    dnf: "0",
+  });
+
+  // Back to the defaults: the filter leaves the URL entirely.
+  await filterButton(page, "Playoff").click();
+  await filterButton(page, "Include DNF").click();
+  await filterButton(page, "All").click();
+  await expect.poll(() => new URL(page.url()).search).toBe("");
+  await expectRecord(page, everything);
 });
 
 test("a filtered URL restores the filter on load", async ({
@@ -150,13 +142,15 @@ test("a filtered URL restores the filter on load", async ({
   triggerPoll,
 }) => {
   await fakeEa.addMatch(win());
-  await fakeEa.addMatch(dnf({ ourWin: false }));
-  await fakeEa.addMatch(friendly({ goalsFor: 1, goalsAgainst: 1 }));
+  await fakeEa.addMatch(dnf({ ourWin: false, matchType: "playoffMatch" }));
+  await fakeEa.addMatch(
+    draw({ matchType: "playoffMatch", goalsFor: 1, goalsAgainst: 1 }),
+  );
   await triggerPoll();
 
-  await page.goto("/test/stats?types=friendly&dnf=0");
+  await page.goto("/test/stats?types=playoff&dnf=0");
 
-  await expectPressed(page, "Friendly", true);
+  await expectPressed(page, "Playoff", true);
   await expectPressed(page, "League", false);
   await expectPressed(page, "Include DNF", false);
   await expectRecord(page, {
@@ -167,7 +161,7 @@ test("a filtered URL restores the filter on load", async ({
     dnf: "0",
   });
   // The only selected Match Type cannot be turned off.
-  await expect(filterButton(page, "Friendly")).toBeDisabled();
+  await expect(filterButton(page, "Playoff")).toBeDisabled();
 });
 
 test("on a phone the FilterBar is one scrolling row, not a screenful", async ({

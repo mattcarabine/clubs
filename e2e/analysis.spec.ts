@@ -7,7 +7,6 @@ import { leaderboardWithGamesPlayed } from "./support/leaderboard.ts";
 import {
   dnf,
   draw,
-  friendly,
   lasting,
   loss,
   win,
@@ -338,25 +337,28 @@ test("each FilterBar dimension changes the results", async ({
   );
   await triggerPoll();
 
-  // 3 Wins and 3 losses in the last 10 days, then a Friendly loss and a DNF
+  // 3 Wins and 3 losses in the last 10 days, then a Playoff loss and a DNF
   // loss in Season 2.
   await record(fakeEa, triggerPoll, [
     ...basicSplit(),
-    friendly({ goalsFor: 0, goalsAgainst: 2, playedAt: new Date() }),
+    loss({ matchType: "playoffMatch", playedAt: new Date() }),
     dnf({ ourWin: false, playedAt: new Date(Date.now() + 60_000) }),
   ]);
 
   await page.goto("/analysis");
-  await expect(summary()).toContainText("4 Wins and 4 Dropped Points");
-
-  await page.goto("/analysis?types=league,playoff,friendly");
   await expect(summary()).toContainText("4 Wins and 5 Dropped Points");
 
+  await page.goto("/analysis?types=league");
+  await expect(summary()).toContainText("4 Wins and 4 Dropped Points");
+
+  await page.goto("/analysis?dnf=0&types=playoff");
+  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+
   await page.goto("/analysis?dnf=0");
-  await expect(summary()).toContainText("4 Wins and 3 Dropped Points");
+  await expect(summary()).toContainText("4 Wins and 4 Dropped Points");
 
   await page.goto("/analysis?range=30d");
-  await expect(summary()).toContainText("3 Wins and 4 Dropped Points");
+  await expect(summary()).toContainText("3 Wins and 5 Dropped Points");
 
   await page.goto("/analysis?season=2");
   await expect(page.getByText("Not enough Matches yet")).toBeVisible();
@@ -557,28 +559,31 @@ test.describe("After a result (CLUBS-26)", () => {
     fakeEa,
     triggerPoll,
   }) => {
-    // League W, L, W, L, W, L, L a day apart, with a won Friendly after each loss.
+    // League W, L, W, L, W, L, L a day apart, with a won Playoff after each loss.
     const league = [..."WLWLWLL"];
     const builds = league.flatMap((o, i) => {
       const day = (league.length - i) * 2;
       return o === "W"
         ? [win(daysAgo(day))]
-        : [loss(daysAgo(day)), friendly(daysAgo(day - 1))];
+        : [
+            loss(daysAgo(day)),
+            win({ ...daysAgo(day - 1), matchType: "playoffMatch" }),
+          ];
     });
     await record(fakeEa, triggerPoll, builds);
 
-    // Competitive Matches skip the Friendlies: W→L three times, L→W twice and L→L.
+    // With Playoffs, each loss is followed by a won Playoff.
     await page.goto("/analysis");
-    await expect(afterResultBars(page, "Any next Match")).toHaveText([
-      /^After a Win \(3\)\s*0%$/,
-      /^After Dropped Points \(3\)\s*67%$/,
-    ]);
-
-    // With Friendlies, each loss is followed by a won Friendly.
-    await page.goto("/analysis?types=league,playoff,friendly");
     await expect(afterResultBars(page, "Any next Match")).toHaveText([
       /^After a Win \(6\)\s*33%$/,
       /^After Dropped Points \(4\)\s*100%$/,
+    ]);
+
+    // League only skips the Playoffs: W→L three times, L→W twice and L→L.
+    await page.goto("/analysis?types=league");
+    await expect(afterResultBars(page, "Any next Match")).toHaveText([
+      /^After a Win \(3\)\s*0%$/,
+      /^After Dropped Points \(3\)\s*67%$/,
     ]);
   });
 
