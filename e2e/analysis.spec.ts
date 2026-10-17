@@ -528,3 +528,176 @@ test("the nav links to Analysis", async ({ page }) => {
   await expect(page).toHaveURL(/\/analysis$/);
   await expect(page.locator("h1")).toHaveText("Analysis");
 });
+
+test.describe("After a result (CLUBS-26)", () => {
+  /** Matches 30 minutes apart from 19:00 UTC on `day` September 2026: one Session. */
+  function sessionOf(
+    day: number,
+    outcomes: string,
+    startMinutes = 0,
+  ): AddMatchBody[] {
+    return [...outcomes].map((o, i) => {
+      const playedAt = new Date(
+        Date.UTC(2026, 8, day, 19, 0) + (startMinutes + i * 30) * 60_000,
+      );
+      return o === "W" ? win({ playedAt }) : loss({ playedAt });
+    });
+  }
+
+  function afterResultBars(page: Page, scope: string) {
+    return barList(page, `Win % after a result: ${scope}`);
+  }
+
+  /** Same Session: 1 of 5 won after Dropped Points, 3 of 5 after a Win. */
+  const tiltSessions = () => [
+    ...sessionOf(1, "WWWWLL"),
+    ...sessionOf(2, "WLLLLW"),
+  ];
+
+  test("the Win % after a Win and after Dropped Points follow the Match order", async ({
+    page,
+    fakeEa,
+    triggerPoll,
+  }) => {
+    // W, L, W, L, L, W, W, L, W, L: a day apart, so no two share a Session.
+    // After a Win: L, L, W, L, L (1 of 5). After Dropped Points: W, L, W, W (3 of 4).
+    const outcomes = [..."WLWLLWWLWL"];
+    await record(
+      fakeEa,
+      triggerPoll,
+      outcomes.map((o, i) =>
+        (o === "W" ? win : loss)(daysAgo(outcomes.length - i)),
+      ),
+    );
+
+    await page.goto("/analysis");
+    await expect(region(page, "After a result")).toBeVisible();
+    await expect(afterResultBars(page, "Any next Match")).toHaveText([
+      /^After a Win \(5\)\s*20%$/,
+      /^After Dropped Points \(4\)\s*75%$/,
+    ]);
+  });
+
+  test("the next Match is the next one the FilterBar keeps", async ({
+    page,
+    fakeEa,
+    triggerPoll,
+  }) => {
+    // League W, L, W, L, W, L, L a day apart, with a won Friendly after each loss.
+    const league = [..."WLWLWLL"];
+    const builds = league.flatMap((o, i) => {
+      const day = (league.length - i) * 2;
+      return o === "W"
+        ? [win(daysAgo(day))]
+        : [loss(daysAgo(day)), friendly(daysAgo(day - 1))];
+    });
+    await record(fakeEa, triggerPoll, builds);
+
+    // Competitive Matches skip the Friendlies: W→L three times, L→W twice and L→L.
+    await page.goto("/analysis");
+    await expect(afterResultBars(page, "Any next Match")).toHaveText([
+      /^After a Win \(3\)\s*0%$/,
+      /^After Dropped Points \(3\)\s*67%$/,
+    ]);
+
+    // With Friendlies, each loss is followed by a won Friendly.
+    await page.goto("/analysis?types=league,playoff,friendly");
+    await expect(afterResultBars(page, "Any next Match")).toHaveText([
+      /^After a Win \(6\)\s*33%$/,
+      /^After Dropped Points \(4\)\s*100%$/,
+    ]);
+  });
+
+  test("a Match 2 hours after Dropped Points counts under Any next Match but not Same Session", async ({
+    page,
+    fakeEa,
+    triggerPoll,
+  }) => {
+    await record(fakeEa, triggerPoll, [
+      ...sessionOf(1, "WLWL"),
+      ...sessionOf(2, "LWLW"),
+      ...sessionOf(3, "WL"),
+      // 2 hours after the loss before it, so a new Session.
+      ...sessionOf(3, "W", 30 + 120),
+    ]);
+
+    await page.goto("/analysis");
+    // Within Sessions: W→L four times, L→W three times.
+    await expect(afterResultBars(page, "Same Session")).toHaveText([
+      /^After a Win \(4\)\s*0%$/,
+      /^After Dropped Points \(3\)\s*100%$/,
+    ]);
+    // Any next Match adds the pairs across Sessions: L→L, W→W and the L→W 2 hours on.
+    await expect(afterResultBars(page, "Any next Match")).toHaveText([
+      /^After a Win \(5\)\s*20%$/,
+      /^After Dropped Points \(5\)\s*80%$/,
+    ]);
+  });
+
+  test("fewer than 3 Matches on either side hides the split and keeps it out of the findings", async ({
+    page,
+    fakeEa,
+    triggerPoll,
+  }) => {
+    // W, W, W, L, L, L a day apart: 3 Matches after a Win, 2 after Dropped Points.
+    await record(fakeEa, triggerPoll, basicSplit());
+
+    await page.goto("/analysis");
+    const section = region(page, "After a result");
+    await expect(section).toBeVisible();
+    await expect(afterResultBars(page, "Any next Match")).toHaveCount(0);
+    await expect(afterResultBars(page, "Same Session")).toHaveCount(0);
+    await expect(
+      section.getByText(
+        "Needs at least 3 Matches after a Win and 3 after Dropped Points (3 and 2 so far).",
+      ),
+    ).toBeVisible();
+    await expect(
+      section.getByText(
+        "Needs at least 3 Matches after a Win and 3 after Dropped Points (0 and 0 so far).",
+      ),
+    ).toBeVisible();
+    await expect(
+      findings(page).filter({ hasText: "After Dropped Points" }),
+    ).toHaveCount(0);
+  });
+
+  test("a strong tilt effect within a Session is a top finding in plain English", async ({
+    page,
+    fakeEa,
+    triggerPoll,
+  }) => {
+    await record(fakeEa, triggerPoll, tiltSessions());
+
+    await page.goto("/analysis");
+    const tilt = findings(page).filter({
+      hasText:
+        "After Dropped Points in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
+    });
+    await expect(tilt).toHaveCount(1);
+    await expect(tilt).toContainText("After a result");
+    await expect(tilt).toContainText(
+      "5 Matches after Dropped Points, 5 after a Win in the same Session",
+    );
+    await expect(tilt).toContainText("Small sample");
+  });
+
+  test.describe("on a 375px phone", () => {
+    test.use({ viewport: { width: 375, height: 812 } });
+
+    test("After a result fits without horizontal page scroll", async ({
+      page,
+      fakeEa,
+      triggerPoll,
+    }) => {
+      await record(fakeEa, triggerPoll, tiltSessions());
+
+      await page.goto("/analysis");
+      await expect(afterResultBars(page, "Same Session")).toHaveCount(2);
+      const fits = await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      );
+      expect(fits).toBe(true);
+    });
+  });
+});
