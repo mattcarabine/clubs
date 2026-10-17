@@ -33,6 +33,7 @@ import {
   formatThousands,
   NO_VALUE,
 } from "~/lib/number-format";
+import { playerPath } from "~/lib/paths";
 import { sortBy } from "~/lib/sort";
 import {
   COMPARISON_SIDES,
@@ -425,10 +426,6 @@ function ColumnKey({ entries }: { entries: readonly [string, string][] }) {
       ))}
     </dl>
   );
-}
-
-function playerPath(playerId: string): string {
-  return `/players/${playerId}`;
 }
 
 /** A sortable, right-aligned numeric column. */

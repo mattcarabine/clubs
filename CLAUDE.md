@@ -107,7 +107,7 @@ From Google Fonts, loaded in `app/root.tsx`. **Sofia Sans Extra Condensed** (`fo
 
 ### Components (`import { … } from "~/components"`)
 Every component is presentational: it takes props and never fetches. Shared domain types (`Outcome`, `PositionGroup`, `MatchType`) live in `~/lib/domain`.
-- `AppShell`: header with crest lockup and nav (Matchday, Squad, Matches, Opponents, Trends), optional `ticker` slot. `root.tsx` already wraps every route in it.
+- `AppShell`: header with crest lockup and nav (Matchday, Squad, Matches, Opponents, Trends, Analysis), optional `ticker` slot. The six items fit a 375px phone without scrolling the nav (`px-1.5` links with normal tracking under `sm`); check that again before adding a seventh. `root.tsx` already wraps every route in it.
 - `PageHeader` / `SectionHeading`: the page's single h1 (with an optional `aside`, e.g. a badge) and section h2s.
 - `ScoreBar`: the broadcast score strip. Use `size="hero"` for the lead Match and `compact` in lists; mark Our Club with `isOurClub`.
 - `Ticker`: a strip of `{ id, headline, detail }` items, made for the `AppShell` `ticker` slot. It scrolls only when the items overflow it, and sits still when they fit.
@@ -123,7 +123,8 @@ Every component is presentational: it takes props and never fetches. Shared doma
 - `FilterBar`: the global stats filter (Match Type, DNF, dates, Season) as slanted toggle chips (`Chip` / `chipClassName` in `app/components/chip.tsx`); it rewrites the URL so the loader reruns. Its "Custom" date chip opens a "Custom dates" strip under the chip rail, never inside it, so a phone cannot scroll it away: two native date fields styled as chips (`[color-scheme:dark]`, 16px text so iOS does not zoom) with Apply / Cancel. An applied range shows on the chip as "5 Oct – 12 Oct". Pass `source` (from `statsSourceFromRequest`) to lead with the Recorded / EA totals toggle (`?source=ea`); on EA totals it hides the Match filters and says why. Pass `positions` on player-level pages (Squad, profile) to show the Position Group selection (`?pos=`); on EA totals it stays visible but disabled, with a tooltip. On phones it is one row that scrolls sideways, so it never takes a screenful.
 - `PositionGroupPicker`: the Position Group multi-select (All Positions plus EA's four names), presentational with `value` / `onChange`, so the FilterBar uses it for `?pos=` and Compare can show one per player. `disabledReason` (e.g. `EA_POSITIONS_DISABLED`) disables it with a tooltip. `ChipGroup` is the labelled chip row both use.
 - `Skeleton` / `LoadingState`: placeholders; `LoadingState` announces loading once.
-- Charts: `ChartFrame` (titled panel) and `ChartLegend`, with `LineChart`, `StackedColumnChart`, `BarChart` and `Sparkline`.
+- Charts: `ChartFrame` (titled panel) and `ChartLegend`, with `LineChart`, `StackedColumnChart`, `BarChart`, `WinRateBarChart` (Win % by bucket on a fixed 0 to 100 scale, "label (played)"; Trends and Analysis) and `Sparkline`.
+- Analysis findings (`app/routes/analysis/findings.tsx`): a numbered rundown in `shale-900` cards with an italic display numeral; the lead finding spans the row in `sound-900` with a `rave` top rule. Each card carries a slanted factor chip, a "Small sample" chip in words (never colour alone, never `stale`) and its Match counts.
 
 ### Charts
 One approach on every page: **hand-rolled SVG and HTML in `app/components/charts/`, with no chart library**. That keeps the Worker bundle small and renders on the server. Follow the dataviz skill's rules:
@@ -131,6 +132,7 @@ One approach on every page: **hand-rolled SVG and HTML in `app/components/charts
 - Use a single y-axis and never dual axes. Lines are 2px, markers 8px with a 2px surface ring, bars at most 16px thick, gridlines 1px `shale-700`.
 - Charts with two or more series get a `ChartLegend`. Text uses ink tokens, never the series colour.
 - A series takes its place's colour unless it sets `color` (a `SERIES_COLORS` entry) to pair series up: Compare draws Squad Member A in series-2 blue and B in series-1 green, each 5-Match average `dashed`. Legend entries take the same `color` / `dashed`.
+- `LineChart` takes an optional `reference` level (a 1px dashed `ink-muted` line labelled at the left, e.g. 50% on a Win % chart), which the y-axis always includes.
 - `LineChart` has a snapping crosshair and tooltip (pointer, touch, and arrow keys as a slider) plus a screen-reader data table. `BarChart` labels every bar, so it has no tooltip. Use horizontal bars for rankings, because they fit phones.
 - Category x-axes (`LineChart`, `StackedColumnChart`) pick labels with `axisLabelIndices`: a run of equal labels (several Matches on one date) is labelled once, and labels never crowd each other or the last one. The y-axis gutter grows to fit its tick labels; pass `integerTicks` for values that are never fractional.
 - Format numbers with `~/lib/number-format` (`formatDecimal`, `formatPercentage`, `formatOptional`, `NO_VALUE`), never a local `toFixed`.

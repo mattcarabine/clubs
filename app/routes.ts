@@ -5,6 +5,7 @@ export default [
   route("styleguide", "routes/styleguide.tsx"),
   route("squad", "routes/squad.tsx"),
   route("trends", "routes/trends.tsx"),
+  route("analysis", "routes/analysis/route.tsx"),
   route("matches", "routes/matches.tsx"),
   route("matches/:matchId", "routes/match.tsx"),
   route("opponents", "routes/opponents.tsx"),

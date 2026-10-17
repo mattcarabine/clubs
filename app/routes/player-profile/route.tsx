@@ -44,6 +44,7 @@ import type { Route } from "./+types/route";
 import { BestMatches } from "./best-matches";
 import { BuildPlate, BuildProgression } from "./build";
 import { EaTotals } from "./ea-totals";
+import { OutcomeSplitPanel } from "./outcome-split-panel";
 import { PositionGroupTable } from "./position-group-table";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -233,6 +234,14 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
               />
             </ChartFrame>
           </div>
+
+          <section aria-label="Wins vs Dropped Points" className="mb-8">
+            <SectionHeading
+              title="Wins vs Dropped Points"
+              subtitle={`${chartCoverage(form.length, positions)}: Wins beside draws and losses, per 90 over the minutes played`}
+            />
+            <OutcomeSplitPanel split={profile.outcomeSplit} />
+          </section>
         </>
       )}
 
