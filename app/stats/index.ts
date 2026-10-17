@@ -14,3 +14,4 @@ export * from "./scope";
 export * from "./snapshots";
 export * from "./squad";
 export * from "./summaries";
+export * from "./trends";
