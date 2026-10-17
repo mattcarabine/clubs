@@ -88,6 +88,7 @@ The default Tailwind colours are switched off, so only these exist (`bg-shale-90
 | `sound-900` / `sound-700` / `sound-300` | `#0f3f7a` / `#1f5aa6` / `#74b3f2` | Our Club's panels / chips / links |
 | `win` / `draw` / `loss` | `#7ac943` / `#8fa1b0` / `#ef5b5b` | Outcomes, always paired with the W/D/L letter |
 | `stale` | `#f2b33d` | Stale data warning only |
+| `cold` | `#6cc4e8` | The Cold form badge only (Hot form uses `rave`). Text on it is `shale-950` (9.2:1) |
 | `series-1..4` | `#5aac33` `#3d8be0` `#c95fa0` `#d46e22` | Chart series in this fixed order |
 
 Text contrast (WCAG AA): `ink-muted` is 6.1:1 on `shale-900` and 5.3:1 on `shale-800`; `loss` text is 4.9:1 on `shale-900`, so use it only on `shale-900` or darker. Other tokens: `--slant` (the angle offset), `text-score` / `text-score-lg` (scoreboard numerals), `animate-ticker`, `animate-shimmer`. Utilities: `clip-slant`, `clip-slant-l`, `clip-slant-r` (angled edges; set `[--slant:…]` to change the angle) and `tabular` (aligned figures). Spacing uses Tailwind's default 4px scale.
@@ -119,6 +120,7 @@ Every component is presentational: it takes props and never fetches. Shared doma
 - `HeadToHeadBar`: Our Club and an Opponent either side of won/drawn/lost blocks, over a meter of their share. Use `size="hero"` for the lead strip; on phones the blocks drop below the names.
 - `PlayerChip`: a Squad Member's initials, name, Position Group and optional stat; `former` for Former Squad Members, `to` to link, `dense` to show just the name on phones (for a pinned table column).
 - `LastUpdatedBadge`: "Updated 4 min ago" from the latest Poll; it turns amber and says "Stale" after 15 minutes (three missed Polls).
+- `FormBadge`: Hot form (`rave`, ▲ "Hot") or Cold form (`cold`, ▼ "Cold") beside a Squad Member's name, with "Last 5: 8.1 avg vs 7.3 usual" as its tooltip and screen-reader text. `compact` shows only the arrow on phones, for the Squad table's pinned column.
 - `Tag` / `SmallSampleTag`: small slanted tags beside a finding or change, naming its factor or stat, and "Small sample" in words. `ChangeArrow`: the decorative ▲ (`win`) or ▼ (`loss`) beside a change; pair it with words.
 - `EmptyState`: says what is missing and what will fill it. Sparse data is the norm, so hide a summary that would be meaningless (e.g. "Most played" when every Opponent was met once, a one-point chart, a By Position Group table with one group) rather than showing it, and don't leave half a row empty: a sparse panel takes its own full-width row instead of sitting beside a chart (Trends' one-reading skill rating), and a short side column beside a long one is `lg:sticky lg:top-24 lg:self-start`.
 - `BackLink` / `RouteError`: a detail page's "‹ All Matches" link, and its `ErrorBoundary` (back link plus a 404 or failed-to-load `EmptyState`). Every `:id` route has one; the root boundary handles unknown addresses.

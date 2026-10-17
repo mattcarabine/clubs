@@ -39,6 +39,8 @@
   --color-draw: #8fa1b0;
   --color-loss: #ef5b5b;
   --color-stale: #f2b33d;
+  /* Cold form badge (Hot uses rave); shale-950 text on it is 9.2:1. */
+  --color-cold: #6cc4e8;
 
   /* Chart series, validated with the dataviz CVD checker on shale-900.
      Fixed order, never cycled; four series at most. */

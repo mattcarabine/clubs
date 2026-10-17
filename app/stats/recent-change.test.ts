@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formIndicator,
   MIN_RECENT_APPEARANCES,
   RECENT_TREND_POINTS,
   RECENT_WINDOW,
@@ -191,5 +192,53 @@ describe("recentChanges", () => {
         "Star",
       ).biggest,
     ).toBeNull();
+  });
+});
+
+describe("formIndicator", () => {
+  const ratings = (usual: number[], last5: number[]) =>
+    [...usual, ...last5].map((rating) => ({ rating }));
+  const repeat = (count: number, rating: number) =>
+    Array<number>(count).fill(rating);
+
+  it("is Hot when the last 5 average at least 0.5 above the usual", () => {
+    const indicator = formIndicator(
+      ratings(repeat(10, 7.3), [8, 8, 8, 8, 8.5]),
+    );
+    expect(indicator).toMatchObject({
+      status: "hot",
+      text: "Last 5: 8.1 avg vs 7.3 usual",
+    });
+    expect(indicator?.recent).toBeCloseTo(8.1);
+    expect(indicator?.usual).toBeCloseTo(7.3);
+  });
+
+  it("counts a gap of exactly 0.5", () => {
+    expect(formIndicator(ratings(repeat(10, 7), repeat(5, 7.5)))?.status).toBe(
+      "hot",
+    );
+  });
+
+  it("is Cold at least 0.5 below the usual", () => {
+    expect(
+      formIndicator(ratings(repeat(10, 7.5), repeat(5, 6.5))),
+    ).toMatchObject({ status: "cold", text: "Last 5: 6.5 avg vs 7.5 usual" });
+  });
+
+  it("gives no badge for a small change", () => {
+    expect(formIndicator(ratings(repeat(10, 7), repeat(5, 7.4)))).toBeNull();
+  });
+
+  it("needs 10 Appearances before the last 5", () => {
+    expect(formIndicator(ratings(repeat(9, 6), repeat(5, 9)))).toBeNull();
+  });
+
+  it("skips unrated Appearances in both averages", () => {
+    const apps = [
+      ...ratings(repeat(10, 7), []),
+      { rating: null },
+      ...ratings([], repeat(4, 8)),
+    ];
+    expect(formIndicator(apps)).toMatchObject({ status: "hot", recent: 8 });
   });
 });

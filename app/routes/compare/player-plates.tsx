@@ -8,12 +8,14 @@ import { useSearchParams } from "react-router";
 
 import {
   EA_POSITIONS_DISABLED,
+  FormBadge,
   PositionGroupPicker,
   ScrollRail,
 } from "~/components";
 import {
   COMPARISON_SIDES,
   type ComparisonSide,
+  type FormIndicator,
   type PositionGroupSelection,
   type SquadMemberOption,
   type StatsSource,
@@ -33,6 +35,8 @@ type PlayerPlatesProps = {
   players: readonly SquadMemberOption[];
   positionGroups: Record<ComparisonSide, PositionGroupSelection>;
   source: StatsSource;
+  /** Each side's Hot or Cold form (CLUBS-40), A first; none for EA totals. */
+  formIndicators?: readonly (FormIndicator | null)[];
 };
 
 export function PlayerPlates({
@@ -40,6 +44,7 @@ export function PlayerPlates({
   players,
   positionGroups,
   source,
+  formIndicators = [],
 }: PlayerPlatesProps) {
   const [, setSearchParams] = useSearchParams();
   const update = (write: (params: URLSearchParams) => URLSearchParams) =>
@@ -68,6 +73,20 @@ export function PlayerPlates({
           onChange={(playerId) => choose(i, playerId)}
         />
       ))}
+      {formIndicators.some(Boolean) &&
+        COMPARISON_SIDES.map((side, i) => {
+          const indicator = formIndicators[i];
+          return (
+            <div
+              key={side}
+              className={`flex min-w-0 ${side === "B" ? "justify-end" : ""}`}
+            >
+              {indicator && players[i] && (
+                <FormBadge status={indicator.status} detail={indicator.text} />
+              )}
+            </div>
+          );
+        })}
       {COMPARISON_SIDES.map((side, i) => {
         const player = players[i];
         return player ? (

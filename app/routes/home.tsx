@@ -8,6 +8,7 @@ import { Link } from "react-router";
 
 import {
   EmptyState,
+  FormBadge,
   FormGuide,
   HERO_WIDTH,
   LastUpdatedBadge,
@@ -21,7 +22,9 @@ import {
   TopPerformersStrip,
 } from "~/components";
 import { getDb } from "~/db/client";
+import type { FormStatus } from "~/lib/domain";
 import { formatCount, formatOptional } from "~/lib/number-format";
+import { playerPath } from "~/lib/paths";
 import { useRevalidateWhileVisible } from "~/lib/use-revalidate-while-visible";
 import {
   type ClubSnapshotSummary,
@@ -33,6 +36,8 @@ import {
   type MatchSides,
   type MatchSkillRatings,
   type MatchSummary,
+  type SquadFormRow,
+  squadForm,
   summariseClubSnapshots,
   summariseMatchSides,
   summariseRecord,
@@ -54,10 +59,11 @@ export function meta(_: Route.MetaArgs) {
 
 export async function loader() {
   const db = getDb(env.DB);
-  const [recent, snapshots, lastPoll] = await Promise.all([
+  const [recent, snapshots, lastPoll, squadFormRows] = await Promise.all([
     listMatches(db, DEFAULT_STATS_FILTER, { limit: FORM_LENGTH }),
     clubSnapshots(db),
     lastSuccessfulPoll(db),
+    squadForm(db, DEFAULT_STATS_FILTER),
   ]);
   const latest = recent[0];
   const detail = latest ? await getMatch(db, latest.matchId) : null;
@@ -71,12 +77,21 @@ export async function loader() {
     ),
     club: summariseClubSnapshots(snapshots),
     lastPoll,
+    squadForm: squadFormRows,
   };
 }
 
 export default function Matchday({ loaderData }: Route.ComponentProps) {
-  const { clubName, recent, skillRatings, sides, performers, club, lastPoll } =
-    loaderData;
+  const {
+    clubName,
+    recent,
+    skillRatings,
+    sides,
+    performers,
+    club,
+    lastPoll,
+    squadForm,
+  } = loaderData;
   useRevalidateWhileVisible(REVALIDATE_MS);
   const [latest, ...earlier] = recent;
 
@@ -95,6 +110,7 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
             sides={sides}
             performers={performers}
           />
+          {squadForm.length > 0 && <FormWatch rows={squadForm} />}
           {club && <ClubSnapshot club={club} />}
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
             <Form matches={recent} />
@@ -161,6 +177,62 @@ function skillRatingDelta(change: number | null): StatDelta | undefined {
     text: `${sign}${change} since last change`,
     tone: change > 0 ? "positive" : "negative",
   };
+}
+
+const FORM_WATCH: readonly { status: FormStatus; label: string }[] = [
+  { status: "hot", label: "In form" },
+  { status: "cold", label: "Out of form" },
+];
+
+/**
+ * Hot and Cold form (CLUBS-40): a compact strip naming who is "In form" and
+ * "Out of form" over Competitive Matches, shown only when someone qualifies.
+ */
+function FormWatch({ rows }: { rows: readonly SquadFormRow[] }) {
+  return (
+    <section
+      aria-label="Form watch"
+      className="flex flex-col divide-y divide-shale-700 border-shale-700 border-t-2 bg-shale-900"
+    >
+      {FORM_WATCH.map(({ status, label }) => {
+        const players = rows.filter((r) => r.formIndicator.status === status);
+        if (players.length === 0) return null;
+        return (
+          <div
+            key={status}
+            className="flex min-w-0 flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4"
+          >
+            <h2 className="shrink-0 font-display font-extrabold text-ink text-lg uppercase tracking-wide sm:w-32">
+              {label}
+            </h2>
+            <ul
+              aria-label={label}
+              className="flex min-w-0 flex-wrap gap-x-5 gap-y-2"
+            >
+              {players.map(({ playerId, name, formIndicator }) => (
+                <li key={playerId} className="flex min-w-0 items-center gap-2">
+                  <FormBadge
+                    status={formIndicator.status}
+                    detail={formIndicator.text}
+                  />
+                  <Link
+                    to={playerPath(playerId)}
+                    className="truncate font-semibold text-sound-300 hover:text-ink"
+                  >
+                    {name}
+                  </Link>
+                  {/* The badge already reads this out. */}
+                  <span aria-hidden className="text-ink-muted text-sm tabular">
+                    {formIndicator.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </section>
+  );
 }
 
 function ClubSnapshot({ club }: { club: ClubSnapshotSummary }) {

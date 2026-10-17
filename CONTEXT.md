@@ -72,6 +72,14 @@ _Avoid_: Sitting, night
 One of EA's live Pro Clubs content seasons (e.g. "Closed Season 01"), lasting roughly six weeks, at the end of which EA's season totals reset.
 _Avoid_: Campaign, division season, year
 
+**Hot form**:
+A Squad Member whose average rating over their last 5 Appearances is at least 0.5 above their average over every Appearance before them (at least 10), in the active filters. Shown as "Hot", and as "In form" on Matchday.
+_Avoid_: On fire, purple patch
+
+**Cold form**:
+The same comparison, at least 0.5 below. Shown as "Cold", and as "Out of form" on Matchday.
+_Avoid_: Slump, bad form
+
 ### Comparisons
 
 **Outcome Split**:
