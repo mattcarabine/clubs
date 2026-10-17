@@ -16,10 +16,11 @@ const OUTCOMES: Record<MatchResult, Outcome> = {
   loss: "L",
 };
 
-const MATCH_TYPES: Record<MatchKind, MatchType> = {
+const MATCH_TYPES: Record<MatchKind, MatchType | null> = {
   league: "League",
   playoff: "Playoff",
-  friendly: "Friendly",
+  // Stored, but never shown: every query is scoped with `isShownMatch`.
+  friendly: null,
 };
 
 const POSITION_GROUPS: Record<PositionGroup, PositionGroupName> = {
@@ -34,8 +35,11 @@ export function toOutcome(result: MatchResult): Outcome {
   return OUTCOMES[result];
 }
 
+/** Throws for a Friendly, which a query scoped with `isShownMatch` never returns. */
 export function toMatchType(kind: MatchKind): MatchType {
-  return MATCH_TYPES[kind];
+  const type = MATCH_TYPES[kind];
+  if (type === null) throw new Error(`Match Type "${kind}" is never shown`);
+  return type;
 }
 
 export function toMatchKind(type: MatchType): MatchKind {

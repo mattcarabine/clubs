@@ -367,7 +367,7 @@ export default function Styleguide() {
               away={{ name: "Real Gravesend Rovers Football Club", score: 3 }}
             />
             <ScoreBar
-              label="Friendly"
+              label="League"
               meta={["Wed 14 Oct, 22:35"]}
               outcome="D"
               home={{ name: "A Bloo Bloo", score: 2, isOurClub: true }}

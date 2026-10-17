@@ -25,7 +25,7 @@ import {
   type SplitMatch,
 } from "./outcome-split";
 import { ALL_POSITIONS, type PositionGroupSelection } from "./positions";
-import { matchScope } from "./scope";
+import { isShownMatch, matchScope } from "./scope";
 import { type Kickoff, sessionPlaces } from "./sessions";
 import { squadAppearances } from "./squad";
 
@@ -90,7 +90,7 @@ export async function getDroppedPointsReasons(
   const baseline = matchScope(db, DEFAULT_STATS_FILTER);
   const [summaries, totals] = await Promise.all([
     listMatches(db, DEFAULT_STATS_FILTER),
-    // The baseline's totals and this Match's, which may be a Friendly, in one read.
+    // The baseline's totals and this Match's, which may be outside it, in one read.
     clubMatchTotals(db, or(baseline, eq(matches.matchId, match.matchId))),
   ]);
   const wins = summaries
@@ -174,10 +174,11 @@ async function clubMatchTotals(
   return byMatch;
 }
 
-/** Every recorded Match's kick-off, whatever the filter: Sessions span Match Types. */
+/** Every shown Match's kick-off, whatever the filter: Sessions span Match Types. */
 async function allKickoffs(db: Db): Promise<Kickoff[]> {
   return db
     .select({ matchId: matches.matchId, playedAt: matches.playedAt })
     .from(matches)
+    .where(isShownMatch)
     .orderBy(asc(matches.playedAt));
 }

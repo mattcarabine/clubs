@@ -146,31 +146,21 @@ test.describe("Match detail", () => {
     );
   });
 
-  test("a Friendly's result comes from the goals, not EA's zeroed W/D/L", async ({
+  test("a Friendly's page is a 404, though the Poll stored it", async ({
     page,
     fakeEa,
     triggerPoll,
+    db,
   }) => {
-    await fakeEa.setPayload("clubs/matches", [], "leagueMatch");
-    await fakeEa.addMatch(
-      friendly({ matchId: "800000000000002", goalsFor: 2, goalsAgainst: 1 }),
-    );
-    await fakeEa.addMatch(
-      friendly({ matchId: "800000000000003", goalsFor: 0, goalsAgainst: 3 }),
-    );
+    await fakeEa.addMatch(friendly({ matchId: "800000000000002" }));
     await triggerPoll();
+    expect(
+      (await db.rows("matches")).some((m) => m.match_id === "800000000000002"),
+    ).toBe(true);
 
-    await page.goto("/matches/800000000000002");
-    const score = page.getByRole("region", { name: "Score" });
-    await expect(score.getByText("Friendly", { exact: true })).toBeVisible();
-    await expect(score.getByText("Win", { exact: true })).toBeVisible();
-
-    await page.goto("/matches/800000000000003");
-    await expect(
-      page
-        .getByRole("region", { name: "Score" })
-        .getByText("Loss", { exact: true }),
-    ).toBeVisible();
+    const res = await page.goto("/matches/800000000000002");
+    expect(res?.status()).toBe(404);
+    await expect(page.getByText("Match not found")).toBeVisible();
   });
 
   test("an unknown Match ID is a 404", async ({ page }) => {
@@ -237,19 +227,19 @@ test.describe("Match list", () => {
 
   test("respects the FilterBar", async ({ page, fakeEa, triggerPoll }) => {
     await fakeEa.addMatch(win());
-    await fakeEa.addMatch(friendly());
+    await fakeEa.addMatch(win({ matchType: "playoffMatch" }));
     await triggerPoll();
 
     await page.goto("/matches");
-    await expect(matchLinks(page)).toHaveCount(1);
+    await expect(matchLinks(page)).toHaveCount(2);
 
     await page
       .getByRole("region", { name: "Stats filters" })
-      .getByRole("button", { name: "Friendly", exact: true })
+      .getByRole("button", { name: "Playoff", exact: true })
       .click();
-    await expect(page).toHaveURL(/types=league%2Cplayoff%2Cfriendly/);
-    await expect(matchLinks(page)).toHaveCount(2);
-    await expect(page.getByText("2 Matches, newest first")).toBeVisible();
+    await expect(page).toHaveURL(/types=league(&|$)/);
+    await expect(matchLinks(page)).toHaveCount(1);
+    await expect(page.getByText("1 Match, newest first")).toBeVisible();
   });
 
   test("says so when no Matches fit", async ({ page }) => {
