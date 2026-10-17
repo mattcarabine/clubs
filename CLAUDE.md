@@ -43,6 +43,11 @@ To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in 
 - Stat formulas and queries live in the shared `app/stats/` layer. Pages never write their own SQL or repeat a formula. Read [app/stats/README.md](app/stats/README.md) before building a page or adding a query. Every stats page parses a `StatsFilter` in its loader and mounts `FilterBar`.
 - **Two-places rule:** anything used twice goes in a shared module (`app/components/`, `app/stats/`, `app/lib/`).
 - Display times in Europe/London, through `~/lib/london-time`.
+- **Date filtering (CLUBS-21):** every date filter goes through the shared `StatsFilter` / FilterBar date range, never a page-specific control.
+  - **Options:** "All" (the default), the presets Last 7 days, Last 30 days and Last year, and a custom from/to picker.
+  - **Boundaries:** dates are Europe/London calendar days, inclusive at both ends.
+  - **URL:** presets serialise as `?range=7d|30d|1y`, so shared links stay relative; custom ranges as `?from=YYYY-MM-DD&to=YYYY-MM-DD`.
+  - **Bad input:** an invalid range falls back to "All".
 - Every page must work at 375px wide with no horizontal page scroll, and use the extra width on desktop.
 
 ## Workflow
