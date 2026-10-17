@@ -92,17 +92,18 @@ Every component is presentational: it takes props and never fetches. Shared doma
 - `AppShell`: header with crest lockup and nav (Matchday, Squad, Matches, Opponents, Trends), optional `ticker` slot. `root.tsx` already wraps every route in it.
 - `PageHeader` / `SectionHeading`: the page's single h1 (with an optional `aside`, e.g. a badge) and section h2s.
 - `ScoreBar`: the broadcast score strip. Use `size="hero"` for the lead Match and `compact` in lists; mark Our Club with `isOurClub`.
-- `Ticker`: a scrolling strip of `{ id, headline, detail }` items, made for the `AppShell` `ticker` slot.
+- `Ticker`: a strip of `{ id, headline, detail }` items, made for the `AppShell` `ticker` slot. It scrolls only when the items overflow it, and sits still when they fit.
 - `StatTile` inside `StatGrid`: a headline number with an optional delta (`tone` is whether the change is good for us) and a sparkline trend. Use `featured` on one tile at most.
 - `DataTable`: sortable via `sortValue`. The first column is the sticky row header; the table scrolls inside its own container on phones.
 - `FormGuide`: W/D/L run, oldest first. `OutcomeBadge` is one block.
 - `HeadToHeadBar`: Our Club and an Opponent either side of won/drawn/lost blocks, over a meter of their share. Use `size="hero"` for the lead strip; on phones the blocks drop below the names.
 - `PlayerChip`: a Squad Member's initials, name, Position Group and optional stat; `former` for Former Squad Members, `to` to link.
 - `LastUpdatedBadge`: "Updated 4 min ago" from the latest Poll; it turns amber and says "Stale" after 15 minutes (three missed Polls).
-- `EmptyState`: says what is missing and what will fill it.
-- `FilterBar`: the global stats filter (Match Type, DNF, dates, optional minimum Appearances) as slanted toggle chips; it rewrites the URL so the loader reruns.
+- `EmptyState`: says what is missing and what will fill it. Sparse data is the norm, so hide a summary that would be meaningless (e.g. "Most played" when every Opponent was met once, a one-point chart) rather than showing it.
+- `BackLink` / `RouteError`: a detail page's "‹ All Matches" link, and its `ErrorBoundary` (back link plus a 404 or failed-to-load `EmptyState`). Every `:id` route has one; the root boundary handles unknown addresses.
+- `FilterBar`: the global stats filter (Match Type, DNF, dates, optional minimum Appearances) as slanted toggle chips; it rewrites the URL so the loader reruns. On phones it is one row that scrolls sideways, so it never takes a screenful.
 - `Skeleton` / `LoadingState`: placeholders; `LoadingState` announces loading once.
-- Charts: `ChartFrame` (titled panel) and `ChartLegend`, with `LineChart`, `BarChart` and `Sparkline`.
+- Charts: `ChartFrame` (titled panel) and `ChartLegend`, with `LineChart`, `StackedColumnChart`, `BarChart` and `Sparkline`.
 
 ### Charts
 One approach on every page: **hand-rolled SVG and HTML in `app/components/charts/`, with no chart library**. That keeps the Worker bundle small and renders on the server. Follow the dataviz skill's rules:
@@ -110,6 +111,8 @@ One approach on every page: **hand-rolled SVG and HTML in `app/components/charts
 - Use a single y-axis and never dual axes. Lines are 2px, markers 8px with a 2px surface ring, bars at most 16px thick, gridlines 1px `shale-700`.
 - Charts with two or more series get a `ChartLegend`. Text uses ink tokens, never the series colour.
 - `LineChart` has a snapping crosshair and tooltip (pointer, touch, and arrow keys as a slider) plus a screen-reader data table. `BarChart` labels every bar, so it has no tooltip. Use horizontal bars for rankings, because they fit phones.
+- Category x-axes (`LineChart`, `StackedColumnChart`) pick labels with `axisLabelIndices`: a run of equal labels (several Matches on one date) is labelled once, and labels never crowd each other or the last one. The y-axis gutter grows to fit its tick labels; pass `integerTicks` for values that are never fractional.
+- Format numbers with `~/lib/number-format` (`formatDecimal`, `formatPercentage`, `formatOptional`, `NO_VALUE`), never a local `toFixed`.
 - Charts measure their container (`useElementWidth`), so they fit any width without scaling text.
 
 ### Do

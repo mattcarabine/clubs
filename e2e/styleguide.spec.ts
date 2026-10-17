@@ -62,6 +62,11 @@ test("every component section renders", async ({ page }) => {
     section("charts").getByRole("list", { name: "Goals by Squad Member" }),
   ).toBeVisible();
   await expect(
+    section("charts").getByRole("slider", {
+      name: "Goals and assists by Appearance",
+    }),
+  ).toBeVisible();
+  await expect(
     section("empty-state").getByText("No Matches yet"),
   ).toBeVisible();
   await expect(

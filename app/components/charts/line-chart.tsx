@@ -1,6 +1,11 @@
 import { type KeyboardEvent, type PointerEvent, useState } from "react";
 import { MAX_SERIES, SERIES_COLORS } from "./chart-frame";
-import { formatCompact, linearScale, niceTicks } from "./scale";
+import {
+  axisLabelIndices,
+  formatCompact,
+  linearScale,
+  niceTicks,
+} from "./scale";
 import { useElementWidth } from "./use-element-width";
 
 export type LineSeries = {
@@ -26,9 +31,14 @@ type LineChartProps = {
   includeZero?: boolean;
   /** Y-axis tick labels; compact ("1.2K") by default. */
   formatTick?: (value: number) => string;
+  /** Whole-number y ticks, for values that are never fractional. */
+  integerTicks?: boolean;
 };
 
-const M = { top: 12, right: 12, bottom: 28, left: 36 };
+const M = { top: 12, right: 12, bottom: 28 };
+/** Room for y tick labels: about one text-xs character each, plus a gap to the plot. */
+const TICK_CHAR_WIDTH = 7;
+const TICK_GAP = 12;
 
 /**
  * Multi-series line chart with a snapping crosshair and tooltip. Hover, touch
@@ -42,6 +52,7 @@ export function LineChart({
   formatValue = (v) => String(v),
   includeZero = true,
   formatTick = formatCompact,
+  integerTicks = false,
 }: LineChartProps) {
   const [ref, width] = useElementWidth<HTMLDivElement>(640);
   const [active, setActive] = useState<number | null>(null);
@@ -53,19 +64,19 @@ export function LineChart({
   let [lo, hi] = [Math.min(...zero, ...all), Math.max(...zero, ...all)];
   // A flat series away from zero still gets a band around it, not a 0-based axis.
   if (!includeZero && lo === hi) [lo, hi] = [lo - 1, hi + 1];
-  const ticks = niceTicks(lo, hi);
-  const x = linearScale([0, Math.max(1, last)], [M.left, width - M.right]);
+  const ticks = niceTicks(lo, hi, 4, { integer: integerTicks });
+  const tickLabels = ticks.map(formatTick);
+  const left =
+    Math.max(...tickLabels.map((t) => t.length)) * TICK_CHAR_WIDTH + TICK_GAP;
+  const x = linearScale([0, Math.max(1, last)], [left, width - M.right]);
   const y = linearScale(
     [ticks[0], ticks[ticks.length - 1]],
     [height - M.bottom, M.top],
   );
 
-  const xTickEvery = Math.max(
-    1,
-    Math.ceil(labels.length / Math.floor(width / 72)),
-  );
+  const xLabels = axisLabelIndices(labels, x(1) - x(0));
   const indexAt = (clientX: number, rect: DOMRect) => {
-    const ratio = (clientX - rect.left - M.left) / (width - M.left - M.right);
+    const ratio = (clientX - rect.left - left) / (width - left - M.right);
     return Math.min(last, Math.max(0, Math.round(ratio * last)));
   };
 
@@ -114,10 +125,10 @@ export function LineChart({
         // Clips rather than overflows before the first measurement.
         className="block max-w-full"
       >
-        {ticks.map((t) => (
+        {ticks.map((t, i) => (
           <g key={t}>
             <line
-              x1={M.left}
+              x1={left}
               x2={width - M.right}
               y1={y(t)}
               y2={y(t)}
@@ -127,30 +138,27 @@ export function LineChart({
               strokeWidth={1}
             />
             <text
-              x={M.left - 8}
+              x={left - 8}
               y={y(t)}
               dy="0.32em"
               textAnchor="end"
               className="fill-ink-muted text-xs tabular"
             >
-              {formatTick(t)}
+              {tickLabels[i]}
             </text>
           </g>
         ))}
-        {labels.map((l, i) =>
-          i % xTickEvery === 0 || i === last ? (
-            <text
-              // biome-ignore lint/suspicious/noArrayIndexKey: labels may repeat
-              key={i}
-              x={x(i)}
-              y={height - 8}
-              textAnchor={tickAnchor(i, last)}
-              className="fill-ink-muted text-xs"
-            >
-              {l}
-            </text>
-          ) : null,
-        )}
+        {xLabels.map((i) => (
+          <text
+            key={i}
+            x={x(i)}
+            y={height - 8}
+            textAnchor={tickAnchor(i, last)}
+            className="fill-ink-muted text-xs"
+          >
+            {labels[i]}
+          </text>
+        ))}
         {active != null && (
           <line
             x1={x(active)}

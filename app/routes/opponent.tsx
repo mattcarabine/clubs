@@ -11,11 +11,13 @@ import {
   MatchScoreBar,
   numberColumn,
   PageHeader,
+  RouteError,
   SectionHeading,
   StatGrid,
   StatTile,
 } from "~/components";
 import { getDb } from "~/db/client";
+import type { Outcome } from "~/lib/domain";
 import { formatLondonDate } from "~/lib/london-time";
 import {
   formatCount,
@@ -36,11 +38,13 @@ import type { Route } from "./+types/opponent";
 
 /** How many recent results the form strip in the header shows. */
 const FORM_LENGTH = 5;
+/** Fewer results than this read as a stray badge rather than a run of form. */
+const MIN_FORM = 3;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [
     {
-      title: `A Bloo Bloo — ${loaderData?.opponent.name ?? "Opponent"}`,
+      title: `A Bloo Bloo — ${loaderData?.opponent.name ?? "Opponent not found"}`,
     },
   ];
 }
@@ -121,7 +125,7 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
             ? `Head-to-head since ${formatLondonDate(firstMet)}`
             : "Head-to-head"
         }
-        aside={<FormGuide results={form} size="md" />}
+        aside={form.length >= MIN_FORM && <OpponentForm results={form} />}
       />
       <FilterBar filter={filter} />
 
@@ -213,5 +217,26 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
         </div>
       )}
     </>
+  );
+}
+
+/** The last few results against this Opponent, labelled, for the header. */
+function OpponentForm({ results }: { results: Outcome[] }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-ink-muted text-sm">Form</span>
+      <FormGuide results={results} size="md" />
+    </div>
+  );
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return (
+    <RouteError
+      error={error}
+      subject="Opponent"
+      notFoundDescription="Our Club has no recorded Match against a club with this ID."
+      back={{ to: "/opponents", children: "All Opponents" }}
+    />
   );
 }

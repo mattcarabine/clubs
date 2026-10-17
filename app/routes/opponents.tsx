@@ -86,7 +86,7 @@ const COLUMNS: DataTableColumn<OpponentRecord>[] = [
 
 export default function Opponents({ loaderData }: Route.ComponentProps) {
   const { clubName, filter, opponents } = loaderData;
-  const [mostPlayed] = opponents;
+  const mostPlayed = clearMostPlayed(opponents);
 
   return (
     <>
@@ -96,21 +96,27 @@ export default function Opponents({ loaderData }: Route.ComponentProps) {
       />
       <FilterBar filter={filter} />
 
-      {mostPlayed ? (
+      {opponents.length > 0 ? (
         <div className="grid gap-8">
-          <Link
-            to={`/opponents/${mostPlayed.clubId}`}
-            className="block transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-rave focus-visible:outline-offset-4"
-          >
-            <HeadToHeadBar
-              size="hero"
-              label="Most played"
-              status={formatCount(mostPlayed.record.played, "Match", "Matches")}
-              ourClub={clubName}
-              opponent={mostPlayed.name}
-              record={mostPlayed.record}
-            />
-          </Link>
+          {mostPlayed && (
+            <Link
+              to={`/opponents/${mostPlayed.clubId}`}
+              className="block transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-rave focus-visible:outline-offset-4"
+            >
+              <HeadToHeadBar
+                size="hero"
+                label="Most played"
+                status={formatCount(
+                  mostPlayed.record.played,
+                  "Match",
+                  "Matches",
+                )}
+                ourClub={clubName}
+                opponent={mostPlayed.name}
+                record={mostPlayed.record}
+              />
+            </Link>
+          )}
           <DataTable
             caption="Head-to-head records"
             columns={COLUMNS}
@@ -131,4 +137,17 @@ export default function Opponents({ loaderData }: Route.ComponentProps) {
       )}
     </>
   );
+}
+
+/**
+ * The Opponent met most often, or null when no one stands out: a tie at the
+ * top, or nobody met more than once, would crown whichever club sorts first.
+ * `opponents` is sorted most played first.
+ */
+function clearMostPlayed(
+  opponents: readonly OpponentRecord[],
+): OpponentRecord | null {
+  const [top, next] = opponents;
+  if (!top || top.record.played < 2) return null;
+  return next?.record.played === top.record.played ? null : top;
 }

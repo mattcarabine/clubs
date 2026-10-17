@@ -9,15 +9,26 @@ export function linearScale(
 
 /**
  * Round axis ticks covering [min, max]: steps of 1, 2, 2.5 or 5 x 10^n, about
- * `count` of them, always including zero when the data does.
+ * `count` of them, always including zero when the data does. With `integer`,
+ * steps are whole numbers, for counts and ratings that are never fractional.
  */
-export function niceTicks(min: number, max: number, count = 4): number[] {
+export function niceTicks(
+  min: number,
+  max: number,
+  count = 4,
+  { integer = false }: { integer?: boolean } = {},
+): number[] {
   if (!Number.isFinite(min) || !Number.isFinite(max)) return [0];
   if (min === max) {
     if (min === 0) return [0, 1];
     [min, max] = min > 0 ? [0, min] : [min, 0];
   }
-  const step = niceStep((max - min) / count);
+  const rough = niceStep((max - min) / count);
+  // Below 1, or 2.5, round down to the nearest whole step instead.
+  const step =
+    integer && !Number.isInteger(rough)
+      ? Math.max(1, Math.floor(rough))
+      : rough;
   const start = Math.floor(min / step) * step;
   const end = Math.ceil(max / step) * step;
   const ticks: number[] = [];
@@ -36,6 +47,36 @@ function niceStep(rough: number): number {
 }
 
 const NICE_STEPS = [1, 2, 2.5, 5, 10] as const;
+
+/**
+ * Which x-axis category labels to draw so none repeat or collide. A run of
+ * equal labels (several Matches on one date) is labelled once, where it
+ * starts; labels closer than `minGap` px to the previous one are skipped; and
+ * the final run is always labelled, dropping any neighbour that crowds it.
+ * `spacing` is the distance in px between consecutive categories.
+ */
+export function axisLabelIndices(
+  labels: readonly string[],
+  spacing: number,
+  minGap = 64,
+): number[] {
+  const fits = (from: number, to: number) => (to - from) * spacing >= minGap;
+  const runStarts = labels.flatMap((label, i) =>
+    i === 0 || label !== labels[i - 1] ? [i] : [],
+  );
+  const picked: number[] = [];
+  for (const i of runStarts) {
+    const previous = picked.at(-1);
+    if (previous === undefined || fits(previous, i)) picked.push(i);
+  }
+  const finalRun = runStarts.at(-1);
+  if (finalRun === undefined || picked.at(-1) === finalRun) return picked;
+  while (picked.length > 1 && !fits(picked[picked.length - 1], finalRun)) {
+    picked.pop();
+  }
+  if (fits(picked[0], finalRun)) picked.push(finalRun);
+  return picked;
+}
 
 /** Compact tick label: 950, 1.2K, 12K, 3.4M. */
 export function formatCompact(value: number): string {

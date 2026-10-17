@@ -15,9 +15,17 @@ export function formatPercentage(value: number | null): string {
   return value === null ? NO_VALUE : `${Math.round(value)}%`;
 }
 
-/** One decimal place, "7.4", e.g. for an average rating, or a dash for null. */
-export function formatDecimal(value: number | null): string {
-  return value === null ? NO_VALUE : value.toFixed(1);
+/**
+ * Fixed decimal places, one by default: "7.4" for a rating, "0.68" with 2 for
+ * a per-90. A dash for null.
+ */
+export function formatDecimal(value: number | null, digits = 1): string {
+  return value === null ? NO_VALUE : value.toFixed(digits);
+}
+
+/** A count as is, or a dash for a value EA did not send. */
+export function formatOptional(value: number | null): string {
+  return value === null ? NO_VALUE : String(value);
 }
 
 /** "1 Match", "6 Matches": a count with its noun. */

@@ -18,11 +18,13 @@ import {
   SectionHeading,
   Skeleton,
   Sparkline,
+  StackedColumnChart,
   StatGrid,
   StatTile,
   Ticker,
 } from "~/components";
 import { POSITION_GROUP_ABBR, type PositionGroup } from "~/lib/domain";
+import { formatDecimal } from "~/lib/number-format";
 import type { Route } from "./+types/styleguide";
 
 export function meta(_: Route.MetaArgs) {
@@ -131,7 +133,7 @@ const SQUAD_COLUMNS: DataTableColumn<SquadRow>[] = [
   {
     id: "rating",
     header: "Avg rating",
-    cell: (r) => r.rating?.toFixed(1) ?? "–",
+    cell: (r) => formatDecimal(r.rating),
     sortValue: (r) => r.rating,
     align: "right",
   },
@@ -163,6 +165,24 @@ const GOAL_SERIES = [
     label: "Goals against",
     values: [1, 1, 2, 0, 2, null, 3, 1, 2, 1],
   },
+];
+
+// Several Appearances share a date, so the axis labels each date once.
+const APPEARANCE_DATES = [
+  "11 Oct",
+  "11 Oct",
+  "11 Oct",
+  "13 Oct",
+  "13 Oct",
+  "15 Oct",
+  "15 Oct",
+  "15 Oct",
+  "17 Oct",
+  "17 Oct",
+];
+const CONTRIBUTION_SERIES = [
+  { id: "goals", label: "Goals", values: [1, 0, 2, 0, 1, 0, 3, 1, 0, 2] },
+  { id: "assists", label: "Assists", values: [0, 1, 1, 0, 2, 1, 0, 1, 0, 1] },
 ];
 
 const SWATCHES = [
@@ -379,6 +399,17 @@ export default function Styleguide() {
                 label: r.name,
                 value: r.goals,
               })).sort((a, b) => b.value - a.value)}
+            />
+          </ChartFrame>
+          <ChartFrame
+            title="Goal contributions"
+            subtitle="Goals and assists by Appearance"
+            legend={<ChartLegend entries={CONTRIBUTION_SERIES} mark="box" />}
+          >
+            <StackedColumnChart
+              label="Goals and assists by Appearance"
+              labels={APPEARANCE_DATES}
+              series={CONTRIBUTION_SERIES}
             />
           </ChartFrame>
         </div>

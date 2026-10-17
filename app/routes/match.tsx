@@ -1,17 +1,19 @@
 /** Match detail: the score, both line-ups, and the two clubs' totals side by side. */
 import { env } from "cloudflare:workers";
-import { data, isRouteErrorResponse, Link } from "react-router";
+import { data, Link } from "react-router";
 
 import {
-  EmptyState,
+  BackLink,
   MatchScoreBar,
   PageHeader,
   PlayerChip,
+  RouteError,
   SectionHeading,
 } from "~/components";
 import { getDb } from "~/db/client";
 import type { PositionGroup } from "~/lib/domain";
 import { formatLondonDateTime } from "~/lib/london-time";
+import { formatDecimal, formatPercentage, NO_VALUE } from "~/lib/number-format";
 import {
   getMatch,
   type MatchAppearance,
@@ -25,7 +27,7 @@ import { groupBy } from "~/stats/summaries";
 import type { Route } from "./+types/match";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  if (!loaderData) return [{ title: "Match not found" }];
+  if (!loaderData) return [{ title: "A Bloo Bloo — Match not found" }];
   const { clubName, match } = loaderData;
   return [
     {
@@ -57,7 +59,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
   const motm = match.appearances.find((a) => a.manOfTheMatch);
   return (
     <>
-      <BackLink />
+      <BackLink to="/matches">All Matches</BackLink>
       <PageHeader
         title={`v ${opponent.name}`}
         subtitle={
@@ -107,7 +109,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
               <PlayerChip
                 name={motm.name}
                 positionGroup={motm.positionGroup ?? undefined}
-                stat={motm.rating?.toFixed(1)}
+                stat={formatDecimal(motm.rating)}
                 to={motm.isOurClub ? playerPath(motm.playerId) : undefined}
               />
             </div>
@@ -134,30 +136,13 @@ export default function Match({ loaderData }: Route.ComponentProps) {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  const notFound = isRouteErrorResponse(error) && error.status === 404;
   return (
-    <>
-      <BackLink />
-      <EmptyState
-        title={notFound ? "Match not found" : "This Match could not load"}
-        description={
-          notFound
-            ? "No recorded Match has this ID. It may be older than the first Poll."
-            : "Something went wrong loading this Match. Try again in a moment."
-        }
-      />
-    </>
-  );
-}
-
-function BackLink() {
-  return (
-    <Link
-      to="/matches"
-      className="mb-4 inline-block font-display font-bold text-ink-muted text-lg uppercase tracking-wide hover:text-ink"
-    >
-      <span aria-hidden>‹ </span>All Matches
-    </Link>
+    <RouteError
+      error={error}
+      subject="Match"
+      notFoundDescription="No recorded Match has this ID. It may be older than the first Poll."
+      back={{ to: "/matches", children: "All Matches" }}
+    />
   );
 }
 
@@ -196,7 +181,6 @@ function TeamComparison({
   goals: [number, number];
   totals: Side;
 }) {
-  const percent = (v: number) => `${Math.round(v)}%`;
   const rows: ComparisonRow[] = [
     { label: "Goals", ours: goals[0], theirs: goals[1] },
     { label: "Shots", ours: totals.ours.shots, theirs: totals.theirs.shots },
@@ -204,7 +188,7 @@ function TeamComparison({
       label: "Pass %",
       ours: totals.ours.passPercentage,
       theirs: totals.theirs.passPercentage,
-      format: percent,
+      format: formatPercentage,
     },
     {
       label: "Tackles",
@@ -216,7 +200,7 @@ function TeamComparison({
       label: "Average rating",
       ours: totals.ours.averageRating,
       theirs: totals.theirs.averageRating,
-      format: (v) => v.toFixed(1),
+      format: formatDecimal,
     },
   ];
 
@@ -252,7 +236,7 @@ function ComparisonBar({
   opponentName: string;
 }) {
   const { label, ours, theirs, format = String } = row;
-  const show = (v: number | null) => (v === null ? "–" : format(v));
+  const show = (v: number | null) => (v === null ? NO_VALUE : format(v));
   const sum = (ours ?? 0) + (theirs ?? 0);
   const hasValues = sum > 0;
   // Neither side has a value: an even, muted split, so the bar never collapses.
@@ -326,7 +310,7 @@ const STAT_COLUMNS: {
   {
     abbr: "Rtg",
     title: "Rating",
-    cell: (a) => a.rating?.toFixed(1) ?? "–",
+    cell: (a) => formatDecimal(a.rating),
     emphasis: true,
   },
   { abbr: "G", title: "Goals", cell: (a) => a.goals },
