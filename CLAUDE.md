@@ -25,6 +25,7 @@ Read before changing anything:
 | `pnpm test` | Vitest unit tests (pure logic only) |
 | `pnpm test:e2e` | Playwright against the production build in workerd (`test` Wrangler env, fresh D1 in `.wrangler/e2e`) and the fake EA upstream |
 | `pnpm fixtures:record` | Re-record `fixtures/ea/` from live EA (never in CI) |
+| `pnpm test:live` | Smoke tests in `live/` (never in CI): every Poll request to live EA still has the fields we read (`app/ea/shape.ts`), and production serves Matchday with a Poll under 15 minutes old. `LIVE_SITE_URL` overrides the site |
 
 To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in dev and preview.
 
