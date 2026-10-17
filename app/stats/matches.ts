@@ -70,8 +70,11 @@ export async function listMatches(
 ): Promise<MatchSummary[]> {
   let query = selectSummaries(db)
     .where(matchScope(db, filter, scope))
+    // Match ID breaks ties so pages never shuffle or repeat across offsets.
     .orderBy(
-      order === "newest" ? desc(matches.playedAt) : asc(matches.playedAt),
+      ...(order === "newest"
+        ? [desc(matches.playedAt), desc(matches.matchId)]
+        : [asc(matches.playedAt), asc(matches.matchId)]),
     )
     .$dynamic();
   if (limit !== undefined) query = query.limit(limit);

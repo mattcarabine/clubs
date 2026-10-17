@@ -46,7 +46,8 @@ Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (
 
 - URL: `?types=league,playoff,friendly&dnf=0&range=last10|30d|all&minApps=1`. Defaults (Competitive Matches, DNF included, all dates, min 3) are left out of the URL.
 - Changing the filter resets `page`; other params are kept.
-- "Last 10" means Our Club's 10 latest Matches that pass the other conditions (including `opponentClubId`).
+- "Last 10" means Our Club's 10 latest Matches that pass the other conditions (including `opponentClubId`), not each Squad Member's last 10 Appearances. Say so in UI copy where it matters.
+- `squadLeaderboard` applies the minimum of 3 Appearances unless told otherwise; pass `minAppearances` (e.g. 1 for top performers against one Opponent).
 - DNF Matches are counted by default. Every `MatchSummary` and `SquadAppearance` carries `dnf`, so flag them in the UI.
 
 ## Adding a query

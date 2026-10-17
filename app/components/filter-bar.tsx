@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
-import { useNavigation, useSearchParams } from "react-router";
+import { useLocation, useNavigation, useSearchParams } from "react-router";
 
 import {
   DATE_RANGE_LABEL,
   DATE_RANGES,
   MATCH_TYPES,
+  parseMinAppearances,
+  parseStatsFilter,
   type StatsFilter,
   toggleMatchType,
   writeMinAppearances,
@@ -22,20 +24,39 @@ type FilterBarProps = {
  * The global stats filter: Match Types, DNF and date range, plus an optional
  * leaderboard minimum. Every change rewrites the URL, so the page's loader
  * reruns with the new filter and the view can be shared.
+ *
+ * While a filter change is loading, the chips show the pending URL and the
+ * next change builds on it, so quick successive clicks all count.
  */
-export function FilterBar({ filter, minAppearances }: FilterBarProps) {
+export function FilterBar(props: FilterBarProps) {
   const [, setSearchParams] = useSearchParams();
-  const navigation = useNavigation();
+  const pending = usePendingSearchParams();
+  const filter = pending ? parseStatsFilter(pending) : props.filter;
+  const minAppearances =
+    pending && props.minAppearances !== undefined
+      ? parseMinAppearances(pending)
+      : props.minAppearances;
 
   const apply = (write: (params: URLSearchParams) => URLSearchParams) =>
-    setSearchParams(write, { preventScrollReset: true });
-  const setFilter = (next: StatsFilter) =>
-    apply((params) => writeStatsFilter(params, next));
+    setSearchParams((current) => write(pending ?? current), {
+      preventScrollReset: true,
+    });
+  const updateFilter = (change: (filter: StatsFilter) => StatsFilter) =>
+    apply((params) =>
+      writeStatsFilter(params, change(parseStatsFilter(params))),
+    );
+  const stepMinAppearances = (by: number) =>
+    apply((params) =>
+      writeMinAppearances(
+        params,
+        Math.max(0, parseMinAppearances(params) + by),
+      ),
+    );
 
   return (
     <section
       aria-label="Stats filters"
-      aria-busy={navigation.state === "loading"}
+      aria-busy={pending !== null}
       className="mb-6 flex flex-wrap items-end gap-x-6 gap-y-3 border-shale-700 border-t-2 bg-shale-900 px-3 py-3 sm:px-4"
     >
       <FilterGroup label="Match Type">
@@ -47,7 +68,7 @@ export function FilterBar({ filter, minAppearances }: FilterBarProps) {
               pressed={selected}
               // The last selected Match Type cannot be turned off.
               disabled={selected && filter.matchTypes.length === 1}
-              onClick={() => setFilter(toggleMatchType(filter, type))}
+              onClick={() => updateFilter((f) => toggleMatchType(f, type))}
             >
               {type}
             </Chip>
@@ -59,7 +80,7 @@ export function FilterBar({ filter, minAppearances }: FilterBarProps) {
         <Chip
           pressed={filter.includeDnf}
           onClick={() =>
-            setFilter({ ...filter, includeDnf: !filter.includeDnf })
+            updateFilter((f) => ({ ...f, includeDnf: !f.includeDnf }))
           }
         >
           Include DNF
@@ -71,7 +92,7 @@ export function FilterBar({ filter, minAppearances }: FilterBarProps) {
           <Chip
             key={range}
             pressed={filter.range === range}
-            onClick={() => setFilter({ ...filter, range })}
+            onClick={() => updateFilter((f) => ({ ...f, range }))}
           >
             {DATE_RANGE_LABEL[range]}
           </Chip>
@@ -83,9 +104,7 @@ export function FilterBar({ filter, minAppearances }: FilterBarProps) {
           <Chip
             aria-label="Fewer minimum Appearances"
             disabled={minAppearances <= 0}
-            onClick={() =>
-              apply((params) => writeMinAppearances(params, minAppearances - 1))
-            }
+            onClick={() => stepMinAppearances(-1)}
           >
             −
           </Chip>
@@ -97,9 +116,7 @@ export function FilterBar({ filter, minAppearances }: FilterBarProps) {
           </output>
           <Chip
             aria-label="More minimum Appearances"
-            onClick={() =>
-              apply((params) => writeMinAppearances(params, minAppearances + 1))
-            }
+            onClick={() => stepMinAppearances(1)}
           >
             +
           </Chip>
@@ -113,6 +130,15 @@ type FilterGroupProps = {
   label: string;
   children: ReactNode;
 };
+
+/** The search params of a navigation to this same page that is still loading, else null. */
+function usePendingSearchParams(): URLSearchParams | null {
+  const { pathname } = useLocation();
+  const { location } = useNavigation();
+  return location?.pathname === pathname
+    ? new URLSearchParams(location.search)
+    : null;
+}
 
 function FilterGroup({ label, children }: FilterGroupProps) {
   return (

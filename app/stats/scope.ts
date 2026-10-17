@@ -48,7 +48,7 @@ export function matchScope(
       .select({ matchId: matches.matchId })
       .from(matches)
       .where(base)
-      .orderBy(desc(matches.playedAt))
+      .orderBy(desc(matches.playedAt), desc(matches.matchId))
       .limit(RECENT_MATCHES),
   );
 }
