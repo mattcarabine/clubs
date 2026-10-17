@@ -7,6 +7,7 @@ export default [
   route("matches/:matchId", "routes/match.tsx"),
   route("opponents", "routes/opponents.tsx"),
   route("opponents/:clubId", "routes/opponent.tsx"),
+  route("players/:playerId", "routes/player-profile/route.tsx"),
   // Test-only: 404s outside the `test` Wrangler env and dev (see the route).
   route("test/stats", "routes/test-stats.tsx"),
 ] satisfies RouteConfig;
