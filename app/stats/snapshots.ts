@@ -29,7 +29,7 @@ export async function clubSnapshots(
 
 /**
  * A Squad Member's totals over time, oldest first. `members/stats` is the
- * Season (with `proOverall`, `proStyle`, `proPos`); `members/career/stats`
+ * Season (with `proOverall` and `proPos`); `members/career/stats`
  * is EA's all-time record since the club was founded.
  */
 export async function memberSnapshots(

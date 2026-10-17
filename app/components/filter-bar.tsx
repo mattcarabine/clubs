@@ -67,7 +67,8 @@ export function FilterBar(props: FilterBarProps) {
     <section
       aria-label="Stats filters"
       aria-busy={pending !== null}
-      className="mb-6 flex flex-wrap items-end gap-x-6 gap-y-3 border-shale-700 border-t-2 bg-shale-900 px-3 py-3 sm:px-4"
+      // One scrolling rail on phones, so the filters take one row, not a screen.
+      className="mb-6 flex items-end gap-x-6 gap-y-3 overflow-x-auto border-shale-700 border-t-2 bg-shale-900 px-3 py-3 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible sm:px-4"
     >
       <FilterGroup label="Match Type">
         {MATCH_TYPES.map((type) => {
@@ -205,9 +206,11 @@ function usePendingSearchParams(): URLSearchParams | null {
 
 function FilterGroup({ label, children }: FilterGroupProps) {
   return (
-    <fieldset className="min-w-0">
-      <legend className="mb-1.5 text-ink-muted text-sm">{label}</legend>
-      <div className="flex flex-wrap gap-1">{children}</div>
+    <fieldset className="shrink-0 sm:min-w-0 sm:shrink">
+      <legend className="mb-1.5 whitespace-nowrap text-ink-muted text-sm">
+        {label}
+      </legend>
+      <div className="flex gap-1 sm:flex-wrap">{children}</div>
     </fieldset>
   );
 }

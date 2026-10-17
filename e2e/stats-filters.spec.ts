@@ -213,6 +213,26 @@ test("the minimum Appearances stepper hides Squad Members below it", async ({
   await expect(squad.getByRole("row").nth(1)).toBeAttached();
 });
 
+test("on a phone the FilterBar is one scrolling row, not a screenful", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto("/test/stats");
+  const bar = page.getByRole("region", { name: "Stats filters" });
+  await expect(filterButton(page, "League")).toBeVisible();
+  const box = await bar.boundingBox();
+  // One row of legends and chips, about 80px; wrapped it was over 300px.
+  expect(box?.height).toBeLessThan(120);
+  // The rest of the chips are reachable by scrolling the bar itself.
+  // Retry the click: one that lands before hydration does nothing.
+  await expect(async () => {
+    await filterButton(page, "Last 30 days").click();
+    await expect
+      .poll(() => searchParam(page, "range"), { timeout: 1000 })
+      .toBe("30d");
+  }).toPass();
+});
+
 test("the FilterBar fits a 375px phone without horizontal page scroll", async ({
   page,
 }) => {

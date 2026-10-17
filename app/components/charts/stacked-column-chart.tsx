@@ -1,7 +1,8 @@
 import { type CSSProperties, type KeyboardEvent, useState } from "react";
 
 import { MAX_SERIES, SERIES_COLORS } from "./chart-frame";
-import { niceTicks } from "./scale";
+import { axisLabelIndices, niceTicks } from "./scale";
+import { useElementWidth } from "./use-element-width";
 
 export type StackedColumnSeries = {
   id: string;
@@ -11,7 +12,7 @@ export type StackedColumnSeries = {
 };
 
 type StackedColumnChartProps = {
-  /** X-axis categories in order, e.g. Match dates. Only the first and last are drawn. */
+  /** X-axis categories in order, e.g. Match dates. Repeats and crowded labels are skipped. */
   labels: readonly string[];
   /** Up to four series, stacked from the baseline in fixed colour order. */
   series: readonly StackedColumnSeries[];
@@ -31,13 +32,16 @@ export function StackedColumnChart({
   label,
   height = 168,
 }: StackedColumnChartProps) {
+  const [ref, width] = useElementWidth<HTMLDivElement>(320);
   const [active, setActive] = useState<number | null>(null);
   const shown = series.slice(0, MAX_SERIES);
   const last = labels.length - 1;
   const totals = labels.map((_, i) =>
     shown.reduce((sum, s) => sum + (s.values[i] ?? 0), 0),
   );
-  const ticks = niceTicks(0, Math.max(1, ...totals), 3);
+  const ticks = niceTicks(0, Math.max(1, ...totals), 3, {
+    integer: true,
+  });
   const top = ticks[ticks.length - 1];
   const pct = (value: number) => `${(value / top) * 100}%`;
 
@@ -69,6 +73,7 @@ export function StackedColumnChart({
         </div>
         {/* A slider over the columns, like LineChart's crosshair. */}
         <div
+          ref={ref}
           role="slider"
           tabIndex={0}
           aria-label={label}
@@ -144,13 +149,19 @@ export function StackedColumnChart({
           )}
         </div>
         <div />
-        {/* Only the first and last labels, so they never collide or overflow. */}
-        <div
-          aria-hidden
-          className="mt-2 flex justify-between gap-2 text-ink-muted text-xs"
-        >
-          <span>{labels[0]}</span>
-          {last > 0 && <span>{labels[last]}</span>}
+        {/* The same label choice as LineChart, under each labelled column's centre. */}
+        <div aria-hidden className="relative mt-2 h-4 text-ink-muted text-xs">
+          {axisLabelIndices(labels, width / Math.max(1, labels.length)).map(
+            (i) => (
+              <span
+                key={i}
+                className="absolute top-0 whitespace-nowrap"
+                style={labelPosition(i, labels.length)}
+              >
+                {labels[i]}
+              </span>
+            ),
+          )}
         </div>
       </div>
       <table className="sr-only">
@@ -185,6 +196,16 @@ const ARROW_STEP: Partial<Record<string, 1 | -1>> = {
   ArrowRight: 1,
   ArrowLeft: -1,
 };
+
+/** The first label starts at the axis and the last ends at it; the rest centre on their column. */
+function labelPosition(index: number, count: number): CSSProperties {
+  if (index === 0) return { left: 0 };
+  if (index === count - 1) return { right: 0 };
+  return {
+    left: `${((index + 0.5) / count) * 100}%`,
+    transform: "translateX(-50%)",
+  };
+}
 
 /** Beside the active column, on whichever side has more room. */
 function tooltipPosition(active: number, count: number): CSSProperties {

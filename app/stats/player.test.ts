@@ -137,13 +137,12 @@ describe("proPositionName", () => {
 });
 
 describe("buildState", () => {
-  it("reads overall, play style and position from a members/stats Snapshot", () => {
+  it("reads overall and position from a members/stats Snapshot", () => {
     expect(
       buildState(snapshot(1, { proOverall: 78, proStyle: 2, proPos: 25 })),
     ).toEqual({
       takenAt: new Date(Date.UTC(2026, 9, 1)),
       overall: 78,
-      playStyle: 2,
       position: "ST",
     });
   });
@@ -151,7 +150,6 @@ describe("buildState", () => {
   it("leaves fields EA did not send as null", () => {
     expect(buildState(snapshot(1, {}))).toMatchObject({
       overall: null,
-      playStyle: null,
       position: null,
     });
   });

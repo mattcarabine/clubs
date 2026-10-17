@@ -4,6 +4,11 @@
  */
 import { EA_BROWSER_HEADERS } from "../app/ea/client.ts";
 import { win } from "./support/match-builders.ts";
+import {
+  E2E_INSTANCE,
+  FAKE_EA_BASE_URL,
+  FAKE_EA_URL,
+} from "./support/ports.ts";
 import { expect, test } from "./support/test.ts";
 
 interface PollRunRow {
@@ -153,4 +158,18 @@ test("a failure on one endpoint is a partial Poll that still stores the rest", a
   const [run] = await db.rows<PollRunRow>("poll_runs");
   expect(run).toMatchObject({ status: "partial", requests: 7, failures: 1 });
   expect(await db.rows("raw_payloads")).toHaveLength(6);
+});
+
+test("each server's health check accepts only this checkout's run (CLUBS-18)", async ({
+  request,
+}) => {
+  const workerHealth = (ea: string) =>
+    request.get(`/__test/health?ea=${encodeURIComponent(ea)}`);
+  expect((await workerHealth(FAKE_EA_BASE_URL)).status()).toBe(200);
+  expect((await workerHealth("http://localhost:1/api/fc/")).status()).toBe(409);
+
+  const fakeEaHealth = (instance: string) =>
+    request.get(`${FAKE_EA_URL}/__control/health?instance=${instance}`);
+  expect((await fakeEaHealth(E2E_INSTANCE)).status()).toBe(200);
+  expect((await fakeEaHealth("another-checkout")).status()).toBe(409);
 });

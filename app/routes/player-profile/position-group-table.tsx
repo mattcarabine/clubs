@@ -1,7 +1,6 @@
 import { DataTable, type DataTableColumn, EmptyState } from "~/components";
+import { formatDecimal } from "~/lib/number-format";
 import type { PositionGroupSplit } from "~/stats";
-
-import { formatRating } from "./format";
 
 const COLUMNS: DataTableColumn<PositionGroupSplit>[] = [
   {
@@ -20,7 +19,7 @@ const COLUMNS: DataTableColumn<PositionGroupSplit>[] = [
     id: "rating",
     header: "Avg rating",
     align: "right",
-    cell: (r) => formatRating(r.averageRating),
+    cell: (r) => formatDecimal(r.averageRating),
     sortValue: (r) => r.averageRating,
   },
   {

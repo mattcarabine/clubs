@@ -2,9 +2,8 @@ import { Link } from "react-router";
 
 import { EmptyState, OutcomeBadge } from "~/components";
 import { formatLondonShortDate } from "~/lib/london-time";
+import { formatDecimal } from "~/lib/number-format";
 import type { SquadAppearance } from "~/stats";
-
-import { formatRating } from "./format";
 
 type BestMatchesProps = {
   appearances: readonly SquadAppearance[];
@@ -32,7 +31,7 @@ export function BestMatches({ appearances }: BestMatchesProps) {
               className={`clip-slant-r flex items-center justify-center pr-2 font-display font-extrabold text-3xl text-ink tabular [--slant:0.6rem] ${i === 0 ? "bg-sound-700" : "bg-sound-900"}`}
             >
               <span className="sr-only">Rating </span>
-              {formatRating(a.rating)}
+              {formatDecimal(a.rating)}
             </span>
             <span className="min-w-0 px-3 py-2">
               <span className="block truncate font-display font-bold text-ink text-xl uppercase leading-tight tracking-wide group-hover:text-sound-300">

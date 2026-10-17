@@ -234,12 +234,54 @@ test("an Opponent with no Matches in the filter says so", async ({
   await expect(page.getByText("No Matches against them")).toBeVisible();
 });
 
-test("an unknown Opponent is a 404", async ({ page }) => {
+test("an unknown Opponent is a 404 with a way back to all Opponents", async ({
+  page,
+}) => {
   const res = await page.goto("/opponents/123456789");
   expect(res?.status()).toBe(404);
+  await expect(page).toHaveTitle("A Bloo Bloo — Opponent not found");
+  await expect(page.getByText("Opponent not found")).toBeVisible();
   await expect(
-    page.getByRole("heading", { level: 1, name: "Page not found" }),
+    page.getByRole("link", { name: "All Opponents" }),
+  ).toHaveAttribute("href", "/opponents");
+});
+
+test("no Opponent is crowned most played when every club was met once", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.addMatch(win({ matchId: "9101", playedAt: hoursAgo(10) }));
+  await fakeEa.addMatch(
+    against(CLUB_Y, win({ matchId: "9102", playedAt: hoursAgo(5) })),
+  );
+  await triggerPoll();
+
+  await page.goto("/opponents");
+  await expect(recordsTable(page).getByRole("rowheader")).toHaveCount(2);
+  await expect(page.getByText("Most played")).toHaveCount(0);
+});
+
+test("the Opponent header shows form only once there are 3 results", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await seedHeadToHead(fakeEa, triggerPoll);
+  const form = page.locator("header").getByRole("list", {
+    name: /^Form, oldest to newest/,
+  });
+
+  await page.goto(`/opponents/${CLUB_X.clubId}`);
+  await expect(form).toHaveAccessibleName(
+    "Form, oldest to newest: Win, Loss, Win",
+  );
+
+  await page.goto(`/opponents/${CLUB_Y.clubId}`);
+  await expect(
+    page.getByRole("heading", { level: 1, name: CLUB_Y.name }),
   ).toBeVisible();
+  await expect(form).toHaveCount(0);
 });
 
 test("with no Matches the Opponents page explains what will fill it", async ({

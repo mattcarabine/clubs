@@ -2,6 +2,9 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
+/** Polls run every 5 minutes, so data older than three missed Polls is stale. */
+export const STALE_AFTER_MINUTES = 15;
+
 /** "just now", "4 min ago", "3 hr ago", "2 days ago". Future times read as "just now". */
 export function formatRelativeTime(then: Date, now: Date): string {
   const elapsed = now.getTime() - then.getTime();

@@ -1,8 +1,7 @@
 import { EmptyState } from "~/components";
 import { formatLondonDate } from "~/lib/london-time";
+import { formatDecimal, formatOptional } from "~/lib/number-format";
 import type { CareerTotals } from "~/stats";
-
-import { formatCount, formatRating } from "./format";
 
 type AllTimePanelProps = {
   /** EA's latest career totals, or null before the first Snapshot. */
@@ -28,10 +27,10 @@ export function AllTimePanel({
     );
   }
   const figures = [
-    { label: "Goals", value: formatCount(career.goals) },
-    { label: "Assists", value: formatCount(career.assists) },
-    { label: "Man of the Match", value: formatCount(career.manOfTheMatch) },
-    { label: "Avg rating", value: formatRating(career.averageRating) },
+    { label: "Goals", value: formatOptional(career.goals) },
+    { label: "Assists", value: formatOptional(career.assists) },
+    { label: "Man of the Match", value: formatOptional(career.manOfTheMatch) },
+    { label: "Avg rating", value: formatDecimal(career.averageRating) },
   ];
   return (
     <div className="border-sound-700 border-t-2 bg-shale-900">
@@ -39,7 +38,7 @@ export function AllTimePanel({
         <div className="flex items-end justify-between gap-4 bg-sound-900 px-4 py-3">
           <dt className="text-ink text-sm">Games played</dt>
           <dd className="font-display font-extrabold text-score text-ink tabular">
-            {formatCount(career.gamesPlayed)}
+            {formatOptional(career.gamesPlayed)}
           </dd>
         </div>
         <div className="grid grid-cols-2">

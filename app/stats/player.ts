@@ -126,15 +126,13 @@ export function proPositionName(code: number | null): string | null {
   return code === null ? null : (PRO_POSITIONS[code] ?? null);
 }
 
-/** A Squad Member's Pro build at one Snapshot. */
+/**
+ * A Squad Member's Pro build at one Snapshot. EA's `proStyle` is left out: it
+ * has no published names and is 0 for every Squad Member (CLUBS-16).
+ */
 export interface BuildState {
   takenAt: Date;
   overall: number | null;
-  /**
-   * EA's `proStyle` code. EA publishes no names for these codes, so pages
-   * show the code itself rather than a guessed name.
-   */
-  playStyle: number | null;
   /** The pitch position, e.g. "CM". */
   position: string | null;
 }
@@ -143,7 +141,6 @@ export function buildState({ takenAt, stats }: SnapshotPoint): BuildState {
   return {
     takenAt,
     overall: snapshotNumber(stats, "proOverall"),
-    playStyle: snapshotNumber(stats, "proStyle"),
     position: proPositionName(snapshotNumber(stats, "proPos")),
   };
 }
@@ -156,7 +153,7 @@ export interface BuildChange extends BuildState {
 
 /**
  * The build history from `members/stats` Snapshots (oldest first), keeping
- * only the Snapshots where overall, play style or position changed. A new
+ * only the Snapshots where overall or position changed. A new
  * Snapshot is taken whenever any season total moves, so most repeat the build.
  */
 export function buildHistory(points: readonly SnapshotPoint[]): BuildChange[] {
@@ -166,7 +163,6 @@ export function buildHistory(points: readonly SnapshotPoint[]): BuildChange[] {
     if (
       previous &&
       previous.overall === state.overall &&
-      previous.playStyle === state.playStyle &&
       previous.position === state.position
     ) {
       continue;

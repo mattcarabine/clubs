@@ -123,15 +123,22 @@ function SkillRatingSection({ skillRating }: Pick<TrendsData, "skillRating">) {
           title={`Now ${skillRating.values.at(-1)}`}
           subtitle={skillRatingChange(skillRating.values)}
         >
-          <LineChart
-            label="Skill rating over time"
-            labels={skillRating.labels}
-            series={[
-              { id: "sr", label: "Skill rating", values: skillRating.values },
-            ]}
-            includeZero={false}
-            formatTick={String}
-          />
+          {skillRating.values.length > 1 ? (
+            <LineChart
+              label="Skill rating over time"
+              labels={skillRating.labels}
+              series={[
+                { id: "sr", label: "Skill rating", values: skillRating.values },
+              ]}
+              includeZero={false}
+              formatTick={String}
+              integerTicks
+            />
+          ) : (
+            <p className="text-ink-soft text-sm">
+              The line starts once EA's rating changes.
+            </p>
+          )}
         </ChartFrame>
       )}
     </section>

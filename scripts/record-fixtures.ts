@@ -11,18 +11,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { fetchEa } from "../app/ea/client.ts";
-import {
-  type ClubRef,
-  fixtureFileName,
-  recordedRequests,
-} from "../app/ea/endpoints.ts";
+import { fixtureFileName, recordedRequests } from "../app/ea/endpoints.ts";
+import { LIVE_EA_BASE_URL, LIVE_EA_TIMEOUT_MS, OUR_CLUB } from "./live-ea.ts";
 
-const EA_BASE_URL = "https://proclubs.ea.com/api/fc/";
-const OUR_CLUB: ClubRef = {
-  platform: "common-gen5",
-  clubId: "332191",
-  clubName: "A Bloo Bloo",
-};
 const FIXTURES_DIR = path.resolve(
   process.argv[2] ?? path.join(import.meta.dirname, "../fixtures/ea"),
 );
@@ -31,8 +22,8 @@ const files = new Map<string, unknown>();
 for (const request of recordedRequests(OUR_CLUB)) {
   const name = fixtureFileName(request);
   const response = await fetchEa(request, {
-    baseUrl: EA_BASE_URL,
-    timeoutMs: 25_000,
+    baseUrl: LIVE_EA_BASE_URL,
+    timeoutMs: LIVE_EA_TIMEOUT_MS,
   });
   if (!response.ok) {
     console.error(`${name}: ${response.kind} ${response.error}`);

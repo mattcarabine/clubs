@@ -25,6 +25,7 @@ import {
   formatLondonShortDate,
   formatLondonTime,
 } from "~/lib/london-time";
+import { formatDecimal, formatOptional } from "~/lib/number-format";
 import { formatRelativeTime } from "~/lib/relative-time";
 import { useRevalidateWhileVisible } from "~/lib/use-revalidate-while-visible";
 import {
@@ -164,7 +165,7 @@ function toTickerItem(performer: TopPerformer): TickerItem {
     performer.manOfTheMatch && "Man of the Match",
     performer.goals > 0 && plural(performer.goals, "goal"),
     performer.assists > 0 && plural(performer.assists, "assist"),
-    performer.rating !== null && `rated ${performer.rating.toFixed(1)}`,
+    performer.rating !== null && `rated ${formatDecimal(performer.rating)}`,
   ].filter(Boolean);
   return {
     id: performer.playerId,
@@ -197,7 +198,7 @@ function ClubSnapshot({ club }: { club: ClubSnapshotSummary }) {
       <StatGrid>
         <StatTile
           label="Skill rating"
-          value={club.skillRating ?? "–"}
+          value={formatOptional(club.skillRating)}
           featured
           trend={club.skillRatingTrend}
           delta={skillRatingDelta(club.skillRatingChange)}
@@ -207,13 +208,16 @@ function ClubSnapshot({ club }: { club: ClubSnapshotSummary }) {
           value={
             <span className="text-4xl sm:text-5xl">
               {[club.wins, club.draws, club.losses]
-                .map((n) => n ?? "–")
+                .map(formatOptional)
                 .join("-")}
             </span>
           }
         />
-        <StatTile label="Win streak" value={club.winStreak ?? "–"} />
-        <StatTile label="Unbeaten run" value={club.unbeatenStreak ?? "–"} />
+        <StatTile label="Win streak" value={formatOptional(club.winStreak)} />
+        <StatTile
+          label="Unbeaten run"
+          value={formatOptional(club.unbeatenStreak)}
+        />
       </StatGrid>
     </section>
   );
