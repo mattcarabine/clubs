@@ -34,7 +34,12 @@ export function Ticker({ label, items, durationSeconds = 40 }: TickerProps) {
       >
         {label}
       </span>
-      <div className="group relative min-w-0 flex-1 overflow-hidden motion-reduce:overflow-x-auto">
+      <div
+        className="group relative min-w-0 flex-1 overflow-hidden motion-reduce:overflow-x-auto"
+        // Focusable so keyboard users can pause it, or scroll it under reduced motion.
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: scrollable region
+        tabIndex={0}
+      >
         <div
           className="flex w-max animate-ticker group-focus-within:[animation-play-state:paused] group-hover:[animation-play-state:paused] motion-reduce:animate-none"
           style={
@@ -59,7 +64,8 @@ function TickerTrack({
   return (
     <ul
       aria-hidden={hidden || undefined}
-      className={`flex shrink-0 items-center ${hidden ? "motion-reduce:hidden" : ""}`}
+      // Each copy is at least a screen wide so a short list never leaves a gap mid-loop.
+      className={`flex shrink-0 motion-safe:min-w-[100vw] items-center ${hidden ? "motion-reduce:hidden" : ""}`}
     >
       {items.map((item) => (
         <li

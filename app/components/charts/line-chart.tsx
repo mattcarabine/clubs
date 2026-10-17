@@ -90,7 +90,7 @@ export function LineChart({
       onPointerMove={onPointerMove}
       onPointerDown={onPointerMove}
       onPointerLeave={() => setActive(null)}
-      onFocus={() => setActive(last)}
+      onFocus={() => setActive((i) => i ?? last)}
       onBlur={() => setActive(null)}
       onKeyDown={onKeyDown}
     >

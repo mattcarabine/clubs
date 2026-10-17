@@ -72,10 +72,13 @@ test("data table sorts when a header is clicked", async ({ page }) => {
   const firstRowHeader = table.locator("tbody tr").first().locator("th");
 
   await expect(firstRowHeader).toHaveText("Kopite Kev");
-  await table.getByRole("button", { name: "Pass %" }).click();
-  await expect(
-    table.getByRole("columnheader", { name: "Pass %" }),
-  ).toHaveAttribute("aria-sort", "descending");
+  // Retry the click: one that lands before hydration does nothing.
+  await expect(async () => {
+    await table.getByRole("button", { name: "Pass %" }).click();
+    await expect(
+      table.getByRole("columnheader", { name: "Pass %" }),
+    ).toHaveAttribute("aria-sort", "descending", { timeout: 1000 });
+  }).toPass();
   await expect(firstRowHeader).toHaveText("Big Sam Allardyce Fan");
 });
 

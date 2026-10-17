@@ -47,7 +47,7 @@ export function PlayerChip({
     </>
   );
 
-  const className = `inline-flex h-9 max-w-full min-w-0 items-center gap-2 bg-shale-800 pr-3 text-sm ${former ? "text-ink-soft" : "text-ink"} ${stat != null ? "pr-0" : ""}`;
+  const className = `inline-flex h-9 max-w-full min-w-0 items-center gap-2 bg-shale-800 text-sm ${former ? "text-ink-soft" : "text-ink"} ${stat != null ? "" : "pr-3"}`;
 
   return to ? (
     <Link to={to} className={`${className} hover:bg-shale-700`}>

@@ -20,10 +20,12 @@ type StatTileProps = {
   featured?: boolean;
 };
 
+// The arrow carries the tone colour. The text does too on shale, but on the
+// featured blue only `ink` passes AA, so there the arrow alone is coloured.
 const DELTA_TONE = {
-  positive: { className: "text-win", arrow: "▲" },
-  negative: { className: "text-loss", arrow: "▼" },
-  neutral: { className: "text-ink-muted", arrow: "■" },
+  positive: { text: "text-win", arrow: "text-win", glyph: "▲" },
+  negative: { text: "text-loss", arrow: "text-loss", glyph: "▼" },
+  neutral: { text: "text-ink-muted", arrow: "text-ink-muted", glyph: "■" },
 } as const;
 
 /** One headline number with an optional delta and sparkline. */
@@ -46,9 +48,14 @@ export function StatTile({
         {value}
       </dd>
       {delta && (
-        <dd className={`text-sm ${DELTA_TONE[delta.tone].className}`}>
-          <span aria-hidden className="mr-1 text-xs">
-            {DELTA_TONE[delta.tone].arrow}
+        <dd
+          className={`text-sm ${featured ? "text-ink" : DELTA_TONE[delta.tone].text}`}
+        >
+          <span
+            aria-hidden
+            className={`mr-1 text-xs ${DELTA_TONE[delta.tone].arrow}`}
+          >
+            {DELTA_TONE[delta.tone].glyph}
           </span>
           {delta.text}
         </dd>
