@@ -3,7 +3,7 @@
 import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
-import { friendly, win, withLineup } from "./support/match-builders.ts";
+import { win, withLineup } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-9: the Squad table at /squad.
@@ -148,7 +148,7 @@ test("Former Squad Members show only when included", async ({
   await expect(memberRow(page, FORMER.name)).toHaveCount(0);
 });
 
-test("friendly Appearances count only when Friendlies are included", async ({
+test("Playoff Appearances count only when Playoffs are included", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -156,22 +156,26 @@ test("friendly Appearances count only when Friendlies are included", async ({
   for (let i = 0; i < 3; i++) {
     await fakeEa.addMatch(withLineup(win(), [{ player: ALPHA, goals: 1 }]));
   }
-  await fakeEa.addMatch(withLineup(friendly(), [{ player: ALPHA, goals: 4 }]));
+  await fakeEa.addMatch(
+    withLineup(win({ matchType: "playoffMatch" }), [
+      { player: ALPHA, goals: 4 },
+    ]),
+  );
   await triggerPoll();
   await page.goto("/squad");
 
-  await expect(await memberCell(page, ALPHA.name, "Apps")).toHaveText("3");
-  await expect(await memberCell(page, ALPHA.name, "G")).toHaveText("3");
+  await expect(await memberCell(page, ALPHA.name, "Apps")).toHaveText("4");
+  await expect(await memberCell(page, ALPHA.name, "G")).toHaveText("7");
 
   await page
     .getByRole("region", { name: "Stats filters" })
-    .getByRole("button", { name: "Friendly", exact: true })
+    .getByRole("button", { name: "Playoff", exact: true })
     .click();
   await expect
     .poll(() => new URL(page.url()).searchParams.get("types"))
-    .toBe("league,playoff,friendly");
-  await expect(await memberCell(page, ALPHA.name, "Apps")).toHaveText("4");
-  await expect(await memberCell(page, ALPHA.name, "G")).toHaveText("7");
+    .toBe("league");
+  await expect(await memberCell(page, ALPHA.name, "Apps")).toHaveText("3");
+  await expect(await memberCell(page, ALPHA.name, "G")).toHaveText("3");
 });
 
 test("clicking a name opens that Squad Member's page", async ({

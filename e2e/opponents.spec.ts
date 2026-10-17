@@ -3,7 +3,7 @@
 import type { Page } from "@playwright/test";
 
 import type { fakeEa as FakeEaClient } from "./support/fake-ea.ts";
-import { friendly, loss, win } from "./support/match-builders.ts";
+import { draw, loss, win } from "./support/match-builders.ts";
 import { against } from "./support/opponent.ts";
 import { expect, test } from "./support/test.ts";
 
@@ -179,8 +179,9 @@ test("both pages respect the Match Type filter", async ({
 }) => {
   await seedHeadToHead(fakeEa, triggerPoll);
   await fakeEa.addMatch(
-    friendly({
+    draw({
       matchId: "9005",
+      matchType: "playoffMatch",
       playedAt: hoursAgo(1),
       goalsFor: 4,
       goalsAgainst: 4,
@@ -188,21 +189,8 @@ test("both pages respect the Match Type filter", async ({
   );
   await triggerPoll();
 
-  // Competitive Matches by default: the Friendly is left out.
+  // Competitive Matches by default: the Playoff counts.
   await page.goto("/opponents");
-  expect(await opponentRow(page, CLUB_X.name)).toEqual([
-    "3",
-    "2",
-    "0",
-    "1",
-    "6",
-    "4",
-    "+2",
-    "67%",
-  ]);
-
-  await filterButton(page, "Friendly").click();
-  await expect(page).toHaveURL(/types=league%2Cplayoff%2Cfriendly/);
   expect(await opponentRow(page, CLUB_X.name)).toEqual([
     "4",
     "2",
@@ -214,12 +202,25 @@ test("both pages respect the Match Type filter", async ({
     "50%",
   ]);
 
-  // Only Friendlies: Y drops off the list and X's page shows one Match.
-  await page.goto("/opponents?types=friendly");
+  await filterButton(page, "Playoff").click();
+  await expect(page).toHaveURL(/types=league(&|$)/);
+  expect(await opponentRow(page, CLUB_X.name)).toEqual([
+    "3",
+    "2",
+    "0",
+    "1",
+    "6",
+    "4",
+    "+2",
+    "67%",
+  ]);
+
+  // Only Playoffs: Y drops off the list and X's page shows one Match.
+  await page.goto("/opponents?types=playoff");
   await expect(recordsTable(page).getByRole("rowheader")).toHaveText([
     CLUB_X.name,
   ]);
-  await page.goto(`/opponents/${CLUB_X.clubId}?types=friendly`);
+  await page.goto(`/opponents/${CLUB_X.clubId}?types=playoff`);
   await expect(matchLinks(page)).toHaveCount(1);
   await expect(matchLinks(page)).toHaveAttribute("href", "/matches/9005");
 });
@@ -230,7 +231,7 @@ test("an Opponent with no Matches in the filter says so", async ({
   triggerPoll,
 }) => {
   await seedHeadToHead(fakeEa, triggerPoll);
-  await page.goto(`/opponents/${CLUB_Y.clubId}?types=friendly`);
+  await page.goto(`/opponents/${CLUB_Y.clubId}?types=playoff`);
   await expect(page.getByText("No Matches against them")).toBeVisible();
 });
 

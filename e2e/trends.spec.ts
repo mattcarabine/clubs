@@ -6,13 +6,7 @@ import path from "node:path";
 import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
-import {
-  draw,
-  friendly,
-  loss,
-  OUR_CLUB_ID,
-  win,
-} from "./support/match-builders.ts";
+import { draw, loss, OUR_CLUB_ID, win } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-13: /trends. Each test serves only the Matches it adds, so the
@@ -127,18 +121,20 @@ test("respects the FilterBar's Match Types", async ({
   triggerPoll,
 }) => {
   await fakeEa.addMatch(win());
-  await fakeEa.addMatch(friendly({ goalsFor: 0, goalsAgainst: 4 }));
+  await fakeEa.addMatch(
+    loss({ matchType: "playoffMatch", goalsFor: 0, goalsAgainst: 4 }),
+  );
   await triggerPoll();
 
   const results = page.getByRole("region", { name: "Results" });
   await page.goto("/trends");
   await expect(
-    results.getByText("1 Match: 1 won, 0 drawn, 0 lost."),
+    results.getByText("2 Matches: 1 won, 0 drawn, 1 lost."),
   ).toBeVisible();
 
-  await page.goto("/trends?types=league,playoff,friendly");
+  await page.goto("/trends?types=league");
   await expect(
-    results.getByText("2 Matches: 1 won, 0 drawn, 1 lost."),
+    results.getByText("1 Match: 1 won, 0 drawn, 0 lost."),
   ).toBeVisible();
 });
 

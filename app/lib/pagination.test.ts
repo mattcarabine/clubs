@@ -25,9 +25,9 @@ describe("pageCount", () => {
 
 describe("withPage", () => {
   it("keeps other params and leaves page 1 out of the URL", () => {
-    const params = new URLSearchParams("types=friendly&page=3");
-    expect(withPage(params, 4).toString()).toBe("types=friendly&page=4");
-    expect(withPage(params, 1).toString()).toBe("types=friendly");
-    expect(params.toString()).toBe("types=friendly&page=3");
+    const params = new URLSearchParams("types=playoff&page=3");
+    expect(withPage(params, 4).toString()).toBe("types=playoff&page=4");
+    expect(withPage(params, 1).toString()).toBe("types=playoff");
+    expect(params.toString()).toBe("types=playoff&page=3");
   });
 });
