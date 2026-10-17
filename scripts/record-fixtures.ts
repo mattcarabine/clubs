@@ -11,7 +11,14 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { fetchEa } from "../app/ea/client.ts";
-import { fixtureFileName, recordedRequests } from "../app/ea/endpoints.ts";
+import {
+  type EaRequest,
+  fixtureFileName,
+  MATCH_TYPES,
+  opponentRatingsRequest,
+  recordedRequests,
+} from "../app/ea/endpoints.ts";
+import { parseMatches } from "../app/ea/parse.ts";
 import { LIVE_EA_BASE_URL, LIVE_EA_TIMEOUT_MS, OUR_CLUB } from "./live-ea.ts";
 
 const FIXTURES_DIR = path.resolve(
@@ -19,7 +26,20 @@ const FIXTURES_DIR = path.resolve(
 );
 
 const files = new Map<string, unknown>();
-for (const request of recordedRequests(OUR_CLUB)) {
+for (const request of recordedRequests(OUR_CLUB)) await record(request);
+// The Opponents' ratings need the Matches just recorded, so they come last.
+await record(opponentRatingsRequest(OUR_CLUB.platform, recordedOpponents()));
+
+mkdirSync(FIXTURES_DIR, { recursive: true });
+for (const [name, json] of files) {
+  writeFileSync(
+    path.join(FIXTURES_DIR, name),
+    `${JSON.stringify(json, null, 2)}\n`,
+  );
+}
+console.log(`Wrote ${files.size} fixtures to ${FIXTURES_DIR}`);
+
+async function record(request: EaRequest): Promise<void> {
   const name = fixtureFileName(request);
   const response = await fetchEa(request, {
     baseUrl: LIVE_EA_BASE_URL,
@@ -33,11 +53,16 @@ for (const request of recordedRequests(OUR_CLUB)) {
   files.set(name, response.json);
 }
 
-mkdirSync(FIXTURES_DIR, { recursive: true });
-for (const [name, json] of files) {
-  writeFileSync(
-    path.join(FIXTURES_DIR, name),
-    `${JSON.stringify(json, null, 2)}\n`,
+/** Every Opponent in the recorded Matches, once each. */
+function recordedOpponents(): string[] {
+  const ids = MATCH_TYPES.flatMap((matchType) =>
+    parseMatches(
+      files.get(
+        fixtureFileName({ endpoint: "clubs/matches", variant: matchType }),
+      ),
+      matchType,
+      OUR_CLUB.clubId,
+    ).map((match) => match.opponentClubId),
   );
+  return [...new Set(ids)];
 }
-console.log(`Wrote ${files.size} fixtures to ${FIXTURES_DIR}`);

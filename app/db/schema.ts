@@ -107,8 +107,21 @@ export const matches = sqliteTable(
       .notNull()
       .references(() => rawPayloads.id),
     ingestedAt: integer({ mode: "timestamp_ms" }).notNull(),
+    /**
+     * Our Club's Skill Rating at the Match, from our `clubs/overallStats`
+     * Snapshot. Null until the Poll rates the Match (`app/poll/ratings.ts`).
+     */
+    ourSkillRating: integer(),
+    /** The Opponent Rating: the Opponent's Skill Rating at the Match. */
+    opponentSkillRating: integer(),
   },
-  (table) => [index("matches_played_at_idx").on(table.playedAt)],
+  (table) => [
+    index("matches_played_at_idx").on(table.playedAt),
+    // Keeps the Poll's backfill lookup cheap once every Match is rated.
+    index("matches_unrated_idx")
+      .on(table.playedAt)
+      .where(sql`our_skill_rating IS NULL`),
+  ],
 );
 
 /** One player's Appearance in one Match, for both clubs. */

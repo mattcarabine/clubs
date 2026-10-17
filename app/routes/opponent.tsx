@@ -29,6 +29,7 @@ import {
   getOpponent,
   type LeaderboardRow,
   listMatches,
+  type OpponentDetail,
   squadLeaderboard,
   statsFilterFromRequest,
   summariseRecord,
@@ -120,7 +121,16 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
             "Head-to-head"
           )
         }
-        aside={form.length >= MIN_FORM && <OpponentForm results={form} />}
+        aside={
+          (opponent.latestRating || form.length >= MIN_FORM) && (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              {opponent.latestRating && (
+                <LatestRating rating={opponent.latestRating} />
+              )}
+              {form.length >= MIN_FORM && <OpponentForm results={form} />}
+            </div>
+          )
+        }
       />
       <FilterBar filter={filter} />
 
@@ -211,6 +221,25 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
         </div>
       )}
     </>
+  );
+}
+
+/** The Opponent Rating at our latest rated Match against them, for the header. */
+function LatestRating({
+  rating,
+}: {
+  rating: NonNullable<OpponentDetail["latestRating"]>;
+}) {
+  return (
+    <p className="flex items-baseline gap-2">
+      <span className="text-ink-muted text-sm">Skill rating</span>
+      <span className="font-display font-extrabold text-2xl text-ink tabular leading-none">
+        {rating.skillRating}
+      </span>
+      <span className="text-ink-muted text-sm">
+        at <LondonTime date={rating.playedAt} format="day" />
+      </span>
+    </p>
   );
 }
 

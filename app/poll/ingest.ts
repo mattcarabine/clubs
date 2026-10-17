@@ -15,7 +15,7 @@ import {
   players,
   snapshots,
 } from "../db/schema.ts";
-import type { MatchType } from "../ea/endpoints.ts";
+import { type MatchType, OPPONENT_RATINGS_VARIANT } from "../ea/endpoints.ts";
 import {
   isSnapshotEndpoint,
   type ParsedMatch,
@@ -196,6 +196,7 @@ function latestSeen(column: "persona_name" | "club_id"): SQL {
 /**
  * Snapshot rows for every changed Snapshot payload. Members are matched to a
  * player ID by persona name, since EA's member endpoints carry no IDs.
+ * Opponents' `clubs/overallStats` are not Snapshots: `ratings.ts` reads them.
  */
 async function snapshotRowsFor(
   db: Db,
@@ -204,7 +205,8 @@ async function snapshotRowsFor(
   ourPlayers: Map<string, string>,
 ): Promise<(typeof snapshots.$inferInsert)[]> {
   const entries = payloads.flatMap((payload) =>
-    isSnapshotEndpoint(payload.endpoint)
+    isSnapshotEndpoint(payload.endpoint) &&
+    payload.variant !== OPPONENT_RATINGS_VARIANT
       ? parseSnapshotEntries(payload.endpoint, payload.json, ourClubId).map(
           (entry) => ({ ...entry, payload }),
         )

@@ -18,6 +18,7 @@ import {
 import type { CollectedPoll } from "./collect.ts";
 import { payloadHash } from "./hash.ts";
 import { ingestPayloads, type StoredPayload } from "./ingest.ts";
+import { ratingStatements } from "./ratings.ts";
 
 export interface PollSummary {
   status: PollStatus;
@@ -106,6 +107,10 @@ export async function recordPoll(
         .values({ id, endpoint, variant, fetchedAt, hash, body }),
     ),
     ...ingestion.statements,
+    ...ratingStatements(db, poll.responses, ourClubId, {
+      matchesAdded: ingestion.matchesAdded,
+      now: poll.finishedAt,
+    }),
   ]);
   return summary;
 }

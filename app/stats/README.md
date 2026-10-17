@@ -35,9 +35,9 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 | `filter.ts` | `StatsFilter` and the URL format: `parseStatsFilter`, `statsFilterFromRequest`, `writeStatsFilter`, `toggleMatchType`. The date filter: `DateRange` (all, a `DATE_PRESETS` preset, or custom London dates) and `dateWindow`, which turns it into instants. |
 | `scope.ts` | `matchScope(db, filter, { opponentClubId, now })`: the SQL condition behind every query, and `isOurAppearance`. |
 | `convert.ts` | Stored values to `~/lib/domain` ones (`"win"` to `"W"`, `"league"` to `"League"`, and so on). |
-| `matches.ts` | `listMatches`, `countMatches`, `latestMatch`, `clubRecord`, `getMatch` (both line-ups). |
+| `matches.ts` | `listMatches`, `countMatches`, `latestMatch`, `clubRecord`, `getMatch` (both line-ups and both clubs' Skill Ratings). |
 | `squad.ts` | `squadAppearances` (Our Club's Appearances with Match context, oldest first), `squadLeaderboard`, `getSquadMember`, `listSquadMembers` (the whole Squad, Former included, for pickers). |
-| `opponents.ts` | `opponentRecords` (head-to-head per Opponent), `getOpponent`. Head-to-head Match lists and top performers use `listMatches` / `squadLeaderboard` with `{ opponentClubId }`. |
+| `opponents.ts` | `opponentRecords` (head-to-head per Opponent), `getOpponent` (with the latest Opponent Rating). Head-to-head Match lists and top performers use `listMatches` / `squadLeaderboard` with `{ opponentClubId }`. |
 | `positions.ts` | Position Group selections (CLUBS-23), each passed as a parameter so a page can hold several (Compare's `posA` / `posB`): `PositionGroupSelection` (empty is All Positions), `parsePositionGroups` / `writePositionGroups` (the `midfielder,forward` URL value, for any param), `togglePositionGroup`, `inPositionGroups`, `filterByPositionGroups`, `describePositionGroups` ("Midfielder or Forward"). |
 | `seasons.ts` | `listSeasons`: every Season the Poll has detected, oldest first. The root loader passes their numbers to every `FilterBar`. |
 | `snapshots.ts` | `clubSnapshots`, `memberSnapshots`, `snapshotNumber`, `lastSuccessfulPoll`. Not filtered: they are EA's own totals. |

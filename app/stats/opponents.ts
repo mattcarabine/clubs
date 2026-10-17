@@ -1,5 +1,5 @@
 /** Opponent queries: head-to-head records. Opponents are summarised at club level only. */
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
 import { clubs, matches } from "~/db/schema";
@@ -39,16 +39,45 @@ export async function opponentRecords(
     );
 }
 
+export interface OpponentDetail extends Club {
+  /** The Opponent Rating at the latest rated Match, or null when none is rated. */
+  latestRating: { skillRating: number; playedAt: Date } | null;
+}
+
 /** An Opponent, or null when Our Club has never played that club. Ignores the filter. */
 export async function getOpponent(
   db: Db,
   clubId: string,
-): Promise<Club | null> {
-  const [row] = await db
-    .select({ clubId: clubs.clubId, name: clubs.name })
-    .from(clubs)
-    .innerJoin(matches, eq(matches.opponentClubId, clubs.clubId))
-    .where(eq(clubs.clubId, clubId))
-    .limit(1);
-  return row ? { clubId: row.clubId, name: row.name ?? row.clubId } : null;
+): Promise<OpponentDetail | null> {
+  const [[club], [rated]] = await Promise.all([
+    db
+      .select({ clubId: clubs.clubId, name: clubs.name })
+      .from(clubs)
+      .innerJoin(matches, eq(matches.opponentClubId, clubs.clubId))
+      .where(eq(clubs.clubId, clubId))
+      .limit(1),
+    db
+      .select({
+        skillRating: matches.opponentSkillRating,
+        playedAt: matches.playedAt,
+      })
+      .from(matches)
+      .where(
+        and(
+          eq(matches.opponentClubId, clubId),
+          isNotNull(matches.opponentSkillRating),
+        ),
+      )
+      .orderBy(desc(matches.playedAt))
+      .limit(1),
+  ]);
+  if (!club) return null;
+  return {
+    clubId: club.clubId,
+    name: club.name ?? club.clubId,
+    latestRating:
+      rated?.skillRating != null
+        ? { skillRating: rated.skillRating, playedAt: rated.playedAt }
+        : null,
+  };
 }
