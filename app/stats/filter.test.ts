@@ -26,14 +26,23 @@ describe("parseStatsFilter", () => {
   it("reads every field", () => {
     expect(
       parseStatsFilter(
-        params("types=friendly,league&dnf=0&range=30d&pos=forward,midfielder"),
+        params("types=playoff,league&dnf=0&range=30d&pos=forward,midfielder"),
       ),
     ).toEqual({
-      matchTypes: ["League", "Friendly"],
+      matchTypes: ["League", "Playoff"],
       includeDnf: false,
       dates: { kind: "preset", preset: "30d" },
       positionGroups: ["Midfielder", "Forward"],
     });
+  });
+
+  it("ignores Friendlies, which are never shown", () => {
+    expect(
+      parseStatsFilter(params("types=league,friendly")).matchTypes,
+    ).toEqual(["League"]);
+    expect(parseStatsFilter(params("types=friendly")).matchTypes).toEqual(
+      DEFAULT_STATS_FILTER.matchTypes,
+    );
   });
 
   it("reads each date preset", () => {
@@ -102,21 +111,20 @@ describe("parseStatsFilter", () => {
 describe("writeStatsFilter", () => {
   it("leaves defaults out of the URL", () => {
     expect(
-      writeStatsFilter(params("types=friendly&dnf=0"), DEFAULT_STATS_FILTER)
-        .size,
+      writeStatsFilter(params("types=league&dnf=0"), DEFAULT_STATS_FILTER).size,
     ).toBe(0);
   });
 
   it("writes non-default values in a stable order", () => {
     const filter: StatsFilter = {
-      matchTypes: ["Friendly", "League"],
+      matchTypes: ["Playoff"],
       includeDnf: false,
       dates: { kind: "preset", preset: "7d" },
       season: 2,
       positionGroups: ["Forward", "Defender"],
     };
     expect(writeStatsFilter(params(""), filter).toString()).toBe(
-      "types=league%2Cfriendly&dnf=0&range=7d&season=2&pos=defender%2Cforward",
+      "types=playoff&dnf=0&range=7d&season=2&pos=defender%2Cforward",
     );
   });
 
@@ -153,13 +161,13 @@ describe("writeStatsFilter", () => {
     const filters: StatsFilter[] = [
       DEFAULT_STATS_FILTER,
       {
-        matchTypes: ["Friendly"],
+        matchTypes: ["Playoff"],
         includeDnf: false,
         dates: { kind: "preset", preset: "30d" },
         positionGroups: ["Goalkeeper"],
       },
       {
-        matchTypes: ["League", "Playoff", "Friendly"],
+        matchTypes: ["League"],
         includeDnf: true,
         dates: { kind: "custom", from: "2026-01-01", to: "2026-10-17" },
         positionGroups: [],
@@ -193,11 +201,11 @@ describe("isDefaultStatsFilter", () => {
 
 describe("toggleMatchType", () => {
   it("adds and removes a Match Type, in canonical order", () => {
-    const withFriendly = toggleMatchType(DEFAULT_STATS_FILTER, "Friendly");
-    expect(withFriendly.matchTypes).toEqual(["League", "Playoff", "Friendly"]);
-    expect(toggleMatchType(withFriendly, "League").matchTypes).toEqual([
+    const playoffOnly = toggleMatchType(DEFAULT_STATS_FILTER, "League");
+    expect(playoffOnly.matchTypes).toEqual(["Playoff"]);
+    expect(toggleMatchType(playoffOnly, "League").matchTypes).toEqual([
+      "League",
       "Playoff",
-      "Friendly",
     ]);
   });
 

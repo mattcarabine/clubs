@@ -6,7 +6,7 @@ import { clubs, matches } from "~/db/schema";
 
 import type { StatsFilter } from "./filter";
 import { type Club, listMatches } from "./matches";
-import type { ScopeOptions } from "./scope";
+import { isShownMatch, type ScopeOptions } from "./scope";
 import { groupBy, type RecordSummary, summariseRecord } from "./summaries";
 
 export interface OpponentRecord extends Club {
@@ -44,7 +44,7 @@ export interface OpponentDetail extends Club {
   latestRating: { skillRating: number; playedAt: Date } | null;
 }
 
-/** An Opponent, or null when Our Club has never played that club. Ignores the filter. */
+/** An Opponent, or null when Our Club has never played that club in a shown Match. Ignores the filter. */
 export async function getOpponent(
   db: Db,
   clubId: string,
@@ -54,7 +54,7 @@ export async function getOpponent(
       .select({ clubId: clubs.clubId, name: clubs.name })
       .from(clubs)
       .innerJoin(matches, eq(matches.opponentClubId, clubs.clubId))
-      .where(eq(clubs.clubId, clubId))
+      .where(and(eq(clubs.clubId, clubId), isShownMatch))
       .limit(1),
     db
       .select({
@@ -65,6 +65,7 @@ export async function getOpponent(
       .where(
         and(
           eq(matches.opponentClubId, clubId),
+          isShownMatch,
           isNotNull(matches.opponentSkillRating),
         ),
       )

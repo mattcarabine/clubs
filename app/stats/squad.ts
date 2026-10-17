@@ -13,7 +13,12 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
-import { isOurAppearance, matchScope, type ScopeOptions } from "./scope";
+import {
+  isOurAppearance,
+  isShownMatch,
+  matchScope,
+  type ScopeOptions,
+} from "./scope";
 import {
   type AppearanceStats,
   groupBy,
@@ -147,7 +152,7 @@ export interface SquadMember {
   trackedSince: Date;
 }
 
-/** A Squad Member, or null when the ID has never appeared for Our Club. */
+/** A Squad Member, or null when the ID has never appeared for Our Club in a shown Match. */
 export async function getSquadMember(
   db: Db,
   playerId: string,
@@ -160,7 +165,7 @@ export async function getSquadMember(
     .from(players)
     .innerJoin(appearances, eq(appearances.playerId, players.playerId))
     .innerJoin(matches, eq(matches.matchId, appearances.matchId))
-    .where(and(eq(players.playerId, playerId), isOurAppearance))
+    .where(and(eq(players.playerId, playerId), isOurAppearance, isShownMatch))
     .groupBy(players.playerId);
   if (!row?.trackedSince) return null;
   return {
@@ -192,7 +197,7 @@ export async function listSquadMembers(db: Db): Promise<SquadMemberOption[]> {
     .from(players)
     .innerJoin(appearances, eq(appearances.playerId, players.playerId))
     .innerJoin(matches, eq(matches.matchId, appearances.matchId))
-    .where(isOurAppearance);
+    .where(and(isOurAppearance, isShownMatch));
   return rows
     .map(({ playerId, personaName }) => ({
       playerId,
