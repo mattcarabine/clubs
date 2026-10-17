@@ -7,6 +7,7 @@ export {
   type LegendEntry,
   MAX_SERIES,
   SERIES_COLORS,
+  type SeriesColor,
 } from "./charts/chart-frame";
 export { LineChart, type LineSeries } from "./charts/line-chart";
 export { Sparkline } from "./charts/sparkline";
@@ -14,12 +15,13 @@ export {
   StackedColumnChart,
   type StackedColumnSeries,
 } from "./charts/stacked-column-chart";
-export { Chip, ChipGroup } from "./chip";
+export { Chip, ChipGroup, chipClassName } from "./chip";
 export {
   DataTable,
   type DataTableColumn,
   type DataTableSort,
   numberColumn,
+  type RowSelection,
 } from "./data-table";
 export { DnfBadge } from "./dnf-badge";
 export { EmptyState } from "./empty-state";
@@ -44,6 +46,7 @@ export {
   useRowLink,
 } from "./row-link";
 export { ScoreBar, type ScoreBarSide } from "./score-bar";
+export { ScrollRail } from "./scroll-rail";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";
 export { Ticker, type TickerItem } from "./ticker";

@@ -6,6 +6,8 @@
  * client bundle never pulls in the query modules.
  */
 export * from "./club-snapshot";
+export * from "./comparison";
+export * from "./comparison-params";
 export * from "./convert";
 export * from "./ea-totals";
 export * from "./filter";

@@ -10,6 +10,44 @@ export const SERIES_COLORS = [
 
 export const MAX_SERIES = SERIES_COLORS.length;
 
+export type SeriesColor = (typeof SERIES_COLORS)[number];
+
+/** How a series or legend entry is drawn, when not by its place in the order. */
+export type SeriesStyle = { color?: SeriesColor; dashed?: boolean };
+
+/** A series' colour: its own, else its place in the fixed order. */
+export function seriesColor(style: SeriesStyle, index: number): SeriesColor {
+  return style.color ?? SERIES_COLORS[index];
+}
+
+/** The dash pattern of a `dashed` line series, matched by its swatches. */
+export const DASH = "5 4";
+
+/** A short line in a series' colour, dashed to match a dashed series. */
+export function SeriesSwatch({
+  color,
+  dashed = false,
+  className = "w-4",
+}: {
+  color: string;
+  dashed?: boolean;
+  className?: string;
+}) {
+  return (
+    <svg aria-hidden viewBox="0 0 16 2" className={`h-0.5 ${className}`}>
+      <line
+        x1={0}
+        x2={16}
+        y1={1}
+        y2={1}
+        stroke={color}
+        strokeWidth={2}
+        strokeDasharray={dashed ? DASH : undefined}
+      />
+    </svg>
+  );
+}
+
 type ChartFrameProps = {
   title: string;
   subtitle?: string;
@@ -43,7 +81,7 @@ export function ChartFrame({
   );
 }
 
-export type LegendEntry = { id: string; label: string };
+export type LegendEntry = { id: string; label: string } & SeriesStyle;
 
 /** Legend keyed with short line strokes, mirroring line marks. */
 export function ChartLegend({
@@ -57,13 +95,15 @@ export function ChartLegend({
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-ink-soft text-sm">
       {entries.map((entry, i) => (
         <li key={entry.id} className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className={
-              mark === "line" ? "h-0.5 w-4 rounded-full" : "size-3 rounded-sm"
-            }
-            style={{ background: SERIES_COLORS[i] }}
-          />
+          {mark === "line" ? (
+            <SeriesSwatch color={seriesColor(entry, i)} dashed={entry.dashed} />
+          ) : (
+            <span
+              aria-hidden
+              className="size-3 rounded-sm"
+              style={{ background: seriesColor(entry, i) }}
+            />
+          )}
           {entry.label}
         </li>
       ))}

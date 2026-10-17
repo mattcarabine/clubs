@@ -1,5 +1,12 @@
 import { type KeyboardEvent, type PointerEvent, useState } from "react";
-import { MAX_SERIES, SERIES_COLORS } from "./chart-frame";
+import { ChartDataTable } from "./chart-data-table";
+import {
+  DASH,
+  MAX_SERIES,
+  type SeriesColor,
+  SeriesSwatch,
+  seriesColor,
+} from "./chart-frame";
 import {
   axisLabelIndices,
   formatCompact,
@@ -13,6 +20,14 @@ export type LineSeries = {
   label: string;
   /** One value per entry in `labels`; null leaves a gap. */
   values: readonly (number | null)[];
+  /**
+   * A `SERIES_COLORS` entry, for series that pair up (each of two Squad
+   * Members' rating and its average share a colour). Defaults to the
+   * series' place in the fixed order.
+   */
+  color?: SeriesColor;
+  /** Dashed, to tell a paired series apart without colour. */
+  dashed?: boolean;
 };
 
 type LineChartProps = {
@@ -173,13 +188,15 @@ export function LineChart({
           // One marker per series: at the crosshair, or on the latest value at rest.
           const markerAt = active ?? lastDefined(s.values);
           const markerValue = s.values[markerAt];
+          const color = seriesColor(s, si);
           return (
             <g key={s.id}>
               <path
                 d={toPath(s.values, x, y)}
                 fill="none"
-                stroke={SERIES_COLORS[si]}
+                stroke={color}
                 strokeWidth={2}
+                strokeDasharray={s.dashed ? DASH : undefined}
                 strokeLinejoin="round"
                 strokeLinecap="round"
               />
@@ -188,7 +205,7 @@ export function LineChart({
                   cx={x(markerAt)}
                   cy={y(markerValue)}
                   r={4}
-                  fill={SERIES_COLORS[si]}
+                  fill={color}
                   stroke="var(--color-shale-900)"
                   strokeWidth={2}
                 />
@@ -210,9 +227,10 @@ export function LineChart({
           <div className="mb-1 text-ink-muted text-xs">{labels[active]}</div>
           {shown.map((s, si) => (
             <div key={s.id} className="flex items-center gap-2 text-sm">
-              <span
-                className="h-0.5 w-3 rounded-full"
-                style={{ background: SERIES_COLORS[si] }}
+              <SeriesSwatch
+                color={seriesColor(s, si)}
+                dashed={s.dashed}
+                className="w-3"
               />
               <span className="font-semibold text-ink tabular">
                 {formatPoint(s.values[active], formatValue)}
@@ -228,30 +246,12 @@ export function LineChart({
   return (
     <div className="w-full">
       {chart}
-      <table className="sr-only">
-        <caption>{label}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Point</th>
-            {shown.map((s) => (
-              <th key={s.id} scope="col">
-                {s.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {labels.map((l, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: labels may repeat
-            <tr key={i}>
-              <th scope="row">{l}</th>
-              {shown.map((s) => (
-                <td key={s.id}>{formatPoint(s.values[i], formatValue)}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ChartDataTable
+        caption={label}
+        labels={labels}
+        series={shown}
+        formatCell={(v) => formatPoint(v, formatValue)}
+      />
     </div>
   );
 }

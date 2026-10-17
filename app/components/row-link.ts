@@ -27,7 +27,7 @@ export function useRowLink() {
 }
 
 /**
- * True for a plain click on the row itself: not on a link or button inside
+ * True for a plain click on the row itself: not on a control inside
  * it, not a modified click (new tab), and not the end of a text selection.
  */
 function shouldFollow(event: MouseEvent<HTMLTableRowElement>): boolean {
@@ -38,7 +38,7 @@ function shouldFollow(event: MouseEvent<HTMLTableRowElement>): boolean {
     event.ctrlKey ||
     event.shiftKey ||
     event.altKey ||
-    target.closest("a, button") ||
+    target.closest("a, button, input, label") ||
     window.getSelection()?.toString()
   );
 }

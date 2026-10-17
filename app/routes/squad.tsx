@@ -9,17 +9,19 @@
  * Match filters, per-90s and Form do not apply.
  */
 import { env } from "cloudflare:workers";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import {
   Chip,
+  chipClassName,
   DataTable,
   type DataTableColumn,
   EmptyState,
   FilterBar,
   PageHeader,
   PlayerChip,
+  type RowSelection,
 } from "~/components";
 import { getDb } from "~/db/client";
 import type { PositionGroup } from "~/lib/domain";
@@ -33,6 +35,8 @@ import {
 } from "~/lib/number-format";
 import { sortBy } from "~/lib/sort";
 import {
+  COMPARISON_SIDES,
+  comparePath,
   describePositionGroups,
   type EaMemberTotals,
   type EaSeasonTotals,
@@ -102,20 +106,25 @@ function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
       />
       <FilterBar filter={filter} source="recorded" positions />
       {rows.length > 0 && <Leaders leaders={LEADERS} rows={rows} />}
-      <DataTable
-        caption="Squad Members"
-        columns={COLUMNS}
-        rows={rows}
-        rowKey={(r) => r.playerId}
-        rowHref={(r) => playerPath(r.playerId)}
-        initialSort={{ columnId: "apps", direction: "desc" }}
-        empty={
-          <EmptyState
-            title="No Squad Members to show"
-            description="No Squad Member has an Appearance in these Matches. Widen the filters to see more."
+      <ComparePicker rows={rows}>
+        {(select) => (
+          <DataTable
+            caption="Squad Members"
+            select={select}
+            columns={COLUMNS}
+            rows={rows}
+            rowKey={(r) => r.playerId}
+            rowHref={(r) => playerPath(r.playerId)}
+            initialSort={{ columnId: "apps", direction: "desc" }}
+            empty={
+              <EmptyState
+                title="No Squad Members to show"
+                description="No Squad Member has an Appearance in these Matches. Widen the filters to see more."
+              />
+            }
           />
-        }
-      />
+        )}
+      </ComparePicker>
       {rows.length > 0 && <ColumnKey entries={KEY} />}
     </>
   );
@@ -136,20 +145,25 @@ function EaSquad({ filter, includeFormer, rows }: SquadData<"ea">) {
       />
       <FilterBar filter={filter} source="ea" positions />
       {rows.length > 0 && <Leaders leaders={EA_LEADERS} rows={rows} />}
-      <DataTable
-        caption="Squad Members"
-        columns={EA_COLUMNS}
-        rows={rows}
-        rowKey={(r) => r.playerId}
-        rowHref={(r) => playerPath(r.playerId)}
-        initialSort={{ columnId: "games", direction: "desc" }}
-        empty={
-          <EmptyState
-            title="No EA totals yet"
-            description="EA's season totals arrive with the next Poll that reaches EA. Switch to Recorded to see the Appearances tracked so far."
+      <ComparePicker rows={rows}>
+        {(select) => (
+          <DataTable
+            caption="Squad Members"
+            select={select}
+            columns={EA_COLUMNS}
+            rows={rows}
+            rowKey={(r) => r.playerId}
+            rowHref={(r) => playerPath(r.playerId)}
+            initialSort={{ columnId: "games", direction: "desc" }}
+            empty={
+              <EmptyState
+                title="No EA totals yet"
+                description="EA's season totals arrive with the next Poll that reaches EA. Switch to Recorded to see the Appearances tracked so far."
+              />
+            }
           />
-        }
-      />
+        )}
+      </ComparePicker>
       {rows.length > 0 && <ColumnKey entries={EA_KEY} />}
     </>
   );
@@ -191,6 +205,68 @@ function SquadToggle({ includeFormer }: { includeFormer: boolean }) {
         </Chip>
       </div>
     </fieldset>
+  );
+}
+
+/**
+ * Tick two Squad Members, then Compare (CLUBS-20): the bar above the table
+ * and the tick boxes it hands the table. Once two are ticked the rest are
+ * disabled; Compare carries the filter and source over.
+ */
+function ComparePicker<Row extends SquadRow>({
+  rows,
+  children,
+}: {
+  rows: readonly Row[];
+  children: (select: RowSelection<Row>) => ReactNode;
+}) {
+  const [searchParams] = useSearchParams();
+  const [ticked, setTicked] = useState<readonly string[]>([]);
+  // A filter change can drop a ticked Squad Member's row; they no longer count.
+  const pickedRows = ticked.flatMap((id) =>
+    rows.filter((r) => r.playerId === id),
+  );
+  const picked = pickedRows.map((r) => r.playerId);
+  const names = pickedRows.map((r) => r.name);
+  const full = picked.length === COMPARISON_SIDES.length;
+  const select: RowSelection<Row> = {
+    isSelected: (row) => picked.includes(row.playerId),
+    isDisabled: (row) => full && !picked.includes(row.playerId),
+    onToggle: (row) =>
+      setTicked(
+        picked.includes(row.playerId)
+          ? picked.filter((id) => id !== row.playerId)
+          : [...picked, row.playerId],
+      ),
+    label: (row) => `Compare ${row.name}`,
+  };
+  if (rows.length < COMPARISON_SIDES.length) return children(select);
+  return (
+    <>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p
+          className="min-w-0 truncate text-ink-muted text-sm"
+          aria-live="polite"
+        >
+          {names.length === 0
+            ? "Tick two Squad Members to compare them"
+            : `${names.join(" vs ")}${full ? "" : " vs …"}`}
+        </p>
+        {full ? (
+          <Link
+            to={comparePath(searchParams, picked)}
+            className={`${chipClassName(true)} inline-flex items-center`}
+          >
+            Compare
+          </Link>
+        ) : (
+          <button type="button" disabled className={chipClassName(false)}>
+            Compare
+          </button>
+        )}
+      </div>
+      {children(select)}
+    </>
   );
 }
 
