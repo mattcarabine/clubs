@@ -376,7 +376,7 @@ export function formIndicator(
   const usual = average(baseline.map((a) => a.rating));
   if (recentAverage === null || usual === null) return null;
   const status = formStatus(recentAverage - usual);
-  if (!status) return null;
+  if (status === null) return null;
   return {
     status,
     recent: recentAverage,

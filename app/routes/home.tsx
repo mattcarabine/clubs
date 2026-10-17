@@ -221,7 +221,8 @@ function FormWatch({ rows }: { rows: readonly SquadFormRow[] }) {
                   >
                     {name}
                   </Link>
-                  <span className="text-ink-muted text-sm tabular">
+                  {/* The badge already reads this out. */}
+                  <span aria-hidden className="text-ink-muted text-sm tabular">
                     {formIndicator.text}
                   </span>
                 </li>

@@ -177,24 +177,24 @@ export async function squadForm(
     await squadAppearances(db, filter),
     (a) => a.playerId,
   );
-  return [...byPlayer.entries()]
-    .flatMap(([playerId, apps]) => {
-      const indicator = formIndicator(apps);
-      return indicator && !isFormerSquadMember(playerId)
-        ? [
-            {
-              playerId,
-              name: apps[apps.length - 1].name,
-              formIndicator: indicator,
-            },
-          ]
-        : [];
-    })
-    .sort(
-      (a, b) =>
-        Math.abs(b.formIndicator.recent - b.formIndicator.usual) -
-        Math.abs(a.formIndicator.recent - a.formIndicator.usual),
-    );
+  const rows: SquadFormRow[] = [];
+  for (const [playerId, apps] of byPlayer) {
+    if (isFormerSquadMember(playerId)) continue;
+    const indicator = formIndicator(apps);
+    if (!indicator) continue;
+    rows.push({
+      playerId,
+      name: apps[apps.length - 1].name,
+      formIndicator: indicator,
+    });
+  }
+  return rows.sort(
+    (a, b) => formGap(b.formIndicator) - formGap(a.formIndicator),
+  );
+}
+
+function formGap({ recent, usual }: FormIndicator): number {
+  return Math.abs(recent - usual);
 }
 
 export interface SquadMember {
