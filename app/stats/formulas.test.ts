@@ -4,7 +4,6 @@ import type { Outcome } from "~/lib/domain";
 
 import {
   average,
-  cumulativePoints,
   currentStreak,
   effectSize,
   form,
@@ -279,11 +278,6 @@ describe("points", () => {
 
   it("is 0 with no Matches", () => {
     expect(points([])).toBe(0);
-  });
-
-  it("accumulates oldest first", () => {
-    expect(cumulativePoints(["W", "L", "D"])).toEqual([3, 3, 4]);
-    expect(cumulativePoints([])).toEqual([]);
   });
 });
 

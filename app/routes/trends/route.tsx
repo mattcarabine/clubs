@@ -1,6 +1,7 @@
 /**
- * Team trends (CLUBS-13): results over time, goals, when we play best,
- * line-up performance and EA's skill rating. Every number comes from the
+ * Team trends (CLUBS-13): the current Campaign and Division progression
+ * (CLUBS-41), results over time, goals, when we play best, line-up
+ * performance and EA's skill rating. Every number comes from the
  * stats layer; the loader formats labels so server and client agree on
  * London time.
  */
@@ -29,6 +30,7 @@ import {
 } from "~/lib/number-format";
 import {
   clubSnapshots,
+  getCampaignProgress,
   type LineupRecord,
   lineupRecords,
   listMatches,
@@ -43,7 +45,8 @@ import {
   summariseRecord,
 } from "~/stats";
 
-import type { Route } from "./+types/trends";
+import type { Route } from "./+types/route";
+import { CampaignSection, campaignsView } from "./campaigns";
 
 /** The run-of-results strip shows this many of the latest Matches. */
 const STRIP_LENGTH = 40;
@@ -55,14 +58,19 @@ export function meta(_: Route.MetaArgs) {
 export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = statsFilterFromRequest(request);
-  const [matches, appearances, snapshots] = await Promise.all([
+  const [matches, appearances, snapshots, campaign] = await Promise.all([
     listMatches(db, filter, { order: "oldest" }),
     squadAppearances(db, filter),
     clubSnapshots(db),
+    getCampaignProgress(db),
   ]);
+  if (campaign.mismatch) {
+    console.warn("Campaign tracking may be off", campaign.mismatch);
+  }
   const skillRating = skillRatingHistory(snapshots);
   return {
     filter,
+    campaigns: campaignsView(campaign),
     record: summariseRecord(matches),
     matchLabels: matches.map((m) => formatLondonShortDate(m.playedAt)),
     timeline: resultsTimeline(matches),
@@ -77,13 +85,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Trends({ loaderData }: Route.ComponentProps) {
-  const { filter, record, skillRating } = loaderData;
+  const { filter, record, skillRating, campaigns } = loaderData;
   return (
     <>
       <PageHeader
         title="Trends"
         subtitle="How Our Club's results move over time, and when and with whom we play best."
       />
+      <div className="mb-10">
+        <CampaignSection view={campaigns} />
+      </div>
       <FilterBar filter={filter} />
       <div className="flex flex-col gap-10">
         {record.played === 0 ? (
@@ -171,35 +182,23 @@ function MatchTrends({
         >
           <FormGuide results={strip} />
         </ChartFrame>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ChartFrame
-            title={`${record.points} points`}
-            subtitle="Cumulative points, 3 for a win and 1 for a draw"
-          >
-            <LineChart
-              label="Cumulative points"
-              labels={matchLabels}
-              series={[{ id: "pts", label: "Points", values: timeline.points }]}
-            />
-          </ChartFrame>
-          <ChartFrame
-            title={`${formatSigned(record.goalDifference)} goal difference`}
-            subtitle={`Running total: ${record.goalsFor} scored, ${record.goalsAgainst} conceded`}
-          >
-            <LineChart
-              label="Cumulative goal difference"
-              labels={matchLabels}
-              series={[
-                {
-                  id: "gd",
-                  label: "Goal difference",
-                  values: timeline.goalDifference,
-                },
-              ]}
-              formatValue={formatSigned}
-            />
-          </ChartFrame>
-        </div>
+        <ChartFrame
+          title={`${formatSigned(record.goalDifference)} goal difference`}
+          subtitle={`Running total: ${record.goalsFor} scored, ${record.goalsAgainst} conceded`}
+        >
+          <LineChart
+            label="Cumulative goal difference"
+            labels={matchLabels}
+            series={[
+              {
+                id: "gd",
+                label: "Goal difference",
+                values: timeline.goalDifference,
+              },
+            ]}
+            formatValue={formatSigned}
+          />
+        </ChartFrame>
       </section>
 
       {/* Side by side only when both are charts; a lone skill rating reading

@@ -52,7 +52,11 @@ export const SNAPSHOT_FIELDS = {
     "wstreak",
     "unbeatenstreak",
   ],
-  "currentSeasonLeaderboard/search": ["clubId", "gamesPlayed"],
+  "currentSeasonLeaderboard/search": [
+    "clubId",
+    "gamesPlayed",
+    "currentDivision",
+  ],
 } as const;
 
 /** Fields of an Opponent's `clubs/overallStats` entry that the Poll reads. */

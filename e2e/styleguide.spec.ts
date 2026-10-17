@@ -39,6 +39,17 @@ test("every component section renders", async ({ page }) => {
   ).toBeVisible();
   await expect(section("stat-tile").getByText("Win rate")).toBeVisible();
   await expect(
+    section("campaign-panel").getByText(
+      "Promotion Series: 4 Wins in a row needed",
+    ),
+  ).toBeVisible();
+  await expect(
+    section("campaign-panel").getByText("Relegation Match next"),
+  ).toBeVisible();
+  await expect(
+    section("charts").getByRole("img", { name: "Division over time" }),
+  ).toBeVisible();
+  await expect(
     section("form-guide").getByRole("list", {
       name: "Form, oldest to newest: Win, Win, Draw, Loss, Win, Win",
     }),

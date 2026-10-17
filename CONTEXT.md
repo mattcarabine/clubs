@@ -72,6 +72,40 @@ _Avoid_: Sitting, night
 One of EA's live Pro Clubs content seasons (e.g. "Closed Season 01"), lasting roughly six weeks, at the end of which EA's season totals reset.
 _Avoid_: Campaign, division season, year
 
+### League
+
+**Division**:
+The tier Our Club plays in: Elite, then Division 1 down to Division 5. EA's `currentDivision` maps 1 = Elite, 2 = Division 1 … 6 = Division 5.
+_Avoid_: League, tier, rank
+
+**Campaign**:
+A run of League Matches in one Division. It ends when Our Club reaches the Points Target (→ Promotion Series) or loses all its Chances (→ Relegation Match). Tracked from the first Season start the Poll detects, when every club restarts in Division 5 on 0 points.
+_Avoid_: In-game season, run, push (a Season is EA's ~6-week content season)
+
+**Points Target**:
+The Campaign points needed to reach a Promotion Series: 3 for a League Win, 1 for a draw. It differs per Division; Elite has none.
+_Avoid_: Threshold, goal
+
+**Chance**:
+One of 3 lives in a Campaign. Each League loss costs one. Division 5 has none to lose: Our Club can't be relegated from it.
+_Avoid_: Life, strike
+
+**Promotion Series**:
+The Matches after reaching the Points Target. Win enough and Our Club is promoted; otherwise a new Campaign starts in the same Division with a head start. Draws count as losses here.
+_Avoid_: Promotion matches, playoff
+
+**Relegation Match**:
+A one-off Match after losing all Chances. Lose it and Our Club is relegated; win it and the Chances reset.
+_Avoid_: Relegation battle, decider
+
+**Promotion** / **Relegation**:
+Moving up or down a Division.
+_Avoid_: Going up, going down
+
+**Playoffs**:
+EA's end-of-Season Matches (Match Type Playoff). Never part of a Campaign: once Our Club plays one, League Matches stop counting until the next Season starts.
+_Avoid_: Promotion Series, finals
+
 ### Comparisons
 
 **Outcome Split**:
