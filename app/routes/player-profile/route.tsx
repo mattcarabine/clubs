@@ -16,6 +16,7 @@ import {
   EmptyState,
   FilterBar,
   LineChart,
+  LondonTime,
   PageHeader,
   RouteError,
   SectionHeading,
@@ -24,7 +25,7 @@ import {
   StatTile,
 } from "~/components";
 import { getDb } from "~/db/client";
-import { formatLondonDate, formatLondonShortDate } from "~/lib/london-time";
+import { formatLondonShortDate } from "~/lib/london-time";
 import {
   formatCount,
   formatDecimal,
@@ -87,6 +88,8 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
   const labels = form.map((p) => formatLondonShortDate(p.playedAt));
   const latestBuild = build.at(-1) ?? null;
   const positions = filter.positionGroups;
+  // One Position Group would only repeat the tiles above.
+  const showPositionGroups = profile.positionGroups.length > 1;
 
   return (
     <>
@@ -102,7 +105,8 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
                 </span>
               </>
             )}
-            Tracking since {formatLondonDate(member.trackedSince)}
+            Tracking since{" "}
+            <LondonTime date={member.trackedSince} format="day" />
             {member.former && (
               <span className="ml-3 bg-shale-800 px-2 py-0.5 text-ink-muted text-sm">
                 Former Squad Member
@@ -239,14 +243,18 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section aria-label="By Position Group" className="min-w-0">
-          <SectionHeading title="By Position Group" />
-          <PositionGroupTable
-            rows={profile.positionGroups}
-            selected={positions}
-          />
-        </section>
+      <div
+        className={`grid gap-6 ${showPositionGroups ? "lg:grid-cols-2" : ""}`}
+      >
+        {showPositionGroups && (
+          <section aria-label="By Position Group" className="min-w-0">
+            <SectionHeading title="By Position Group" />
+            <PositionGroupTable
+              rows={profile.positionGroups}
+              selected={positions}
+            />
+          </section>
+        )}
         <section aria-label="Build progression" className="min-w-0">
           <SectionHeading
             title="Build progression"

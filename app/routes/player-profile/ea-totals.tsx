@@ -43,7 +43,7 @@ export function EaTotals({
   const takenAt = (season ?? career)?.takenAt;
   return (
     <div>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-6">
+      <div className="grid gap-4">
         <TotalsPanel
           title="Career (EA)"
           detail="Since the club was founded"
@@ -55,7 +55,6 @@ export function EaTotals({
           detail="EA's current Season"
           gamesPlayed={season?.gamesPlayed ?? null}
           figures={season ? seasonFigures(season) : null}
-          wide
         />
       </div>
       <p className="mt-3 text-ink-muted text-sm">
@@ -122,8 +121,6 @@ type TotalsPanelProps = {
   gamesPlayed: number | null;
   /** Null before this side's first Snapshot. */
   figures: Figure[] | null;
-  /** Four figures across on desktop instead of two. */
-  wide?: boolean;
 };
 
 /** One side of the EA totals: a games-played header strip over a grid of figures. */
@@ -132,7 +129,6 @@ function TotalsPanel({
   detail,
   gamesPlayed,
   figures,
-  wide,
 }: TotalsPanelProps) {
   return (
     <section
@@ -156,9 +152,7 @@ function TotalsPanel({
         )}
       </div>
       {figures ? (
-        <dl
-          className={`grid grid-cols-2 ${wide ? "sm:grid-cols-3 xl:grid-cols-4" : ""}`}
-        >
+        <dl className="grid grid-cols-2 lg:grid-cols-4">
           {figures.map((figure) => (
             <FigureCell key={figure.label} figure={figure} />
           ))}

@@ -1,7 +1,6 @@
 import { Link } from "react-router";
 
-import { EmptyState, OutcomeBadge } from "~/components";
-import { formatLondonShortDate } from "~/lib/london-time";
+import { EmptyState, LondonTime, OutcomeBadge } from "~/components";
 import { formatDecimal } from "~/lib/number-format";
 import type { SquadAppearance } from "~/stats";
 
@@ -39,7 +38,7 @@ export function BestMatches({ appearances }: BestMatchesProps) {
                 {a.opponentName}
               </span>
               <span className="block truncate text-ink-muted text-sm">
-                {formatLondonShortDate(a.playedAt)}
+                <LondonTime date={a.playedAt} format="day" />
                 <span className="ml-3 text-ink-soft">
                   {contributions(a.goals, a.assists)}
                 </span>

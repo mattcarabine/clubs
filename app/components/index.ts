@@ -28,6 +28,7 @@ export { FormGuide } from "./form-guide";
 export { HeadToHeadBar, type HeadToHeadRecord } from "./head-to-head-bar";
 export { PageHeader, SectionHeading } from "./headings";
 export { LastUpdatedBadge } from "./last-updated-badge";
+export { LondonTime } from "./london-time";
 export { MatchScoreBar } from "./match-score-bar";
 export { OutcomeBadge } from "./outcome-badge";
 export { PlayerChip } from "./player-chip";
@@ -36,6 +37,12 @@ export {
   PositionGroupPicker,
 } from "./position-group-picker";
 export { BackLink, isNotFound, RouteError } from "./route-error";
+export {
+  LINKED_ROW,
+  LINKED_ROW_HEADER,
+  ROW_HEADER_LINK,
+  useRowLink,
+} from "./row-link";
 export { ScoreBar, type ScoreBarSide } from "./score-bar";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";

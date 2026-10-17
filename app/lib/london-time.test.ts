@@ -60,11 +60,32 @@ describe("londonDateKey", () => {
 describe("formatting", () => {
   const date = new Date("2026-10-14T19:05:00Z");
 
-  it("formats the date, time and both in London time", () => {
-    expect(formatLondonDate(date)).toBe("Wed 14 Oct 2026");
-    expect(formatLondonShortDate(date)).toBe("14 Oct");
+  const laterThisYear = new Date("2026-12-31T12:00:00Z");
+  const nextYear = new Date("2027-01-02T12:00:00Z");
+
+  it("writes a day and a moment without the year in the current year", () => {
+    expect(formatLondonDate(date, laterThisYear)).toBe("Wed 14 Oct");
+    expect(formatLondonDateTime(date, laterThisYear)).toBe("Wed 14 Oct, 20:05");
+  });
+
+  it("adds the year to a day or moment from another year", () => {
+    expect(formatLondonDate(date, nextYear)).toBe("Wed 14 Oct 2026");
+    expect(formatLondonDateTime(date, nextYear)).toBe("Wed 14 Oct 2026, 20:05");
+  });
+
+  it("takes the current year from London, not UTC", () => {
+    // 23:30 UTC on 31 Dec 2025 is 23:30 GMT: still 2025 in London.
+    const newYearsEve = new Date("2025-12-31T23:30:00Z");
+    expect(formatLondonDate(newYearsEve, newYearsEve)).toBe("Wed 31 Dec");
+    // 00:30 UTC on 1 Jan 2026 is a new London year, so 31 Dec gains its year.
+    expect(
+      formatLondonDate(newYearsEve, new Date("2026-01-01T00:30:00Z")),
+    ).toBe("Wed 31 Dec 2025");
+  });
+
+  it("writes a time and a chart-axis date in London time", () => {
     expect(formatLondonTime(date)).toBe("20:05");
-    expect(formatLondonDateTime(date)).toBe("Wed 14 Oct 2026, 20:05");
+    expect(formatLondonShortDate(date)).toBe("14 Oct");
   });
 });
 

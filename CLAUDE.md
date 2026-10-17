@@ -42,7 +42,17 @@ To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in 
 ## Conventions
 - Stat formulas and queries live in the shared `app/stats/` layer. Pages never write their own SQL or repeat a formula. Read [app/stats/README.md](app/stats/README.md) before building a page or adding a query. Every stats page parses a `StatsFilter` in its loader and mounts `FilterBar`.
 - **Two-places rule:** anything used twice goes in a shared module (`app/components/`, `app/stats/`, `app/lib/`).
-- Display times in Europe/London, through `~/lib/london-time`.
+- Display times in Europe/London, through `~/lib/london-time`, in one convention (CLUBS-22):
+
+  | Kind | Example | Use | Helper |
+  |---|---|---|---|
+  | Day | `Wed 14 Oct` | A date on its own: Last met, Tracking since, "as of", Matches day headings | `formatLondonDate` / `<LondonTime format="day">` |
+  | Moment | `Wed 14 Oct, 22:54` | When a Match was played, wherever it is listed or titled | `formatLondonDateTime` / `<LondonTime format="moment">` |
+  | Time | `22:54` | Only under a heading that already names the day | `formatLondonTime` / `<LondonTime format="time">` |
+  | Short date | `14 Oct` | Only where space is tightest: chart axis labels and the FilterBar's custom date-range chip | `formatLondonShortDate` |
+  | Relative | `4 min ago` | Only how old our data is (`LastUpdatedBadge`), never when a Match was played | `formatRelativeTime` |
+
+  Days and moments add the year only outside the current London year (`Tue 14 Oct 2025`). The clock is 24-hour. Render dates with `<LondonTime>` so they are a `<time dateTime>`.
 - **Date filtering (CLUBS-21):** every date filter goes through the shared `StatsFilter` / FilterBar date range, never a page-specific control.
   - **Options:** "All" (the default), the presets Last 7 days, Last 30 days and Last year, and a custom from/to picker.
   - **Boundaries:** dates are Europe/London calendar days, inclusive at both ends.
@@ -89,7 +99,9 @@ From Google Fonts, loaded in `app/root.tsx`. **Sofia Sans Extra Condensed** (`fo
 - Angled edges (`clip-slant*`) on score panels, tabs, badges and chips. Cards and tables keep square corners with a 2px top rule.
 - A green slanted tab labels a strip (the ScoreBar's Match Type, the Ticker's "Latest").
 - Our Club is always deep blue (`sound-900`); Opponents are `shale-800`.
-- The crest (`assets/crest-96.png`, a copy of `assets/crest.png`) appears only as the favicon (`public/favicon.ico` and a `<link rel="icon">`) and in the header lockup, at 36px.
+- The crest appears only as the favicon (`assets/crest-96.png`, the whole crest, via `public/favicon.ico` and a `<link rel="icon">`) and in the header lockup. The lockup uses `assets/crest-mark.png`, the crest cropped to the face (the only part that reads that small), at 40px on a green slanted tab.
+- A sideways scroller that clips content fades it out at that edge (`useScrollFade` from `~/lib/use-scroll-fade` plus the `scroll-fade` utility), so it reads as "scrolls" rather than "cut off". It is a mask, not a colour gradient. `FilterBar` and `DataTable` have it; a table fades only its end, so the pinned column stays crisp.
+- Rows that link somewhere read as rows, not as blue link text: pass `rowHref` to `DataTable` (or use `useRowLink` and the `LINKED_ROW*` classes from `~/components` in a hand-built table). The row header holds the link in ink, the whole row is clickable, and hover lights the header's left edge in rave. Blue `sound-300` text is for links in running copy only.
 - Motion is limited to the Ticker scroll and the loading shimmer, and both stop under `prefers-reduced-motion`.
 
 ### Components (`import { … } from "~/components"`)
@@ -99,12 +111,12 @@ Every component is presentational: it takes props and never fetches. Shared doma
 - `ScoreBar`: the broadcast score strip. Use `size="hero"` for the lead Match and `compact` in lists; mark Our Club with `isOurClub`.
 - `Ticker`: a strip of `{ id, headline, detail }` items, made for the `AppShell` `ticker` slot. It scrolls only when the items overflow it, and sits still when they fit.
 - `StatTile` inside `StatGrid`: a headline number with an optional delta (`tone` is whether the change is good for us) and a sparkline trend. Use `featured` on one tile at most.
-- `DataTable`: sortable via `sortValue`; `highlight` picks rows out in `sound-900` with a `rave` edge (say why in the row too). The first column is the sticky row header; the table scrolls inside its own container on phones.
+- `DataTable`: sortable via `sortValue`; `highlight` picks rows out in `sound-900` with a `rave` edge (say why in the row too). The first column is the sticky row header; the table scrolls inside its own container on phones, with its end faded. `rowHref` makes rows links. On phones the pinned header may wrap to two lines so it never widens the pinned column; order columns so the ones people compare come first (the Squad table leads with G+A, Rating, Form and Apps, which fit beside the name at 375px).
 - `FormGuide`: W/D/L run, oldest first. `OutcomeBadge` is one block.
 - `HeadToHeadBar`: Our Club and an Opponent either side of won/drawn/lost blocks, over a meter of their share. Use `size="hero"` for the lead strip; on phones the blocks drop below the names.
-- `PlayerChip`: a Squad Member's initials, name, Position Group and optional stat; `former` for Former Squad Members, `to` to link.
+- `PlayerChip`: a Squad Member's initials, name, Position Group and optional stat; `former` for Former Squad Members, `to` to link, `dense` to show just the name on phones (for a pinned table column).
 - `LastUpdatedBadge`: "Updated 4 min ago" from the latest Poll; it turns amber and says "Stale" after 15 minutes (three missed Polls).
-- `EmptyState`: says what is missing and what will fill it. Sparse data is the norm, so hide a summary that would be meaningless (e.g. "Most played" when every Opponent was met once, a one-point chart) rather than showing it.
+- `EmptyState`: says what is missing and what will fill it. Sparse data is the norm, so hide a summary that would be meaningless (e.g. "Most played" when every Opponent was met once, a one-point chart, a By Position Group table with one group) rather than showing it, and don't leave half a row empty: a sparse panel takes its own full-width row instead of sitting beside a chart (Trends' one-reading skill rating), and a short side column beside a long one is `lg:sticky lg:top-24 lg:self-start`.
 - `BackLink` / `RouteError`: a detail page's "‹ All Matches" link, and its `ErrorBoundary` (back link plus a 404 or failed-to-load `EmptyState`). Every `:id` route has one; the root boundary handles unknown addresses.
 - `FilterBar`: the global stats filter (Match Type, DNF, dates, Season) as slanted toggle chips (`Chip` / `chipClassName` in `app/components/chip.tsx`); it rewrites the URL so the loader reruns. Its "Custom" date chip opens a "Custom dates" strip under the chip rail, never inside it, so a phone cannot scroll it away: two native date fields styled as chips (`[color-scheme:dark]`, 16px text so iOS does not zoom) with Apply / Cancel. An applied range shows on the chip as "5 Oct – 12 Oct". Pass `source` (from `statsSourceFromRequest`) to lead with the Recorded / EA totals toggle (`?source=ea`); on EA totals it hides the Match filters and says why. Pass `positions` on player-level pages (Squad, profile) to show the Position Group selection (`?pos=`); on EA totals it stays visible but disabled, with a tooltip. On phones it is one row that scrolls sideways, so it never takes a screenful.
 - `PositionGroupPicker`: the Position Group multi-select (All Positions plus EA's four names), presentational with `value` / `onChange`, so the FilterBar uses it for `?pos=` and Compare can show one per player. `disabledReason` (e.g. `EA_POSITIONS_DISABLED`) disables it with a tooltip. `ChipGroup` is the labelled chip row both use.
@@ -122,7 +134,7 @@ One approach on every page: **hand-rolled SVG and HTML in `app/components/charts
 - Charts measure their container (`useElementWidth`), so they fit any width without scaling text.
 
 ### Do
-- Design at 375px first, then use the width at 1440px (`lg:grid-cols-2`, four-up `StatGrid`).
+- Design at 375px first, then use the width at 1440px (`lg:grid-cols-2`, four-up `StatGrid`). On a phone a page's main content (e.g. the Squad table) starts on the first screen: summary tiles above it go compact below `sm`.
 - Put wide content in its own scroll container (`DataTable` already does). The page itself must never scroll sideways.
 - Keep the copy in sentence case, using CONTEXT.md terms ("Squad Member", "Match").
 

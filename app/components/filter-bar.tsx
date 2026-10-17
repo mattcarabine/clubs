@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router";
 
+import { fadeAttributes, useScrollFade } from "~/lib/use-scroll-fade";
 import type { loader as rootLoader } from "~/root";
 
 import {
@@ -70,6 +71,13 @@ export function FilterBar(props: FilterBarProps) {
   const seasons = useSeasonNumbers();
   const [pickingDates, setPickingDates] = useState(false);
   const pickerId = useId();
+  const [railRef, railEdges] = useScrollFade<HTMLDivElement>();
+  // Only one rail renders at a time: the EA totals one or the full one.
+  const rail = {
+    ref: railRef,
+    ...fadeAttributes(railEdges),
+    className: RAIL,
+  };
   const source =
     pending && props.source !== undefined
       ? parseStatsSource(pending)
@@ -120,7 +128,7 @@ export function FilterBar(props: FilterBarProps) {
         aria-busy={pending !== null}
         className="mb-6 border-shale-700 border-t-2 bg-shale-900"
       >
-        <div className={RAIL}>
+        <div {...rail}>
           {sourceToggle}
           {positionPicker}
         </div>
@@ -141,7 +149,7 @@ export function FilterBar(props: FilterBarProps) {
       aria-busy={pending !== null}
       className="mb-6 border-shale-700 border-t-2 bg-shale-900"
     >
-      <div className={RAIL}>
+      <div {...rail}>
         {sourceToggle}
         {positionPicker}
 
@@ -234,9 +242,12 @@ export function FilterBar(props: FilterBarProps) {
   );
 }
 
-/** One scrolling rail on phones, so the filters take one row, not a screen. */
+/**
+ * One scrolling rail on phones, so the filters take one row, not a screen;
+ * its clipped edge fades so it reads as scrollable.
+ */
 const RAIL =
-  "flex items-end gap-x-6 gap-y-3 overflow-x-auto px-3 py-3 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible sm:px-4";
+  "scroll-fade flex items-end gap-x-6 gap-y-3 overflow-x-auto px-3 py-3 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-4";
 
 /** Season numbers known to the root loader, oldest first. */
 function useSeasonNumbers(): readonly number[] {

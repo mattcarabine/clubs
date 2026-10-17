@@ -8,6 +8,7 @@ import {
   FilterBar,
   FormGuide,
   HeadToHeadBar,
+  LondonTime,
   MatchScoreBar,
   numberColumn,
   PageHeader,
@@ -18,7 +19,6 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import type { Outcome } from "~/lib/domain";
-import { formatLondonDate } from "~/lib/london-time";
 import {
   formatCount,
   formatDecimal,
@@ -76,12 +76,7 @@ const PERFORMER_COLUMNS: DataTableColumn<LeaderboardRow>[] = [
     header: "Squad Member",
     cell: (p) => (
       <span className="inline-flex items-baseline gap-2">
-        <Link
-          to={`/players/${p.playerId}`}
-          className="text-sound-300 hover:text-ink hover:underline"
-        >
-          {p.name}
-        </Link>
+        {p.name}
         {p.former && (
           <span className="font-normal text-ink-muted text-xs">Former</span>
         )}
@@ -117,9 +112,13 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
       <PageHeader
         title={opponent.name}
         subtitle={
-          firstMet
-            ? `Head-to-head since ${formatLondonDate(firstMet)}`
-            : "Head-to-head"
+          firstMet ? (
+            <>
+              Head-to-head since <LondonTime date={firstMet} format="day" />
+            </>
+          ) : (
+            "Head-to-head"
+          )
         }
         aside={form.length >= MIN_FORM && <OpponentForm results={form} />}
       />
@@ -178,9 +177,7 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
                         clubName={clubName}
                         match={match}
                         status={
-                          <time dateTime={match.playedAt.toISOString()}>
-                            {formatLondonDate(match.playedAt)}
-                          </time>
+                          <LondonTime date={match.playedAt} format="moment" />
                         }
                       />
                     </Link>
@@ -192,7 +189,7 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
             {/* Stays in view beside a long Match list on desktop. */}
             <section
               aria-label="Top performers"
-              className="min-w-0 lg:sticky lg:top-6 lg:self-start"
+              className="min-w-0 lg:sticky lg:top-24 lg:self-start"
             >
               <SectionHeading
                 title="Top performers"
@@ -203,6 +200,7 @@ export default function Opponent({ loaderData }: Route.ComponentProps) {
                 columns={PERFORMER_COLUMNS}
                 rows={performers}
                 rowKey={(p) => p.playerId}
+                rowHref={(p) => `/players/${p.playerId}`}
                 initialSort={{
                   columnId: "goalContributions",
                   direction: "desc",

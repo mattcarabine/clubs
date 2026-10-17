@@ -203,7 +203,11 @@ function MatchTrends({
         </div>
       </section>
 
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-4">
+      {/* Side by side only when both are charts; a lone skill rating reading
+          would leave half the row empty. */}
+      <div
+        className={`grid gap-10 lg:gap-x-4 ${skillRating.values.length > 1 ? "lg:grid-cols-2" : ""}`}
+      >
         <section aria-label="Goals" className="min-w-0">
           <SectionHeading
             title="Goals"
