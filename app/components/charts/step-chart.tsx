@@ -1,4 +1,4 @@
-import { axisLabelIndices, linearScale } from "./scale";
+import { axisLabelIndices, linearScale, tickAnchor } from "./scale";
 import { useElementWidth } from "./use-element-width";
 
 export type StepMarker = "up" | "down";
@@ -99,7 +99,7 @@ export function StepChart({
               key={i}
               x={x(i)}
               y={height - 8}
-              textAnchor={i === 0 ? "start" : i === last ? "end" : "middle"}
+              textAnchor={tickAnchor(i, last)}
               className="fill-ink-muted text-xs"
             >
               {labels[i]}

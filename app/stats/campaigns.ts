@@ -281,27 +281,25 @@ export function divisionTimeline(
   campaigns: readonly Campaign[],
 ): DivisionStep[] {
   return campaigns.flatMap((campaign, i): DivisionStep[] => {
-    const previous = campaigns[i - 1];
-    if (!previous || previous.outcome === "season-ended") {
-      return [
-        {
-          at: campaign.startedAt,
-          division: campaign.division,
-          event: "season-start",
-        },
-      ];
-    }
-    if (previous.outcome === "promoted" || previous.outcome === "relegated") {
-      return [
-        {
-          at: campaign.startedAt,
-          division: campaign.division,
-          event: previous.outcome === "promoted" ? "promotion" : "relegation",
-        },
-      ];
-    }
-    return [];
+    const event = divisionEvent(campaigns[i - 1]);
+    if (!event) return [];
+    return [{ at: campaign.startedAt, division: campaign.division, event }];
   });
+}
+
+/** Why a Campaign started, from the one before it; null when the Division stayed put. */
+function divisionEvent(previous: Campaign | undefined): DivisionEvent | null {
+  switch (previous?.outcome) {
+    case undefined:
+    case "season-ended":
+      return "season-start";
+    case "promoted":
+      return "promotion";
+    case "relegated":
+      return "relegation";
+    default:
+      return null;
+  }
 }
 
 /** The tracked Division and EA's `currentDivision`, when they disagree. */

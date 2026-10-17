@@ -1,13 +1,14 @@
-import type { ReactNode } from "react";
-
 /**
  * The Trends page's Campaign section (CLUBS-41): the current Campaign panel,
  * the Division timeline and the Campaign history. `campaignsView` runs in the
  * loader, so dates are formatted once, in London time, on the server.
  */
+import type { ReactNode } from "react";
+
 import {
   CampaignPanel,
   type CampaignPanelProgress,
+  type CampaignPanelStage,
   ChartFrame,
   DataTable,
   type DataTableColumn,
@@ -16,6 +17,7 @@ import {
   SectionHeading,
   StepChart,
   type StepChartPoint,
+  type StepMarker,
 } from "~/components";
 import type { Outcome } from "~/lib/domain";
 import { formatLondonShortDate } from "~/lib/london-time";
@@ -63,12 +65,20 @@ export interface CampaignsView {
 
 /** Division 5 at the bottom, Elite at the top. */
 const DIVISION_LEVELS = ([6, 5, 4, 3, 2, 1] as const).map(divisionName);
-const levelOf = (division: DivisionNumber) => 6 - division;
+function levelOf(division: DivisionNumber): number {
+  return 6 - division;
+}
 
 const EVENT_NOTE: Record<DivisionEvent, string> = {
   "season-start": "Season start",
   promotion: "Promotion",
   relegation: "Relegation",
+};
+
+const EVENT_MARKER: Record<DivisionEvent, StepMarker | undefined> = {
+  "season-start": undefined,
+  promotion: "up",
+  relegation: "down",
 };
 
 export function campaignsView(progress: CampaignProgress): CampaignsView {
@@ -86,12 +96,7 @@ export function campaignsView(progress: CampaignProgress): CampaignsView {
     timeline: divisionTimeline(campaigns).map((step) => ({
       label: formatLondonShortDate(step.at),
       level: levelOf(step.division),
-      marker:
-        step.event === "promotion"
-          ? "up"
-          : step.event === "relegation"
-            ? "down"
-            : undefined,
+      marker: EVENT_MARKER[step.event],
       note: EVENT_NOTE[step.event],
     })),
     history: campaigns.map(historyRow).reverse(),
@@ -106,22 +111,26 @@ function panelProgress(campaign: Campaign): CampaignPanelProgress {
     pointsTarget: rules.pointsTarget,
     chances: left === null ? null : { left, total: LEAGUE_RULES.chances },
     league: campaign.leagueMatches.map((m) => m.outcome),
-    stage:
-      campaign.stage === "promotion-series" && rules.promotionSeries
-        ? {
-            kind: "promotion-series",
-            ...rules.promotionSeries,
-            results: campaign.promotionSeries.map((m) => m.outcome),
-          }
-        : campaign.stage === "relegation-match"
-          ? {
-              kind: "relegation-match",
-              divisionBelow: divisionName(
-                (campaign.division + 1) as DivisionNumber,
-              ),
-            }
-          : { kind: "league" },
+    stage: panelStage(campaign),
   };
+}
+
+function panelStage(campaign: Campaign): CampaignPanelStage {
+  const series = DIVISIONS[campaign.division].promotionSeries;
+  if (campaign.stage === "promotion-series" && series) {
+    return {
+      kind: "promotion-series",
+      ...series,
+      results: campaign.promotionSeries.map((m) => m.outcome),
+    };
+  }
+  if (campaign.stage === "relegation-match") {
+    return {
+      kind: "relegation-match",
+      divisionBelow: divisionName((campaign.division + 1) as DivisionNumber),
+    };
+  }
+  return { kind: "league" };
 }
 
 function historyRow(campaign: Campaign, index: number): CampaignRow {
