@@ -3,10 +3,22 @@
  * counts Matches or Appearances goes through `matchScope`, so the filter means
  * the same thing on every page.
  */
-import { and, desc, eq, gte, inArray, ne, type SQL } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  exists,
+  gt,
+  gte,
+  inArray,
+  lte,
+  ne,
+  notExists,
+  type SQL,
+} from "drizzle-orm";
 
 import type { Db } from "~/db/client";
-import { appearances, matches } from "~/db/schema";
+import { appearances, matches, seasons } from "~/db/schema";
 
 import { toMatchKind } from "./convert";
 import type { StatsFilter } from "./filter";
@@ -40,6 +52,7 @@ export function matchScope(
       ? gte(matches.playedAt, new Date(now.getTime() - RECENT_DAYS * DAY_MS))
       : undefined,
     opponentClubId ? eq(matches.opponentClubId, opponentClubId) : undefined,
+    filter.season === undefined ? undefined : inSeason(db, filter.season),
   );
   if (filter.range !== "last10") return base;
   return inArray(
@@ -50,6 +63,24 @@ export function matchScope(
       .where(base)
       .orderBy(desc(matches.playedAt), desc(matches.matchId))
       .limit(RECENT_MATCHES),
+  );
+}
+
+/**
+ * Matches played in Season `number`: on or after its start, and before any
+ * later Season's. Worked out per query rather than stored, so a Match
+ * ingested before its Season's boundary was detected still lands in the
+ * right Season. An unknown Season selects nothing.
+ */
+function inSeason(db: Db, number: number): SQL | undefined {
+  const startedBy = (season: SQL) =>
+    db
+      .select({ number: seasons.number })
+      .from(seasons)
+      .where(and(season, lte(seasons.startedAt, matches.playedAt)));
+  return and(
+    exists(startedBy(eq(seasons.number, number))),
+    notExists(startedBy(gt(seasons.number, number))),
   );
 }
 

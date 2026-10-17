@@ -14,6 +14,7 @@ export * from "./opponents";
 export * from "./player";
 export * from "./player-profile";
 export * from "./scope";
+export * from "./seasons";
 export * from "./snapshots";
 export * from "./squad";
 export * from "./summaries";
