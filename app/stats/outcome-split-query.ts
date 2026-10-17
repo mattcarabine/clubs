@@ -52,7 +52,10 @@ export async function getOutcomeSplit(
   const splitMatches = summaries.map((m, i): SplitMatch => {
     const sides = totals.get(m.matchId);
     // Every filtered Match is recorded, so this fallback (its own Session) never runs.
-    const session = places.get(m.matchId) ?? { session: -1 - i, place: 1 };
+    const { session, place } = places.get(m.matchId) ?? {
+      session: -1 - i,
+      place: 1,
+    };
     return {
       matchId: m.matchId,
       playedAt: m.playedAt,
@@ -61,8 +64,8 @@ export async function getOutcomeSplit(
       ours: sides?.ours ?? NO_TOTALS,
       opponent: sides?.opponent ?? NO_TOTALS,
       squadSize: sides?.squadSize ?? 0,
-      session: session.session,
-      sessionPlace: session.place,
+      session,
+      sessionPlace: place,
     };
   });
   return {

@@ -428,13 +428,18 @@ export function afterResult(
       if (id === "same-session" && previous.session !== next.session) continue;
       (previous.outcome === "W" ? afterWin : afterDropped).push(next.outcome);
     }
-    const split = { group: winRecord(afterDropped), rest: winRecord(afterWin) };
+    const winRecords = {
+      afterWin: winRecord(afterWin),
+      afterDropped: winRecord(afterDropped),
+    };
     return {
       scope: id,
       label,
-      afterWin: split.rest,
-      afterDropped: split.group,
-      comparable: isComparable(split),
+      ...winRecords,
+      comparable: isComparable({
+        group: winRecords.afterDropped,
+        rest: winRecords.afterWin,
+      }),
     };
   });
 }
@@ -446,13 +451,14 @@ function afterResultFinding({
   afterDropped,
 }: AfterResultSplit): RankedFinding | null {
   const when = scope === "same-session" ? " in the same Session" : "";
+  const droppedCount = formatCount(afterDropped.played, "Match", "Matches");
   return winRateFinding(
     `after-${scope}`,
     "After a result",
     { group: afterDropped, rest: afterWin },
     {
-      text: `After Dropped Points${when} we win ${formatPercentage(afterDropped.winPercentage)} (${formatCount(afterDropped.played, "Match", "Matches")}) vs ${formatPercentage(afterWin.winPercentage)} after a Win (${afterWin.played})`,
-      counts: `${formatCount(afterDropped.played, "Match", "Matches")} after Dropped Points, ${afterWin.played} after a Win${when}`,
+      text: `After Dropped Points${when} we win ${formatPercentage(afterDropped.winPercentage)} (${droppedCount}) vs ${formatPercentage(afterWin.winPercentage)} after a Win (${afterWin.played})`,
+      counts: `${droppedCount} after Dropped Points, ${afterWin.played} after a Win${when}`,
     },
   );
 }
