@@ -10,17 +10,15 @@ import {
   friendly,
   lasting,
   loss,
-  type MatchOptions,
   win,
   withLineup,
   withShots,
 } from "./support/match-builders.ts";
+import { daysAgo, type Fake, record } from "./support/record.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-25: /analysis, the Outcome Split of Wins against Dropped Points, and
 // the profile's "Wins vs Dropped Points" panel.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Squad Members that exist only in these specs. */
 const STAR = { id: "900000021", name: "Star Striker" };
@@ -33,30 +31,6 @@ test.beforeEach(async ({ fakeEa }) => {
     await fakeEa.setPayload("clubs/matches", [], variant);
   }
 });
-
-type Fake = { addMatch(body: AddMatchBody): Promise<void> };
-
-/** EA lists at most this many recent Matches per request. */
-const EA_PAGE = 10;
-
-/** Adds Matches in order, oldest first, with a Poll after each page EA would list. */
-async function record(
-  fakeEa: Fake,
-  triggerPoll: () => Promise<void>,
-  builds: AddMatchBody[],
-) {
-  for (const [i, body] of builds.entries()) {
-    await fakeEa.addMatch(body);
-    if ((i + 1) % EA_PAGE === 0 || i === builds.length - 1) await triggerPoll();
-  }
-}
-
-/** `count` days ago at 19:00 UTC: each Match its own Session. */
-function daysAgo(count: number): MatchOptions {
-  const date = new Date(Date.now() - count * DAY_MS);
-  date.setUTCHours(19, 0, 0, 0);
-  return { playedAt: date };
-}
 
 function region(page: Page, name: string) {
   return page.getByRole("region", { name, exact: true });

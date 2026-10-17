@@ -1,5 +1,6 @@
 // The design system. Import from "~/components"; see CLAUDE.md "Visual design".
 export { AppShell, crestUrl, NAV_ITEMS } from "./app-shell";
+export { ChangeArrow } from "./change-arrow";
 export { BarChart, type BarDatum } from "./charts/bar-chart";
 export {
   ChartFrame,
@@ -50,4 +51,5 @@ export { ScoreBar, type ScoreBarSide } from "./score-bar";
 export { ScrollRail } from "./scroll-rail";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";
+export { SmallSampleTag, Tag } from "./tag";
 export { Ticker, type TickerItem } from "./ticker";
