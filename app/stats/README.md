@@ -38,13 +38,15 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 | `matches.ts` | `listMatches`, `countMatches`, `latestMatch`, `clubRecord`, `getMatch` (both line-ups). |
 | `squad.ts` | `squadAppearances` (Our Club's Appearances with Match context, oldest first), `squadLeaderboard`, `getSquadMember`. |
 | `opponents.ts` | `opponentRecords` (head-to-head per Opponent), `getOpponent`. Head-to-head Match lists and top performers use `listMatches` / `squadLeaderboard` with `{ opponentClubId }`. |
+| `seasons.ts` | `listSeasons`: every Season the Poll has detected, oldest first. The root loader passes their numbers to every `FilterBar`. |
 | `snapshots.ts` | `clubSnapshots`, `memberSnapshots`, `snapshotNumber`, `lastSuccessfulPoll`. Not filtered: they are EA's own totals. |
 
 Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (`formatLondonDateTime`, `londonParts`, `londonDateKey`, ...).
 
 ## The filter
 
-- URL: `?types=league,playoff,friendly&dnf=0&range=last10|30d|all&minApps=1`. Defaults (Competitive Matches, DNF included, all dates, min 3) are left out of the URL.
+- URL: `?types=league,playoff,friendly&dnf=0&range=last10|30d|all&season=2&minApps=1`. Defaults (Competitive Matches, DNF included, all dates, all Seasons, min 3) are left out of the URL.
+- Season: `filter.season` is a Season number, absent for all Seasons. A Match belongs to the latest Season that started at or before it was played, worked out in `matchScope` at query time, so Matches stored before a boundary was detected still land in the right Season. The Poll detects a new Season when the current-season leaderboard Snapshot's `gamesPlayed` goes down (`app/poll/seasons.ts`); Season 1 starts at the epoch. The FilterBar shows the Season picker once there are two Seasons.
 - Changing the filter resets `page`; other params are kept.
 - "Last 10" means Our Club's 10 latest Matches that pass the other conditions (including `opponentClubId`), not each Squad Member's last 10 Appearances. Say so in UI copy where it matters.
 - `squadLeaderboard` applies the minimum of 3 Appearances unless told otherwise; pass `minAppearances` (e.g. 1 for top performers against one Opponent).
@@ -60,4 +62,4 @@ Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (
 
 ## Adding a filter dimension
 
-CLUBS-14 adds Season. Add the field to `StatsFilter` and `DEFAULT_STATS_FILTER`, read it in `parseStatsFilter`, write it in `writeStatsFilter`, add its condition in `matchScope`, and add a control to `FilterBar` (`app/components/filter-bar.tsx`).
+Add the field to `StatsFilter` and `DEFAULT_STATS_FILTER`, read it in `parseStatsFilter`, write it in `writeStatsFilter`, add its condition in `matchScope`, and add a control to `FilterBar` (`app/components/filter-bar.tsx`).

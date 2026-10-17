@@ -176,3 +176,15 @@ export const snapshots = sqliteTable(
     ),
   ],
 );
+
+/**
+ * EA's live Seasons, detected by the Poll when the current-season leaderboard
+ * Snapshot's `gamesPlayed` goes down. Season 1 starts at epoch 0, before
+ * tracking began. A Match belongs to the latest Season that started at or
+ * before it was played. That is worked out at query time (`app/stats/scope.ts`),
+ * so Matches stored before a boundary was detected land in the right Season.
+ */
+export const seasons = sqliteTable("seasons", {
+  number: integer().primaryKey(),
+  startedAt: integer({ mode: "timestamp_ms" }).notNull(),
+});

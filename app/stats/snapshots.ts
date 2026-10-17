@@ -50,14 +50,8 @@ export async function memberSnapshots(
     .orderBy(asc(snapshots.takenAt));
 }
 
-/** A numeric field of a Snapshot, or null when EA sent none or a non-number. */
-export function snapshotNumber(
-  stats: Record<string, unknown>,
-  key: string,
-): number | null {
-  const value = stats[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
+// Lives with the Snapshot parser so the Poll (which runs under Node) can use it too.
+export { snapshotNumber } from "~/ea/parse";
 
 /** When the latest Poll that reached EA finished (a partial Poll counts), or null before the first. */
 export async function lastSuccessfulPoll(db: Db): Promise<Date | null> {

@@ -2,15 +2,14 @@
  * The global stats filter: which Matches every stat on a page counts. It
  * lives in the URL so a filtered view can be shared and survives a reload.
  *
- *   ?types=league,friendly&dnf=0&range=30d
+ *   ?types=league,friendly&dnf=0&range=30d&season=2
  *
- * Defaults (Competitive Matches, DNF included, all dates) are left out of the
- * URL, so an unfiltered page has a clean address.
+ * Defaults (Competitive Matches, DNF included, all dates, all Seasons) are
+ * left out of the URL, so an unfiltered page has a clean address.
  *
- * Adding a dimension (CLUBS-14 adds Season): add a field to `StatsFilter` and
- * `DEFAULT_STATS_FILTER`, read it in `parseStatsFilter`, write it in
- * `writeStatsFilter`, turn it into SQL in `scope.ts`, and add a control to
- * `FilterBar`.
+ * Adding a dimension: add a field to `StatsFilter` and `DEFAULT_STATS_FILTER`,
+ * read it in `parseStatsFilter`, write it in `writeStatsFilter`, turn it into
+ * SQL in `scope.ts`, and add a control to `FilterBar`.
  */
 import type { MatchType } from "~/lib/domain";
 
@@ -42,6 +41,8 @@ export interface StatsFilter {
   /** DNF Matches count by default; pages still flag them. */
   includeDnf: boolean;
   range: DateRange;
+  /** One Season's number; absent means all Seasons. */
+  season?: number;
 }
 
 export const DEFAULT_STATS_FILTER: StatsFilter = {
@@ -59,6 +60,7 @@ export const FILTER_PARAMS = {
   includeDnf: "dnf",
   range: "range",
   minAppearances: "minApps",
+  season: "season",
 } as const;
 
 /** Reset whenever the filter changes, since the old page may no longer exist. */
@@ -70,6 +72,7 @@ export function parseStatsFilter(params: URLSearchParams): StatsFilter {
     matchTypes: parseMatchTypes(params.get(FILTER_PARAMS.matchTypes)),
     includeDnf: params.get(FILTER_PARAMS.includeDnf) !== "0",
     range: parseRange(params.get(FILTER_PARAMS.range)),
+    season: parseSeason(params.get(FILTER_PARAMS.season)),
   };
 }
 
@@ -98,6 +101,11 @@ export function writeStatsFilter(
     FILTER_PARAMS.range,
     filter.range === DEFAULT_STATS_FILTER.range ? null : filter.range,
   );
+  setOrDelete(
+    next,
+    FILTER_PARAMS.season,
+    filter.season === undefined ? null : String(filter.season),
+  );
   return next;
 }
 
@@ -105,7 +113,8 @@ export function isDefaultStatsFilter(filter: StatsFilter): boolean {
   return (
     sameMatchTypes(filter.matchTypes, DEFAULT_STATS_FILTER.matchTypes) &&
     filter.includeDnf === DEFAULT_STATS_FILTER.includeDnf &&
-    filter.range === DEFAULT_STATS_FILTER.range
+    filter.range === DEFAULT_STATS_FILTER.range &&
+    filter.season === undefined
   );
 }
 
@@ -156,6 +165,11 @@ function parseRange(raw: string | null): DateRange {
   return (DATE_RANGES as readonly string[]).includes(raw ?? "")
     ? (raw as DateRange)
     : DEFAULT_STATS_FILTER.range;
+}
+
+/** A positive Season number, or undefined (all Seasons) for anything else. */
+function parseSeason(raw: string | null): number | undefined {
+  return raw !== null && /^[1-9]\d*$/.test(raw) ? Number(raw) : undefined;
 }
 
 /** The `types` param value, or null for the default Match Types. */

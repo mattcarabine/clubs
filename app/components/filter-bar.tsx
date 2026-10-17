@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { useLocation, useNavigation, useSearchParams } from "react-router";
+import {
+  useLocation,
+  useNavigation,
+  useRouteLoaderData,
+  useSearchParams,
+} from "react-router";
+
+import type { loader as rootLoader } from "~/root";
 
 import {
   DATE_RANGE_LABEL,
@@ -21,9 +28,11 @@ type FilterBarProps = {
 };
 
 /**
- * The global stats filter: Match Types, DNF and date range, plus an optional
- * leaderboard minimum. Every change rewrites the URL, so the page's loader
- * reruns with the new filter and the view can be shared.
+ * The global stats filter: Match Types, DNF, date range and Season, plus an
+ * optional leaderboard minimum. The Season picker lists the Seasons from the
+ * root loader, and shows once there are two to choose between. Every change
+ * rewrites the URL, so the page's loader reruns with the new filter and the
+ * view can be shared.
  *
  * While a filter change is loading, the chips show the pending URL and the
  * next change builds on it, so quick successive clicks all count.
@@ -32,6 +41,7 @@ export function FilterBar(props: FilterBarProps) {
   const [, setSearchParams] = useSearchParams();
   const pending = usePendingSearchParams();
   const filter = pending ? parseStatsFilter(pending) : props.filter;
+  const seasons = useSeasonNumbers();
   const minAppearances =
     pending && props.minAppearances !== undefined
       ? parseMinAppearances(pending)
@@ -99,6 +109,16 @@ export function FilterBar(props: FilterBarProps) {
         ))}
       </FilterGroup>
 
+      {(seasons.length > 1 || filter.season !== undefined) && (
+        <FilterGroup label="Season">
+          <SeasonSelect
+            seasons={seasons}
+            value={filter.season}
+            onChange={(season) => updateFilter((f) => ({ ...f, season }))}
+          />
+        </FilterGroup>
+      )}
+
       {minAppearances !== undefined && (
         <FilterGroup label="Minimum Appearances">
           <Chip
@@ -123,6 +143,49 @@ export function FilterBar(props: FilterBarProps) {
         </FilterGroup>
       )}
     </section>
+  );
+}
+
+/** Season numbers known to the root loader, oldest first. */
+function useSeasonNumbers(): readonly number[] {
+  return useRouteLoaderData<typeof rootLoader>("root")?.seasons ?? [];
+}
+
+type SeasonSelectProps = {
+  seasons: readonly number[];
+  /** Undefined for all Seasons. */
+  value: number | undefined;
+  onChange: (season: number | undefined) => void;
+};
+
+/** All Seasons, then each Season newest first, the latest marked current. */
+function SeasonSelect({ seasons, value, onChange }: SeasonSelectProps) {
+  const current = seasons.at(-1);
+  const known = new Set(seasons);
+  // A Season from a shared URL that this database has not detected still shows.
+  if (value !== undefined) known.add(value);
+  const options = [...known].sort((a, b) => b - a);
+  return (
+    <select
+      aria-label="Season"
+      value={value ?? ""}
+      onChange={(event) =>
+        onChange(event.target.value ? Number(event.target.value) : undefined)
+      }
+      className={[
+        "clip-slant min-h-9 cursor-pointer bg-shale-800 px-3.5 font-display font-bold text-base text-ink uppercase tracking-wide [--slant:0.35rem] hover:bg-shale-700",
+        "focus-visible:-outline-offset-4 focus-visible:outline-ink",
+      ].join(" ")}
+    >
+      <option value="">All Seasons</option>
+      {options.map((season) => (
+        <option key={season} value={season}>
+          {season === current
+            ? `Season ${season} (current)`
+            : `Season ${season}`}
+        </option>
+      ))}
+    </select>
   );
 }
 
