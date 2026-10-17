@@ -19,7 +19,7 @@ EA's rating of a club's strength (`skillRating` in `clubs/overallStats`). Each M
 _Avoid_: Elo, SR, club rating, strength
 
 **Opponent Rating**:
-The Opponent's Skill Rating at a Match, read within an hour of it. Matches recorded before ratings were captured are backfilled with the Opponent's rating when backfilled.
+The Opponent's Skill Rating at a Match, read within an hour of it. Matches recorded before ratings were captured are backfilled with the Opponent's current rating instead.
 _Avoid_: Opposition strength, enemy rating
 
 **Squad Member**:

@@ -46,6 +46,11 @@ function ourRatingSnapshots(ourClubId: string): SQL {
       AND json_extract(snapshots.stats, '$.skillRating') IS NOT NULL`;
 }
 
+/** Our Club's Skill Rating from the first of its Snapshots in `orderBy`'s order. */
+function ourRating(ourClubId: string, orderBy: SQL): SQL {
+  return sql`(SELECT json_extract(snapshots.stats, '$.skillRating') ${ourRatingSnapshots(ourClubId)} ORDER BY ${orderBy} LIMIT 1)`;
+}
+
 /** Read before the Poll's requests: which Opponents still need rating. */
 export async function ratingState(
   db: Db,
@@ -100,7 +105,10 @@ export function ratingStatements(
       db
         .update(matches)
         .set({
-          ourSkillRating: sql`(SELECT json_extract(snapshots.stats, '$.skillRating') ${ourRatingSnapshots(ourClubId)} ORDER BY snapshots.taken_at DESC, snapshots.id DESC LIMIT 1)`,
+          ourSkillRating: ourRating(
+            ourClubId,
+            sql`snapshots.taken_at DESC, snapshots.id DESC`,
+          ),
         })
         .where(
           and(
@@ -147,7 +155,10 @@ export function ratingStatements(
       .update(matches)
       .set({
         opponentSkillRating: sql`coalesce("matches"."opponent_skill_rating", ${ratingOf})`,
-        ourSkillRating: sql`(SELECT json_extract(snapshots.stats, '$.skillRating') ${ourRatingSnapshots(ourClubId)} ORDER BY abs(snapshots.taken_at - "matches"."played_at"), snapshots.id LIMIT 1)`,
+        ourSkillRating: ourRating(
+          ourClubId,
+          sql`abs(snapshots.taken_at - "matches"."played_at"), snapshots.id`,
+        ),
       })
       .where(
         and(

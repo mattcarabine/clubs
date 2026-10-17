@@ -13,6 +13,7 @@ import {
   pollRequests,
 } from "../ea/endpoints.ts";
 import {
+  type MatchesPayload,
   NO_RATING_STATE,
   opponentsToRate,
   type RatingState,
@@ -58,12 +59,9 @@ export async function collectPoll(
 ): Promise<CollectedPoll> {
   const startedAt = now();
   const responses: CollectedResponse[] = [];
-  const finish = (aborted: boolean): CollectedPoll => ({
-    startedAt,
-    finishedAt: now(),
-    responses,
-    aborted,
-  });
+  function finish(aborted: boolean): CollectedPoll {
+    return { startedAt, finishedAt: now(), responses, aborted };
+  }
 
   /** Sends one request; false when the Poll should stop. */
   async function send(request: EaRequest): Promise<boolean> {
@@ -75,10 +73,10 @@ export async function collectPoll(
       durationMs: now() - fetchedAt,
       response,
     });
-    return (
-      response.ok ||
-      !(response.kind === "blocked" || response.kind === "timeout")
-    );
+    const refused =
+      !response.ok &&
+      (response.kind === "blocked" || response.kind === "timeout");
+    return !refused;
   }
 
   for (const request of pollRequests(config.club)) {
@@ -98,7 +96,9 @@ export async function collectPoll(
   return finish(false);
 }
 
-function matchesPayloads(responses: readonly CollectedResponse[]) {
+function matchesPayloads(
+  responses: readonly CollectedResponse[],
+): MatchesPayload[] {
   return responses.flatMap(({ request, response }) =>
     request.endpoint === "clubs/matches" && response.ok
       ? [{ matchType: request.variant as MatchType, json: response.json }]
