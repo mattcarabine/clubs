@@ -18,7 +18,19 @@ export interface RosterEntry {
 export const ROSTER: Readonly<Record<string, RosterEntry>> = {};
 
 export function rosterEntry(playerId: string): RosterEntry {
-  return ROSTER[playerId] ?? {};
+  return ROSTER[playerId] ?? testRoster[playerId] ?? {};
+}
+
+let testRoster: Readonly<Record<string, RosterEntry>> = {};
+
+/**
+ * Extra Roster entries for the E2E suite. Only `workers/test-routes.ts` calls
+ * this, from the `TEST_ROSTER` var, and only when the test routes are on, so
+ * it never changes the real Roster. Kept free of Worker imports because this
+ * module also reaches client bundles.
+ */
+export function setTestRoster(entries: Readonly<Record<string, RosterEntry>>) {
+  testRoster = entries;
 }
 
 /** The name to show for a Squad Member: nickname, then persona name, then ID. */

@@ -45,7 +45,9 @@
         "EA_CLUB_ID": "332191",
         "EA_CLUB_NAME": "A Bloo Bloo",
         "EA_TIMEOUT_MS": "1000",
-        "TEST_ROUTES": "1"
+        "TEST_ROUTES": "1",
+        // Extra Roster entries (app/roster.ts) for players that exist only in E2E specs.
+        "TEST_ROSTER": "{\"900000099\":{\"former\":true}}"
       },
       "d1_databases": [
         {
