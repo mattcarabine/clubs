@@ -52,11 +52,22 @@ _Avoid_: Position, role, attack, midfield, defence, GK/DEF/MID/FWD
 A Match ended early because one side quit; EA awards the result to the side that stayed.
 _Avoid_: Forfeit, rage quit
 
+**Dropped Points**:
+A Match drawn or lost.
+_Avoid_: Non-win, bad result
+
+**Session**:
+A run of Matches with no more than 45 minutes between consecutive kick-offs.
+_Avoid_: Sitting, night
+
 **Season**:
 One of EA's live Pro Clubs content seasons (e.g. "Closed Season 01"), lasting roughly six weeks, at the end of which EA's season totals reset.
 _Avoid_: Campaign, division season, year
 
 ### Comparisons
+
+**Outcome Split**:
+Our Club's stats averaged over Wins set beside the same averages over Dropped Points.
 
 **Comparison**:
 Two Squad Members' stats side by side, shown in the app as "Compare to…".
