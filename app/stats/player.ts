@@ -1,7 +1,7 @@
 /**
  * Pure roll-ups for one Squad Member's profile (CLUBS-10): the per-Match form
- * series, the Position Group split, best Matches, and the EA build and career
- * figures read out of Snapshots. `player-profile.ts` feeds these from D1.
+ * series, the Position Group split, best Matches, and the EA build read out
+ * of Snapshots (EA's totals are in `ea-totals.ts`). `player-profile.ts` feeds these from D1.
  */
 import type { PositionGroup } from "~/lib/domain";
 
@@ -176,25 +176,4 @@ export function buildHistory(points: readonly SnapshotPoint[]): BuildChange[] {
     });
   }
   return changes;
-}
-
-/** EA's all-time record for a Squad Member since the club was founded (`members/career/stats`). */
-export interface CareerTotals {
-  takenAt: Date;
-  gamesPlayed: number | null;
-  goals: number | null;
-  assists: number | null;
-  manOfTheMatch: number | null;
-  averageRating: number | null;
-}
-
-export function careerTotals({ takenAt, stats }: SnapshotPoint): CareerTotals {
-  return {
-    takenAt,
-    gamesPlayed: snapshotNumber(stats, "gamesPlayed"),
-    goals: snapshotNumber(stats, "goals"),
-    assists: snapshotNumber(stats, "assists"),
-    manOfTheMatch: snapshotNumber(stats, "manOfTheMatch"),
-    averageRating: snapshotNumber(stats, "ratingAve"),
-  };
 }

@@ -6,6 +6,7 @@ import {
   formatOptional,
   formatPercentage,
   formatSigned,
+  formatThousands,
   NO_VALUE,
 } from "./number-format";
 
@@ -30,6 +31,14 @@ describe("formatOptional", () => {
     expect(formatOptional(112)).toBe("112");
     expect(formatOptional(0)).toBe("0");
     expect(formatOptional(null)).toBe(NO_VALUE);
+  });
+});
+
+describe("formatThousands", () => {
+  it("separates thousands, and shows a dash when EA sent none", () => {
+    expect(formatThousands(1267)).toBe("1,267");
+    expect(formatThousands(0)).toBe("0");
+    expect(formatThousands(null)).toBe(NO_VALUE);
   });
 });
 

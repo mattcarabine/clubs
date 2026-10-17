@@ -7,6 +7,7 @@
  */
 export * from "./club-snapshot";
 export * from "./convert";
+export * from "./ea-totals";
 export * from "./filter";
 export * from "./formulas";
 export * from "./matches";
@@ -16,6 +17,7 @@ export * from "./player-profile";
 export * from "./scope";
 export * from "./seasons";
 export * from "./snapshots";
+export * from "./source";
 export * from "./squad";
 export * from "./summaries";
 export * from "./top-performers";

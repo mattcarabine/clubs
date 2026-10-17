@@ -40,6 +40,8 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 | `opponents.ts` | `opponentRecords` (head-to-head per Opponent), `getOpponent`. Head-to-head Match lists and top performers use `listMatches` / `squadLeaderboard` with `{ opponentClubId }`. |
 | `seasons.ts` | `listSeasons`: every Season the Poll has detected, oldest first. The root loader passes their numbers to every `FilterBar`. |
 | `snapshots.ts` | `clubSnapshots`, `memberSnapshots`, `snapshotNumber`, `lastSuccessfulPoll`. Not filtered: they are EA's own totals. |
+| `ea-totals.ts` | `eaMemberTotals` (each Squad Member's latest `members/stats` and `members/career/stats` Snapshot, in one query), the pure `eaSeasonTotals` / `eaCareerTotals` that read a Snapshot into numbers, and `eaCleanSheets`. Not filtered. |
+| `source.ts` | `StatsSource` (`"recorded"` or `"ea"`) and its URL format: `parseStatsSource`, `statsSourceFromRequest`, `writeStatsSource`, `STATS_SOURCE_LABEL`. |
 
 Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (`formatLondonDateTime`, `londonParts`, `londonDateKey`, ...).
 
@@ -51,6 +53,10 @@ Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (
 - "Last 10" means Our Club's 10 latest Matches that pass the other conditions (including `opponentClubId`), not each Squad Member's last 10 Appearances. Say so in UI copy where it matters.
 - `squadLeaderboard` applies the minimum of 3 Appearances unless told otherwise; pass `minAppearances` (e.g. 1 for top performers against one Opponent).
 - DNF Matches are counted by default. Every `MatchSummary` and `SquadAppearance` carries `dnf`, so flag them in the UI.
+
+## Recorded or EA totals
+
+A page that can show either our Recorded Appearances or EA's own totals (the Squad table, later Compare) reads `?source=ea` with `statsSourceFromRequest` and passes it to `<FilterBar source={source} />`. The FilterBar then leads with the Recorded / EA totals toggle and, on EA totals, hides the Match filters and says why. EA totals come from `eaMemberTotals`. They include Matches from before tracking began and have no per-Match figures or minutes, so never show per-90s or Form for them.
 
 ## Adding a query
 

@@ -1,13 +1,17 @@
-/** The Squad Member profile query (CLUBS-10): tracked form plus EA's own build and career figures. */
+/** The Squad Member profile query (CLUBS-10): tracked form plus EA's own build, season and career totals. */
 import type { Db } from "~/db/client";
 
+import {
+  type EaCareerTotals,
+  type EaSeasonTotals,
+  eaCareerTotals,
+  eaSeasonTotals,
+} from "./ea-totals";
 import type { StatsFilter } from "./filter";
 import {
   type BuildChange,
   bestAppearances,
   buildHistory,
-  type CareerTotals,
-  careerTotals,
   type FormPoint,
   formSeries,
   type PositionGroupSplit,
@@ -34,7 +38,9 @@ export interface PlayerProfile {
   /** Build changes from `members/stats` Snapshots, oldest first; not filtered. */
   build: BuildChange[];
   /** The latest `members/career/stats` Snapshot, or null before the first; not filtered. */
-  career: CareerTotals | null;
+  career: EaCareerTotals | null;
+  /** The latest `members/stats` Snapshot (this Season), or null before the first; not filtered. */
+  season: EaSeasonTotals | null;
 }
 
 /** A Squad Member's profile, or null when the ID has never appeared for Our Club. */
@@ -52,6 +58,7 @@ export async function getPlayerProfile(
     ]);
   if (!member) return null;
   const latestCareer = careerSnapshots.at(-1);
+  const latestSeason = seasonSnapshots.at(-1);
   return {
     member,
     totals: summariseAppearances(appearances),
@@ -59,6 +66,7 @@ export async function getPlayerProfile(
     positionGroups: positionGroupSplit(appearances),
     bestMatches: bestAppearances(appearances),
     build: buildHistory(seasonSnapshots),
-    career: latestCareer ? careerTotals(latestCareer) : null,
+    career: latestCareer ? eaCareerTotals(latestCareer) : null,
+    season: latestSeason ? eaSeasonTotals(latestSeason) : null,
   };
 }
