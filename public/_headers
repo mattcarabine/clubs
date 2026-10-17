@@ -1,0 +1,3 @@
+# Static asset responses. Worker responses get the same header in workers/app.ts.
+/*
+  X-Robots-Tag: noindex, nofollow
