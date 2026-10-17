@@ -5,6 +5,7 @@ import {
   ChartLegend,
   DataTable,
   type DataTableColumn,
+  DnfBadge,
   EmptyState,
   FormGuide,
   HeadToHeadBar,
@@ -22,9 +23,16 @@ import {
   StatGrid,
   StatTile,
   Ticker,
+  TopPerformersStrip,
 } from "~/components";
-import { POSITION_GROUP_ABBR, type PositionGroup } from "~/lib/domain";
+import {
+  type MatchType,
+  type Outcome,
+  POSITION_GROUP_ABBR,
+  type PositionGroup,
+} from "~/lib/domain";
 import { formatDecimal } from "~/lib/number-format";
+import type { TopPerformer } from "~/stats/top-performers";
 import type { Route } from "./+types/styleguide";
 
 export function meta(_: Route.MetaArgs) {
@@ -37,6 +45,75 @@ export function meta(_: Route.MetaArgs) {
 // Sample data only: every component here is fed by props, never by a query.
 const NOW = new Date("2026-10-17T21:30:00Z");
 const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000);
+
+/** A hero for each result, including both DNF outcomes, as /styleguide shows them. */
+const HERO_STATES: {
+  name: string;
+  matchType: MatchType;
+  outcome: Outcome;
+  dnf: boolean;
+  score: [number, number];
+}[] = [
+  {
+    name: "Kebab Over6pack",
+    matchType: "Playoff",
+    outcome: "L",
+    dnf: false,
+    score: [3, 7],
+  },
+  {
+    name: "Cosmos FC",
+    matchType: "League",
+    outcome: "D",
+    dnf: false,
+    score: [2, 2],
+  },
+  {
+    name: "The Oak Tree",
+    matchType: "League",
+    outcome: "W",
+    dnf: true,
+    score: [3, 0],
+  },
+  {
+    name: "Real Gravesend Rovers Football Club",
+    matchType: "League",
+    outcome: "L",
+    dnf: true,
+    score: [0, 3],
+  },
+];
+
+const PERFORMER = { goals: 0, assists: 0, manOfTheMatch: false };
+
+const PERFORMERS: TopPerformer[] = [
+  {
+    ...PERFORMER,
+    playerId: "1",
+    name: "Kopite Kev",
+    goals: 2,
+    assists: 1,
+    rating: 9.4,
+    manOfTheMatch: true,
+  },
+  { ...PERFORMER, playerId: "2", name: "TrentBoi_99", assists: 2, rating: 8.6 },
+  { ...PERFORMER, playerId: "3", name: "nutmeg_nora", goals: 1, rating: 8.1 },
+  {
+    ...PERFORMER,
+    playerId: "4",
+    name: "Big Sam Allardyce Fan",
+    goals: 1,
+    rating: 7.4,
+  },
+  {
+    ...PERFORMER,
+    playerId: "5",
+    name: "xX_Gloves_Xx",
+    assists: 1,
+    rating: 7.2,
+  },
+  { ...PERFORMER, playerId: "6", name: "Jonteeu", assists: 1, rating: null },
+];
 
 type SquadRow = {
   name: string;
@@ -239,31 +316,71 @@ export default function Styleguide() {
       </Section>
 
       <Section id="score-bar" title="ScoreBar">
-        <div className="grid gap-6">
+        <div className="grid gap-10">
           <ScoreBar
             size="hero"
             label="League"
-            status="Full time"
+            meta={["Full time", "Sat 17 Oct, 22:30"]}
             outcome="W"
-            home={{ name: "A Bloo Bloo", score: 3, isOurClub: true }}
-            away={{ name: "Northside Athletic", score: 1 }}
+            home={{
+              name: "A Bloo Bloo",
+              score: 3,
+              isOurClub: true,
+              detail: "Skill rating 1632",
+            }}
+            away={{
+              name: "Northside Athletic",
+              score: 1,
+              detail: "Skill rating 1418",
+            }}
+            stats={[
+              { label: "Shots", home: "11", away: "6" },
+              { label: "Pass %", home: "83%", away: "72%" },
+              { label: "Tackles", home: "14", away: "9" },
+            ]}
           />
+          {HERO_STATES.map((state) => (
+            <ScoreBar
+              key={state.name}
+              size="hero"
+              label={state.matchType}
+              meta={[
+                state.dnf ? <DnfBadge key="dnf" /> : "Full time",
+                "Sat 17 Oct, 22:49",
+              ]}
+              outcome={state.outcome}
+              dnf={state.dnf}
+              home={{
+                name: "A Bloo Bloo",
+                score: state.score[0],
+                isOurClub: true,
+              }}
+              away={{ name: state.name, score: state.score[1] }}
+            />
+          ))}
           <div className="grid gap-3 lg:grid-cols-2">
             <ScoreBar
               label="Playoff"
-              status="DNF"
+              meta={[<DnfBadge key="dnf" />, "Wed 14 Oct, 22:17"]}
               outcome="L"
-              home={{ name: "Real Gravesend Rovers Football Club", score: 0 }}
-              away={{ name: "A Bloo Bloo", score: 3, isOurClub: true }}
+              home={{ name: "A Bloo Bloo", score: 0, isOurClub: true }}
+              away={{ name: "Real Gravesend Rovers Football Club", score: 3 }}
             />
             <ScoreBar
               label="League"
-              status="Full time"
+              meta={["Wed 14 Oct, 22:35"]}
               outcome="D"
               home={{ name: "A Bloo Bloo", score: 2, isOurClub: true }}
               away={{ name: "Cosmos FC", score: 2 }}
             />
           </div>
+        </div>
+      </Section>
+
+      <Section id="top-performers" title="TopPerformersStrip">
+        <div className="grid gap-6">
+          <TopPerformersStrip performers={PERFORMERS.slice(0, 1)} />
+          <TopPerformersStrip performers={PERFORMERS} />
         </div>
       </Section>
 

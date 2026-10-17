@@ -121,7 +121,7 @@ function MatchDay({
               <MatchScoreBar
                 clubName={clubName}
                 match={match}
-                status={<LondonTime date={match.playedAt} format="time" />}
+                when={<LondonTime date={match.playedAt} format="time" />}
               />
             </Link>
           </li>
