@@ -7,7 +7,6 @@
 import { env } from "cloudflare:workers";
 
 import {
-  BarChart,
   ChartFrame,
   ChartLegend,
   DataTable,
@@ -18,6 +17,7 @@ import {
   LineChart,
   PageHeader,
   SectionHeading,
+  WinRateBarChart,
 } from "~/components";
 import { getDb } from "~/db/client";
 import { formatLondonShortDate } from "~/lib/london-time";
@@ -35,7 +35,6 @@ import {
   MIN_LINEUP_MATCHES,
   ROLLING_WINDOW,
   resultsTimeline,
-  type SplitBucket,
   skillRatingHistory,
   splitByKickoffHour,
   splitByWeekday,
@@ -253,10 +252,16 @@ function MatchTrends({
         />
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartFrame title="By day">
-            <SplitChart label="Win % by day of the week" buckets={byWeekday} />
+            <WinRateBarChart
+              label="Win % by day of the week"
+              buckets={byWeekday}
+            />
           </ChartFrame>
           <ChartFrame title="By kick-off">
-            <SplitChart label="Win % by kick-off hour" buckets={byKickoff} />
+            <WinRateBarChart
+              label="Win % by kick-off hour"
+              buckets={byKickoff}
+            />
           </ChartFrame>
         </div>
       </section>
@@ -280,27 +285,6 @@ function MatchTrends({
         />
       </section>
     </>
-  );
-}
-
-function SplitChart({
-  label,
-  buckets,
-}: {
-  label: string;
-  buckets: readonly SplitBucket[];
-}) {
-  return (
-    <BarChart
-      label={label}
-      max={100}
-      formatValue={formatPercentage}
-      data={buckets.map((b) => ({
-        id: b.label,
-        label: `${b.label} (${b.played})`,
-        value: b.winPercentage,
-      }))}
-    />
   );
 }
 

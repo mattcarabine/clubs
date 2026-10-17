@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
+import type { Outcome } from "~/lib/domain";
+
 import {
   average,
   cumulativePoints,
   currentStreak,
+  effectSize,
   form,
   minutesPlayed,
   oppositeOutcome,
@@ -14,9 +17,88 @@ import {
   points,
   ratio,
   rollingAverage,
+  rollingWinPercentage,
   tacklePercentage,
+  weightedMean,
+  weightedVariance,
   winPercentage,
+  winRateEffectSize,
 } from "./formulas";
+
+describe("rollingWinPercentage", () => {
+  it("is the Win % over the last 10 Matches at each point", () => {
+    const outcomes: Outcome[] = [
+      ...Array<Outcome>(10).fill("W"),
+      ...Array<Outcome>(5).fill("L"),
+    ];
+    const rolling = rollingWinPercentage(outcomes);
+    expect(rolling.slice(0, 10)).toEqual(Array(10).fill(100));
+    // The 15th Match: 5 Wins and 5 losses in the last 10.
+    expect(rolling.at(-1)).toBe(50);
+  });
+
+  it("counts draws as not won and starts from the first Match", () => {
+    expect(rollingWinPercentage(["D", "W", "L", "W"], 2)).toEqual([
+      0, 50, 50, 50,
+    ]);
+  });
+});
+
+describe("weightedMean and weightedVariance", () => {
+  it("weights each value", () => {
+    const values = [
+      { value: 10, weight: 1 },
+      { value: 20, weight: 3 },
+    ];
+    expect(weightedMean(values)).toBe(17.5);
+    expect(weightedVariance(values)).toBeCloseTo(18.75);
+  });
+
+  it("is null with no weight", () => {
+    expect(weightedMean([])).toBeNull();
+    expect(weightedVariance([{ value: 4, weight: 0 }])).toBeNull();
+  });
+});
+
+describe("effectSize", () => {
+  const unweighted = (values: number[]) =>
+    values.map((value) => ({ value, weight: 1 }));
+
+  it("is the mean difference over the pooled spread, signed a - b", () => {
+    // Means 4 and 2, each with population variance 8/3.
+    const a = unweighted([2, 4, 6]);
+    const b = unweighted([0, 2, 4]);
+    expect(effectSize(a, b)).toBeCloseTo(2 / Math.sqrt(8 / 3));
+    expect(effectSize(b, a)).toBeCloseTo(-2 / Math.sqrt(8 / 3));
+  });
+
+  it("weights values, so a short Match counts for less", () => {
+    const wins = [
+      { value: 10, weight: 90 },
+      { value: 30, weight: 10 },
+    ];
+    expect(weightedMean(wins)).toBe(12);
+  });
+
+  it("is infinite for any difference between two constant samples, and 0 for none", () => {
+    expect(effectSize(unweighted([9, 9]), unweighted([12, 12]))).toBe(
+      -Infinity,
+    );
+    expect(effectSize(unweighted([5]), unweighted([5, 5]))).toBe(0);
+  });
+
+  it("is null when a side is empty", () => {
+    expect(effectSize([], unweighted([1]))).toBeNull();
+  });
+});
+
+describe("winRateEffectSize", () => {
+  it("is Cohen's h between two Win %", () => {
+    expect(winRateEffectSize(50, 50)).toBe(0);
+    expect(winRateEffectSize(100, 0)).toBeCloseTo(Math.PI);
+    expect(winRateEffectSize(25, 75)).toBeCloseTo(-Math.PI / 3);
+  });
+});
 
 describe("ratio and percentage", () => {
   it("divides", () => {

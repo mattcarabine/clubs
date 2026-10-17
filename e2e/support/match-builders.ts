@@ -209,3 +209,33 @@ export function withLineup(body: AddMatchBody, lineup: Lineup): AddMatchBody {
   );
   return body;
 }
+
+/** Every Appearance on both sides lasts `minutes`: how long the Match ran (45 for a DNF at half time). */
+export function lasting(body: AddMatchBody, minutes: number): AddMatchBody {
+  for (const side of Object.values(body.match.players)) {
+    for (const player of Object.values(side)) {
+      player.secondsPlayed = String(minutes * 60);
+    }
+  }
+  return body;
+}
+
+/**
+ * Gives a club exactly `shots` in the Match, all to its first player, and no
+ * goals, so only shots differ between the Matches built with it.
+ */
+export function withShots(
+  body: AddMatchBody,
+  shots: number,
+  club: "ours" | "opponent" = "ours",
+): AddMatchBody {
+  const clubId = Object.keys(body.match.players).find(
+    (id) => (id === OUR_CLUB_ID) === (club === "ours"),
+  );
+  if (!clubId) throw new Error(`Built Match has no ${club} players`);
+  Object.values(body.match.players[clubId]).forEach((player, i) => {
+    player.shots = String(i === 0 ? shots : 0);
+    player.goals = "0";
+  });
+  return body;
+}

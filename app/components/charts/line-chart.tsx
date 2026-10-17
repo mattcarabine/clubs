@@ -48,6 +48,8 @@ type LineChartProps = {
   formatTick?: (value: number) => string;
   /** Whole-number y ticks, for values that are never fractional. */
   integerTicks?: boolean;
+  /** A dashed, labelled level to read the lines against, e.g. 50% for a Win %. */
+  reference?: { value: number; label: string };
 };
 
 const M = { top: 12, right: 12, bottom: 28 };
@@ -68,6 +70,7 @@ export function LineChart({
   includeZero = true,
   formatTick = formatCompact,
   integerTicks = false,
+  reference,
 }: LineChartProps) {
   const [ref, width] = useElementWidth<HTMLDivElement>(640);
   const [active, setActive] = useState<number | null>(null);
@@ -75,8 +78,11 @@ export function LineChart({
   const last = labels.length - 1;
 
   const all = shown.flatMap((s) => s.values.filter((v) => v != null));
-  const zero = includeZero ? [0] : [];
-  let [lo, hi] = [Math.min(...zero, ...all), Math.max(...zero, ...all)];
+  const fixed = [
+    ...(includeZero ? [0] : []),
+    ...(reference ? [reference.value] : []),
+  ];
+  let [lo, hi] = [Math.min(...fixed, ...all), Math.max(...fixed, ...all)];
   // A flat series away from zero still gets a band around it, not a 0-based axis.
   if (!includeZero && lo === hi) [lo, hi] = [lo - 1, hi + 1];
   const ticks = niceTicks(lo, hi, 4, { integer: integerTicks });
@@ -174,6 +180,27 @@ export function LineChart({
             {labels[i]}
           </text>
         ))}
+        {reference && (
+          <g>
+            <line
+              x1={left}
+              x2={width - M.right}
+              y1={y(reference.value)}
+              y2={y(reference.value)}
+              stroke="var(--color-ink-muted)"
+              strokeWidth={1}
+              strokeDasharray={DASH}
+            />
+            <text
+              x={left + 4}
+              y={y(reference.value) - 6}
+              textAnchor="start"
+              className="fill-ink-muted text-xs"
+            >
+              {reference.label}
+            </text>
+          </g>
+        )}
         {active != null && (
           <line
             x1={x(active)}
