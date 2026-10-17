@@ -2,6 +2,10 @@
  * A Squad Member's profile (CLUBS-10): form charts, the Position Group split
  * and best Matches over the filtered Appearances, plus EA's own season and
  * career totals (CLUBS-19) and build history, which the filter does not touch.
+ *
+ * The FilterBar's Position Group selection (CLUBS-23) narrows the totals,
+ * charts and best Matches; the Position Group split stays whole as the
+ * overview and highlights the selection.
  */
 import { env } from "cloudflare:workers";
 import { data } from "react-router";
@@ -22,8 +26,17 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import { formatLondonShortDate } from "~/lib/london-time";
-import { formatDecimal, formatPercentage } from "~/lib/number-format";
-import { getPlayerProfile, statsFilterFromRequest } from "~/stats";
+import {
+  formatCount,
+  formatDecimal,
+  formatPercentage,
+} from "~/lib/number-format";
+import {
+  describePositionGroups,
+  getPlayerProfile,
+  type PositionGroupSelection,
+  statsFilterFromRequest,
+} from "~/stats";
 
 import type { Route } from "./+types/route";
 import { BestMatches } from "./best-matches";
@@ -53,6 +66,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getDb(env.DB),
     params.playerId,
     filter,
+    { positionGroups: filter.positionGroups },
   );
   if (!profile) throw data("Not Found", { status: 404 });
   return { filter, profile };
@@ -73,6 +87,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
   const { member, totals, form, build, career, season } = profile;
   const labels = form.map((p) => formatLondonShortDate(p.playedAt));
   const latestBuild = build.at(-1) ?? null;
+  const positions = filter.positionGroups;
   // One Position Group would only repeat the tiles above.
   const showPositionGroups = profile.positionGroups.length > 1;
 
@@ -102,12 +117,13 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         aside={
           <BuildPlate
             build={latestBuild}
-            positionGroup={totals.positionGroup}
+            // The usual Position Group, whatever the selection.
+            positionGroup={profile.positionGroups[0]?.positionGroup ?? null}
           />
         }
       />
 
-      <FilterBar filter={filter} />
+      <FilterBar filter={filter} positions />
 
       <section aria-label="Tracked totals" className="mb-8">
         <StatGrid>
@@ -132,7 +148,11 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         <div className="mb-8">
           <EmptyState
             title="No Appearances in these filters"
-            description="Widen the Match Types or dates to see this Squad Member's form."
+            description={
+              positions.length
+                ? `No Appearances as ${describePositionGroups(positions)} in these Matches. Pick another Position Group or widen the filters.`
+                : "Widen the Match Types or dates to see this Squad Member's form."
+            }
           />
         </div>
       ) : (
@@ -141,7 +161,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
             <div className="min-w-0 lg:col-span-2">
               <ChartFrame
                 title="Match rating"
-                subtitle="Each Appearance, with the rolling 5-Match average"
+                subtitle={`${chartCoverage(form.length, positions)}, with the rolling 5-Match average`}
                 legend={<ChartLegend entries={RATING_SERIES} />}
               >
                 <LineChart
@@ -229,7 +249,10 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         {showPositionGroups && (
           <section aria-label="By Position Group" className="min-w-0">
             <SectionHeading title="By Position Group" />
-            <PositionGroupTable rows={profile.positionGroups} />
+            <PositionGroupTable
+              rows={profile.positionGroups}
+              selected={positions}
+            />
           </section>
         )}
         <section aria-label="Build progression" className="min-w-0">
@@ -242,4 +265,15 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
       </div>
     </>
   );
+}
+
+/** The Matches the charts cover: "12 Matches", or "2 Matches as Forward" under a selection. */
+function chartCoverage(
+  matchCount: number,
+  positionGroups: PositionGroupSelection,
+): string {
+  const matches = formatCount(matchCount, "Match", "Matches");
+  return positionGroups.length
+    ? `${matches} as ${describePositionGroups(positionGroups)}`
+    : matches;
 }

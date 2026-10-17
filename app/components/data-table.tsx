@@ -40,6 +40,11 @@ type DataTableProps<T> = {
   initialSort?: DataTableSort;
   /** Shown instead of the table when there are no rows. */
   empty?: ReactNode;
+  /**
+   * Rows to pick out in Our Club's blue, e.g. the selected Position Groups.
+   * Colour alone never carries meaning, so say it in the row too.
+   */
+  highlight?: (row: T) => boolean;
 };
 
 /**
@@ -54,6 +59,7 @@ export function DataTable<T>({
   rowHref,
   initialSort,
   empty,
+  highlight,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState(initialSort);
   const [scrollerRef, edges] = useScrollFade<HTMLElement>();
@@ -128,12 +134,14 @@ export function DataTable<T>({
           </thead>
           <tbody>
             {sorted.map((row) => {
+              const highlighted = highlight?.(row) ?? false;
               const href = rowHref?.(row);
               return (
                 <tr
                   key={rowKey(row)}
                   className={href ? LINKED_ROW : "group"}
                   onClick={rowLink(href)}
+                  data-highlighted={highlighted || undefined}
                 >
                   {columns.map((column, i) => {
                     const Cell = i === 0 ? "th" : "td";
@@ -146,8 +154,8 @@ export function DataTable<T>({
                           "whitespace-nowrap border-shale-700 border-b px-2 py-2.5 group-last:border-b-0 group-hover:bg-shale-800 first:pl-3 sm:px-3",
                           alignClass(column.align),
                           i === 0
-                            ? `sticky left-0 z-10 bg-shale-900 font-semibold text-ink shadow-[1px_0_0_var(--color-shale-700)] ${href ? LINKED_ROW_HEADER : ""}`
-                            : "text-ink-soft",
+                            ? `${rowHeaderClass(highlighted)} ${href ? LINKED_ROW_HEADER : ""}`
+                            : cellClass(highlighted),
                         ].join(" ")}
                       >
                         {i === 0 && href ? (
@@ -200,6 +208,18 @@ function flip(direction: SortDirection): SortDirection {
 
 function alignClass(align: "left" | "right" = "left") {
   return align === "right" ? "text-right" : "text-left";
+}
+
+/** The sticky first cell; a highlighted row gets a rave edge inside its border. */
+function rowHeaderClass(highlighted: boolean): string {
+  const sticky = "sticky left-0 z-10 font-semibold text-ink";
+  return highlighted
+    ? `${sticky} bg-sound-900 shadow-[inset_3px_0_0_var(--color-rave),1px_0_0_var(--color-shale-700)]`
+    : `${sticky} bg-shale-900 shadow-[1px_0_0_var(--color-shale-700)]`;
+}
+
+function cellClass(highlighted: boolean): string {
+  return highlighted ? "bg-sound-900 text-ink" : "text-ink-soft";
 }
 
 function SortIcon({ direction }: { direction?: SortDirection }) {

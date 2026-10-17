@@ -33,3 +33,31 @@ export function Chip({ pressed, ...props }: ChipProps) {
     />
   );
 }
+
+type ChipGroupProps = {
+  /** The group's visible legend, which also names it for screen readers. */
+  label: string;
+  /** Disables every control inside, e.g. a filter that does not apply. */
+  disabled?: boolean;
+  /** A tooltip for the whole group, e.g. why it is disabled. */
+  title?: string;
+  /** Extra description for screen readers, by element ID. */
+  "aria-describedby"?: string;
+  children: ReactNode;
+};
+
+/** A labelled row of chips: one filter in the FilterBar, or a control beside it. */
+export function ChipGroup({ label, children, ...props }: ChipGroupProps) {
+  return (
+    <fieldset
+      className={`shrink-0 sm:min-w-0 sm:shrink ${props.disabled ? "opacity-60" : ""}`}
+      {...props}
+    >
+      <legend className="mb-1.5 whitespace-nowrap text-ink-muted text-sm">
+        {label}
+      </legend>
+      {/* Relative, so sr-only text inside stays within the scrolling rail. */}
+      <div className="relative flex gap-1 sm:flex-wrap">{children}</div>
+    </fieldset>
+  );
+}

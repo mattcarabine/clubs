@@ -1,4 +1,4 @@
-import { type ReactNode, useId, useState } from "react";
+import { useId, useState } from "react";
 import {
   useLocation,
   useNavigation,
@@ -28,8 +28,12 @@ import {
   writeStatsSource,
 } from "~/stats/source";
 
-import { Chip } from "./chip";
+import { Chip, ChipGroup } from "./chip";
 import { DateRangePicker, formatDateRange } from "./date-range-picker";
+import {
+  EA_POSITIONS_DISABLED,
+  PositionGroupPicker,
+} from "./position-group-picker";
 
 type FilterBarProps = {
   /** The page's current filter, parsed in its loader with `statsFilterFromRequest`. */
@@ -40,6 +44,12 @@ type FilterBarProps = {
    * because EA's totals cannot be narrowed.
    */
   source?: StatsSource;
+  /**
+   * Shows the Position Group selection (`?pos=`). Only player-level pages
+   * (the Squad table, a profile) pass it; team-level pages leave it off. On
+   * EA totals it stays visible but disabled.
+   */
+  positions?: boolean;
 };
 
 /**
@@ -48,7 +58,8 @@ type FilterBarProps = {
  * are two to choose between. Every change rewrites the URL, so the page's
  * loader reruns with the new filter and the view can be shared.
  *
- * With a `source`, it leads with the Recorded / EA totals toggle.
+ * With a `source`, it leads with the Recorded / EA totals toggle; with
+ * `positions`, the Position Group selection follows it.
  *
  * While a filter change is loading, the chips show the pending URL and the
  * next change builds on it, so quick successive clicks all count.
@@ -61,6 +72,12 @@ export function FilterBar(props: FilterBarProps) {
   const [pickingDates, setPickingDates] = useState(false);
   const pickerId = useId();
   const [railRef, railEdges] = useScrollFade<HTMLDivElement>();
+  // Only one rail renders at a time: the EA totals one or the full one.
+  const rail = {
+    ref: railRef,
+    ...fadeAttributes(railEdges),
+    className: RAIL,
+  };
   const source =
     pending && props.source !== undefined
       ? parseStatsSource(pending)
@@ -81,7 +98,7 @@ export function FilterBar(props: FilterBarProps) {
   const { dates } = filter;
 
   const sourceToggle = source !== undefined && (
-    <FilterGroup label="Source">
+    <ChipGroup label="Source">
       {STATS_SOURCES.map((option) => (
         <Chip
           key={option}
@@ -91,7 +108,17 @@ export function FilterBar(props: FilterBarProps) {
           {STATS_SOURCE_LABEL[option]}
         </Chip>
       ))}
-    </FilterGroup>
+    </ChipGroup>
+  );
+
+  const positionPicker = props.positions && (
+    <PositionGroupPicker
+      value={filter.positionGroups}
+      onChange={(positionGroups) =>
+        updateFilter((f) => ({ ...f, positionGroups }))
+      }
+      disabledReason={source === "ea" ? EA_POSITIONS_DISABLED : undefined}
+    />
   );
 
   if (source === "ea") {
@@ -99,13 +126,18 @@ export function FilterBar(props: FilterBarProps) {
       <section
         aria-label="Stats filters"
         aria-busy={pending !== null}
-        // Short, so it wraps on phones too rather than cutting the note off.
-        className="mb-6 flex flex-wrap items-end gap-x-6 gap-y-3 border-shale-700 border-t-2 bg-shale-900 px-3 py-3 sm:px-4"
+        className="mb-6 border-shale-700 border-t-2 bg-shale-900"
       >
-        {sourceToggle}
-        <p className="max-w-md text-ink-muted text-sm leading-snug sm:self-center">
+        <div {...rail}>
+          {sourceToggle}
+          {positionPicker}
+        </div>
+        {/* Under the rail, so phones never scroll the note out of view. */}
+        <p className="max-w-md px-3 pb-3 text-ink-muted text-sm leading-snug sm:px-4">
           EA's own totals, including Matches from before tracking began. The
           Match filters don't apply to them.
+          {/* Phones have no tooltips, so the disabled chips' reason is said here too. */}
+          {props.positions && " Nor can they be split by Position Group."}
         </p>
       </section>
     );
@@ -117,16 +149,11 @@ export function FilterBar(props: FilterBarProps) {
       aria-busy={pending !== null}
       className="mb-6 border-shale-700 border-t-2 bg-shale-900"
     >
-      {/* One scrolling rail on phones, so the filters take one row, not a
-          screen; its clipped edge fades so it reads as scrollable. */}
-      <div
-        ref={railRef}
-        {...fadeAttributes(railEdges)}
-        className="scroll-fade flex items-end gap-x-6 gap-y-3 overflow-x-auto px-3 py-3 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-4"
-      >
+      <div {...rail}>
         {sourceToggle}
+        {positionPicker}
 
-        <FilterGroup label="Match Type">
+        <ChipGroup label="Match Type">
           {MATCH_TYPES.map((type) => {
             const selected = filter.matchTypes.includes(type);
             return (
@@ -141,9 +168,9 @@ export function FilterBar(props: FilterBarProps) {
               </Chip>
             );
           })}
-        </FilterGroup>
+        </ChipGroup>
 
-        <FilterGroup label="DNF">
+        <ChipGroup label="DNF">
           <Chip
             pressed={filter.includeDnf}
             onClick={() =>
@@ -152,9 +179,9 @@ export function FilterBar(props: FilterBarProps) {
           >
             Include DNF
           </Chip>
-        </FilterGroup>
+        </ChipGroup>
 
-        <FilterGroup label="Dates">
+        <ChipGroup label="Dates">
           <Chip
             pressed={dates.kind === "all"}
             onClick={() => setDates(ALL_DATES)}
@@ -187,16 +214,16 @@ export function FilterBar(props: FilterBarProps) {
               <path d="M0 0h10L5 6z" fill="currentColor" />
             </svg>
           </Chip>
-        </FilterGroup>
+        </ChipGroup>
 
         {(seasons.length > 1 || filter.season !== undefined) && (
-          <FilterGroup label="Season">
+          <ChipGroup label="Season">
             <SeasonSelect
               seasons={seasons}
               value={filter.season}
               onChange={(season) => updateFilter((f) => ({ ...f, season }))}
             />
-          </FilterGroup>
+          </ChipGroup>
         )}
       </div>
 
@@ -214,6 +241,13 @@ export function FilterBar(props: FilterBarProps) {
     </section>
   );
 }
+
+/**
+ * One scrolling rail on phones, so the filters take one row, not a screen;
+ * its clipped edge fades so it reads as scrollable.
+ */
+const RAIL =
+  "scroll-fade flex items-end gap-x-6 gap-y-3 overflow-x-auto px-3 py-3 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-4";
 
 /** Season numbers known to the root loader, oldest first. */
 function useSeasonNumbers(): readonly number[] {
@@ -258,11 +292,6 @@ function SeasonSelect({ seasons, value, onChange }: SeasonSelectProps) {
   );
 }
 
-type FilterGroupProps = {
-  label: string;
-  children: ReactNode;
-};
-
 /** The search params of a navigation to this same page that is still loading, else null. */
 function usePendingSearchParams(): URLSearchParams | null {
   const { pathname } = useLocation();
@@ -270,15 +299,4 @@ function usePendingSearchParams(): URLSearchParams | null {
   return location?.pathname === pathname
     ? new URLSearchParams(location.search)
     : null;
-}
-
-function FilterGroup({ label, children }: FilterGroupProps) {
-  return (
-    <fieldset className="shrink-0 sm:min-w-0 sm:shrink">
-      <legend className="mb-1.5 whitespace-nowrap text-ink-muted text-sm">
-        {label}
-      </legend>
-      <div className="flex gap-1 sm:flex-wrap">{children}</div>
-    </fieldset>
-  );
 }

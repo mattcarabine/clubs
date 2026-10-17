@@ -17,6 +17,11 @@ import {
   type PositionGroupSplit,
   positionGroupSplit,
 } from "./player";
+import {
+  ALL_POSITIONS,
+  filterByPositionGroups,
+  type PositionGroupSelection,
+} from "./positions";
 import { memberSnapshots } from "./snapshots";
 import {
   getSquadMember,
@@ -28,12 +33,16 @@ import { type PlayerTotals, summariseAppearances } from "./summaries";
 
 export interface PlayerProfile {
   member: SquadMember;
-  /** Totals over the filtered Appearances. */
+  /** Totals over the filtered Appearances, in the selected Position Groups. */
   totals: PlayerTotals;
-  /** One point per filtered Appearance, oldest first. */
+  /** One point per filtered Appearance in the selected Position Groups, oldest first. */
   form: FormPoint[];
+  /**
+   * Every Position Group played in the filtered Matches, whatever the
+   * Position Group selection: the overview the selection is picked from.
+   */
   positionGroups: PositionGroupSplit[];
-  /** The 5 highest-rated filtered Appearances, best first. */
+  /** The 5 highest-rated filtered Appearances in the selected Position Groups, best first. */
   bestMatches: SquadAppearance[];
   /** Build changes from `members/stats` Snapshots, oldest first; not filtered. */
   build: BuildChange[];
@@ -43,11 +52,20 @@ export interface PlayerProfile {
   season: EaSeasonTotals | null;
 }
 
+export interface PlayerProfileOptions {
+  /**
+   * Count only Appearances in these Position Groups (default: All
+   * Positions). Pass `filter.positionGroups` for the global selection.
+   */
+  positionGroups?: PositionGroupSelection;
+}
+
 /** A Squad Member's profile, or null when the ID has never appeared for Our Club. */
 export async function getPlayerProfile(
   db: Db,
   playerId: string,
   filter: StatsFilter,
+  { positionGroups = ALL_POSITIONS }: PlayerProfileOptions = {},
 ): Promise<PlayerProfile | null> {
   const [member, appearances, seasonSnapshots, careerSnapshots] =
     await Promise.all([
@@ -59,12 +77,13 @@ export async function getPlayerProfile(
   if (!member) return null;
   const latestCareer = careerSnapshots.at(-1);
   const latestSeason = seasonSnapshots.at(-1);
+  const selected = filterByPositionGroups(appearances, positionGroups);
   return {
     member,
-    totals: summariseAppearances(appearances),
-    form: formSeries(appearances),
+    totals: summariseAppearances(selected),
+    form: formSeries(selected),
     positionGroups: positionGroupSplit(appearances),
-    bestMatches: bestAppearances(appearances),
+    bestMatches: bestAppearances(selected),
     build: buildHistory(seasonSnapshots),
     career: latestCareer ? eaCareerTotals(latestCareer) : null,
     season: latestSeason ? eaSeasonTotals(latestSeason) : null,

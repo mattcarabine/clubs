@@ -4,6 +4,7 @@
  *
  *   ?types=league,friendly&dnf=0&range=30d&season=2
  *   ?from=2026-10-05&to=2026-10-12
+ *   ?pos=midfielder,forward
  *
  * Defaults (Competitive Matches, DNF included, all dates, all Seasons) are
  * left out of the URL, so an unfiltered page has a clean address.
@@ -20,6 +21,13 @@ import {
   londonDateKey,
   londonDayStart,
 } from "~/lib/london-time";
+
+import {
+  ALL_POSITIONS,
+  type PositionGroupSelection,
+  parsePositionGroups,
+  writePositionGroups,
+} from "./positions";
 
 export const MATCH_TYPES = [
   "League",
@@ -97,12 +105,20 @@ export interface StatsFilter {
   dates: DateRange;
   /** One Season's number; absent means all Seasons. */
   season?: number;
+  /**
+   * Which of a Squad Member's Appearances count, by Position Group; empty
+   * means All Positions. Only player-level stats apply it (the Squad table
+   * and profile), by passing it to `squadLeaderboard` / `getPlayerProfile`;
+   * `matchScope` ignores it, since it narrows Appearances, not Matches.
+   */
+  positionGroups: PositionGroupSelection;
 }
 
 export const DEFAULT_STATS_FILTER: StatsFilter = {
   matchTypes: COMPETITIVE_MATCH_TYPES,
   includeDnf: true,
   dates: ALL_DATES,
+  positionGroups: ALL_POSITIONS,
 };
 
 /** The URL search params the filter owns. */
@@ -113,6 +129,7 @@ export const FILTER_PARAMS = {
   from: "from",
   to: "to",
   season: "season",
+  positionGroups: "pos",
 } as const;
 
 /** Reset whenever the filter changes, since the old page may no longer exist. */
@@ -125,6 +142,9 @@ export function parseStatsFilter(params: URLSearchParams): StatsFilter {
     includeDnf: params.get(FILTER_PARAMS.includeDnf) !== "0",
     dates: parseDates(params),
     season: parseSeason(params.get(FILTER_PARAMS.season)),
+    positionGroups: parsePositionGroups(
+      params.get(FILTER_PARAMS.positionGroups),
+    ),
   };
 }
 
@@ -169,6 +189,11 @@ export function writeStatsFilter(
     FILTER_PARAMS.season,
     filter.season === undefined ? null : String(filter.season),
   );
+  setOrDelete(
+    next,
+    FILTER_PARAMS.positionGroups,
+    writePositionGroups(filter.positionGroups),
+  );
   return next;
 }
 
@@ -177,7 +202,8 @@ export function isDefaultStatsFilter(filter: StatsFilter): boolean {
     sameMatchTypes(filter.matchTypes, DEFAULT_STATS_FILTER.matchTypes) &&
     filter.includeDnf === DEFAULT_STATS_FILTER.includeDnf &&
     filter.dates.kind === "all" &&
-    filter.season === undefined
+    filter.season === undefined &&
+    filter.positionGroups.length === 0
   );
 }
 

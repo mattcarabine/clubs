@@ -177,3 +177,35 @@ function buildMatch(
 function flag(value: boolean): string {
   return value ? "1" : "0";
 }
+
+/** Squad Members in a line-up built by `withLineup`. */
+export type Lineup = {
+  player: { id: string; name: string };
+  goals?: number;
+  rating?: number;
+  /** EA's Position Group for the Appearance, e.g. "forward". */
+  pos?: string;
+}[];
+
+/**
+ * Replaces Our Club's line-up in a built Match. Each player is a copy of a
+ * recorded one, so every stat is realistic, with a new ID, name, goals and
+ * (optionally) rating and Position Group.
+ */
+export function withLineup(body: AddMatchBody, lineup: Lineup): AddMatchBody {
+  const recorded = body.match.players[OUR_CLUB_ID];
+  const template = Object.values(recorded)[0];
+  body.match.players[OUR_CLUB_ID] = Object.fromEntries(
+    lineup.map(({ player, goals = 0, rating, pos = template.pos }) => [
+      player.id,
+      {
+        ...template,
+        playername: player.name,
+        goals: String(goals),
+        rating: rating === undefined ? template.rating : rating.toFixed(2),
+        pos,
+      },
+    ]),
+  );
+  return body;
+}

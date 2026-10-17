@@ -8,6 +8,11 @@ import { displayName, isFormerSquadMember } from "~/roster";
 
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
 import type { StatsFilter } from "./filter";
+import {
+  ALL_POSITIONS,
+  filterByPositionGroups,
+  type PositionGroupSelection,
+} from "./positions";
 import { isOurAppearance, matchScope, type ScopeOptions } from "./scope";
 import {
   type AppearanceStats,
@@ -93,13 +98,27 @@ export interface LeaderboardRow extends PlayerTotals {
 export interface LeaderboardOptions extends ScopeOptions {
   /** Include Former Squad Members (default: current squad only). */
   includeFormer?: boolean;
+  /**
+   * Count only Appearances in these Position Groups (default: All
+   * Positions). Pass `filter.positionGroups` for the global selection.
+   */
+  positionGroups?: PositionGroupSelection;
 }
 
-/** One row per Squad Member with totals over the filtered Matches, most Appearances first. */
+/**
+ * One row per Squad Member with totals over the filtered Matches, most
+ * Appearances first. With `positionGroups`, everyone who played in those
+ * Matches keeps a row, and the totals count only their Appearances in those
+ * Position Groups, so a Squad Member with none has 0 Appearances.
+ */
 export async function squadLeaderboard(
   db: Db,
   filter: StatsFilter,
-  { includeFormer = false, ...scope }: LeaderboardOptions = {},
+  {
+    includeFormer = false,
+    positionGroups = ALL_POSITIONS,
+    ...scope
+  }: LeaderboardOptions = {},
 ): Promise<LeaderboardRow[]> {
   const byPlayer = groupBy(
     await squadAppearances(db, filter, scope),
@@ -110,7 +129,7 @@ export async function squadLeaderboard(
       playerId,
       name: apps[apps.length - 1].name,
       former: isFormerSquadMember(playerId),
-      ...summariseAppearances(apps),
+      ...summariseAppearances(filterByPositionGroups(apps, positionGroups)),
     }))
     .filter((row) => includeFormer || !row.former)
     .sort(
