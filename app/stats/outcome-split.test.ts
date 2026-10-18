@@ -6,6 +6,7 @@ import {
   type AfterResultScope,
   type AfterResultSplit,
   afterResult,
+  byOpponentStrength,
   type ClubMatchTotals,
   dayType,
   droppedPointsReasons,
@@ -65,6 +66,7 @@ function match(
     // Each Match its own Session unless a test says otherwise.
     session: sequence,
     sessionPlace: 1,
+    ratingGap: null,
     ...rest,
   };
 }
@@ -242,6 +244,83 @@ describe("afterResult", () => {
     const { findings } = outcomeSplit(run("WLWLLWWLWL"), []);
     expect(findings.map((f) => f.id)).toContain("after-any-next");
     expect(findings.map((f) => f.id)).not.toContain("after-same-session");
+  });
+});
+
+describe("byOpponentStrength", () => {
+  /** `n` Matches at a rating gap (ours minus theirs), the first `wins` of them Wins. */
+  const rated = (n: number, gap: number | null, wins: number) =>
+    Array.from({ length: n }, (_, i) =>
+      match(i < wins ? "W" : "L", { ratingGap: gap }),
+    );
+
+  it("groups rated Matches by the Opponent's strength with each group's Win rate", () => {
+    const { groups, hidden, unrated } = byOpponentStrength([
+      ...rated(5, -150, 1),
+      ...rated(4, 20, 2),
+      ...rated(6, 100, 5),
+    ]);
+    expect(
+      groups.map(({ id, played, wins, winPercentage }) => ({
+        id,
+        played,
+        wins,
+        winPercentage,
+      })),
+    ).toEqual([
+      { id: "stronger", played: 5, wins: 1, winPercentage: 20 },
+      { id: "similar", played: 4, wins: 2, winPercentage: 50 },
+      { id: "weaker", played: 6, wins: 5, winPercentage: (5 / 6) * 100 },
+    ]);
+    expect(hidden).toEqual([]);
+    expect(unrated).toBe(0);
+  });
+
+  it("counts W/D/L and the Outcome Split highlights per group", () => {
+    const [group] = byOpponentStrength([
+      match("W", { ratingGap: -200, ours: { goals: 3, shots: 12 } }),
+      match("D", { ratingGap: -200, ours: { goals: 1, shots: 8 } }),
+      match("L", { ratingGap: -200, opponent: { goals: 4 } }),
+    ]).groups;
+    expect(group).toMatchObject({ played: 3, wins: 1, draws: 1, losses: 1 });
+    expect(group.highlights).toEqual({
+      goals: "1.7",
+      conceded: "2.0",
+      shots: "10.0",
+      pass: "80%",
+      rating: "7.0",
+    });
+  });
+
+  it("leaves out unrated Matches and hides groups under 3 Matches", () => {
+    const { groups, hidden, unrated } = byOpponentStrength([
+      ...rated(3, -150, 1),
+      ...rated(2, 0, 2),
+      ...rated(4, null, 4),
+    ]);
+    expect(groups.map((g) => g.id)).toEqual(["stronger"]);
+    expect(hidden).toEqual([{ label: "Similar", played: 2 }]);
+    expect(unrated).toBe(4);
+  });
+
+  it("joins the findings as the Stronger against the Weaker group", () => {
+    const { findings } = outcomeSplit(
+      [...rated(5, -150, 1), ...rated(4, 0, 2), ...rated(6, 150, 5)],
+      [],
+    );
+    expect(findings.find((f) => f.id === "strength")).toMatchObject({
+      factor: "Opponent strength",
+      text: "Against Stronger Opponents we win 20% (5) vs 83% against Weaker (6)",
+      counts: "5 Matches against Stronger Opponents, 6 against Weaker",
+    });
+  });
+
+  it("makes no finding from fewer than two groups shown", () => {
+    const { findings } = outcomeSplit(
+      [...rated(5, -150, 1), ...rated(2, 150, 2), ...rated(4, null, 2)],
+      [],
+    );
+    expect(findings.map((f) => f.id)).not.toContain("strength");
   });
 });
 
