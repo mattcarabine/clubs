@@ -244,3 +244,20 @@ test("every stats page takes the Campaign filter", async ({
     );
   }
 });
+
+test("a Campaign leaves out Playoff Matches and the League Matches after them", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await startSeason({ fakeEa, triggerPoll });
+  const playoff: typeof win = (options) =>
+    win({ ...options, matchType: "playoffMatch" });
+  // Once Our Club plays a Playoff, League Matches stop counting until the next Season.
+  await play({ fakeEa, triggerPoll }, [win, playoff, loss].map(starring), 6);
+
+  await page.goto("/squad");
+  await expect(await starAppearances(page)).toHaveText("3");
+  await page.goto("/squad?campaign=current");
+  await expect(await starAppearances(page)).toHaveText("1");
+});

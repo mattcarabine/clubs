@@ -7,6 +7,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  type ShouldRevalidateFunctionArgs,
   useRouteLoaderData,
 } from "react-router";
 
@@ -59,6 +60,23 @@ export async function loader() {
     /** The FilterBar's date picker mutes the days before it. */
     firstMatchDate: firstMatch,
   };
+}
+
+/**
+ * The root's data changes only with a Poll, never with the filter, so a
+ * navigation that only changes the search params (a FilterBar click) skips
+ * it, and with it the Campaign replay.
+ */
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formMethod,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  if (formMethod === undefined && currentUrl.pathname === nextUrl.pathname) {
+    return false;
+  }
+  return defaultShouldRevalidate;
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
