@@ -3,7 +3,9 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./support/test.ts";
-import { serveSession } from "./support/writeups.ts";
+import { SESSION_CLOCK, serveSession } from "./support/writeups.ts";
+
+test.use({ pollAt: SESSION_CLOCK });
 
 // CLUBS-43: a tabloid headline per Match, written with the Session's recap.
 

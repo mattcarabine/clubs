@@ -28,6 +28,7 @@ import { promptClub, promptName } from "../sanitise";
 import { hasExactly, isText } from "../validate";
 import { CLUB_SUBJECT } from "../writeups";
 import { HEADLINE_RULES, headlineDraft } from "./headline";
+import { appearanceStatsInput } from "./inputs";
 
 interface SessionSubject extends Subject {
   /** The newest Session that is over also gets the State of the club. */
@@ -203,16 +204,7 @@ function matchInput(match: BriefMatch) {
       club: promptClub(a.isOurClub, match.opponent.name),
       name: promptName(a.name),
       positionGroup: a.positionGroup,
-      minutes: Math.round(a.secondsPlayed / 60),
-      goals: a.goals,
-      assists: a.assists,
-      shots: a.shots,
-      passes: `${a.passesMade}/${a.passAttempts}`,
-      tackles: `${a.tacklesMade}/${a.tackleAttempts}`,
-      rating: formatDecimal(a.rating),
-      manOfTheMatch: a.manOfTheMatch,
-      ...(a.saves > 0 && { saves: a.saves }),
-      ...(a.redCards > 0 && { redCards: a.redCards }),
+      ...appearanceStatsInput(a),
     })),
   };
 }

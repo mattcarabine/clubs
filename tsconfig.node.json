@@ -9,6 +9,7 @@
     "e2e/**/*",
     "scripts/**/*",
     "live/**/*",
+    "app/lib/coaching-week.ts",
     "app/lib/london-time.ts",
     "app/lib/relative-time.ts",
     "app/lib/site.ts",

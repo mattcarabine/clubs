@@ -6,7 +6,13 @@
 import { formatLondonDate } from "../app/lib/london-time.ts";
 import type { RecordedPost } from "./fake-discord/control.ts";
 import { expect, test } from "./support/test.ts";
-import { type PollRunRow, serveSession } from "./support/writeups.ts";
+import {
+  type PollRunRow,
+  SESSION_CLOCK,
+  serveSession,
+} from "./support/writeups.ts";
+
+test.use({ pollAt: SESSION_CLOCK });
 
 interface SessionPostRow {
   session_id: string;
