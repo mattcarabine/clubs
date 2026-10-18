@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
-import { NavLink } from "react-router";
+import { type ReactNode, useEffect } from "react";
+import { NavLink, useLocation } from "react-router";
+
+import { fadeAttributes, useScrollFade } from "~/lib/use-scroll-fade";
 // The whole crest, 96px: the favicon and touch icon.
 import crestUrl from "../../assets/crest-96.png";
 
@@ -14,6 +16,7 @@ export const NAV_ITEMS = [
   { to: "/opponents", label: "Opponents" },
   { to: "/trends", label: "Trends" },
   { to: "/analysis", label: "Analysis" },
+  { to: "/milestones", label: "Milestones" },
 ] as const;
 
 type AppShellProps = {
@@ -23,8 +26,20 @@ type AppShellProps = {
   children: ReactNode;
 };
 
-/** Page chrome: crest lockup, primary nav, optional ticker, then the page. */
+/**
+ * Page chrome: crest lockup, primary nav, optional ticker, then the page. On
+ * phones the nav is one row that scrolls sideways, its clipped edge fading,
+ * and the current page's item is scrolled into view.
+ */
 export function AppShell({ clubName, ticker, children }: AppShellProps) {
+  const [navRef, edges, nav] = useScrollFade<HTMLElement>();
+  const { pathname } = useLocation();
+  useEffect(() => {
+    // `pathname` reruns this on navigation, once the new item is current.
+    void pathname;
+    const active = nav?.querySelector('[aria-current="page"]');
+    active?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [nav, pathname]);
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 border-shale-700 border-b bg-shale-950/95 backdrop-blur">
@@ -38,7 +53,12 @@ export function AppShell({ clubName, ticker, children }: AppShellProps) {
               {clubName}
             </span>
           </NavLink>
-          <nav aria-label="Primary" className="min-w-0 overflow-x-auto">
+          <nav
+            ref={navRef}
+            aria-label="Primary"
+            {...fadeAttributes(edges)}
+            className="scroll-fade min-w-0 overflow-x-auto [scrollbar-width:none]"
+          >
             <ul className="flex h-full px-1 sm:px-2 md:px-0">
               {NAV_ITEMS.map((item) => (
                 <li key={item.to} className="flex">

@@ -65,6 +65,18 @@ export function groupSessions(
   return sessions;
 }
 
+/** Each Match's Session ID, by Match ID. The kick-offs can come in any order. */
+export function sessionIdsByMatch(
+  kickoffs: readonly Kickoff[],
+  gapMinutes = SESSION_GAP_MINUTES,
+): Map<string, string> {
+  const ids = new Map<string, string>();
+  for (const { id, matchIds } of groupSessions(kickoffs, gapMinutes)) {
+    for (const matchId of matchIds) ids.set(matchId, id);
+  }
+  return ids;
+}
+
 /** Each Match's Session and place in it, by Match ID. The kick-offs can come in any order. */
 export function sessionPlaces(
   kickoffs: readonly Kickoff[],

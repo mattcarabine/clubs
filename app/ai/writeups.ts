@@ -12,14 +12,16 @@ import { aiJobs, aiWriteups } from "~/db/schema";
  * What a write-up is about. `session` is keyed by the Session's ID, `match`
  * (the Match report) and `headline` by the Match's; `club` (the State of the
  * club) by `CLUB_SUBJECT`; `coaching` (a Squad Member's coaching notes,
- * CLUBS-44) by the player ID, its job by the week.
+ * CLUBS-44) by the player ID, its job by the week; a `milestone` comment by
+ * the Milestone's ID.
  */
 export type WriteupKind =
   | "session"
   | "match"
   | "headline"
   | "club"
-  | "coaching";
+  | "coaching"
+  | "milestone";
 
 /** The State of the club has one subject: Our Club. */
 export const CLUB_SUBJECT = "club";

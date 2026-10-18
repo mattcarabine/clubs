@@ -5,6 +5,11 @@
  */
 import { formatLondonDate } from "../app/lib/london-time.ts";
 import type { RecordedPost } from "./fake-discord/control.ts";
+import {
+  KAB as MILESTONE_KAB,
+  LOL as MILESTONE_LOL,
+  serveMatch,
+} from "./support/milestones.ts";
 import { expect, test } from "./support/test.ts";
 import {
   type PollRunRow,
@@ -196,6 +201,26 @@ test("a post gives up after 3 failed attempts", async ({
   expect(row?.last_error).toContain("500");
   const runs = await db.rows<PollRunRow>("poll_runs");
   expect(runs.every((r) => r.status === "ok")).toBe(true);
+});
+
+test("the post lists the Session's Milestones by headline (CLUBS-36)", async ({
+  fakeEa,
+  fakeDiscord,
+  triggerPoll,
+}) => {
+  // Two hours before the clock these specs Poll at.
+  const minutesAgo = (Date.now() - SESSION_CLOCK.getTime()) / 60_000 + 120;
+  await serveMatch(fakeEa, "93546000000001", minutesAgo, [
+    { player: MILESTONE_KAB, goals: 3 },
+    { player: MILESTONE_LOL, rating: 9.4 },
+  ]);
+  await triggerPoll();
+
+  const [post] = await fakeDiscord.requests();
+  expect(embedOf(post).fields).toContainEqual({
+    name: "Milestones",
+    value: ["Kabeeble — Hat\\-trick", "Loltown95 — 9.4 rating"].join("\n"),
+  });
 });
 
 test("an Opponent's name cannot format, link or ping in the post", async ({

@@ -1,8 +1,9 @@
 /**
  * Matchday (`/`): the latest Competitive Match as the lead score strip, its
- * top performers on a ticker, Our Club's form and EA's club totals. While it
- * is open the page checks for a new Poll every minute (CLUBS-7), and reloads
- * its data only when one changed something (CLUBS-46).
+ * top performers on a ticker, the latest Milestone, Our Club's form and
+ * EA's club totals. While it is open the page checks for a new Poll every
+ * minute (CLUBS-7), and reloads its data only when one changed something
+ * (CLUBS-46).
  */
 import { env } from "cloudflare:workers";
 import { Link } from "react-router";
@@ -17,6 +18,7 @@ import {
   LondonTime,
   MatchHeadline,
   MatchScoreBar,
+  MilestoneCard,
   PageHeader,
   SectionHeading,
   type StatDelta,
@@ -38,9 +40,11 @@ import {
   isTonight,
   latestSession,
   listMatches,
+  listMilestones,
   type MatchSides,
   type MatchSkillRatings,
   type MatchSummary,
+  type MilestoneEntry,
   pollState,
   type SquadFormRow,
   squadForm,
@@ -73,12 +77,14 @@ export async function loader() {
   const db = getDb(env.DB);
   // First, so the version it carries is never newer than the data below.
   const poll = await pollState(db);
-  const [recent, snapshots, squadFormRows, session] = await Promise.all([
-    listMatches(db, DEFAULT_STATS_FILTER, { limit: FORM_LENGTH }),
-    clubSnapshots(db),
-    squadForm(db, DEFAULT_STATS_FILTER),
-    latestSession(db),
-  ]);
+  const [recent, snapshots, squadFormRows, session, [milestone]] =
+    await Promise.all([
+      listMatches(db, DEFAULT_STATS_FILTER, { limit: FORM_LENGTH }),
+      clubSnapshots(db),
+      squadForm(db, DEFAULT_STATS_FILTER),
+      latestSession(db),
+      listMilestones(db, env.EA_CLUB_NAME, { limit: 1 }),
+    ]);
   const latest = recent[0];
   const [detail, headline] = latest
     ? await Promise.all([
@@ -102,6 +108,7 @@ export async function loader() {
       label: isTonight(session) ? "Tonight's Session" : "Last Session",
     },
     squadForm: squadFormRows,
+    milestone: milestone ?? null,
   };
 }
 
@@ -117,6 +124,7 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
     poll,
     session,
     squadForm,
+    milestone,
   } = loaderData;
   const { lastPoll } = useLivePoll(poll, REFRESH_CHECK_MS);
   const [latest, ...earlier] = recent;
@@ -138,6 +146,9 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
             performers={performers}
             session={session}
           />
+          {milestone && (
+            <LatestMilestone clubName={clubName} milestone={milestone} />
+          )}
           {squadForm.length > 0 && <FormWatch rows={squadForm} />}
           {club && <ClubSnapshot club={club} />}
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
@@ -207,6 +218,32 @@ function LatestMatch({
           {session.label} <span aria-hidden>›</span>
         </Link>
       )}
+    </section>
+  );
+}
+
+/** The newest Milestone (CLUBS-36), with a way into the rest. */
+function LatestMilestone({
+  clubName,
+  milestone,
+}: {
+  clubName: string;
+  milestone: MilestoneEntry;
+}) {
+  return (
+    <section aria-label="Latest Milestone" className={HERO_WIDTH}>
+      <SectionHeading
+        title="Latest Milestone"
+        aside={
+          <Link
+            to="/milestones"
+            className="text-sm text-sound-300 underline-offset-4 hover:underline"
+          >
+            All Milestones
+          </Link>
+        }
+      />
+      <MilestoneCard clubName={clubName} milestone={milestone} />
     </section>
   );
 }

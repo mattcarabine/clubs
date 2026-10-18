@@ -10,6 +10,7 @@ export default [
   route("analysis", "routes/analysis/route.tsx"),
   route("matches", "routes/matches.tsx"),
   route("matches/:matchId", "routes/match.tsx"),
+  route("milestones", "routes/milestones.tsx"),
   route("sessions", "routes/sessions.tsx"),
   route("sessions/:sessionId", "routes/session.tsx"),
   route("opponents", "routes/opponents.tsx"),

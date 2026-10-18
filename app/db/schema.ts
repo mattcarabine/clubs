@@ -276,6 +276,49 @@ export const aiWriteups = sqliteTable(
   ],
 );
 
+export type MilestoneSubject = "player" | "club";
+
+/**
+ * Milestones (CLUBS-36): notable achievements by Our Club or a Squad Member,
+ * each reached in one Match. Detected after each Poll (`app/milestones/`) and
+ * never stored twice: `dedupeKey` is unique. The kinds and their rules live
+ * in `app/stats/milestones.ts`.
+ */
+export const milestones = sqliteTable(
+  "milestones",
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    /** `MilestoneKind` in `app/stats/milestones.ts`. */
+    kind: text().notNull(),
+    subject: text().$type<MilestoneSubject>().notNull(),
+    /** The Squad Member, for a player Milestone; null for Our Club's. */
+    playerId: text().references(() => players.playerId),
+    /** The new total or figure: 50 goals, a 9.4 rating, a 5-Match run. */
+    value: real().notNull(),
+    /** The landmark crossed (50 goals) or the record beaten; null for a one-off feat. */
+    threshold: real(),
+    /** The Position Group of a first goal in one; null for every other kind. */
+    positionGroup: text().$type<PositionGroup>(),
+    matchId: text()
+      .notNull()
+      .references(() => matches.matchId),
+    /** The Match's kick-off. */
+    achievedAt: integer({ mode: "timestamp_ms" }).notNull(),
+    detectedAt: integer({ mode: "timestamp_ms" }).notNull(),
+    /** Milestones detected together in one Session: one write-up call covers them. */
+    batchKey: text().notNull(),
+    /** What makes a Milestone unique, e.g. `player:123:goals:50`. */
+    dedupeKey: text().notNull(),
+  },
+  (table) => [
+    uniqueIndex("milestones_dedupe_idx").on(table.dedupeKey),
+    index("milestones_achieved_idx").on(table.achievedAt),
+    index("milestones_player_idx").on(table.playerId),
+    index("milestones_match_idx").on(table.matchId),
+    index("milestones_batch_idx").on(table.batchKey),
+  ],
+);
+
 export type SessionPostStatus = "pending" | "posted" | "failed" | "skipped";
 
 /**

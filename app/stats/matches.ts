@@ -52,7 +52,8 @@ export interface MatchListOptions extends ScopeOptions {
   offset?: number;
 }
 
-const summaryColumns = {
+/** The columns `toSummary` reads, for queries joining `matches` to `clubs`. */
+export const summaryColumns = {
   matchId: matches.matchId,
   matchType: matches.matchType,
   playedAt: matches.playedAt,
@@ -211,7 +212,7 @@ export async function getMatchDetails(
   });
 }
 
-interface SummaryRow {
+export interface SummaryRow {
   matchId: string;
   matchType: MatchKind;
   playedAt: Date;
@@ -225,7 +226,7 @@ interface SummaryRow {
   opponentSkillRating: number | null;
 }
 
-function toSummary(row: SummaryRow): MatchSummary {
+export function toSummary(row: SummaryRow): MatchSummary {
   return {
     matchId: row.matchId,
     matchType: toMatchType(row.matchType),

@@ -59,7 +59,8 @@ test("a full Matchday load does not grow with the number of Polls", async ({
   request,
   triggerPoll,
 }) => {
-  await triggerPoll();
+  // Enough Polls for every write-up (the latest Milestone's comment) to land.
+  for (let i = 0; i < 5; i++) await triggerPoll();
   const before = await rowsRead(request, "/");
 
   for (let i = 0; i < 20; i++) await triggerPoll();

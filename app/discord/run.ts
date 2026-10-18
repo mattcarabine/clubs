@@ -25,6 +25,7 @@ import {
   groupSessions,
   isSessionOver,
   listKickoffs,
+  listMilestones,
   type SessionGroup,
 } from "~/stats";
 
@@ -147,9 +148,10 @@ async function postSession(
     return "waiting";
   }
 
-  const [session, headlines] = await Promise.all([
+  const [session, headlines, milestones] = await Promise.all([
     getSession(db, group.id),
     latestWriteups(db, "headline", group.matchIds),
+    listMilestones(db, ctx.clubName, { matchIds: group.matchIds }),
   ]);
   if (!session) return "waiting";
   const body = sessionPostBody({
@@ -158,6 +160,7 @@ async function postSession(
     clubName: ctx.clubName,
     headlines: new Map([...headlines].map(([id, h]) => [id, h.text])),
     recap: recap?.text ?? null,
+    milestones: milestones.map((m) => m.headline).reverse(),
   });
 
   const attempts = (row?.attempts ?? 0) + 1;
