@@ -30,6 +30,7 @@ import {
   formatSigned,
   NO_VALUE,
 } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import { playerPath } from "~/lib/paths";
 import {
   type AfterResultSplit,
@@ -55,8 +56,13 @@ import { FindingList } from "./findings";
 import { StrengthSection } from "./strength";
 import { WinChanceSection } from "./win-chance";
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: "A Bloo Bloo — Analysis" }];
+export function meta({ location }: Route.MetaArgs) {
+  return pageMeta({
+    title: "A Bloo Bloo — Analysis",
+    description:
+      "Wins against Dropped Points, results after a win or a loss, and results by Opponent strength.",
+    path: location.pathname,
+  });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

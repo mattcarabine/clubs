@@ -1,3 +1,26 @@
 # Private stats dashboard: keep it out of search engines.
+# Link-preview bots may read pages so shared links unfurl (CLUBS-38). Nothing
+# is indexed even so: every response carries X-Robots-Tag: noindex, nofollow.
+# Twitterbot and Slackbot document that they honour this file; Discordbot,
+# WhatsApp, facebookexternalhit and TelegramBot may fetch previews regardless.
+
+User-agent: Discordbot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: Slackbot
+Allow: /
+
+User-agent: TelegramBot
+Allow: /
+
 User-agent: *
 Disallow: /

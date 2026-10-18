@@ -34,6 +34,7 @@ import {
   formatSigned,
   NO_VALUE,
 } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import {
   COMPARISON_SCOPE_LABEL,
   COMPARISON_SCOPES,
@@ -59,8 +60,12 @@ import {
   type TapeRow,
 } from "./tale-of-the-tape";
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: "A Bloo Bloo — Compare" }];
+export function meta({ location }: Route.MetaArgs) {
+  return pageMeta({
+    title: "A Bloo Bloo — Compare",
+    description: "Two Squad Members side by side: a tale of the tape.",
+    path: location.pathname,
+  });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

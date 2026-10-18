@@ -17,6 +17,7 @@ import {
   formatPercentage,
   formatSigned,
 } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import {
   isDefaultStatsFilter,
   type OpponentRecord,
@@ -26,8 +27,13 @@ import {
 
 import type { Route } from "./+types/opponents";
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: "A Bloo Bloo — Opponents" }];
+export function meta({ location }: Route.MetaArgs) {
+  return pageMeta({
+    title: "A Bloo Bloo — Opponents",
+    description:
+      "Our Club's head-to-head record against every club we have played.",
+    path: location.pathname,
+  });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

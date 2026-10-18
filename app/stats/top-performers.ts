@@ -3,6 +3,7 @@
  * scored or assisted, best first. Pure, so it works on any Appearance rows
  * (e.g. `getMatch(...).appearances` filtered to Our Club).
  */
+import { formatDecimal } from "~/lib/number-format";
 
 export interface PerformerInput {
   playerId: string;
@@ -43,4 +44,19 @@ function byContribution(a: PerformerInput, b: PerformerInput): number {
     (b.rating ?? -1) - (a.rating ?? -1) ||
     a.name.localeCompare(b.name)
   );
+}
+
+/**
+ * A performer's line: "2 G · 1 A", or their rating (a Match's, or an average
+ * over several) when they neither scored nor assisted.
+ */
+export function formatPerformerStat(
+  performer: Pick<PerformerInput, "goals" | "assists">,
+  rating: number | null,
+): string {
+  const parts = [
+    performer.goals > 0 && `${performer.goals} G`,
+    performer.assists > 0 && `${performer.assists} A`,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : formatDecimal(rating);
 }

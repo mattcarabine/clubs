@@ -24,6 +24,7 @@ import {
 import { getDb } from "~/db/client";
 import type { FormStatus } from "~/lib/domain";
 import { formatCount, formatOptional } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import { playerPath, sessionPath } from "~/lib/paths";
 import { useRevalidateWhileVisible } from "~/lib/use-revalidate-while-visible";
 import {
@@ -55,8 +56,13 @@ const FORM_LENGTH = 10;
 const RECENT_RESULTS = 4;
 const REVALIDATE_MS = 60_000;
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: "A Bloo Bloo — Matchday" }];
+export function meta({ location }: Route.MetaArgs) {
+  return pageMeta({
+    title: "A Bloo Bloo — Matchday",
+    description:
+      "The latest Match and Session, the Squad's form and how the club stands this season.",
+    path: location.pathname,
+  });
 }
 
 export async function loader() {
