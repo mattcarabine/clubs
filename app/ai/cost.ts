@@ -10,6 +10,16 @@ export interface TokenUsage {
   cacheWriteTokens: number;
 }
 
+/** Two calls' tokens together, e.g. a reply and its rewrite. */
+export function addUsage(a: TokenUsage, b: TokenUsage): TokenUsage {
+  return {
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
+    cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
+  };
+}
+
 /** A call's estimated cost in USD; null for a model with no price on file. */
 export function estimateCost(
   usage: TokenUsage,

@@ -22,6 +22,7 @@ import type { PositionGroup as StoredPositionGroup } from "~/ea/parse";
 import type { Outcome } from "~/lib/domain";
 import { formatDecimal } from "~/lib/number-format";
 
+import { isCountedAppearance } from "./counted";
 import { sessionIdsByMatch } from "./sessions";
 
 export type { MilestoneSubject };
@@ -341,9 +342,13 @@ export interface DetectionMatch {
   goalsFor: number;
   goalsAgainst: number;
   outcome: Outcome;
+  dnf: boolean;
 }
 
-/** One of Our Club's Appearances in a shown Match. */
+/**
+ * One of Our Club's Appearances in a shown Match, uncounted ones included:
+ * landmarks follow EA's totals, which count them, but feats skip them.
+ */
 export interface DetectionAppearance {
   matchId: string;
   playerId: string;
@@ -352,6 +357,7 @@ export interface DetectionAppearance {
   assists: number;
   rating: number | null;
   manOfTheMatch: boolean;
+  secondsPlayed: number;
 }
 
 /** One subject's row in a totals Snapshot. */
@@ -602,6 +608,8 @@ function detectFeats({
 
   for (const match of matches) {
     for (const a of byMatch.get(match.matchId) ?? []) {
+      // A 0-minute Appearance or our side of a DNF we quit is no feat, and no history.
+      if (!isCountedAppearance({ ...a, ...match })) continue;
       const history = histories.get(a.playerId) ?? {
         appearances: 0,
         ratedAppearances: 0,

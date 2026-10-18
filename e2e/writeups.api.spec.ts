@@ -3,7 +3,8 @@
  * that is over gets one call writing its recap, its Match reports and the
  * State of the club, against the fake Anthropic upstream.
  */
-import { AI_MODEL, MODEL_PRICES } from "../app/ai/config.ts";
+
+import { AI_MODEL, MODEL_PRICES, revised } from "../app/ai/config.ts";
 import { FAKE_USAGE } from "./fake-anthropic/control.ts";
 import { promptText } from "./support/fake-anthropic.ts";
 import { expect, test } from "./support/test.ts";
@@ -74,7 +75,7 @@ test("a Session over for 45 minutes gets one call: its recap, a report per Match
   expect(job).toMatchObject({
     kind: "session",
     subject_key: ids[0],
-    version: ids.join(","),
+    version: revised(ids.join(",")),
     status: "done",
     attempts: 1,
     model: AI_MODEL,
@@ -119,7 +120,10 @@ test("a long Session's recap and all its Match reports are stored, past D1's 100
 
   const jobs = await db.rows<AiJobRow>("ai_jobs");
   const latest = jobs.at(-1);
-  expect(latest).toMatchObject({ version: ids.join(","), status: "done" });
+  expect(latest).toMatchObject({
+    version: revised(ids.join(",")),
+    status: "done",
+  });
   const written = (await db.rows<AiWriteupRow>("ai_writeups")).filter(
     (w) => w.job_id === latest?.id,
   );
@@ -192,13 +196,14 @@ test("a Match added to a finished Session rewrites that Session's recap only", a
   expect(requests).toHaveLength(3);
   const rewritten = promptText(requests[2].body);
   expect(rewritten).toContain(`"matchId":"${late}"`);
-  expect(rewritten).not.toContain(newer[0]);
+  // Its data, that is: the background holds recent write-ups, whatever their Session.
+  expect(rewritten.split("<data>")[1]).not.toContain(newer[0]);
 
   const jobs = await db.rows<AiJobRow>("ai_jobs");
   expect(jobs.map((j) => [j.subject_key, j.version])).toEqual([
-    [newer[0], newer[0]],
-    [older[0], older.join(",")],
-    [older[0], [...older, late].join(",")],
+    [newer[0], revised(newer[0])],
+    [older[0], revised(older.join(","))],
+    [older[0], revised([...older, late].join(","))],
   ]);
   // The rewrite covers the late Match, and only the newer Session wrote the State of the club.
   const writeups = await db.rows<AiWriteupRow>("ai_writeups");

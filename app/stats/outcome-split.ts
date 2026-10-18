@@ -86,8 +86,9 @@ export interface SplitMatch {
   outcome: Outcome;
   /** How long the Match ran: the longest Appearance in it, on either side. */
   secondsPlayed: number;
-  ours: ClubMatchTotals;
-  opponent: ClubMatchTotals;
+  /** Null when a club's stats are not counted, e.g. ours in a DNF we quit (`counted.ts`). */
+  ours: ClubMatchTotals | null;
+  opponent: ClubMatchTotals | null;
   /** How many Squad Members played. */
   squadSize: number;
   /** Which Session it was in: equal for Matches in the same Session. */
@@ -191,6 +192,16 @@ const RATING: PerformanceMetric = {
   compare: (club, diff) =>
     `${statName(club, "Average rating")} ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "lower" : "higher"}`,
 };
+
+/** One club's sample of a stat in one Match, or null when it has no counted stats. */
+function sampleOf(
+  metric: PerformanceMetric,
+  club: Club,
+  match: Pick<SplitMatch, "secondsPlayed" | Club>,
+): WeightedValue | null {
+  const totals = match[club];
+  return totals ? metric.sample(totals, match.secondsPlayed) : null;
+}
 
 /** Every performance stat, in table order. */
 export const PERFORMANCE_METRICS: readonly PerformanceMetric[] = [
@@ -589,7 +600,7 @@ function clubAverage(
   matches: readonly SplitMatch[],
 ): string {
   const mean = weightedMean(
-    withoutNulls(matches.map((m) => metric.sample(m[club], m.secondsPlayed))),
+    withoutNulls(matches.map((m) => sampleOf(metric, club, m))),
   );
   return mean === null ? NO_VALUE : metric.format(mean);
 }
@@ -898,7 +909,7 @@ function performanceSplit(
     dropped: [],
   };
   for (const m of matches) {
-    const sample = metric.sample(m[club], m.secondsPlayed);
+    const sample = sampleOf(metric, club, m);
     if (sample) samples[outcomeSide(m.outcome)].push(sample);
   }
   const wins = weightedMean(samples.wins);
@@ -944,13 +955,13 @@ export type MatchPerformance = Pick<
   "secondsPlayed" | "ours" | "opponent"
 >;
 
-/** One stat where a Match differed from a typical Win. */
+/** One stat where a Match differed from a typical Win, or from every Match (`matchAngle`). */
 export interface Deviation {
   id: string;
   club: Club;
-  /** "6.1 fewer shots per 90 than in a typical Win (5.9 vs 12.0)". */
+  /** "6.1 fewer shots per 90 than in a typical Win (5.9 vs 12.0)", or "than usual" for an angle. */
   text: string;
-  /** Standard deviations of the stat across Wins, signed; infinite when the Wins never vary. */
+  /** Standard deviations of the stat across the baseline, signed; infinite when it never varies. */
   standardDeviations: number;
 }
 
@@ -975,37 +986,65 @@ export function droppedPointsReasons(
   if (wins.length < MIN_SPLIT_MATCHES) return null;
   const candidates = withoutNulls(
     PERFORMANCE_METRICS.flatMap((metric) =>
-      CLUBS.map((club) => deviationFrom(metric, club, match, wins)),
+      CLUBS.map((club) =>
+        deviationFrom(metric, club, match, wins, "in a typical Win"),
+      ),
     ),
   );
   return {
     wins: wins.length,
-    deviations: candidates
-      // Wins that never vary make every difference infinite: the bigger relative change leads.
-      .sort(
-        (a, b) =>
-          Math.abs(b.deviation.standardDeviations) -
-            Math.abs(a.deviation.standardDeviations) ||
-          b.relativeChange - a.relativeChange,
-      )
+    deviations: biggestFirst(candidates)
       .slice(0, TOP_DEVIATIONS)
       .map((c) => c.deviation),
   };
 }
 
+/**
+ * A Match's angle (CLUBS-48): the one stat, either club's, in which it
+ * differed most from every other Match given, e.g. "4.0 more Opponent shots
+ * per 90 than usual (19.0 vs 15.0)". Write-ups lead with it so reports don't
+ * all follow the same pattern. Null with fewer than `MIN_SPLIT_MATCHES`
+ * others or when nothing differed.
+ */
+export function matchAngle(
+  match: MatchPerformance,
+  others: readonly MatchPerformance[],
+): Deviation | null {
+  const candidates = withoutNulls(
+    PERFORMANCE_METRICS.flatMap((metric) =>
+      CLUBS.map((club) => deviationFrom(metric, club, match, others, "usual")),
+    ),
+  );
+  return biggestFirst(candidates)[0]?.deviation ?? null;
+}
+
+type Candidate = { deviation: Deviation; relativeChange: number };
+
+/** Biggest deviation first; a baseline that never varies makes every difference infinite, so the bigger relative change leads. */
+function biggestFirst(candidates: Candidate[]): Candidate[] {
+  return candidates.sort(
+    (a, b) =>
+      Math.abs(b.deviation.standardDeviations) -
+        Math.abs(a.deviation.standardDeviations) ||
+      b.relativeChange - a.relativeChange,
+  );
+}
+
+/** One stat of `match` against the same stat across `baseline`, described as "than <against>". */
 function deviationFrom(
   metric: PerformanceMetric,
   club: Club,
   match: MatchPerformance,
-  wins: readonly MatchPerformance[],
-): { deviation: Deviation; relativeChange: number } | null {
-  const sample = metric.sample(match[club], match.secondsPlayed);
-  const winSamples = withoutNulls(
-    wins.map((w) => metric.sample(w[club], w.secondsPlayed)),
+  baseline: readonly MatchPerformance[],
+  against: string,
+): Candidate | null {
+  const sample = sampleOf(metric, club, match);
+  const baseSamples = withoutNulls(
+    baseline.map((w) => sampleOf(metric, club, w)),
   );
-  if (!sample || winSamples.length < MIN_SPLIT_MATCHES) return null;
-  const typical = weightedMean(winSamples);
-  const score = standardScore(sample.value, winSamples);
+  if (!sample || baseSamples.length < MIN_SPLIT_MATCHES) return null;
+  const typical = weightedMean(baseSamples);
+  const score = standardScore(sample.value, baseSamples);
   // A score of 0 is no difference at all.
   if (typical === null || !score) return null;
   const shown = metric.format(sample.value);
@@ -1017,7 +1056,7 @@ function deviationFrom(
     deviation: {
       id: `${club}-${metric.id}`,
       club,
-      text: `${metric.compare(club, diff)} than in a typical Win (${shown} vs ${typicalShown})`,
+      text: `${metric.compare(club, diff)} than ${against} (${shown} vs ${typicalShown})`,
       standardDeviations: score,
     },
     relativeChange: typical === 0 ? Infinity : Math.abs(diff / typical),
@@ -1064,7 +1103,7 @@ export function usualComparison(
     if (!metric) return [];
     const mean = (from: readonly MatchPerformance[]) => {
       const value = weightedMean(
-        withoutNulls(from.map((m) => metric.sample(m[club], m.secondsPlayed))),
+        withoutNulls(from.map((m) => sampleOf(metric, club, m))),
       );
       return value === null ? NO_VALUE : metric.format(value);
     };

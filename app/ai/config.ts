@@ -46,3 +46,16 @@ export const DEFAULT_RETRY_BASE_MS = 5 * 60_000;
 
 /** How long one model call may take. */
 export const DEFAULT_TIMEOUT_MS = 120_000;
+
+/**
+ * The house style's revision. Bump it to rewrite every write-up: each
+ * writer's versions carry it (`revised`), so every subject gets a new job
+ * and its new text is stored beside the old, which pages stop showing.
+ * 2: CLUBS-48 (pundit prose, EA's data gaps left out).
+ */
+export const WRITEUP_REVISION = 2;
+
+/** A subject's version under the current `WRITEUP_REVISION`. */
+export function revised(version: string): string {
+  return `r${WRITEUP_REVISION}:${version}`;
+}

@@ -154,6 +154,31 @@ describe("resolveComparisonPlayers", () => {
   });
 });
 
+describe("compareSides with a DNF we quit (CLUBS-48)", () => {
+  it("leaves its stats out of the totals but counts its result in the record", () => {
+    const quit = appearance("m9", {
+      outcome: "L",
+      dnf: true,
+      goalsFor: 0,
+      goalsAgainst: 3,
+      rating: 3,
+    });
+    const [side] = compareSides(
+      [
+        {
+          appearances: [appearance("m1"), quit],
+          positionGroups: ALL_POSITIONS,
+        },
+      ],
+      "all",
+    ).sides;
+    expect(side.totals.appearances).toBe(1);
+    expect(side.totals.averageRating).toBe(7);
+    expect(side.form).toHaveLength(1);
+    expect(side.record).toMatchObject({ played: 2, wins: 1, losses: 1 });
+  });
+});
+
 describe("isSmallSample", () => {
   it("flags one or two Matches, not none or three", () => {
     expect([0, 1, 2, 3].map(isSmallSample)).toEqual([false, true, true, false]);

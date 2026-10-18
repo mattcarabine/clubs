@@ -67,7 +67,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
   const [matches, appearances, snapshots, campaign] = await Promise.all([
     listMatches(db, filter, { order: "oldest" }),
-    squadAppearances(db, filter),
+    // Line-up records count results, so they keep the DNFs we quit.
+    squadAppearances(db, filter, { includeQuitMatches: true }),
     clubSnapshots(db),
     getCampaignProgress(db),
   ]);

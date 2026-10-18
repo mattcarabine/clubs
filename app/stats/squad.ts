@@ -20,7 +20,9 @@ import {
   recentChanges,
 } from "./recent-change";
 import {
+  isCountedAppearanceSql,
   isOurAppearance,
+  isPlayedAppearanceSql,
   isShownMatch,
   matchScope,
   type ScopeOptions,
@@ -50,16 +52,27 @@ export interface SquadAppearance extends AppearanceStats {
 export interface SquadAppearanceOptions extends ScopeOptions {
   /** Only this Squad Member's Appearances. */
   playerId?: string;
+  /**
+   * Keep Appearances in DNFs we quit, for who-played views (line-ups,
+   * with and without) that count the result, not the stats. Filter with
+   * `isCountedAppearance` before totalling them.
+   */
+  includeQuitMatches?: boolean;
 }
 
 /**
- * Our Club's Appearances in the Matches a filter selects, oldest first. The
- * building block for anything per Squad Member or per line-up.
+ * Our Club's counted Appearances (`isCountedAppearance`) in the Matches a
+ * filter selects, oldest first. The building block for anything per Squad
+ * Member or per line-up.
  */
 export async function squadAppearances(
   db: Db,
   filter: StatsFilter,
-  { playerId, ...scope }: SquadAppearanceOptions = {},
+  {
+    playerId,
+    includeQuitMatches = false,
+    ...scope
+  }: SquadAppearanceOptions = {},
 ): Promise<SquadAppearance[]> {
   const rows = await db
     .select({
@@ -75,6 +88,7 @@ export async function squadAppearances(
     .where(
       and(
         isOurAppearance,
+        includeQuitMatches ? isPlayedAppearanceSql : isCountedAppearanceSql,
         matchScope(db, filter, scope),
         playerId ? eq(appearances.playerId, playerId) : undefined,
       ),

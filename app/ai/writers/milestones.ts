@@ -4,11 +4,11 @@
  * read the same. Until it lands, or if it never does, pages show each
  * Milestone's plain sentence (`app/stats/milestones.ts`).
  */
-import { OUTCOME_LABEL } from "~/lib/domain";
 import { formatLondonDateTime } from "~/lib/london-time";
 import { formatDecimal } from "~/lib/number-format";
 import {
   DEFAULT_STATS_FILTER,
+  isCountedAppearance,
   listMilestoneBatches,
   listMilestones,
   MILESTONE_KINDS,
@@ -18,16 +18,23 @@ import {
   squadAppearances,
   summariseAppearances,
 } from "~/stats";
-
+import { revised } from "../config";
 import type { GenerateTask, WriteupDraft } from "../generate";
 import type { Subject } from "../plan";
 import { HOUSE_STYLE } from "../prompts";
 import type { AiWriter } from "../queue";
 import { promptName } from "../sanitise";
 import { hasExactly, isText } from "../validate";
+import { recentWriteups } from "../writeups";
+import {
+  daysBetween,
+  OUR_CLUB,
+  recentWritingContext,
+  resultInput,
+} from "./inputs";
 
-/** How Our Club is named in the prompt, as in the house style. */
-const OUR_CLUB = "A Bloo Bloo";
+/** How many recent comments a call sees, so it doesn't repeat them. */
+const RECENT_COMMENTS = 15;
 /** The recent ratings a player Milestone's comment can draw on. */
 const RECENT_FORM = 5;
 /** The longest comment accepted, in characters. */
@@ -39,7 +46,7 @@ export const milestoneWriter: AiWriter = {
   async subjects(db) {
     return (await listMilestoneBatches(db)).map(({ batchKey, size }) => ({
       subjectKey: batchKey,
-      version: String(size),
+      version: revised(String(size)),
     }));
   },
 
@@ -48,28 +55,44 @@ export const milestoneWriter: AiWriter = {
       batchKey: subject.subjectKey,
     });
     if (milestones.length === 0) return null;
-    const history = await squadAppearances(db, DEFAULT_STATS_FILTER);
-    return milestoneTask(milestones, history, subject);
+    const [history, recent] = await Promise.all([
+      // The DNFs we quit stay in for results; player figures skip them.
+      squadAppearances(db, DEFAULT_STATS_FILTER, { includeQuitMatches: true }),
+      recentWriteups(db, "milestone", RECENT_COMMENTS),
+    ]);
+    return milestoneTask(milestones, history, subject, recent);
   },
 };
 
-const INSTRUCTIONS = `Write a comment on each Milestone in the data: Squad Members' landmarks and feats, and Our Club's landmarks and records.
+const INSTRUCTIONS = `Write a comment on each Milestone in the data: our players' landmarks and feats, and the club's landmarks and records.
 - "comments": one per Milestone, using its milestoneId. One or two sentences each, in the pundit voice: why it matters, set in the Match it came in and the form and totals given. Each Milestone's headline is shown above its comment, so don't just repeat it.
-- Records and personal bests only count Matches recorded since tracking began, so call them records "since records began", never all-time.
-- Vary the openings and the angle from one comment to the next.`;
+- Records and personal bests only count Matches recorded since tracking began ("sinceRecordsBegan"), so never call them all-time. Say "since records began" in at most one comment of the batch, and only where it matters; elsewhere say it another way (a club best, his best yet) or leave it.
+- No two comments share an opening, a structure or a stand-out phrase, and none echoes the recent comments in the background.`;
 
 /** The task for one batch. Exported for unit tests. */
 export function milestoneTask(
   milestones: readonly MilestoneEntry[],
   history: readonly SquadAppearance[],
   { subjectKey, version }: Subject,
+  recentComments: readonly string[] = [],
 ): GenerateTask {
   const ids = milestones.map((m) => String(m.id));
+  const first = history[0]?.playedAt;
+  const latest = new Date(
+    Math.max(...milestones.map((m) => m.achievedAt.getTime())),
+  );
   return {
     kind: "milestone",
     subjectKey,
     version,
-    prompt: { system: HOUSE_STYLE, instructions: INSTRUCTIONS },
+    ...(first && {
+      prose: { trackedDays: daysBetween(first, latest) },
+    }),
+    prompt: {
+      system: HOUSE_STYLE,
+      ...recentWritingContext("milestoneComments", recentComments),
+      instructions: INSTRUCTIONS,
+    },
     input: { milestones: milestones.map((m) => milestoneInput(m, history)) },
     schema: {
       type: "object",
@@ -149,13 +172,17 @@ function milestoneInput(
     match: {
       kickOff: formatLondonDateTime(match.playedAt),
       matchType: match.matchType,
-      opponent: promptName(match.opponent.name),
-      score: `${match.goalsFor}-${match.goalsAgainst}`,
-      result: OUTCOME_LABEL[match.outcome],
-      dnf: match.dnf,
+      ...resultInput(match),
     },
     ...(m.playerId
-      ? { squadMember: playerInput(name, m.playerId, m.match.matchId, before) }
+      ? {
+          player: playerInput(
+            name,
+            m.playerId,
+            m.match.matchId,
+            before.filter(isCountedAppearance),
+          ),
+        }
       : { club: { last5Results: lastResults(before) } }),
   };
 }

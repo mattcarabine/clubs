@@ -114,22 +114,38 @@ test("with fewer than 3 recorded Wins the panel is hidden", async ({
   await expect(panel(page)).toHaveCount(0);
 });
 
-test("a 45-minute DNF loss is compared per 90, not as raw totals", async ({
+test("a 45-minute loss is compared per 90, not as raw totals", async ({
   page,
   fakeEa,
   triggerPoll,
 }) => {
-  const dnfId = "870000000000004";
+  const shortId = "870000000000004";
   await record(fakeEa, triggerPoll, [
     ...seededWins(),
     // 9 shots in 45 minutes: 18.0 per 90, more than a typical Win, not fewer.
-    withOnlyShots(lasting(dnf({ ourWin: false, matchId: dnfId }), 45), 9),
+    withOnlyShots(lasting(loss({ matchId: shortId }), 45), 9),
   ]);
 
-  await page.goto(`/matches/${dnfId}`);
+  await page.goto(`/matches/${shortId}`);
   await expect(deviations(page)).toHaveText([
     /6\.0 more shots per 90 than in a typical Win \(18\.0 vs 12\.0\)/,
   ]);
+});
+
+test("a DNF we quit has no panel: EA kept none of our stats (CLUBS-48)", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const dnfId = "870000000000005";
+  await record(fakeEa, triggerPoll, [
+    ...seededWins(),
+    withOnlyShots(lasting(dnf({ ourWin: false, matchId: dnfId }), 45), 0),
+  ]);
+
+  await page.goto(`/matches/${dnfId}`);
+  await expect(page.locator("h1")).toBeVisible();
+  await expect(panel(page)).toHaveCount(0);
 });
 
 test.describe("on a 375px phone", () => {

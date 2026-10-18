@@ -103,6 +103,30 @@ export async function latestWriteups(
   return latest;
 }
 
+/**
+ * The latest write-up of each of the `limit` most recently written subjects
+ * of a kind, newest first: what a writer is shown so it doesn't repeat
+ * itself (CLUBS-48). One indexed query.
+ */
+export async function recentWriteups(
+  db: Db,
+  kind: WriteupKind,
+  limit: number,
+): Promise<string[]> {
+  const rows = await db
+    .select({ subjectKey: aiWriteups.subjectKey, text: aiWriteups.text })
+    .from(aiWriteups)
+    .where(eq(aiWriteups.kind, kind))
+    .orderBy(desc(aiWriteups.id))
+    // Rewrites are rare, so twice the limit leaves room for them.
+    .limit(limit * 2);
+  const seen = new Set<string>();
+  return rows
+    .filter(({ subjectKey }) => !seen.has(subjectKey) && seen.add(subjectKey))
+    .slice(0, limit)
+    .map((row) => row.text);
+}
+
 /** A write-up with the subject of the job that wrote it, e.g. a coaching note's week. */
 export interface JobWriteup extends Writeup {
   jobSubjectKey: string;

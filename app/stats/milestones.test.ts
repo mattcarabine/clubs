@@ -33,6 +33,7 @@ function match(
     goalsFor,
     goalsAgainst,
     outcome,
+    dnf: false,
   };
 }
 
@@ -49,6 +50,7 @@ function appearance(
     assists: 0,
     rating: 7,
     manOfTheMatch: false,
+    secondsPlayed: 5400,
     ...fields,
   };
 }
@@ -307,6 +309,25 @@ describe("feats", () => {
     );
     expect(found.map((m) => [m.kind, m.matchId, m.positionGroup])).toEqual([
       ["first-goal-in-position", "m50", "forward"],
+    ]);
+  });
+
+  it("skips 0-minute Appearances and our side of a DNF we quit (CLUBS-48)", () => {
+    const quit = { ...match(10, "L", 0, 3), dnf: true };
+    const won = { ...match(20, "W", 3, 0), dnf: true };
+    const found = detectMilestones(
+      input({
+        matches: [match(0), quit, won],
+        appearances: [
+          appearance("m0", KAB, { rating: 3, secondsPlayed: 0, goals: 3 }),
+          appearance("m10", KAB, { goals: 3, rating: 9.5 }),
+          appearance("m20", KAB, { goals: 3 }),
+        ],
+      }),
+    );
+    // Only the DNF the Opponent quit counts.
+    expect(found.map((m) => [m.kind, m.matchId])).toEqual([
+      ["hat-trick", "m20"],
     ]);
   });
 

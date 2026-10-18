@@ -3,6 +3,7 @@
  * Matches reported before headlines existed get one from a cheap
  * headline-only call, against the fake Anthropic upstream.
  */
+import { revised } from "../app/ai/config.ts";
 import { expect, test } from "./support/test.ts";
 import {
   type AiJobRow,
@@ -60,7 +61,7 @@ test("Matches with a report but no headline get one from the backlog, once each"
 
   const jobs = await db.rows<AiJobRow>("ai_jobs");
   expect(jobs.map((j) => [j.kind, j.version, j.status])).toEqual([
-    ["session", ids.join(","), "done"],
+    ["session", revised(ids.join(",")), "done"],
     ["headline", ids.join(","), "done"],
   ]);
 

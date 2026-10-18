@@ -13,3 +13,9 @@ Write-ups appear as ordinary site copy with no AI label; only advice aimed at on
 - **Generate on first page view and cache.** Rejected: any visitor, crawler or refresh could spend credit, and a slow model call would block a page.
 - **Cloudflare Queues or Workflows.** Rejected for now: a D1 table drained by the existing 5-minute cron needs no new binding and stays on the free plan.
 - **One call per write-up.** Rejected: a Session's recap and its Match reports share almost all their input, so one call with structured output writes them all, and the newest Session's call also writes the State of the club.
+
+## Update (CLUBS-48)
+
+- The house style's hard rules (no site labels in prose, scores winner first, no zero-minutes, zero-shots or zero-passes claims) are checked in code (`proseProblems` in `app/ai/validate.ts`). A reply that breaks one is sent back once, with the problems listed after the data, in the same job; if the rewrite still breaks one, the job fails and is retried like any other failure. Both calls are billed to the job.
+- Every writer's version carries `WRITEUP_REVISION` (`app/ai/config.ts`), except the headline backlog's: a Session's rewrite writes its headlines too. Bumping it rewrites every write-up through the queue: new jobs, new rows beside the old ones, which pages stop showing because the latest wins. Nothing is deleted.
+- Each call's cached background holds the latest write-ups of the same kind, so the model can avoid repeating them. That background changes as write-ups are added; the data a write-up is about still never drifts.
