@@ -96,6 +96,7 @@ export interface AiJobRow {
   cache_read_tokens: number | null;
   cache_write_tokens: number | null;
   cost_usd: number | null;
+  finished_at: number | null;
 }
 
 export interface AiWriteupRow {

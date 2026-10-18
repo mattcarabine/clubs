@@ -1,8 +1,9 @@
 /**
  * CLUBS-45: once the Poll sees a Season end, one call writes its Season
  * Review and one Discord post announces it with the link; the review page
- * 404s until then, and carries Season-specific link-preview tags. Against
- * the fake EA, Anthropic and Discord.
+ * 404s until then, and carries Season-specific link-preview tags. CLUBS-47:
+ * a finished Season with no Matches is settled once and never checked
+ * again. Against the fake EA, Anthropic and Discord.
  */
 import type { RecordedPost } from "./fake-discord/control.ts";
 import {
@@ -16,6 +17,7 @@ import type { AiJobRow, AiWriteupRow } from "./support/writeups.ts";
 
 const REVIEW_PATH = "/seasons/1/review";
 const REVIEW_URL = `https://clubs.marabine.co.uk${REVIEW_PATH}`;
+const POLL_INTERVAL_MS = 5 * 60_000;
 
 interface Embed {
   title: string;
@@ -129,6 +131,42 @@ test("an AI failure is retried on a later Poll, and the Discord post waits for t
   expect(await reviewJobs(db)).toMatchObject([{ status: "done", attempts: 2 }]);
   expect(reviewPosts(await fakeDiscord.requests())).toHaveLength(1);
   expect((await request.get(REVIEW_PATH)).status()).toBe(200);
+});
+
+test("a finished Season with no Matches is settled once: no call, no post, and later Polls never check it again", async ({
+  fakeEa,
+  fakeAnthropic,
+  fakeDiscord,
+  triggerPoll,
+  db,
+  request,
+}) => {
+  await playSeason({ fakeEa, triggerPoll }, []);
+  await endSeason({ fakeEa, triggerPoll });
+
+  const [settled, ...others] = await reviewJobs(db);
+  expect(others).toHaveLength(0);
+  expect(settled).toMatchObject({
+    subject_key: "1",
+    status: "empty",
+    attempts: 0,
+    input: null,
+  });
+
+  // Later Polls skip it before building its review (whose lookup would settle
+  // it again, stamping this Poll's time), so its job is untouched.
+  for (let i = 1; i <= 3; i++) {
+    await triggerPoll(new Date(Date.now() + i * POLL_INTERVAL_MS));
+  }
+  expect(await reviewJobs(db)).toEqual([settled]);
+
+  const calls = await fakeAnthropic.requests();
+  expect(calls.filter((call) => call.raw.includes("Season Review"))).toEqual(
+    [],
+  );
+  expect(reviewPosts(await fakeDiscord.requests())).toHaveLength(0);
+  expect(await db.rows("season_review_posts")).toHaveLength(0);
+  expect((await request.get(REVIEW_PATH)).status()).toBe(404);
 });
 
 test("a running Season, an unknown Season and a malformed number are 404s", async ({
