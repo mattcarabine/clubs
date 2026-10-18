@@ -3,15 +3,14 @@ import { data, Link } from "react-router";
 
 import {
   DataTable,
-  type DataTableColumn,
   EmptyState,
   FilterBar,
   FormGuide,
   HeadToHeadBar,
   LondonTime,
   MatchScoreBar,
-  numberColumn,
   PageHeader,
+  PERFORMER_COLUMNS,
   RouteError,
   SectionHeading,
   StatGrid,
@@ -21,13 +20,11 @@ import { getDb } from "~/db/client";
 import type { Outcome } from "~/lib/domain";
 import {
   formatCount,
-  formatDecimal,
   formatPercentage,
   formatSigned,
 } from "~/lib/number-format";
 import {
   getOpponent,
-  type LeaderboardRow,
   listMatches,
   type OpponentDetail,
   squadLeaderboard,
@@ -70,34 +67,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     performers,
   };
 }
-
-const PERFORMER_COLUMNS: DataTableColumn<LeaderboardRow>[] = [
-  {
-    id: "name",
-    header: "Squad Member",
-    cell: (p) => (
-      <span className="inline-flex items-baseline gap-2">
-        {p.name}
-        {p.former && (
-          <span className="font-normal text-ink-muted text-xs">Former</span>
-        )}
-      </span>
-    ),
-    sortValue: (p) => p.name,
-    firstSort: "asc",
-  },
-  numberColumn("appearances", "Apps", (p) => p.appearances),
-  numberColumn("goals", "G", (p) => p.goals),
-  numberColumn("assists", "A", (p) => p.assists),
-  numberColumn("goalContributions", "G+A", (p) => p.goalContributions),
-  numberColumn(
-    "averageRating",
-    "Rating",
-    (p) => p.averageRating,
-    formatDecimal,
-  ),
-  numberColumn("manOfTheMatch", "MOTM", (p) => p.manOfTheMatch),
-];
 
 export default function Opponent({ loaderData }: Route.ComponentProps) {
   const { clubName, filter, opponent, matches, record, performers } =

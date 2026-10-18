@@ -8,6 +8,8 @@ export default [
   route("analysis", "routes/analysis/route.tsx"),
   route("matches", "routes/matches.tsx"),
   route("matches/:matchId", "routes/match.tsx"),
+  route("sessions", "routes/sessions.tsx"),
+  route("sessions/:sessionId", "routes/session.tsx"),
   route("opponents", "routes/opponents.tsx"),
   route("opponents/:clubId", "routes/opponent.tsx"),
   route("players/:playerId", "routes/player-profile/route.tsx"),

@@ -10,6 +10,7 @@ import { displayName } from "~/roster";
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
 import type { StatsFilter } from "./filter";
 import { isShownMatch, matchScope, type ScopeOptions } from "./scope";
+import type { Kickoff } from "./sessions";
 import {
   type AppearanceStats,
   type RecordSummary,
@@ -112,6 +113,15 @@ export async function clubRecord(
   scope: ScopeOptions = {},
 ): Promise<RecordSummary> {
   return summariseRecord(await listMatches(db, filter, scope));
+}
+
+/** Every shown Match's kick-off, oldest first, whatever the filter: Sessions span Match Types. */
+export async function listKickoffs(db: Db): Promise<Kickoff[]> {
+  return db
+    .select({ matchId: matches.matchId, playedAt: matches.playedAt })
+    .from(matches)
+    .where(isShownMatch)
+    .orderBy(asc(matches.playedAt), asc(matches.matchId));
 }
 
 /** One player's line in a Match, on either side. */
