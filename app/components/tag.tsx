@@ -26,3 +26,8 @@ export function Tag({ children, tone = "label" }: TagProps) {
 export function SmallSampleTag() {
   return <Tag tone="warning">Small sample</Tag>;
 }
+
+/** Says in words that a Win Chance comes from the Elo-style estimate, not a fit to our results. */
+export function EstimateTag() {
+  return <Tag tone="warning">Estimate</Tag>;
+}

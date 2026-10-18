@@ -35,6 +35,7 @@ import {
   type AfterResultSplit,
   type GroupSplit,
   getOutcomeSplit,
+  getWinChanceAnalysis,
   MIN_SPLIT_MATCHES,
   type PerformanceRow,
   PLAYER_SPLIT_STATS,
@@ -53,6 +54,7 @@ import type { PositionGroupSelection } from "~/stats/positions";
 import type { Route } from "./+types/route";
 import { FindingList } from "./findings";
 import { StrengthSection } from "./strength";
+import { WinChanceSection } from "./win-chance";
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: "A Bloo Bloo — Analysis" }];
@@ -61,12 +63,14 @@ export function meta(_: Route.MetaArgs) {
 export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
-  const { playedAt, ...split } = await getOutcomeSplit(db, filter, {
-    positionGroups: filter.positionGroups,
-  });
+  const [{ playedAt, ...split }, winChance] = await Promise.all([
+    getOutcomeSplit(db, filter, { positionGroups: filter.positionGroups }),
+    getWinChanceAnalysis(db, filter),
+  ]);
   return {
     filter,
     split,
+    winChance,
     matchLabels: playedAt.map(formatLondonShortDate),
   };
 }
@@ -74,7 +78,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 type AnalysisData = Route.ComponentProps["loaderData"];
 
 export default function Analysis({ loaderData }: Route.ComponentProps) {
-  const { filter, split } = loaderData;
+  const { filter, split, winChance } = loaderData;
   return (
     <>
       <PageHeader
@@ -90,6 +94,9 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
           description={notEnoughMatches(split.record)}
         />
       )}
+      <div className="mt-10">
+        <WinChanceSection winChance={winChance} />
+      </div>
     </>
   );
 }

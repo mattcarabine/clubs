@@ -34,3 +34,5 @@ export * from "./squad";
 export * from "./summaries";
 export * from "./top-performers";
 export * from "./trends";
+export * from "./win-chance";
+export * from "./win-chance-query";
