@@ -5,23 +5,19 @@
  */
 import { AI_MODEL, MODEL_PRICES } from "../app/ai/config.ts";
 import { FAKE_USAGE } from "./fake-anthropic/control.ts";
+import { promptText } from "./support/fake-anthropic.ts";
 import { expect, test } from "./support/test.ts";
 import {
   type AiJobRow,
   type AiWriteupRow,
   KAB,
   type PollRunRow,
+  SESSION_CLOCK,
   serveSession,
   TREV,
 } from "./support/writeups.ts";
 
-/** Every text block of a request's messages, as the model reads them. */
-function promptText(body: Record<string, unknown>): string {
-  const messages = body.messages as { content: { text?: string }[] }[];
-  return messages
-    .flatMap((m) => m.content.map((block) => block.text ?? ""))
-    .join("\n");
-}
+test.use({ pollAt: SESSION_CLOCK });
 
 test.beforeEach(async ({ fakeEa }) => {
   // Only the Matches each test adds.

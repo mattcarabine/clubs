@@ -40,6 +40,14 @@ export const fakeAnthropic = {
   },
 };
 
+/** Every text block of a request's messages, as the model reads them. */
+export function promptText(body: Record<string, unknown>): string {
+  const messages = body.messages as { content: { text?: string }[] }[];
+  return messages
+    .flatMap((m) => m.content.map((block) => block.text ?? ""))
+    .join("\n");
+}
+
 async function post(action: string, body?: unknown): Promise<void> {
   const res = await fetch(`${FAKE_ANTHROPIC_URL}${CONTROL_PREFIX}${action}`, {
     method: "POST",

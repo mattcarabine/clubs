@@ -8,6 +8,7 @@
 export * from "./campaigns";
 export * from "./campaigns-query";
 export * from "./club-snapshot";
+export * from "./coaching-brief";
 export * from "./comparison";
 export * from "./comparison-params";
 export * from "./convert";

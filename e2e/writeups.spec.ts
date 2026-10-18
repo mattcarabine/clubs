@@ -3,7 +3,13 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./support/test.ts";
-import { type PollRunRow, serveSession } from "./support/writeups.ts";
+import {
+  type PollRunRow,
+  SESSION_CLOCK,
+  serveSession,
+} from "./support/writeups.ts";
+
+test.use({ pollAt: SESSION_CLOCK });
 
 // CLUBS-35: write-ups shown as ordinary site copy, and never written by a page.
 

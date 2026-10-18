@@ -6,13 +6,15 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
-import { aiWriteups } from "~/db/schema";
+import { aiJobs, aiWriteups } from "~/db/schema";
 
 /**
  * What a write-up is about. `session` and `match` are keyed by the Session's
- * or Match's ID; `club` (the State of the club) by `CLUB_SUBJECT`.
+ * or Match's ID; `club` (the State of the club) by `CLUB_SUBJECT`;
+ * `coaching` (a Squad Member's coaching notes, CLUBS-44) by the player ID,
+ * its job by the week.
  */
-export type WriteupKind = "session" | "match" | "club";
+export type WriteupKind = "session" | "match" | "club" | "coaching";
 
 /** The State of the club has one subject: Our Club. */
 export const CLUB_SUBJECT = "club";
@@ -68,4 +70,44 @@ export async function latestWriteups(
     if (!latest.has(subjectKey)) latest.set(subjectKey, { text, writtenAt });
   }
   return latest;
+}
+
+/** A write-up with the subject of the job that wrote it, e.g. a coaching note's week. */
+export interface JobWriteup extends Writeup {
+  jobSubjectKey: string;
+}
+
+/**
+ * One subject's write-ups, newest first, one per job subject (the latest
+ * written for each), at most `limit`. A coaching note rewritten for its
+ * week appears once. One indexed query.
+ */
+export async function writeupHistory(
+  db: Db,
+  kind: WriteupKind,
+  subjectKey: string,
+  limit: number,
+): Promise<JobWriteup[]> {
+  const rows = await db
+    .select({
+      text: aiWriteups.text,
+      writtenAt: aiWriteups.createdAt,
+      jobSubjectKey: aiJobs.subjectKey,
+    })
+    .from(aiWriteups)
+    .innerJoin(aiJobs, eq(aiJobs.id, aiWriteups.jobId))
+    .where(
+      and(eq(aiWriteups.kind, kind), eq(aiWriteups.subjectKey, subjectKey)),
+    )
+    .orderBy(desc(aiWriteups.id))
+    // Rewrites are rare, so twice the limit leaves room for them.
+    .limit(limit * 2);
+  const seen = new Set<string>();
+  return rows
+    .filter((row) => {
+      if (seen.has(row.jobSubjectKey)) return false;
+      seen.add(row.jobSubjectKey);
+      return true;
+    })
+    .slice(0, limit);
 }

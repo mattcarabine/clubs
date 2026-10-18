@@ -12,10 +12,11 @@ import { errorMessage } from "~/lib/text";
 import type { AiClientConfig } from "./client";
 import { DEFAULT_RETRY_BASE_MS, DEFAULT_TIMEOUT_MS } from "./config";
 import { drainQueue } from "./queue";
+import { coachingWriter } from "./writers/coaching";
 import { sessionWriter } from "./writers/session";
 
 /** Every writer, drained in this order. */
-const WRITERS = [sessionWriter];
+const WRITERS = [sessionWriter, coachingWriter];
 
 /** The client config from Worker env, or null without an API key (local dev, by default). */
 export function aiClientConfig(env: Env): AiClientConfig | null {
@@ -28,7 +29,11 @@ export function aiClientConfig(env: Env): AiClientConfig | null {
   };
 }
 
-export async function runWriteups(env: Env): Promise<void> {
+/**
+ * `now` is the cron's scheduled time: the moment the writers judge what is
+ * due by (a Session over, a coaching week released). E2E runs set it.
+ */
+export async function runWriteups(env: Env, now: Date): Promise<void> {
   const client = aiClientConfig(env);
   if (!client) {
     console.log(JSON.stringify({ event: "ai", status: "skipped" }));
@@ -36,7 +41,6 @@ export async function runWriteups(env: Env): Promise<void> {
   }
   try {
     const db = getDb(env.DB);
-    const now = new Date();
     const summary = await drainQueue(
       {
         db,

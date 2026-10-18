@@ -149,8 +149,16 @@ _Avoid_: Match summary
 The Write-up on the Analysis page about Our Club as a whole, refreshed with each new Session recap.
 _Avoid_: Club report, overview
 
+**Coaching notes**:
+A Squad Member's 2 to 4 short points for one Coaching week (what is working, what to work on, one focus for next week), on their profile and signed by The Gaff. Only Squad Members with an Appearance that week get them.
+_Avoid_: Advice, feedback, tips, AI coaching
+
+**Coaching week**:
+A London week, Monday 00:00 to Monday 00:00. Its Coaching notes are written by the first Poll after 09:00 London on the Monday that ends it; only the latest such week is ever written, so nothing is invented for older weeks.
+_Avoid_: Training week, gameweek
+
 **The Gaff**:
-The sign-off on advice aimed at one Squad Member.
+The sign-off on advice aimed at one Squad Member, such as their Coaching notes.
 _Avoid_: Coach, manager, AI coach
 
 ### Data capture

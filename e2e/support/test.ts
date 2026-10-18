@@ -19,8 +19,14 @@ interface HarnessFixtures {
   fakeEa: typeof fakeEa;
   /** The fake Anthropic upstream that write-ups call (docs/adr/0006). */
   fakeAnthropic: typeof fakeAnthropic;
-  /** Runs one Poll through the Worker's real scheduled handler and waits for it. */
-  triggerPoll: () => Promise<void>;
+  /**
+   * Runs one Poll through the Worker's real scheduled handler and waits for
+   * it. `at` (default `pollAt`) is the cron's scheduled time, the clock the
+   * write-ups judge what is due by; the Poll itself always runs at now.
+   */
+  triggerPoll: (at?: Date) => Promise<void>;
+  /** The default scheduled time for `triggerPoll`; unset means now. Set with `test.use`. */
+  pollAt: Date | undefined;
   db: TestDb;
   /** Resets D1 and both fake upstreams before each test. Automatic. */
   cleanState: undefined;
@@ -49,9 +55,14 @@ export const test = base.extend<HarnessFixtures>({
     await use(fakeAnthropic);
   },
 
-  triggerPoll: async ({ request }, use) => {
-    await use(async () => {
-      const res = await request.get("/cdn-cgi/local/scheduled");
+  pollAt: [undefined, { option: true }],
+
+  triggerPoll: async ({ request, pollAt }, use) => {
+    await use(async (at = pollAt) => {
+      // Miniflare reads `time` (epoch ms) as the event's `scheduledTime`.
+      const res = await request.get(
+        `/cdn-cgi/local/scheduled${at ? `?time=${at.getTime()}` : ""}`,
+      );
       expect(res.ok(), await res.text()).toBe(true);
     });
   },

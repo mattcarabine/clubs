@@ -30,9 +30,9 @@ export default {
     );
   },
 
-  async scheduled(_controller, env) {
+  async scheduled(controller, env) {
     await runPoll(env);
     // After the Poll's own work, so a write-up never delays or fails it.
-    await runWriteups(env);
+    await runWriteups(env, new Date(controller.scheduledTime));
   },
 } satisfies ExportedHandler<Env>;
