@@ -11,7 +11,13 @@ import {
   serveMatch,
 } from "./support/milestones.ts";
 import { expect, test } from "./support/test.ts";
-import { type PollRunRow, serveSession } from "./support/writeups.ts";
+import {
+  type PollRunRow,
+  SESSION_CLOCK,
+  serveSession,
+} from "./support/writeups.ts";
+
+test.use({ pollAt: SESSION_CLOCK });
 
 interface SessionPostRow {
   session_id: string;
@@ -202,7 +208,9 @@ test("the post lists the Session's Milestones by headline (CLUBS-36)", async ({
   fakeDiscord,
   triggerPoll,
 }) => {
-  await serveMatch(fakeEa, "93546000000001", 120, [
+  // Two hours before the clock these specs Poll at.
+  const minutesAgo = (Date.now() - SESSION_CLOCK.getTime()) / 60_000 + 120;
+  await serveMatch(fakeEa, "93546000000001", minutesAgo, [
     { player: MILESTONE_KAB, goals: 3 },
     { player: MILESTONE_LOL, rating: 9.4 },
   ]);

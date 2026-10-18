@@ -22,8 +22,14 @@ interface HarnessFixtures {
   fakeAnthropic: typeof fakeAnthropic;
   /** The fake Discord webhook that Session posts call (CLUBS-39). */
   fakeDiscord: typeof fakeDiscord;
-  /** Runs one Poll through the Worker's real scheduled handler and waits for it. */
-  triggerPoll: () => Promise<void>;
+  /**
+   * Runs one Poll through the Worker's real scheduled handler and waits for
+   * it. `at` (default `pollAt`) is the cron's scheduled time, the clock the
+   * write-ups judge what is due by; the Poll itself always runs at now.
+   */
+  triggerPoll: (at?: Date) => Promise<void>;
+  /** The default scheduled time for `triggerPoll`; unset means now. Set with `test.use`. */
+  pollAt: Date | undefined;
   /** Runs one Poll as if the Worker had no `DISCORD_WEBHOOK_URL`. */
   triggerPollWithoutDiscord: () => Promise<void>;
   db: TestDb;
@@ -60,16 +66,22 @@ export const test = base.extend<HarnessFixtures>({
     await use(fakeDiscord);
   },
 
-  triggerPollWithoutDiscord: async ({ request }, use) => {
+  triggerPollWithoutDiscord: async ({ request, pollAt }, use) => {
     await use(async () => {
-      const res = await request.get("/__test/scheduled-without-discord");
+      const res = await request.get(
+        `/__test/scheduled-without-discord${scheduledTimeQuery(pollAt)}`,
+      );
       expect(res.ok(), await res.text()).toBe(true);
     });
   },
 
-  triggerPoll: async ({ request }, use) => {
-    await use(async () => {
-      const res = await request.get("/cdn-cgi/local/scheduled");
+  pollAt: [undefined, { option: true }],
+
+  triggerPoll: async ({ request, pollAt }, use) => {
+    await use(async (at = pollAt) => {
+      const res = await request.get(
+        `/cdn-cgi/local/scheduled${scheduledTimeQuery(at)}`,
+      );
       expect(res.ok(), await res.text()).toBe(true);
     });
   },
@@ -86,6 +98,11 @@ export const test = base.extend<HarnessFixtures>({
 });
 
 export { expect };
+
+/** `?time=` (epoch ms) for a scheduled time, which Miniflare reads as the event's `scheduledTime`; empty for now. */
+function scheduledTimeQuery(at: Date | undefined): string {
+  return at ? `?time=${at.getTime()}` : "";
+}
 
 async function resetDb(request: APIRequestContext) {
   const res = await request.post("/__test/reset");

@@ -12,6 +12,7 @@ import { errorMessage } from "~/lib/text";
 import type { AiClientConfig } from "./client";
 import { DEFAULT_RETRY_BASE_MS, DEFAULT_TIMEOUT_MS } from "./config";
 import { drainQueue } from "./queue";
+import { coachingWriter } from "./writers/coaching";
 import { headlineWriter } from "./writers/headline";
 import { milestoneWriter } from "./writers/milestones";
 import { sessionWriter } from "./writers/session";
@@ -19,10 +20,16 @@ import { sessionWriter } from "./writers/session";
 /**
  * Every writer, drained in this order. Milestone comments go first: one short
  * call per Poll that found any, so they never wait behind a backlog of recaps.
- * The headline backlog follows the Session writer, which writes new Sessions'
- * headlines itself.
+ * The weekly coaching notes (one call) come before the headline backlog,
+ * which follows the Session writer, which writes new Sessions' headlines
+ * itself.
  */
-const WRITERS = [milestoneWriter, sessionWriter, headlineWriter];
+const WRITERS = [
+  milestoneWriter,
+  sessionWriter,
+  coachingWriter,
+  headlineWriter,
+];
 
 /** The client config from Worker env, or null without an API key (local dev, by default). */
 export function aiClientConfig(env: Env): AiClientConfig | null {
@@ -35,7 +42,11 @@ export function aiClientConfig(env: Env): AiClientConfig | null {
   };
 }
 
-export async function runWriteups(env: Env): Promise<void> {
+/**
+ * `now` is the cron's scheduled time: the moment the writers judge what is
+ * due by (a Session over, a coaching week released). E2E runs set it.
+ */
+export async function runWriteups(env: Env, now: Date): Promise<void> {
   const client = aiClientConfig(env);
   if (!client) {
     console.log(JSON.stringify({ event: "ai", status: "skipped" }));
@@ -43,7 +54,6 @@ export async function runWriteups(env: Env): Promise<void> {
   }
   try {
     const db = getDb(env.DB);
-    const now = new Date();
     const summary = await drainQueue(
       {
         db,

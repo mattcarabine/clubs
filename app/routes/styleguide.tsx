@@ -591,10 +591,13 @@ export default function Styleguide() {
             }
           />
           <AiWriteup
-            label="Advice for Kopite Kev"
+            label="Coaching notes"
             writtenAt={minutesAgo(20)}
-            text="Shoot earlier. Four goals from 9 shots says the finishing is there."
+            text={
+              "Four goals from 9 shots says Kopite Kev's finishing is there.\n\nPass % fell to 71% while passes per 90 rose; he is forcing it.\n\nFocus for next week: one more touch before the final ball."
+            }
             signOff="The Gaff"
+            points
           />
         </div>
       </Section>

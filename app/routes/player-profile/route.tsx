@@ -10,6 +10,8 @@
 import { env } from "cloudflare:workers";
 import { data, Link, useSearchParams } from "react-router";
 
+import { writeupHistory } from "~/ai/writeups";
+
 import {
   ChartFrame,
   ChartLegend,
@@ -50,6 +52,7 @@ import { playerPreview } from "~/stats/link-preview";
 import type { Route } from "./+types/route";
 import { BestMatches } from "./best-matches";
 import { BuildPlate, BuildProgression } from "./build";
+import { COACHING_WEEKS_SHOWN, CoachingNotes } from "./coaching-notes";
 import { EaTotals } from "./ea-totals";
 import { OutcomeSplitPanel } from "./outcome-split-panel";
 import { PositionGroupTable } from "./position-group-table";
@@ -85,17 +88,24 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
-  const [profile, milestones] = await Promise.all([
+  const [profile, coachingNotes, milestones] = await Promise.all([
     getPlayerProfile(db, params.playerId, filter, {
       positionGroups: filter.positionGroups,
     }),
+    writeupHistory(db, "coaching", params.playerId, COACHING_WEEKS_SHOWN),
     listMilestones(db, env.EA_CLUB_NAME, {
       who: { playerId: params.playerId },
       limit: PROFILE_MILESTONES,
     }),
   ]);
   if (!profile) throw data("Not Found", { status: 404 });
-  return { clubName: env.EA_CLUB_NAME, filter, profile, milestones };
+  return {
+    clubName: env.EA_CLUB_NAME,
+    filter,
+    profile,
+    coachingNotes,
+    milestones,
+  };
 }
 
 /** The latest Milestones a profile shows; the Milestones page has the rest. */
@@ -112,7 +122,7 @@ const CONTRIBUTION_SERIES = [
 ] as const;
 
 export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
-  const { clubName, filter, profile, milestones } = loaderData;
+  const { clubName, filter, profile, coachingNotes, milestones } = loaderData;
   const { member, totals, form, build, career, season } = profile;
   const labels = form.map((p) => formatLondonShortDate(p.playedAt));
   const latestBuild = build.at(-1) ?? null;
@@ -183,6 +193,9 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
           />
         </StatGrid>
       </section>
+
+      {/* Not filtered: each week's notes cover that week's Competitive Matches. */}
+      <CoachingNotes notes={coachingNotes} />
 
       {form.length === 0 ? (
         <div className="mb-8">

@@ -8,7 +8,8 @@
  *   `DISCORD_WEBHOOK_URL`, if given) are those URLs, 409 otherwise, so an
  *   E2E run never reuses a server that calls another checkout's fakes.
  * - `GET /__test/scheduled-without-discord` runs the scheduled handler as
- *   if `DISCORD_WEBHOOK_URL` were not set.
+ *   if `DISCORD_WEBHOOK_URL` were not set; `?time=` (epoch ms) sets its
+ *   scheduled time, as for `/cdn-cgi/local/scheduled`.
  * - `POST /__test/reset` empties every table, so each test starts clean.
  * - `GET /__test/tables/:name` returns all rows of one table as JSON.
  * - `POST /__test/poll-runs/age?minutes=N` moves every Poll run N minutes
@@ -51,7 +52,12 @@ export async function handleTestRoute(
   }
 
   if (route === "scheduled-without-discord" && request.method === "GET") {
-    await runScheduled({ ...env, DISCORD_WEBHOOK_URL: undefined });
+    // `time` (epoch ms) is the scheduled time, as `/cdn-cgi/local/scheduled` takes it.
+    const time = searchParams.get("time");
+    await runScheduled(
+      { ...env, DISCORD_WEBHOOK_URL: undefined },
+      time ? new Date(Number(time)) : undefined,
+    );
     return new Response(null, { status: 204 });
   }
 

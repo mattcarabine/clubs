@@ -107,9 +107,10 @@ function toRow(
 export async function runMilestones(
   env: Env,
   pollChanged: boolean,
+  now: Date,
 ): Promise<void> {
   try {
-    const run = await recordMilestones(getDb(env.DB), new Date(), pollChanged);
+    const run = await recordMilestones(getDb(env.DB), now, pollChanged);
     if (run) console.log(JSON.stringify({ event: "milestones", ...run }));
   } catch (error) {
     console.error(
