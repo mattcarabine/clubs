@@ -8,7 +8,9 @@
 import { env } from "cloudflare:workers";
 import { useSearchParams } from "react-router";
 
+import { CLUB_SUBJECT, latestWriteup } from "~/ai/writeups";
 import {
+  AiWriteup,
   ChartFrame,
   DataTable,
   type DataTableColumn,
@@ -58,12 +60,15 @@ export function meta(_: Route.MetaArgs) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const filter = statsFilterFromRequest(request);
-  const { playedAt, ...split } = await getOutcomeSplit(getDb(env.DB), filter, {
-    positionGroups: filter.positionGroups,
-  });
+  const db = getDb(env.DB);
+  const [{ playedAt, ...split }, stateOfTheClub] = await Promise.all([
+    getOutcomeSplit(db, filter, { positionGroups: filter.positionGroups }),
+    latestWriteup(db, "club", CLUB_SUBJECT),
+  ]);
   return {
     filter,
     split,
+    stateOfTheClub,
     matchLabels: playedAt.map(formatLondonShortDate),
   };
 }
@@ -71,13 +76,27 @@ export async function loader({ request }: Route.LoaderArgs) {
 type AnalysisData = Route.ComponentProps["loaderData"];
 
 export default function Analysis({ loaderData }: Route.ComponentProps) {
-  const { filter, split } = loaderData;
+  const { filter, split, stateOfTheClub } = loaderData;
   return (
     <>
       <PageHeader
         title="Analysis"
         subtitle="What changes between Wins and Dropped Points (draws and losses)."
       />
+      {/* Written after the latest Session, whatever the filter, so it sits above the FilterBar. */}
+      {stateOfTheClub && (
+        <section aria-label="State of the club" className="mb-8">
+          <SectionHeading
+            title="State of the club"
+            subtitle="After the latest Session, across every Competitive Match"
+          />
+          <AiWriteup
+            label="State of the club"
+            text={stateOfTheClub.text}
+            writtenAt={stateOfTheClub.writtenAt}
+          />
+        </section>
+      )}
       <FilterBar filter={filter} />
       {split.ready ? (
         <OutcomeSplitSections {...loaderData} />

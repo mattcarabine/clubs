@@ -5,7 +5,9 @@
 import { env } from "cloudflare:workers";
 import { data, Link } from "react-router";
 
+import { latestWriteup } from "~/ai/writeups";
 import {
+  AiWriteup,
   BackLink,
   LINKED_ROW,
   LINKED_ROW_HEADER,
@@ -59,9 +61,10 @@ export async function loader({ params }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const match = await getMatch(db, params.matchId);
   if (!match) throw data("Match not found", { status: 404 });
-  const [droppedPoints, session] = await Promise.all([
+  const [droppedPoints, session, report] = await Promise.all([
     getDroppedPointsReasons(db, match),
     sessionOfMatch(db, match.matchId),
+    latestWriteup(db, "match", match.matchId),
   ]);
   const ours = match.appearances.filter((a) => a.isOurClub);
   const theirs = match.appearances.filter((a) => !a.isOurClub);
@@ -73,12 +76,21 @@ export async function loader({ params }: Route.LoaderArgs) {
     droppedPoints,
     totals: summariseMatchSides(match.appearances),
     sessionId: session?.id ?? null,
+    report,
   };
 }
 
 export default function Match({ loaderData }: Route.ComponentProps) {
-  const { clubName, match, ours, theirs, droppedPoints, totals, sessionId } =
-    loaderData;
+  const {
+    clubName,
+    match,
+    ours,
+    theirs,
+    droppedPoints,
+    totals,
+    sessionId,
+    report,
+  } = loaderData;
   const { opponent } = match;
   const motm = match.appearances.find((a) => a.manOfTheMatch);
   return (
@@ -117,6 +129,17 @@ export default function Match({ loaderData }: Route.ComponentProps) {
             <DnfNote winner={opponent.name} quitter={clubName} />
           ))}
       </section>
+
+      {report && (
+        <section aria-label="Match report" className="mb-8">
+          <SectionHeading title="Match report" />
+          <AiWriteup
+            label="Match report"
+            text={report.text}
+            writtenAt={report.writtenAt}
+          />
+        </section>
+      )}
 
       {droppedPoints && (
         <WhyWeDroppedPoints

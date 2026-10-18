@@ -1,12 +1,15 @@
 /**
  * A Session (CLUBS-34): one evening's run of Matches, whatever the filter. Its
- * record and Matches in order, a leaderboard of the Squad Members who played,
- * the running points across it, and its per-90s beside Our Club's usual.
+ * record, its recap once it is over (CLUBS-35), its Matches in order, a
+ * leaderboard of the Squad Members who played, the running points across it,
+ * and its per-90s beside Our Club's usual.
  */
 import { env } from "cloudflare:workers";
 import { data, Link } from "react-router";
 
+import { latestWriteup } from "~/ai/writeups";
 import {
+  AiWriteup,
   BackLink,
   ChartFrame,
   DataTable,
@@ -39,12 +42,17 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function loader({ params }: Route.LoaderArgs) {
-  const session = await getSession(getDb(env.DB), params.sessionId);
+  const db = getDb(env.DB);
+  const [session, recap] = await Promise.all([
+    getSession(db, params.sessionId),
+    latestWriteup(db, "session", params.sessionId),
+  ]);
   if (!session) throw data("Session not found", { status: 404 });
   const outcomes = session.matches.map((m) => m.outcome);
   return {
     clubName: env.EA_CLUB_NAME,
     session,
+    recap,
     outcomes,
     points: cumulativePoints(outcomes),
   };
@@ -62,7 +70,7 @@ const USUAL_COLUMNS: DataTableColumn<UsualComparisonRow>[] = [
 ];
 
 export default function Session({ loaderData }: Route.ComponentProps) {
-  const { clubName, session, outcomes, points } = loaderData;
+  const { clubName, session, recap, outcomes, points } = loaderData;
   const { matches, record, players, usual } = session;
   return (
     <>
@@ -86,7 +94,16 @@ export default function Session({ loaderData }: Route.ComponentProps) {
         <FormGuide results={outcomes} size="md" />
       </section>
 
-      {/* CLUBS-35: the Session recap goes here. Until then the slot is empty. */}
+      {recap && (
+        <section aria-label="Recap" className="mb-8">
+          <SectionHeading title="Recap" />
+          <AiWriteup
+            label="Session recap"
+            text={recap.text}
+            writtenAt={recap.writtenAt}
+          />
+        </section>
+      )}
 
       <section aria-label="Matches" className="mb-10">
         <SectionHeading

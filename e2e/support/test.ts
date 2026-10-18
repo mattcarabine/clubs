@@ -7,6 +7,7 @@
  */
 import { type APIRequestContext, test as base, expect } from "@playwright/test";
 
+import { fakeAnthropic } from "./fake-anthropic.ts";
 import { fakeEa } from "./fake-ea.ts";
 
 export interface TestDb {
@@ -16,17 +17,23 @@ export interface TestDb {
 
 interface HarnessFixtures {
   fakeEa: typeof fakeEa;
+  /** The fake Anthropic upstream that write-ups call (docs/adr/0006). */
+  fakeAnthropic: typeof fakeAnthropic;
   /** Runs one Poll through the Worker's real scheduled handler and waits for it. */
   triggerPoll: () => Promise<void>;
   db: TestDb;
-  /** Resets D1 and the fake EA upstream before each test. Automatic. */
+  /** Resets D1 and both fake upstreams before each test. Automatic. */
   cleanState: undefined;
 }
 
 export const test = base.extend<HarnessFixtures>({
   cleanState: [
     async ({ request }, use) => {
-      await Promise.all([resetDb(request), fakeEa.reset()]);
+      await Promise.all([
+        resetDb(request),
+        fakeEa.reset(),
+        fakeAnthropic.reset(),
+      ]);
       await use(undefined);
     },
     { auto: true },
@@ -35,6 +42,11 @@ export const test = base.extend<HarnessFixtures>({
   // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructuring pattern.
   fakeEa: async ({}, use) => {
     await use(fakeEa);
+  },
+
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructuring pattern.
+  fakeAnthropic: async ({}, use) => {
+    await use(fakeAnthropic);
   },
 
   triggerPoll: async ({ request }, use) => {

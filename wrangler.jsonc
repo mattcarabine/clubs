@@ -46,6 +46,11 @@
         "EA_CLUB_NAME": "A Bloo Bloo",
         "EA_TIMEOUT_MS": "1000",
         "TEST_ROUTES": "1",
+        // Write-ups (app/ai/config.ts): a short call timeout and no backoff, so a
+        // spec can fail a call and retry it on the very next Poll. The fake
+        // Anthropic upstream's URL and a dummy key are passed at runtime, like EA_BASE_URL.
+        "ANTHROPIC_TIMEOUT_MS": "1500",
+        "AI_RETRY_BASE_MS": "0",
         // Extra Roster entries (app/roster.ts) for players that exist only in E2E specs.
         "TEST_ROSTER": "{\"900000099\":{\"former\":true}}"
       },

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import {
+  AiWriteup,
   BarChart,
   CampaignPanel,
   ChartFrame,
@@ -507,6 +508,7 @@ export default function Styleguide() {
               averageRating: 8.1,
               manOfTheMatch: 2,
             }}
+            teaser="Three Wins from five, and Kopite Kev was unplayable."
           />
           <SessionHeader
             to="/styleguide"
@@ -523,6 +525,24 @@ export default function Styleguide() {
             }}
             form={["W"]}
             topPerformer={null}
+          />
+        </div>
+      </Section>
+
+      <Section id="ai-writeup" title="AiWriteup">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AiWriteup
+            label="Session recap"
+            writtenAt={minutesAgo(20)}
+            text={
+              "Three Wins from five and a night Kopite Kev will want framed.\n\nHe scored four, set up two more and took Man of the Match twice. The one blot was a 1-3 loss in the fourth Match, where we had 5 shots to their 14."
+            }
+          />
+          <AiWriteup
+            label="Advice for Kopite Kev"
+            writtenAt={minutesAgo(20)}
+            text="Shoot earlier. Four goals from 9 shots says the finishing is there."
+            signOff="The Gaff"
           />
         </div>
       </Section>

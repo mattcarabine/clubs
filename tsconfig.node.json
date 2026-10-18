@@ -11,7 +11,8 @@
     "live/**/*",
     "app/lib/relative-time.ts",
     "app/ea/**/*",
-    "app/poll/rating-targets.ts"
+    "app/poll/rating-targets.ts",
+    "app/ai/config.ts"
   ],
   "compilerOptions": {
     "composite": true,

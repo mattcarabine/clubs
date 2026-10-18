@@ -1,4 +1,5 @@
 // The design system. Import from "~/components"; see CLAUDE.md "Visual design".
+export { AiWriteup } from "./ai-writeup";
 export { AppShell, crestUrl, NAV_ITEMS } from "./app-shell";
 export {
   CampaignPanel,

@@ -25,6 +25,7 @@ export * from "./positions";
 export * from "./recent-change";
 export * from "./scope";
 export * from "./seasons";
+export * from "./session-brief";
 export * from "./sessions";
 export * from "./sessions-query";
 export * from "./snapshots";

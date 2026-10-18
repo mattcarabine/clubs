@@ -5,6 +5,7 @@
 import { env } from "cloudflare:workers";
 import { Link, useSearchParams } from "react-router";
 
+import { latestWriteups } from "~/ai/writeups";
 import {
   EmptyState,
   FilterBar,
@@ -17,6 +18,7 @@ import { getDb } from "~/db/client";
 import { formatLondonDate, formatLondonTimeSpan } from "~/lib/london-time";
 import { parsePage, withPage } from "~/lib/pagination";
 import { sessionPath } from "~/lib/paths";
+import { firstSentence } from "~/lib/text";
 import {
   listSessionPage,
   type SessionSummary,
@@ -40,11 +42,29 @@ export async function loader({ request }: Route.LoaderArgs) {
     page,
     pageSize: PAGE_SIZE,
   });
-  return { clubName: env.EA_CLUB_NAME, filter, sessions, page, pages, total };
+  const recaps = await latestWriteups(
+    db,
+    "session",
+    sessions.map((s) => s.id),
+  );
+  // Only each recap's first sentence leaves the server.
+  const teasers = Object.fromEntries(
+    [...recaps].map(([id, recap]) => [id, firstSentence(recap.text)]),
+  );
+  return {
+    clubName: env.EA_CLUB_NAME,
+    filter,
+    sessions,
+    teasers,
+    page,
+    pages,
+    total,
+  };
 }
 
 export default function Matches({ loaderData }: Route.ComponentProps) {
-  const { clubName, filter, sessions, page, pages, total } = loaderData;
+  const { clubName, filter, sessions, teasers, page, pages, total } =
+    loaderData;
   const pageLink = usePageLink();
   return (
     <>
@@ -77,6 +97,7 @@ export default function Matches({ loaderData }: Route.ComponentProps) {
               key={session.id}
               clubName={clubName}
               session={session}
+              teaser={teasers[session.id]}
             />
           ))}
         </div>
@@ -90,9 +111,12 @@ export default function Matches({ loaderData }: Route.ComponentProps) {
 function SessionMatches({
   clubName,
   session,
+  teaser,
 }: {
   clubName: string;
   session: SessionSummary;
+  /** The recap's first sentence, once written. */
+  teaser?: string;
 }) {
   const { matches } = session;
   return (
@@ -109,6 +133,7 @@ function SessionMatches({
         // The Session's results, oldest first like every form strip.
         form={matches.map((m) => m.outcome).reverse()}
         topPerformer={session.topPerformer}
+        teaser={teaser}
       />
       <ul className="mt-4 grid gap-x-6 gap-y-4 lg:grid-cols-2">
         {matches.map((match) => (

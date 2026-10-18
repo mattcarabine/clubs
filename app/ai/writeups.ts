@@ -1,0 +1,71 @@
+/**
+ * Reading write-ups for pages: the latest text stored per subject. Pages
+ * only ever read; nothing here (or anything a route imports) calls the
+ * model (docs/adr/0006).
+ */
+import { and, desc, eq, inArray } from "drizzle-orm";
+
+import type { Db } from "~/db/client";
+import { aiWriteups } from "~/db/schema";
+
+/**
+ * What a write-up is about. `session` and `match` are keyed by the Session's
+ * or Match's ID; `club` (the State of the club) by `CLUB_SUBJECT`.
+ */
+export type WriteupKind = "session" | "match" | "club";
+
+/** The State of the club has one subject: Our Club. */
+export const CLUB_SUBJECT = "club";
+
+export interface Writeup {
+  text: string;
+  writtenAt: Date;
+}
+
+/** The latest write-up for one subject, or null before one is written. */
+export async function latestWriteup(
+  db: Db,
+  kind: WriteupKind,
+  subjectKey: string,
+): Promise<Writeup | null> {
+  const [row] = await db
+    .select({ text: aiWriteups.text, writtenAt: aiWriteups.createdAt })
+    .from(aiWriteups)
+    .where(
+      and(eq(aiWriteups.kind, kind), eq(aiWriteups.subjectKey, subjectKey)),
+    )
+    .orderBy(desc(aiWriteups.id))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * The latest write-up for each of several subjects (at most 90, for D1's
+ * bound-parameter cap), keyed by subject. One query.
+ */
+export async function latestWriteups(
+  db: Db,
+  kind: WriteupKind,
+  subjectKeys: readonly string[],
+): Promise<Map<string, Writeup>> {
+  if (subjectKeys.length === 0) return new Map();
+  const rows = await db
+    .select({
+      subjectKey: aiWriteups.subjectKey,
+      text: aiWriteups.text,
+      writtenAt: aiWriteups.createdAt,
+    })
+    .from(aiWriteups)
+    .where(
+      and(
+        eq(aiWriteups.kind, kind),
+        inArray(aiWriteups.subjectKey, [...subjectKeys]),
+      ),
+    )
+    .orderBy(desc(aiWriteups.id));
+  const latest = new Map<string, Writeup>();
+  for (const { subjectKey, text, writtenAt } of rows) {
+    if (!latest.has(subjectKey)) latest.set(subjectKey, { text, writtenAt });
+  }
+  return latest;
+}

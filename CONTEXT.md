@@ -127,6 +127,28 @@ _Avoid_: Head-to-head (reserved for Our Club vs an Opponent), versus, matchup
 A Match in which both Squad Members in a Comparison made an Appearance; shown in the app as "Played together".
 _Avoid_: Partnership, joint match, common game
 
+### Write-ups
+
+**Write-up**:
+Prose about our stats, written by the Poll (never on a page view) and shown as ordinary site copy, with no label saying how it was written.
+_Avoid_: AI summary, generated text, insight
+
+**Session recap**:
+The Write-up of a Session, written once it is over (more than 45 minutes after its last kick-off) and again only if a Match joins it later.
+_Avoid_: Session summary, night report
+
+**Match report**:
+A few sentences on one Match, written with its Session recap.
+_Avoid_: Match summary
+
+**State of the club**:
+The Write-up on the Analysis page about Our Club as a whole, refreshed with each new Session recap.
+_Avoid_: Club report, overview
+
+**The Gaff**:
+The sign-off on advice aimed at one Squad Member.
+_Avoid_: Coach, manager, AI coach
+
 ### Data capture
 
 **Poll**:
