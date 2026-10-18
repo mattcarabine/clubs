@@ -17,6 +17,7 @@ import type { MatchType } from "~/lib/domain";
 import {
   addCalendarDays,
   type CalendarDate,
+  formatCalendarRange,
   isCalendarRange,
   londonDateKey,
   londonDayStart,
@@ -52,7 +53,7 @@ export type DatePreset = (typeof DATE_PRESETS)[number];
 export const DATE_PRESET_LABEL: Record<DatePreset, string> = {
   "7d": "Last 7 days",
   "30d": "Last 30 days",
-  "1y": "Last year",
+  "1y": "Last 12 months",
 };
 
 /** How many London calendar days, today included, each preset covers. */
@@ -62,6 +63,12 @@ const DATE_PRESET_DAYS: Record<DatePreset, number> = {
   "1y": 365,
 };
 
+/** Both ends of a range of London calendar days, inclusive. */
+export interface CalendarRange {
+  from: CalendarDate;
+  to: CalendarDate;
+}
+
 /**
  * Which dates count: all of them, a relative preset, or a custom range of
  * London calendar days, inclusive at both ends (CLAUDE.md "Date filtering").
@@ -69,9 +76,34 @@ const DATE_PRESET_DAYS: Record<DatePreset, number> = {
 export type DateRange =
   | { kind: "all" }
   | { kind: "preset"; preset: DatePreset }
-  | { kind: "custom"; from: CalendarDate; to: CalendarDate };
+  | ({ kind: "custom" } & CalendarRange);
 
 export const ALL_DATES: DateRange = { kind: "all" };
+
+export const ALL_DATES_LABEL = "All dates";
+
+/** The days a preset covers when `today` is the London date: it and the days before it. */
+export function presetRange(
+  preset: DatePreset,
+  today: CalendarDate,
+): CalendarRange {
+  return {
+    from: addCalendarDays(today, 1 - DATE_PRESET_DAYS[preset]),
+    to: today,
+  };
+}
+
+/** How the FilterBar names a range: "All dates", "Last 30 days" or "5 Oct – 12 Oct". */
+export function dateRangeLabel(range: DateRange, now = new Date()): string {
+  switch (range.kind) {
+    case "all":
+      return ALL_DATES_LABEL;
+    case "preset":
+      return DATE_PRESET_LABEL[range.preset];
+    case "custom":
+      return formatCalendarRange(range.from, range.to, now);
+  }
+}
 
 /** The instants a range covers: `start` inclusive, `end` exclusive; absent means unbounded. */
 export interface DateWindow {
@@ -85,9 +117,8 @@ export function dateWindow(range: DateRange, now: Date): DateWindow {
     case "all":
       return {};
     case "preset": {
-      const today = londonDateKey(now);
-      const first = addCalendarDays(today, 1 - DATE_PRESET_DAYS[range.preset]);
-      return { start: londonDayStart(first) };
+      const { from } = presetRange(range.preset, londonDateKey(now));
+      return { start: londonDayStart(from) };
     }
     case "custom":
       return {

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import {
   BarChart,
   CampaignPanel,
@@ -6,6 +6,7 @@ import {
   ChartLegend,
   DataTable,
   type DataTableColumn,
+  DateRangePicker,
   DnfBadge,
   EmptyState,
   FormBadge,
@@ -39,6 +40,7 @@ import {
   type PositionGroup,
 } from "~/lib/domain";
 import { formatDecimal } from "~/lib/number-format";
+import { type DateRange, dateRangeLabel } from "~/stats/filter";
 import type { TopPerformer } from "~/stats/top-performers";
 import type { Route } from "./+types/styleguide";
 
@@ -693,6 +695,10 @@ export default function Styleguide() {
         />
       </Section>
 
+      <Section id="date-range-picker" title="DateRangePicker">
+        <DateRangePickerExample />
+      </Section>
+
       <Section id="loading" title="Loading">
         <LoadingState label="Loading Matchday" />
         <div className="mt-4 grid max-w-sm gap-2">
@@ -700,6 +706,27 @@ export default function Styleguide() {
           <Skeleton className="h-4 w-1/2" />
         </div>
       </Section>
+    </div>
+  );
+}
+
+/** The FilterBar's date picker on its own, applying to local state rather than the URL. */
+function DateRangePickerExample() {
+  const [range, setRange] = useState<DateRange>({
+    kind: "custom",
+    from: "2026-10-03",
+    to: "2026-10-07",
+  });
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <DateRangePicker
+        value={range}
+        firstMatchDate="2026-09-20"
+        onApply={setRange}
+      />
+      <p className="text-ink-muted text-sm">
+        Applied: {dateRangeLabel(range, NOW)}
+      </p>
     </div>
   );
 }

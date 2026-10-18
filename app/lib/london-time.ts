@@ -105,6 +105,64 @@ export function londonDayStart(date: CalendarDate): Date {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/*
+ * Calendar months, for the date-range picker's grid. These are pure calendar
+ * arithmetic on `YYYY-MM-DD` strings: no instant, so no time zone.
+ */
+
+/** A calendar month as `YYYY-MM`. */
+export type CalendarMonth = string;
+
+export function calendarMonthOf(date: CalendarDate): CalendarMonth {
+  return date.slice(0, 7);
+}
+
+/** The month `months` after (or, if negative, before) `month`. */
+export function addCalendarMonths(
+  month: CalendarMonth,
+  months: number,
+): CalendarMonth {
+  const [year, index] = month.split("-").map(Number);
+  return utcCalendarDate(Date.UTC(year, index - 1 + months, 1)).slice(0, 7);
+}
+
+/** Months from `from` to `to`: 0 for the same month, negative when `to` is earlier. */
+export function calendarMonthsBetween(
+  from: CalendarMonth,
+  to: CalendarMonth,
+): number {
+  const [fromYear, fromMonth] = from.split("-").map(Number);
+  const [toYear, toMonth] = to.split("-").map(Number);
+  return (toYear - fromYear) * 12 + (toMonth - fromMonth);
+}
+
+/** Every day of a month, in order. */
+export function calendarMonthDays(month: CalendarMonth): CalendarDate[] {
+  const first = `${month}-01`;
+  const days: CalendarDate[] = [];
+  for (let day = first; calendarMonthOf(day) === month; ) {
+    days.push(day);
+    day = addCalendarDays(day, 1);
+  }
+  return days;
+}
+
+/** The same day of the month `months` away, clamped to that month's last day (31 Jan + 1 is 28 Feb). */
+export function addCalendarMonthsToDate(
+  date: CalendarDate,
+  months: number,
+): CalendarDate {
+  const days = calendarMonthDays(
+    addCalendarMonths(calendarMonthOf(date), months),
+  );
+  return days[Math.min(Number(date.slice(8)), days.length) - 1];
+}
+
+/** The weekday's index in `WEEKDAYS`: 0 for Monday to 6 for Sunday. */
+export function calendarWeekdayIndex(date: CalendarDate): number {
+  return (new Date(utcMidnight(date)).getUTCDay() + 6) % 7;
+}
+
 /** Epoch milliseconds at 00:00 UTC on a `YYYY-MM-DD` date. */
 function utcMidnight(date: string): number {
   const [year, month, day] = date.split("-").map(Number);
@@ -173,6 +231,53 @@ export function formatLondonTimeSpan(start: Date, end: Date): string {
 /** "14 Oct", only where space is tightest: chart axes and the date-range chip. */
 export function formatLondonShortDate(date: Date): string {
   return shortDateFormat.format(date);
+}
+
+/**
+ * A range of calendar days, as the FilterBar's date trigger shows it:
+ * "5 Oct – 12 Oct", or "12 Oct" for one day. Like every day, the year is
+ * added only outside the current London year ("5 Oct – 12 Oct 2025"), and
+ * a range across New Year names both ("20 Dec 2025 – 5 Jan 2026").
+ */
+export function formatCalendarRange(
+  from: CalendarDate,
+  to: CalendarDate,
+  now: Date = new Date(),
+): string {
+  const short = (date: CalendarDate) =>
+    formatLondonShortDate(londonDayStart(date));
+  const [fromYear, toYear] = [from.slice(0, 4), to.slice(0, 4)];
+  if (fromYear !== toYear) {
+    return `${short(from)} ${fromYear} – ${short(to)} ${toYear}`;
+  }
+  const range = from === to ? short(from) : `${short(from)} – ${short(to)}`;
+  return Number(toYear) === londonParts(now).year
+    ? range
+    : `${range} ${toYear}`;
+}
+
+const monthFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: LONDON_TIME_ZONE,
+  month: "long",
+  year: "numeric",
+});
+
+const longDayFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: LONDON_TIME_ZONE,
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** A calendar heading: "October 2026". */
+export function formatCalendarMonth(month: CalendarMonth): string {
+  return monthFormat.format(londonDayStart(`${month}-01`));
+}
+
+/** A day in full, for screen readers: "Saturday 3 October 2026". */
+export function formatCalendarDay(date: CalendarDate): string {
+  return longDayFormat.format(londonDayStart(date)).replace(",", "");
 }
 
 function pad(n: number): string {
