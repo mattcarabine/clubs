@@ -2,9 +2,10 @@
  * Coaching notes (CLUBS-44): once a London week is over, the first Poll
  * after 09:00 London on the Monday writes 2 to 4 short points for every
  * Squad Member who played in it, in one call. Only the latest such week is
- * ever a subject, so a release backfills that week and no older one. A
- * Match from the week reaching us late changes its version, so the week is
- * written again; pages show the latest notes per week.
+ * ever a subject, so a release backfills that week and no older one. The
+ * version is who played, so notes are written once per player per week; a
+ * late Match only rewrites the week when it brings in someone new, and
+ * pages show the latest notes per week.
  */
 import {
   type CoachingWeek,
