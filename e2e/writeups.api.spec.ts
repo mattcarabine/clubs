@@ -67,7 +67,9 @@ test("a Session over for 45 minutes gets one call: its recap, a report per Match
   expect(writeups.map((w) => [w.kind, w.subject_key])).toEqual([
     ["session", ids[0]],
     ["match", ids[0]],
+    ["headline", ids[0]],
     ["match", ids[1]],
+    ["headline", ids[1]],
     ["club", "club"],
   ]);
 
@@ -125,8 +127,8 @@ test("a long Session's recap and all its Match reports are stored, past D1's 100
   const written = (await db.rows<AiWriteupRow>("ai_writeups")).filter(
     (w) => w.job_id === latest?.id,
   );
-  // The recap, 22 Match reports and the State of the club.
-  expect(written).toHaveLength(24);
+  // The recap, 22 Match reports and headlines, and the State of the club.
+  expect(written).toHaveLength(46);
 });
 
 test("a Session still within 45 minutes of its last kick-off gets no call yet", async ({
@@ -159,7 +161,7 @@ test("a further Poll with no new Matches makes no new call", async ({
   await triggerPoll();
   expect(await fakeAnthropic.requests()).toHaveLength(1);
   expect(await db.rows("ai_jobs")).toHaveLength(1);
-  expect(await db.rows("ai_writeups")).toHaveLength(4);
+  expect(await db.rows("ai_writeups")).toHaveLength(6);
 });
 
 test("a Match added to a finished Session rewrites that Session's recap only", async ({
@@ -208,8 +210,11 @@ test("a Match added to a finished Session rewrites that Session's recap only", a
   expect(rewrite.map((w) => [w.kind, w.subject_key])).toEqual([
     ["session", older[0]],
     ["match", older[0]],
+    ["headline", older[0]],
     ["match", older[1]],
+    ["headline", older[1]],
     ["match", late],
+    ["headline", late],
   ]);
 });
 
@@ -263,7 +268,7 @@ test("a failed call is written on the next Poll", async ({
   expect(await fakeAnthropic.requests()).toHaveLength(2);
   const [job] = await db.rows<AiJobRow>("ai_jobs");
   expect(job).toMatchObject({ status: "done", attempts: 2 });
-  expect(await db.rows("ai_writeups")).toHaveLength(3);
+  expect(await db.rows("ai_writeups")).toHaveLength(4);
 });
 
 test("backfill: past Sessions are written a few per Poll, newest first, once each", async ({

@@ -16,6 +16,7 @@ import {
   LastUpdatedBadge,
   LineChart,
   LoadingState,
+  MatchHeadline,
   OutcomeBadge,
   PageHeader,
   PlayerChip,
@@ -551,6 +552,18 @@ export default function Styleguide() {
             text="Shoot earlier. Four goals from 9 shots says the finishing is there."
             signOff="The Gaff"
           />
+        </div>
+      </Section>
+
+      <Section id="match-headline" title="MatchHeadline">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <MatchHeadline
+            size="hero"
+            text="Kebab Over6pack run riot as Bloo Bloo collapse"
+          />
+          <div className="min-w-0">
+            <MatchHeadline text="Bloo Bloo and Kebab Over6pack share the spoils in a madcap, end-to-end thriller!" />
+          </div>
         </div>
       </Section>
 

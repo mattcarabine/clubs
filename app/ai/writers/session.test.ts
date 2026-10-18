@@ -11,24 +11,42 @@ describe("sessionWriteups", () => {
   const reply = {
     recap: "What a night.",
     matchReports: [
-      { matchId: "m1", report: "Won it late." },
-      { matchId: "m2", report: "Lost it early." },
+      { matchId: "m1", report: "Won it late.", headline: "Late show" },
+      { matchId: "m2", report: "Lost it early.", headline: "Early bath" },
     ],
     stateOfTheClub: "Flying.",
   };
 
-  it("stores the recap, a report per Match and the State of the club", () => {
+  it("stores the recap, a report and headline per Match and the State of the club", () => {
     expect(sessionWriteups(reply, "m1", ids, true)).toEqual([
       { kind: "session", subjectKey: "m1", text: "What a night." },
       { kind: "match", subjectKey: "m1", text: "Won it late." },
+      { kind: "headline", subjectKey: "m1", text: "Late show" },
       { kind: "match", subjectKey: "m2", text: "Lost it early." },
+      { kind: "headline", subjectKey: "m2", text: "Early bath" },
       { kind: "club", subjectKey: "club", text: "Flying." },
     ]);
   });
 
+  it("cuts a headline over 80 characters to fit, on one line", () => {
+    const long = `Bloo Bloo\n${"collapse ".repeat(12)}`;
+    const [, , headline] = sessionWriteups(
+      {
+        ...reply,
+        matchReports: [{ matchId: "m1", report: "Won.", headline: long }],
+      },
+      "m1",
+      ids,
+      true,
+    );
+    expect(headline.kind).toBe("headline");
+    expect(headline.text.length).toBeLessThanOrEqual(80);
+    expect(headline.text).toMatch(/^Bloo Bloo collapse .*…$/);
+  });
+
   it("takes no State of the club unless it was asked for", () => {
     const { stateOfTheClub: _, ...withoutClub } = reply;
-    expect(sessionWriteups(withoutClub, "m1", ids, false)).toHaveLength(3);
+    expect(sessionWriteups(withoutClub, "m1", ids, false)).toHaveLength(5);
     expect(sessionWriteups(reply, "m1", ids, false)).toEqual([]);
     expect(sessionWriteups(withoutClub, "m1", ids, true)).toEqual([]);
   });
@@ -44,8 +62,8 @@ describe("sessionWriteups", () => {
       {
         ...reply,
         matchReports: [
-          { matchId: "m1", report: "One." },
-          { matchId: "m1", report: "Two." },
+          { matchId: "m1", report: "One.", headline: "One" },
+          { matchId: "m1", report: "Two.", headline: "Two" },
         ],
       },
     ],
@@ -53,7 +71,9 @@ describe("sessionWriteups", () => {
       "an extra field in a report",
       {
         ...reply,
-        matchReports: [{ matchId: "m1", report: "One.", extra: true }],
+        matchReports: [
+          { matchId: "m1", report: "One.", headline: "One", extra: true },
+        ],
       },
     ],
     [
@@ -65,9 +85,17 @@ describe("sessionWriteups", () => {
       {
         ...reply,
         matchReports: [
-          { matchId: "m1", report: "x".repeat(MAX_REPORT_LENGTH + 1) },
+          {
+            matchId: "m1",
+            report: "x".repeat(MAX_REPORT_LENGTH + 1),
+            headline: "One",
+          },
         ],
       },
+    ],
+    [
+      "a report without a headline",
+      { ...reply, matchReports: [{ matchId: "m1", report: "One." }] },
     ],
     ["a missing recap", { matchReports: [], stateOfTheClub: "Fine." }],
     ["plain text", "Just text"],

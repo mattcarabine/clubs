@@ -13,6 +13,7 @@ import {
   LINKED_ROW,
   LINKED_ROW_HEADER,
   LondonTime,
+  MatchHeadline,
   MatchScoreBar,
   PageHeader,
   PlayerChip,
@@ -65,11 +66,13 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
       path: location.pathname,
     });
   }
-  const { clubName, match, ours } = loaderData;
-  // CLUBS-35: pass the AI Match report here once it lands, as matchPreview's
-  // third argument; its first sentence joins the description, unlabelled.
+  const { clubName, match, ours, headline, report } = loaderData;
   return pageMeta({
-    ...matchPreview(clubName, { ...match, ours }),
+    ...matchPreview(
+      clubName,
+      { ...match, ours },
+      { headline, writeUp: report?.text },
+    ),
     path: location.pathname,
     type: "article",
   });
@@ -79,12 +82,14 @@ export async function loader({ params }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const match = await getMatch(db, params.matchId);
   if (!match) throw data("Match not found", { status: 404 });
-  const [droppedPoints, session, winChance, report] = await Promise.all([
-    getDroppedPointsReasons(db, match),
-    sessionOfMatch(db, match.matchId),
-    getMatchWinChance(db, match),
-    latestWriteup(db, "match", match.matchId),
-  ]);
+  const [droppedPoints, session, winChance, report, headline] =
+    await Promise.all([
+      getDroppedPointsReasons(db, match),
+      sessionOfMatch(db, match.matchId),
+      getMatchWinChance(db, match),
+      latestWriteup(db, "match", match.matchId),
+      latestWriteup(db, "headline", match.matchId),
+    ]);
   const ours = match.appearances.filter((a) => a.isOurClub);
   const theirs = match.appearances.filter((a) => !a.isOurClub);
   return {
@@ -97,6 +102,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     totals: summariseMatchSides(match.appearances),
     sessionId: session?.id ?? null,
     report,
+    headline: headline?.text ?? null,
   };
 }
 
@@ -111,6 +117,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
     totals,
     sessionId,
     report,
+    headline,
   } = loaderData;
   const { opponent } = match;
   const motm = match.appearances.find((a) => a.manOfTheMatch);
@@ -143,6 +150,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
           skillRatings={match.skillRatings}
           sides={totals}
         />
+        {headline && <MatchHeadline text={headline} size="hero" />}
         {winChance && <WinChanceNote winChance={winChance} />}
         {match.dnf &&
           (match.outcome === "W" ? (

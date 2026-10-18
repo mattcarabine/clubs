@@ -48,6 +48,7 @@ export { HeadToHeadBar, type HeadToHeadRecord } from "./head-to-head-bar";
 export { PageHeader, SectionHeading } from "./headings";
 export { LastUpdatedBadge } from "./last-updated-badge";
 export { LondonTime } from "./london-time";
+export { MatchHeadline } from "./match-headline";
 export { MatchScoreBar } from "./match-score-bar";
 export { OutcomeBadge } from "./outcome-badge";
 export { PERFORMER_COLUMNS } from "./performer-columns";

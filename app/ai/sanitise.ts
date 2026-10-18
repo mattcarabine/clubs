@@ -23,6 +23,14 @@ export function promptName(name: string): string {
 }
 
 /**
+ * The club an Appearance belongs to, as a prompt names it: Our Club by
+ * name, an Opponent through `promptName`.
+ */
+export function promptClub(isOurClub: boolean, opponentName: string): string {
+  return isOurClub ? "A Bloo Bloo" : promptName(opponentName);
+}
+
+/**
  * JSON for a prompt's data block. `<` and `>` are escaped as JSON unicode
  * escapes, so nothing inside the data can close or open the block's tags.
  */
