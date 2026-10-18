@@ -15,6 +15,7 @@ import {
   formatLondonDateTime,
   formatLondonShortDate,
   formatLondonTime,
+  formatLondonTimeSpan,
   isCalendarDate,
   isCalendarRange,
   londonDateKey,
@@ -95,6 +96,12 @@ describe("formatting", () => {
   it("writes a time and a chart-axis date in London time", () => {
     expect(formatLondonTime(date)).toBe("20:05");
     expect(formatLondonShortDate(date)).toBe("14 Oct");
+  });
+
+  it("writes a time span, or one time when both ends match", () => {
+    const later = new Date("2026-10-14T20:40:00Z");
+    expect(formatLondonTimeSpan(date, later)).toBe("20:05–21:40");
+    expect(formatLondonTimeSpan(date, date)).toBe("20:05");
   });
 });
 

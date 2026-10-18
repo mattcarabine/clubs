@@ -5,6 +5,7 @@
  */
 import {
   and,
+  between,
   eq,
   exists,
   gt,
@@ -39,6 +40,8 @@ export interface ScopeOptions {
   opponentClubId?: string;
   /** The clock for date ranges; defaults to now. */
   now?: Date;
+  /** Only Matches kicked off in this window, both ends included, e.g. one Session's. */
+  playedBetween?: { start: Date; end: Date };
 }
 
 /**
@@ -48,7 +51,7 @@ export interface ScopeOptions {
 export function matchScope(
   db: Db,
   filter: StatsFilter,
-  { opponentClubId, now = new Date() }: ScopeOptions = {},
+  { opponentClubId, now = new Date(), playedBetween }: ScopeOptions = {},
 ): SQL | undefined {
   const { start, end } = dateWindow(filter.dates, now);
   return and(
@@ -57,6 +60,9 @@ export function matchScope(
     start ? gte(matches.playedAt, start) : undefined,
     end ? lt(matches.playedAt, end) : undefined,
     opponentClubId ? eq(matches.opponentClubId, opponentClubId) : undefined,
+    playedBetween
+      ? between(matches.playedAt, playedBetween.start, playedBetween.end)
+      : undefined,
     filter.season === undefined ? undefined : inSeason(db, filter.season),
   );
 }

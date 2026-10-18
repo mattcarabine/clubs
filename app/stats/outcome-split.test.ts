@@ -15,6 +15,7 @@ import {
   positionOutliers,
   type SplitMatch,
   timeOfDay,
+  usualComparison,
   withAndWithout,
 } from "./outcome-split";
 import type { SquadAppearance } from "./squad";
@@ -314,6 +315,46 @@ describe("droppedPointsReasons", () => {
     ).toEqual({
       wins: 3,
       deviations: [],
+    });
+  });
+});
+
+describe("usualComparison", () => {
+  it("is null until 3 Matches fall outside the set", () => {
+    const set = many(2, () => match("W"));
+    const others = many(2, () => match("L"));
+    expect(usualComparison(set, [...set, ...others])).toBeNull();
+  });
+
+  it("sets the set's per-90s and rates beside every Match's", () => {
+    // A 45-minute DNF with 3 goals is 6 per 90; the usual weights it by time played.
+    const set = [
+      match("W", {
+        secondsPlayed: FULL / 2,
+        ours: { goals: 3, passesMade: 90 },
+      }),
+    ];
+    const others = many(3, () => match("L", { ours: { goals: 0 } }));
+    const rows = usualComparison(set, [...set, ...others]);
+    expect(rows?.map((r) => [r.label, r.value, r.usual])).toEqual([
+      // (3 goals in 45 min + 0 in 270 min) per 90: 3 / 3.5 = 0.857.
+      ["Goals per 90", "6.0", "0.9"],
+      // Opponents' 1 goal a Match: 2 per 90 in the half Match, 1 elsewhere.
+      ["Opponent goals per 90", "2.0", "1.1"],
+      ["Shots per 90", "20.0", "11.4"],
+      // Rates weight by attempts: (90 + 3 × 80) / 400.
+      ["Pass completion", "90%", "83%"],
+      ["Tackle success", "50%", "50%"],
+      ["Average rating", "7.0", "7.0"],
+    ]);
+  });
+
+  it("shows a dash for a stat the set has no figures for", () => {
+    const set = [match("W", { ours: { ratings: 0, ratingSum: 0 } })];
+    const rows = usualComparison(set, [...set, ...many(3, () => match("L"))]);
+    expect(rows?.find((r) => r.id === "ours-rating")).toMatchObject({
+      value: "–",
+      usual: "7.0",
     });
   });
 });
