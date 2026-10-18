@@ -1,7 +1,6 @@
 import { createRequestHandler } from "react-router";
 
-import { runWriteups } from "../app/ai/run";
-import { runPoll } from "../app/poll/run";
+import { runScheduled } from "./scheduled";
 import { handleTestRoute } from "./test-routes";
 
 const requestHandler = createRequestHandler(
@@ -31,8 +30,6 @@ export default {
   },
 
   async scheduled(controller, env) {
-    await runPoll(env);
-    // After the Poll's own work, so a write-up never delays or fails it.
-    await runWriteups(env, new Date(controller.scheduledTime));
+    await runScheduled(env, new Date(controller.scheduledTime));
   },
 } satisfies ExportedHandler<Env>;

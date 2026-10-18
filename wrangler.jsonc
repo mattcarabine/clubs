@@ -51,6 +51,9 @@
         // Anthropic upstream's URL and a dummy key are passed at runtime, like EA_BASE_URL.
         "ANTHROPIC_TIMEOUT_MS": "1500",
         "AI_RETRY_BASE_MS": "0",
+        // Discord posts (app/discord/): a short webhook timeout. The fake Discord's
+        // webhook URL is passed at runtime, like EA_BASE_URL.
+        "DISCORD_TIMEOUT_MS": "1000",
         // Extra Roster entries (app/roster.ts) for players that exist only in E2E specs.
         "TEST_ROSTER": "{\"900000099\":{\"former\":true}}"
       },
