@@ -149,6 +149,14 @@ _Avoid_: Match summary
 The Write-up on the Analysis page about Our Club as a whole, refreshed with each new Session recap.
 _Avoid_: Club report, overview
 
+**Coaching notes**:
+A Squad Member's 2 to 4 short points for one Coaching week (what is working, what to work on, one focus for next week), on their profile and signed by The Gaff. Only Squad Members with an Appearance that week get them.
+_Avoid_: Advice, feedback, tips, AI coaching
+
+**Coaching week**:
+A London week, Monday 00:00 to Monday 00:00. Its Coaching notes are written by the first Poll after 09:00 London on the Monday that ends it; only the latest such week is ever written, so nothing is invented for older weeks.
+_Avoid_: Training week, gameweek
+
 **Season Review**:
 The story of one finished Season, told as a deck of cards: its record, Division journey, best and worst Matches, best Session, when we play, Nemesis and favourite Opponent, the Awards, and Write-ups to open and close it. Written once, on the Poll that sees the next Season start, and announced only by a Discord post with its link: nothing on the site links to it.
 _Avoid_: Wrapped, season summary, recap
@@ -158,8 +166,12 @@ A Season Review's prize for one Squad Member (Player of the Season, Golden Boot,
 _Avoid_: Trophy, badge, honour
 
 **The Gaff**:
-The sign-off on advice aimed at one Squad Member.
+The sign-off on advice aimed at one Squad Member, such as their Coaching notes.
 _Avoid_: Coach, manager, AI coach
+
+**Milestone**:
+A notable achievement by Our Club or a Squad Member, reached in a specific Match: a landmark in EA's career totals (a 50th goal, a 100th Win), a one-Match feat (a hat-trick, a 9.0 rating) or a club record. Records count only recorded Matches, so they are "since records began". There are no Goalkeeper Milestones: the AI keeps goal.
+_Avoid_: Achievement, award, badge
 
 ### Data capture
 

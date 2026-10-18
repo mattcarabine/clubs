@@ -29,7 +29,7 @@ export default {
     );
   },
 
-  async scheduled(_controller, env) {
-    await runScheduled(env);
+  async scheduled(controller, env) {
+    await runScheduled(env, new Date(controller.scheduledTime));
   },
 } satisfies ExportedHandler<Env>;

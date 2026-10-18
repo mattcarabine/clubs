@@ -33,6 +33,7 @@ const FULL_ORDER = [
   "award-most-improved",
   "award-ever-present",
   "award-hot-streak",
+  "milestones",
   "outro",
 ];
 
@@ -88,6 +89,8 @@ test.describe("a reviewed Season", () => {
     await expect(card(page, "opponents")).toContainText("Robins");
     await expect(card(page, "opponents")).toContainText(SPARROWS.name);
     await expect(card(page, "extremes")).toContainText("5");
+    // The Milestones reached (CLUBS-36): Kabeeble's five-goal Match.
+    await expect(card(page, "milestones")).toContainText(KAB.name);
     // Write-ups carry no label saying how they were written.
     await expect(page.locator("main")).not.toContainText(/claude|\bAI\b/i);
   });

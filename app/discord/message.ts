@@ -1,7 +1,7 @@
 /**
  * The Discord post for one Session (CLUBS-39): one embed with the Session's
- * title and link, its Matches' scorelines and headlines, the top performer
- * and the recap's first paragraph, unlabelled. And the one announcing a
+ * title and link, its Matches' scorelines and headlines, the top performer,
+ * its Milestones (CLUBS-36) and the recap's first paragraph, unlabelled. And the one announcing a
  * Season Review (CLUBS-45). Pure, so they are unit tested.
  *
  * Club names, persona names and the model's text all reach Discord, so each
@@ -58,6 +58,8 @@ export interface SessionPostInput {
   headlines: ReadonlyMap<string, string>;
   /** The Session recap, if written. */
   recap: string | null;
+  /** The Session's Milestone headlines, oldest first: "Loltown95 — 50th goal". */
+  milestones: readonly string[];
 }
 
 export interface WebhookBody {
@@ -78,14 +80,22 @@ export function sessionPostBody(input: SessionPostInput): WebhookBody {
   const top = sessionTopPerformer(input.players);
   const [lede] = input.recap ? paragraphs(input.recap) : [];
   const excerpt = lede && discordText(clampText(lede, MAX_RECAP_LENGTH));
-  const fields = top
-    ? [
-        {
-          name: "Top performer",
-          value: `${discordText(top.name)} · ${formatPerformerStat(top, top.averageRating)}`,
-        },
-      ]
-    : [];
+  const fields: Embed["fields"] = [];
+  if (top) {
+    fields.push({
+      name: "Top performer",
+      value: `${discordText(top.name)} · ${formatPerformerStat(top, top.averageRating)}`,
+    });
+  }
+  if (input.milestones.length > 0) {
+    fields.push({
+      name: "Milestones",
+      value: fitLines(
+        input.milestones.map(discordText),
+        EMBED_LIMITS.fieldValue,
+      ),
+    });
+  }
   const room = EMBED_LIMITS.description - (excerpt ? excerpt.length + 2 : 0);
   return {
     allowed_mentions: { parse: [] },
@@ -103,11 +113,7 @@ export function sessionPostBody(input: SessionPostInput): WebhookBody {
   };
 }
 
-/**
- * One line per Match, oldest first: "**W** A Bloo Bloo 3–1 Opponent — its
- * headline". Lines that would pass `room` characters are left out and
- * counted instead.
- */
+/** One line per Match, oldest first: "**W** A Bloo Bloo 3–1 Opponent — its headline". */
 function scorelines(input: SessionPostInput, room: number): string {
   const lines = input.matches.map((match) => {
     const headline = input.headlines.get(match.matchId);
@@ -120,6 +126,14 @@ function scorelines(input: SessionPostInput, room: number): string {
       .filter(Boolean)
       .join(" ");
   });
+  return fitLines(lines, room);
+}
+
+/**
+ * The lines joined, within `room` characters: lines that would pass it are
+ * left out and counted instead ("…and 3 more").
+ */
+function fitLines(lines: readonly string[], room: number): string {
   const kept: string[] = [];
   let length = 0;
   for (const [i, line] of lines.entries()) {

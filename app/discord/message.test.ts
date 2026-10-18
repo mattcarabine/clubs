@@ -52,6 +52,7 @@ function input(overrides: Partial<SessionPostInput> = {}): SessionPostInput {
     ],
     headlines: new Map([["m1", "Kabeeble the hero"]]),
     recap: "What a night. Three goals.\n\nThe rest stays on the site.",
+    milestones: [],
     ...overrides,
   };
 }
@@ -91,6 +92,18 @@ describe("sessionPostBody", () => {
     ]);
   });
 
+  it("lists the Session's Milestones, escaped", () => {
+    const [embed] = sessionPostBody(
+      input({
+        milestones: ["Loltown95 — 50th goal", "@everyone — **Hat-trick**"],
+      }),
+    ).embeds;
+    expect(embed.fields.at(-1)).toEqual({
+      name: "Milestones",
+      value: "Loltown95 — 50th goal\n@\u200beveryone — \\*\\*Hat\\-trick\\*\\*",
+    });
+  });
+
   it("goes without a recap or a top performer", () => {
     const [embed] = sessionPostBody(input({ recap: null, players: [] })).embeds;
     expect(embed.description).toMatch(/^\*\*W\*\*/);
@@ -107,12 +120,18 @@ describe("sessionPostBody", () => {
         record: summariseRecord(matches),
         headlines: new Map(matches.map((m) => [m.matchId, "y".repeat(80)])),
         recap: "z ".repeat(5_000),
+        milestones: matches.map((m) => `${"w".repeat(30)} — ${m.matchId}`),
       }),
     ).embeds;
     expect(embed.description.length).toBeLessThanOrEqual(
       EMBED_LIMITS.description,
     );
     expect(embed.description).toMatch(/…and \d+ more$/);
+    const milestones = embed.fields.find((f) => f.name === "Milestones");
+    expect(milestones?.value.length).toBeLessThanOrEqual(
+      EMBED_LIMITS.fieldValue,
+    );
+    expect(milestones?.value).toMatch(/…and \d+ more$/);
     const total =
       embed.title.length +
       embed.description.length +

@@ -16,7 +16,8 @@ const SLACK_PX = 2;
  * must stay crisp. Nothing fades on the server or when everything fits.
  *
  * The ref is a callback ref, so a scroller that mounts later (a table that
- * first rendered its empty state) is still measured.
+ * first rendered its empty state) is still measured. The element itself comes
+ * third, for callers that act on it too.
  */
 export function useScrollFade<T extends HTMLElement>() {
   const [element, ref] = useState<T | null>(null);
@@ -49,7 +50,7 @@ export function useScrollFade<T extends HTMLElement>() {
     };
   }, [element]);
 
-  return [ref, edges] as const;
+  return [ref, edges, element] as const;
 }
 
 /** The data attributes `scroll-fade` reads, for the given edges. */

@@ -26,6 +26,7 @@ import { paragraphs } from "~/lib/text";
 import {
   divisionName,
   getSeasonReview,
+  listMilestones,
   type MatchSummary,
   type RecordSummary,
   type SeasonReview as Review,
@@ -64,9 +65,12 @@ export async function loader({ params }: Route.LoaderArgs) {
   const extremes = [review.biggestWin, review.heaviestDefeat].flatMap((m) =>
     m ? [m.matchId] : [],
   );
-  const [pieces, headlines] = await Promise.all([
+  const [pieces, headlines, milestones] = await Promise.all([
     latestWriteups(db, "season-review", pieceKeys),
     latestWriteups(db, "headline", extremes),
+    listMilestones(db, env.EA_CLUB_NAME, {
+      achievedBetween: { start: review.coveredFrom, end: review.endedAt },
+    }),
   ]);
   const text = (key: string) => pieces.get(key)?.text ?? null;
   const intro = text(seasonReviewKey(number, "intro"));
@@ -86,6 +90,12 @@ export async function loader({ params }: Route.LoaderArgs) {
     headlines: Object.fromEntries(
       [...headlines].map(([id, h]) => [id, h.text]),
     ),
+    // Oldest first, as the Season told them.
+    milestones: milestones.reverse().map((m) => ({
+      id: m.id,
+      headline: m.headline,
+      matchId: m.match.matchId,
+    })),
   };
 }
 
@@ -108,6 +118,7 @@ function reviewCards({
   outro,
   citations,
   headlines,
+  milestones,
 }: ReviewData): StoryDeckCard[] {
   const cards: (StoryDeckCard | null)[] = [
     {
@@ -167,6 +178,7 @@ function reviewCards({
         ),
       }),
     ),
+    milestonesCard(milestones),
     outro
       ? {
           id: "outro",
@@ -397,6 +409,53 @@ function opponentsCard({
     ),
   };
 }
+
+/** The Milestones reached this Season (CLUBS-36): how many, and the first few. */
+function milestonesCard(
+  milestones: ReviewData["milestones"],
+): StoryDeckCard | null {
+  if (milestones.length === 0) return null;
+  const shown = milestones.slice(0, MILESTONES_SHOWN);
+  const more = milestones.length - shown.length;
+  return {
+    id: "milestones",
+    label: "Milestones",
+    content: (
+      <StoryCard
+        kicker="Milestones"
+        title="Landmarks and feats"
+        figure={milestones.length}
+        figureCaption={milestones.length === 1 ? "Milestone" : "Milestones"}
+      >
+        <ul className="space-y-1">
+          {shown.map((m) => (
+            <li key={m.id}>
+              <Link
+                to={`/matches/${m.matchId}`}
+                className="hover:text-ink hover:underline"
+              >
+                {m.headline}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        {more > 0 && (
+          <p>
+            <Link
+              to="/milestones"
+              className="text-sound-300 underline underline-offset-4 hover:text-ink"
+            >
+              {formatCount(more, "more Milestone", "more Milestones")}
+            </Link>
+          </p>
+        )}
+      </StoryCard>
+    ),
+  };
+}
+
+/** How many Milestones the card lists before linking to the rest. */
+const MILESTONES_SHOWN = 6;
 
 /** "W12 D3 L6". */
 function wdl({

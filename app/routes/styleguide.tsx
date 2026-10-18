@@ -17,6 +17,8 @@ import {
   LineChart,
   LoadingState,
   MatchHeadline,
+  MilestoneCard,
+  type MilestoneCardData,
   OutcomeBadge,
   PageHeader,
   PlayerChip,
@@ -47,6 +49,7 @@ import {
 import { formatDecimal } from "~/lib/number-format";
 import { pageMeta } from "~/lib/page-meta";
 import { type DateRange, dateRangeLabel } from "~/stats/filter";
+import type { MilestoneEntry } from "~/stats/milestones-query";
 import type { TopPerformer } from "~/stats/top-performers";
 import type { Route } from "./+types/styleguide";
 
@@ -81,6 +84,47 @@ const DIVISION_STEPS: StepChartPoint[] = [
 
 const NOW = new Date("2026-10-17T21:30:00Z");
 const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000);
+
+const MILESTONE_MATCH: MilestoneEntry["match"] = {
+  matchId: "sg-milestone",
+  matchType: "League",
+  playedAt: minutesAgo(40),
+  opponent: { clubId: "1", name: "Northside Athletic" },
+  goalsFor: 6,
+  goalsAgainst: 1,
+  outcome: "W",
+  dnf: false,
+  skillRatings: { ours: null, opponent: null },
+};
+
+const SAMPLE_MILESTONES: MilestoneCardData[] = [
+  {
+    category: "landmark",
+    subject: "player",
+    playerId: "sg-player",
+    name: "Kopite Kev",
+    headline: "Kopite Kev — 50th goal",
+    badge: "Landmark",
+    figure: "50",
+    comment:
+      "Fifty up, and he brought it up with a tap-in he will pretend was a screamer. Three in his last two Matches says there is more to come.",
+    match: MILESTONE_MATCH,
+    sessionId: "sg-milestone",
+  },
+  {
+    category: "record",
+    subject: "club",
+    playerId: null,
+    name: "A Bloo Bloo",
+    headline: "A Bloo Bloo — Record Win, by 5 goals",
+    badge: "Record",
+    figure: "+5",
+    comment:
+      "A 6-1 hammering and the biggest Win since records began. Northside never laid a glove on us.",
+    match: MILESTONE_MATCH,
+    sessionId: "sg-milestone",
+  },
+];
 
 /** A hero for each result, including both DNF outcomes, as /styleguide shows them. */
 const HERO_STATES: {
@@ -599,11 +643,26 @@ export default function Styleguide() {
             }
           />
           <AiWriteup
-            label="Advice for Kopite Kev"
+            label="Coaching notes"
             writtenAt={minutesAgo(20)}
-            text="Shoot earlier. Four goals from 9 shots says the finishing is there."
+            text={
+              "Four goals from 9 shots says Kopite Kev's finishing is there.\n\nPass % fell to 71% while passes per 90 rose; he is forcing it.\n\nFocus for next week: one more touch before the final ball."
+            }
             signOff="The Gaff"
+            points
           />
+        </div>
+      </Section>
+
+      <Section id="milestone-card" title="MilestoneCard">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          {SAMPLE_MILESTONES.map((milestone) => (
+            <MilestoneCard
+              key={milestone.headline}
+              clubName="A Bloo Bloo"
+              milestone={milestone}
+            />
+          ))}
         </div>
       </Section>
 

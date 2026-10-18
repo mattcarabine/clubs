@@ -7,8 +7,11 @@ import { expect, test } from "./support/test.ts";
 import {
   type AiJobRow,
   type AiWriteupRow,
+  SESSION_CLOCK,
   serveSession,
 } from "./support/writeups.ts";
+
+test.use({ pollAt: SESSION_CLOCK });
 
 test.beforeEach(async ({ fakeEa }) => {
   // Only the Matches each test adds.
