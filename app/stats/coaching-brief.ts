@@ -6,7 +6,7 @@
  * after the week, so a week's brief never drifts.
  */
 import type { Db } from "~/db/client";
-import type { CoachingWeek } from "~/lib/coaching-week";
+import { type CoachingWeek, coachingWeekLastMoment } from "~/lib/coaching-week";
 
 import { DEFAULT_STATS_FILTER } from "./filter";
 import { type PlayerOutcomeSplit, playerOutcomeSplit } from "./outcome-split";
@@ -49,7 +49,7 @@ export async function coachingPlayerIds(
   week: CoachingWeek,
 ): Promise<string[]> {
   const apps = await squadAppearances(db, DEFAULT_STATS_FILTER, {
-    playedBetween: { start: week.from, end: lastMoment(week) },
+    playedBetween: { start: week.from, end: coachingWeekLastMoment(week) },
   });
   return [...new Set(apps.map((a) => a.playerId))].sort();
 }
@@ -64,7 +64,7 @@ export async function getCoachingBriefs(
   nameFor: (name: string) => string = (name) => name,
 ): Promise<PlayerCoachingBrief[]> {
   const apps = await squadAppearances(db, DEFAULT_STATS_FILTER, {
-    playedBetween: { start: new Date(0), end: lastMoment(week) },
+    playedBetween: { start: new Date(0), end: coachingWeekLastMoment(week) },
   });
   return coachingBriefs(apps, week, nameFor);
 }
@@ -102,9 +102,4 @@ export function coachingBriefs(
     });
   }
   return briefs.sort((a, b) => a.name.localeCompare(b.name));
-}
-
-/** `playedBetween` includes both ends; the week excludes its `to`. */
-function lastMoment(week: CoachingWeek): Date {
-  return new Date(week.to.getTime() - 1);
 }

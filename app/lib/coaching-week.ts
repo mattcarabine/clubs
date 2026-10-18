@@ -45,6 +45,11 @@ export function coachingWeek(start: CalendarDate): CoachingWeek {
   };
 }
 
+/** The week's last millisecond: `to` is excluded, so this is the moment before it. */
+export function coachingWeekLastMoment(week: CoachingWeek): Date {
+  return new Date(week.to.getTime() - 1);
+}
+
 /** The Monday of the London week holding `date`. */
 export function londonWeekStart(date: Date): CalendarDate {
   const day = londonDateKey(date);

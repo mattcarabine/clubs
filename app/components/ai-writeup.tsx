@@ -31,7 +31,8 @@ export function AiWriteup({
   label,
   points = false,
 }: AiWriteupProps) {
-  const [lede, ...rest] = paragraphs(text);
+  const pieces = paragraphs(text);
+  const [lede, ...rest] = pieces;
   return (
     <article
       aria-label={label}
@@ -40,7 +41,7 @@ export function AiWriteup({
       <div className="max-w-prose space-y-3 text-ink-soft leading-relaxed">
         {points ? (
           <ul className="space-y-2">
-            {paragraphs(text).map((point, i) => (
+            {pieces.map((point, i) => (
               // Points never reorder, so their position is a stable key.
               // biome-ignore lint/suspicious/noArrayIndexKey: see above.
               <li key={i} className="flex gap-3">

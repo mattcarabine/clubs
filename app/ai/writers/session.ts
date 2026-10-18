@@ -26,6 +26,8 @@ import { HOUSE_STYLE } from "../prompts";
 import type { AiWriter } from "../queue";
 import { promptName } from "../sanitise";
 import { CLUB_SUBJECT } from "../writeups";
+import { appearanceStatsInput } from "./inputs";
+import { hasExactly } from "./reply";
 
 interface SessionSubject extends Subject {
   /** The newest Session that is over also gets the State of the club. */
@@ -152,18 +154,6 @@ export function sessionWriteups(
   return drafts;
 }
 
-/** An object with exactly these keys. */
-function hasExactly(
-  value: unknown,
-  keys: readonly string[],
-): value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const own = Object.keys(value);
-  return own.length === keys.length && keys.every((k) => own.includes(k));
-}
-
 function isText(value: unknown, maxLength: number): value is string {
   return typeof value === "string" && value.length <= maxLength;
 }
@@ -215,16 +205,7 @@ function matchInput(match: BriefMatch) {
       club: a.isOurClub ? "A Bloo Bloo" : promptName(match.opponent.name),
       name: promptName(a.name),
       positionGroup: a.positionGroup,
-      minutes: Math.round(a.secondsPlayed / 60),
-      goals: a.goals,
-      assists: a.assists,
-      shots: a.shots,
-      passes: `${a.passesMade}/${a.passAttempts}`,
-      tackles: `${a.tacklesMade}/${a.tackleAttempts}`,
-      rating: formatDecimal(a.rating),
-      manOfTheMatch: a.manOfTheMatch,
-      ...(a.saves > 0 && { saves: a.saves }),
-      ...(a.redCards > 0 && { redCards: a.redCards }),
+      ...appearanceStatsInput(a),
     })),
   };
 }

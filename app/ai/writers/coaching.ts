@@ -9,6 +9,7 @@
 import {
   type CoachingWeek,
   coachingWeek,
+  coachingWeekLastMoment,
   latestCoachingWeek,
 } from "~/lib/coaching-week";
 import { OUTCOME_LABEL } from "~/lib/domain";
@@ -27,6 +28,8 @@ import type { Subject } from "../plan";
 import { HOUSE_STYLE } from "../prompts";
 import type { AiWriter } from "../queue";
 import { promptName } from "../sanitise";
+import { appearanceStatsInput } from "./inputs";
+import { hasExactly } from "./reply";
 
 /** The most points one Squad Member's notes may have. */
 export const MAX_POINTS = 4;
@@ -75,7 +78,7 @@ export function coachingTask(
     input: {
       week: {
         from: formatLondonDate(week.from, week.from),
-        to: formatLondonDate(new Date(week.to.getTime() - 1), week.from),
+        to: formatLondonDate(coachingWeekLastMoment(week), week.from),
       },
       squadMembers: briefs.map(briefInput),
     },
@@ -125,18 +128,6 @@ export function coachingWriteups(
     });
   }
   return drafts.size === playerIds.length ? [...drafts.values()] : [];
-}
-
-/** An object with exactly these keys. */
-function hasExactly(
-  value: unknown,
-  keys: readonly string[],
-): value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const own = Object.keys(value);
-  return own.length === keys.length && keys.every((k) => own.includes(k));
 }
 
 function outputSchema(playerIds: readonly string[]) {
@@ -206,16 +197,7 @@ function appearanceInput(a: SquadAppearance) {
     result: OUTCOME_LABEL[a.outcome],
     dnf: a.dnf,
     positionGroup: a.positionGroup ?? "Unknown",
-    minutes: Math.round(a.secondsPlayed / 60),
-    goals: a.goals,
-    assists: a.assists,
-    shots: a.shots,
-    passes: `${a.passesMade}/${a.passAttempts}`,
-    tackles: `${a.tacklesMade}/${a.tackleAttempts}`,
-    rating: formatDecimal(a.rating),
-    manOfTheMatch: a.manOfTheMatch,
-    ...(a.saves > 0 && { saves: a.saves }),
-    ...(a.redCards > 0 && { redCards: a.redCards }),
+    ...appearanceStatsInput(a),
   };
 }
 
