@@ -37,6 +37,7 @@ export {
   numberColumn,
   type RowSelection,
 } from "./data-table";
+export { DateRangePicker } from "./date-range-picker";
 export { DnfBadge } from "./dnf-badge";
 export { EmptyState } from "./empty-state";
 export { FilterBar } from "./filter-bar";

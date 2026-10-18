@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   addCalendarDays,
+  addCalendarMonths,
+  addCalendarMonthsToDate,
+  calendarMonthDays,
+  calendarMonthOf,
+  calendarMonthsBetween,
+  calendarWeekdayIndex,
+  formatCalendarDay,
+  formatCalendarMonth,
+  formatCalendarRange,
   formatLondonDate,
   formatLondonDateTime,
   formatLondonShortDate,
@@ -177,5 +186,56 @@ describe("londonDayStart", () => {
     ]) {
       expect(londonDateKey(londonDayStart(date))).toBe(date);
     }
+  });
+});
+
+describe("calendar months", () => {
+  it("adds months across year ends", () => {
+    expect(addCalendarMonths("2026-10", 3)).toBe("2027-01");
+    expect(addCalendarMonths("2026-01", -1)).toBe("2025-12");
+    expect(calendarMonthsBetween("2025-11", "2026-02")).toBe(3);
+    expect(calendarMonthsBetween("2026-02", "2025-11")).toBe(-3);
+  });
+
+  it("lists a month's days, leap years included", () => {
+    expect(calendarMonthDays("2028-02")).toHaveLength(29);
+    expect(calendarMonthDays("2026-02").at(-1)).toBe("2026-02-28");
+    expect(calendarMonthDays("2026-10")[0]).toBe("2026-10-01");
+  });
+
+  it("moves a date by months, clamped to the month's end", () => {
+    expect(addCalendarMonthsToDate("2026-01-31", 1)).toBe("2026-02-28");
+    expect(addCalendarMonthsToDate("2026-10-18", -1)).toBe("2026-09-18");
+    expect(calendarMonthOf("2026-10-18")).toBe("2026-10");
+  });
+
+  it("numbers weekdays from Monday", () => {
+    expect(calendarWeekdayIndex("2026-10-19")).toBe(0); // Monday
+    expect(calendarWeekdayIndex("2026-10-18")).toBe(6); // Sunday
+  });
+
+  it("names months and days in full", () => {
+    expect(formatCalendarMonth("2026-10")).toBe("October 2026");
+    expect(formatCalendarDay("2026-10-03")).toBe("Saturday 3 October 2026");
+  });
+});
+
+describe("formatCalendarRange", () => {
+  const now = new Date("2026-10-18T12:00:00Z");
+
+  it("leaves out the current year", () => {
+    expect(formatCalendarRange("2026-10-05", "2026-10-12", now)).toBe(
+      "5 Oct – 12 Oct",
+    );
+    expect(formatCalendarRange("2026-10-12", "2026-10-12", now)).toBe("12 Oct");
+  });
+
+  it("adds any other year once, or both across New Year", () => {
+    expect(formatCalendarRange("2025-10-05", "2025-10-12", now)).toBe(
+      "5 Oct – 12 Oct 2025",
+    );
+    expect(formatCalendarRange("2025-12-20", "2026-01-05", now)).toBe(
+      "20 Dec 2025 – 5 Jan 2026",
+    );
   });
 });

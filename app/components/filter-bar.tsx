@@ -1,4 +1,3 @@
-import { useId, useState } from "react";
 import {
   useLocation,
   useNavigation,
@@ -9,9 +8,6 @@ import {
 import type { loader as rootLoader } from "~/root";
 
 import {
-  ALL_DATES,
-  DATE_PRESET_LABEL,
-  DATE_PRESETS,
   type DateRange,
   MATCH_TYPES,
   parseStatsFilter,
@@ -28,7 +24,7 @@ import {
 } from "~/stats/source";
 
 import { Chip, ChipGroup } from "./chip";
-import { DateRangePicker, formatDateRange } from "./date-range-picker";
+import { DateRangePicker } from "./date-range-picker";
 import {
   EA_POSITIONS_DISABLED,
   PositionGroupPicker,
@@ -68,9 +64,7 @@ export function FilterBar(props: FilterBarProps) {
   const [, setSearchParams] = useSearchParams();
   const pending = usePendingSearchParams();
   const filter = pending ? parseStatsFilter(pending) : props.filter;
-  const seasons = useSeasonNumbers();
-  const [pickingDates, setPickingDates] = useState(false);
-  const pickerId = useId();
+  const { seasons, firstMatchDate } = useRootFilterData();
   const source =
     pending && props.source !== undefined
       ? parseStatsSource(pending)
@@ -84,11 +78,7 @@ export function FilterBar(props: FilterBarProps) {
     apply((params) =>
       writeStatsFilter(params, change(parseStatsFilter(params))),
     );
-  const setDates = (dates: DateRange) => {
-    setPickingDates(false);
-    updateFilter((f) => ({ ...f, dates }));
-  };
-  const { dates } = filter;
+  const setDates = (dates: DateRange) => updateFilter((f) => ({ ...f, dates }));
 
   const sourceToggle = source !== undefined && (
     <ChipGroup label="Source">
@@ -175,38 +165,11 @@ export function FilterBar(props: FilterBarProps) {
         </ChipGroup>
 
         <ChipGroup label="Dates">
-          <Chip
-            pressed={dates.kind === "all"}
-            onClick={() => setDates(ALL_DATES)}
-          >
-            All
-          </Chip>
-          {DATE_PRESETS.map((preset) => (
-            <Chip
-              key={preset}
-              pressed={dates.kind === "preset" && dates.preset === preset}
-              onClick={() => setDates({ kind: "preset", preset })}
-            >
-              {DATE_PRESET_LABEL[preset]}
-            </Chip>
-          ))}
-          <Chip
-            pressed={dates.kind === "custom"}
-            aria-expanded={pickingDates}
-            aria-controls={pickerId}
-            onClick={() => setPickingDates((open) => !open)}
-          >
-            {dates.kind === "custom"
-              ? formatDateRange(dates.from, dates.to)
-              : "Custom"}
-            <svg
-              aria-hidden
-              viewBox="0 0 10 6"
-              className={`mb-0.5 ml-1.5 inline-block h-1.5 w-2.5 transition-transform motion-reduce:transition-none ${pickingDates ? "rotate-180" : ""}`}
-            >
-              <path d="M0 0h10L5 6z" fill="currentColor" />
-            </svg>
-          </Chip>
+          <DateRangePicker
+            value={filter.dates}
+            firstMatchDate={firstMatchDate}
+            onApply={setDates}
+          />
         </ChipGroup>
 
         {(seasons.length > 1 || filter.season !== undefined) && (
@@ -219,27 +182,19 @@ export function FilterBar(props: FilterBarProps) {
           </ChipGroup>
         )}
       </ScrollRail>
-
-      {/* Below the rail, not in it, so a phone never scrolls it out of view. */}
-      {pickingDates && (
-        <DateRangePicker
-          // A range applied elsewhere (Back, a shared link) restarts the draft.
-          key={dates.kind === "custom" ? `${dates.from}/${dates.to}` : "none"}
-          id={pickerId}
-          applied={dates.kind === "custom" ? dates : undefined}
-          onApply={({ from, to }) => setDates({ kind: "custom", from, to })}
-          onCancel={() => setPickingDates(false)}
-        />
-      )}
     </section>
   );
 }
 
 const RAIL_PADDING = "px-3 py-3 sm:px-4";
 
-/** Season numbers known to the root loader, oldest first. */
-function useSeasonNumbers(): readonly number[] {
-  return useRouteLoaderData<typeof rootLoader>("root")?.seasons ?? [];
+/** What the root loader knows for every FilterBar: Season numbers (oldest first) and the first Match's date. */
+function useRootFilterData() {
+  const root = useRouteLoaderData<typeof rootLoader>("root");
+  return {
+    seasons: root?.seasons ?? [],
+    firstMatchDate: root?.firstMatchDate ?? null,
+  };
 }
 
 type SeasonSelectProps = {

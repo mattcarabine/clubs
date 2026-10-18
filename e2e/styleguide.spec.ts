@@ -154,3 +154,19 @@ test("the head-to-head bar reads the record in words", async ({ page }) => {
       ),
   ).toBeAttached();
 });
+
+test("the date-range picker opens its presets and calendar", async ({
+  page,
+}) => {
+  const section = page.getByTestId("sg-date-range-picker");
+  const trigger = section.getByRole("button", { name: /^3 Oct – 7 Oct/ });
+  const dialog = page.getByRole("dialog", { name: "Choose dates" });
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await trigger.click();
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await expect(
+    dialog.getByRole("radio", { name: "Custom range" }),
+  ).toBeChecked();
+  await expect(dialog.getByRole("grid").first()).toBeVisible();
+});
