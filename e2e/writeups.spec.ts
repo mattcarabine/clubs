@@ -48,8 +48,16 @@ test("the recap, Match reports and State of the club show as site copy, and no p
     recap:
       "A split night at the office. Kabeeble scored in both Matches.\n\nThe loss stung.",
     matchReports: [
-      { matchId: ids[0], report: "Kabeeble opened the scoring early." },
-      { matchId: ids[1], report: "Undone at the back in the second half." },
+      {
+        matchId: ids[0],
+        report: "Kabeeble opened the scoring early.",
+        headline: "Kabeeble on target",
+      },
+      {
+        matchId: ids[1],
+        report: "Undone at the back in the second half.",
+        headline: "Bloo Bloo undone",
+      },
     ],
     stateOfTheClub: "Played 2, won 1. The Squad is finding its feet.",
   });
@@ -179,7 +187,9 @@ test("an out-of-credit error keeps the previous write-ups on the pages", async (
   });
   await fakeAnthropic.reply({
     recap: "First recap.",
-    matchReports: [{ matchId: ids[0], report: "First report." }],
+    matchReports: [
+      { matchId: ids[0], report: "First report.", headline: "First headline" },
+    ],
     stateOfTheClub: "First State of the club.",
   });
   await triggerPoll();

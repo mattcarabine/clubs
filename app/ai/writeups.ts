@@ -9,12 +9,17 @@ import type { Db } from "~/db/client";
 import { aiJobs, aiWriteups } from "~/db/schema";
 
 /**
- * What a write-up is about. `session` and `match` are keyed by the Session's
- * or Match's ID; `club` (the State of the club) by `CLUB_SUBJECT`;
- * `coaching` (a Squad Member's coaching notes, CLUBS-44) by the player ID,
- * its job by the week.
+ * What a write-up is about. `session` is keyed by the Session's ID, `match`
+ * (the Match report) and `headline` by the Match's; `club` (the State of the
+ * club) by `CLUB_SUBJECT`; `coaching` (a Squad Member's coaching notes,
+ * CLUBS-44) by the player ID, its job by the week.
  */
-export type WriteupKind = "session" | "match" | "club" | "coaching";
+export type WriteupKind =
+  | "session"
+  | "match"
+  | "headline"
+  | "club"
+  | "coaching";
 
 /** The State of the club has one subject: Our Club. */
 export const CLUB_SUBJECT = "club";
@@ -39,6 +44,18 @@ export async function latestWriteup(
     .orderBy(desc(aiWriteups.id))
     .limit(1);
   return row ?? null;
+}
+
+/** Every subject with at least one write-up of this kind. One query. */
+export async function writtenSubjects(
+  db: Db,
+  kind: WriteupKind,
+): Promise<Set<string>> {
+  const rows = await db
+    .selectDistinct({ subjectKey: aiWriteups.subjectKey })
+    .from(aiWriteups)
+    .where(eq(aiWriteups.kind, kind));
+  return new Set(rows.map((row) => row.subjectKey));
 }
 
 /**

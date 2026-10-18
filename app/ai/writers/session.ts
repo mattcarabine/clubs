@@ -1,7 +1,7 @@
 /**
  * The first writer (CLUBS-35): once a Session is over, one call writes its
- * recap, a short report on each of its Matches and, for the newest Session,
- * the State of the club. A Match joining the Session later changes its
+ * recap, a short report and a headline (CLUBS-43) for each of its Matches
+ * and, for the newest Session, the State of the club. A Match joining the Session later changes its
  * version, so the recap is written again.
  */
 import { OUTCOME_LABEL } from "~/lib/domain";
@@ -24,10 +24,11 @@ import type { GenerateTask, WriteupDraft } from "../generate";
 import type { Subject } from "../plan";
 import { HOUSE_STYLE } from "../prompts";
 import type { AiWriter } from "../queue";
-import { promptName } from "../sanitise";
+import { promptClub, promptName } from "../sanitise";
+import { hasExactly, isText } from "../validate";
 import { CLUB_SUBJECT } from "../writeups";
+import { HEADLINE_RULES, headlineDraft } from "./headline";
 import { appearanceStatsInput } from "./inputs";
-import { hasExactly } from "./reply";
 
 interface SessionSubject extends Subject {
   /** The newest Session that is over also gets the State of the club. */
@@ -56,7 +57,7 @@ export const sessionWriter: AiWriter<SessionSubject> = {
 
 const INSTRUCTIONS = `Write about the Session in the data, which has just finished.
 - "recap": the Session recap, two to four short paragraphs. Lead with the story of the night, then the standout Squad Members (measured against their baselines in the background, e.g. a best rating in a month) and what went wrong in any Dropped Points.
-- "matchReports": one report per Match, two to four sentences each, using its matchId.`;
+- "matchReports": one per Match, using its matchId: a "report" of two to four sentences, and a "headline". ${HEADLINE_RULES}`;
 
 const CLUB_INSTRUCTIONS = `
 - "stateOfTheClub": the State of the club after this Session, two to four short paragraphs: form, what separates our Wins from our Dropped Points (the findings), how we respond to results, and who is carrying the Squad.`;
@@ -106,7 +107,8 @@ export const MAX_REPORT_LENGTH = 1_500;
  * The write-ups in a reply, or none unless it fits the schema exactly: no
  * unexpected fields, a report only for this Session's Matches and at most
  * one each, `stateOfTheClub` only when it was asked for, and every text
- * within its length cap. Exported for unit tests.
+ * within its length cap (a headline is cut to fit instead). Exported for
+ * unit tests.
  */
 export function sessionWriteups(
   output: unknown,
@@ -128,20 +130,20 @@ export function sessionWriteups(
   const reported = new Set<string>();
   for (const report of matchReports) {
     if (
-      !hasExactly(report, ["matchId", "report"]) ||
+      !hasExactly(report, ["matchId", "report", "headline"]) ||
       typeof report.matchId !== "string" ||
       !matchIds.includes(report.matchId) ||
       reported.has(report.matchId) ||
-      !isText(report.report, MAX_REPORT_LENGTH)
+      !isText(report.report, MAX_REPORT_LENGTH) ||
+      typeof report.headline !== "string"
     ) {
       return [];
     }
     reported.add(report.matchId);
-    drafts.push({
-      kind: "match",
-      subjectKey: report.matchId,
-      text: report.report,
-    });
+    drafts.push(
+      { kind: "match", subjectKey: report.matchId, text: report.report },
+      headlineDraft(report.matchId, report.headline),
+    );
   }
   if (withClub) {
     if (!isText(stateOfTheClub, MAX_PIECE_LENGTH)) return [];
@@ -152,10 +154,6 @@ export function sessionWriteups(
     });
   }
   return drafts;
-}
-
-function isText(value: unknown, maxLength: number): value is string {
-  return typeof value === "string" && value.length <= maxLength;
 }
 
 function outputSchema(matchIds: readonly string[], withClub: boolean) {
@@ -175,10 +173,11 @@ function outputSchema(matchIds: readonly string[], withClub: boolean) {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["matchId", "report"],
+          required: ["matchId", "report", "headline"],
           properties: {
             matchId: { type: "string", enum: [...matchIds] },
             report: text,
+            headline: text,
           },
         },
       },
@@ -202,7 +201,7 @@ function matchInput(match: BriefMatch) {
     // Why we dropped points: this Match against our typical Win.
     againstATypicalWin: match.droppedPoints?.deviations.map((d) => d.text),
     appearances: match.appearances.map((a) => ({
-      club: a.isOurClub ? "A Bloo Bloo" : promptName(match.opponent.name),
+      club: promptClub(a.isOurClub, match.opponent.name),
       name: promptName(a.name),
       positionGroup: a.positionGroup,
       ...appearanceStatsInput(a),

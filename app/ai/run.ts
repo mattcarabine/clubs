@@ -13,10 +13,15 @@ import type { AiClientConfig } from "./client";
 import { DEFAULT_RETRY_BASE_MS, DEFAULT_TIMEOUT_MS } from "./config";
 import { drainQueue } from "./queue";
 import { coachingWriter } from "./writers/coaching";
+import { headlineWriter } from "./writers/headline";
 import { sessionWriter } from "./writers/session";
 
-/** Every writer, drained in this order. */
-const WRITERS = [sessionWriter, coachingWriter];
+/**
+ * Every writer, drained in this order. The weekly coaching notes (one call)
+ * come before the headline backlog, which follows the Session writer, which
+ * writes new Sessions' headlines itself.
+ */
+const WRITERS = [sessionWriter, coachingWriter, headlineWriter];
 
 /** The client config from Worker env, or null without an API key (local dev, by default). */
 export function aiClientConfig(env: Env): AiClientConfig | null {

@@ -118,7 +118,10 @@ test("a Match's preview is its score line, Match Type, date, Outcome and top per
   expect(title).toBe(scoreLine);
   const description = meta.get("og:description") ?? "";
   expect(description).toContain("Playoff");
-  expect(description).toContain(formatLondonDateTime(playedAt));
+  // The builders nudge each kick-off by a few seconds to keep them unique, so read the one served.
+  expect(description).toContain(
+    formatLondonDateTime(new Date(body.match.timestamp * 1000)),
+  );
   expect(description).toContain("Loss");
   expect(description).toContain("Top performer: Kabeeble, 2 G");
   expect(meta.get("description")).toBe(description);

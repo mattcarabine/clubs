@@ -29,8 +29,8 @@ import type { Subject } from "../plan";
 import { HOUSE_STYLE } from "../prompts";
 import type { AiWriter } from "../queue";
 import { promptName } from "../sanitise";
+import { hasExactly } from "../validate";
 import { appearanceStatsInput } from "./inputs";
-import { hasExactly } from "./reply";
 
 /** The most points one Squad Member's notes may have. */
 export const MAX_POINTS = 4;

@@ -1,4 +1,4 @@
-/** Checks shared by the writers when validating a model's reply. */
+/** Strict checks for structured replies: anything off-schema stores nothing. */
 
 /** An object with exactly these keys. */
 export function hasExactly(
@@ -10,4 +10,9 @@ export function hasExactly(
   }
   const own = Object.keys(value);
   return own.length === keys.length && keys.every((k) => own.includes(k));
+}
+
+/** A string of at most `maxLength` characters. */
+export function isText(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.length <= maxLength;
 }
