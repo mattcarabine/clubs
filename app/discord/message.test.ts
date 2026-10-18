@@ -8,6 +8,7 @@ import {
   EMBED_COLOR,
   EMBED_LIMITS,
   type SessionPostInput,
+  seasonReviewPostBody,
   sessionPostBody,
 } from "./message";
 import { retryAfterMs } from "./webhook";
@@ -117,6 +118,38 @@ describe("sessionPostBody", () => {
       embed.description.length +
       embed.fields.reduce((n, f) => n + f.name.length + f.value.length, 0);
     expect(total).toBeLessThanOrEqual(EMBED_LIMITS.total);
+  });
+});
+
+describe("seasonReviewPostBody", () => {
+  it("announces the review with its link, record and the first three Award winners, pinging nobody", () => {
+    const award = (title: string, name: string) => ({
+      title,
+      name,
+      value: "9",
+      unit: "goals",
+    });
+    const body = seasonReviewPostBody({
+      url: "https://clubs.marabine.co.uk/seasons/3/review",
+      number: 3,
+      record: { wins: 12, draws: 3, losses: 6 },
+      awards: [
+        award("Player of the Season", "@everyone"),
+        award("Golden Boot", "Kabeeble"),
+        award("Playmaker", "Trevor"),
+        award("Most Improved", "Dan"),
+      ],
+    });
+    expect(body.allowed_mentions).toEqual({ parse: [] });
+    const [embed] = body.embeds;
+    expect(embed.title).toBe("Season 3 Review is in");
+    expect(embed.url).toBe("https://clubs.marabine.co.uk/seasons/3/review");
+    expect(embed.description).toMatch(/^W12 D3 L6\./);
+    expect(embed.fields).toEqual([
+      { name: "Player of the Season", value: "@​everyone · 9 goals" },
+      { name: "Golden Boot", value: "Kabeeble · 9 goals" },
+      { name: "Playmaker", value: "Trevor · 9 goals" },
+    ]);
   });
 });
 

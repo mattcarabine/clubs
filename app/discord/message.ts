@@ -1,13 +1,15 @@
 /**
  * The Discord post for one Session (CLUBS-39): one embed with the Session's
  * title and link, its Matches' scorelines and headlines, the top performer
- * and the recap's first paragraph, unlabelled. Pure, so it is unit tested.
+ * and the recap's first paragraph, unlabelled. And the one announcing a
+ * Season Review (CLUBS-45). Pure, so they are unit tested.
  *
  * Club names, persona names and the model's text all reach Discord, so each
  * is escaped (`discordText`) and the webhook pings nobody
  * (`allowed_mentions`).
  */
 import { clampText, paragraphs } from "~/lib/text";
+import type { Award } from "~/stats/awards";
 import { scoreLine, sessionPreview } from "~/stats/link-preview";
 import type { MatchSummary } from "~/stats/matches";
 import { type PerformerTotals, sessionTopPerformer } from "~/stats/sessions";
@@ -132,4 +134,42 @@ function scorelines(input: SessionPostInput, room: number): string {
     length += line.length + 1;
   }
   return kept.join("\n");
+}
+
+/** How many Award winners a Season Review post names. */
+export const POSTED_AWARDS = 3;
+
+export interface SeasonReviewPostInput {
+  /** The review page, absolute. */
+  url: string;
+  number: number;
+  record: Pick<RecordSummary, "wins" | "draws" | "losses">;
+  /** In the review's order; the first `POSTED_AWARDS` are named. */
+  awards: readonly Pick<Award, "title" | "name" | "value" | "unit">[];
+}
+
+/**
+ * The Discord post announcing a Season Review (CLUBS-45): "Season 3 Review
+ * is in", the link, the recorded W-D-L and the first `POSTED_AWARDS`
+ * Awards' winners. The page itself tells the story.
+ */
+export function seasonReviewPostBody(
+  input: SeasonReviewPostInput,
+): WebhookBody {
+  const { wins, draws, losses } = input.record;
+  return {
+    allowed_mentions: { parse: [] },
+    embeds: [
+      {
+        title: `Season ${input.number} Review is in`,
+        url: input.url,
+        color: EMBED_COLOR,
+        description: `W${wins} D${draws} L${losses}. The Awards, the best and worst of it, and a look at next Season.`,
+        fields: input.awards.slice(0, POSTED_AWARDS).map((award) => ({
+          name: award.title,
+          value: `${discordText(award.name)} · ${award.value} ${award.unit}`,
+        })),
+      },
+    ],
+  };
 }

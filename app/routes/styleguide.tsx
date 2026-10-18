@@ -31,6 +31,9 @@ import {
   StatTile,
   StepChart,
   type StepChartPoint,
+  StoryCard,
+  StoryDeck,
+  type StoryDeckCard,
   Tag,
   Ticker,
   TopPerformersStrip,
@@ -310,6 +313,55 @@ const SWATCHES = [
   ["ink-muted", "Ink muted"],
 ] as const;
 
+const SAMPLE_STORY: StoryDeckCard[] = [
+  {
+    id: "intro",
+    label: "Intro",
+    content: (
+      <StoryCard kicker="Season Review" title="Season 3" tone="club">
+        <p className="font-display font-bold text-ink text-xl uppercase tracking-wide">
+          Thu 1 Oct – Thu 12 Nov
+        </p>
+        <p>
+          Twelve Wins, two Promotions and one almighty wobble in Division 3.
+        </p>
+      </StoryCard>
+    ),
+  },
+  {
+    id: "record",
+    label: "Record",
+    content: (
+      <StoryCard
+        kicker="The record"
+        title="W12 D3 L6"
+        figure={21}
+        figureCaption="Matches"
+      >
+        <p>48 scored, 30 conceded.</p>
+      </StoryCard>
+    ),
+  },
+  {
+    id: "golden-boot",
+    label: "Golden Boot",
+    content: (
+      <StoryCard
+        kicker="Golden Boot"
+        title="Kopite Kev"
+        figure={14}
+        figureCaption="goals"
+      >
+        <p>
+          Fourteen goals in 19 Appearances, and a hat-trick against the Sparrows
+          nobody will let him forget.
+        </p>
+        <p className="text-ink-muted">in 19 Appearances</p>
+      </StoryCard>
+    ),
+  },
+];
+
 export default function Styleguide() {
   return (
     <div className="grid gap-12">
@@ -565,6 +617,18 @@ export default function Styleguide() {
             <MatchHeadline text="Bloo Bloo and Kebab Over6pack share the spoils in a madcap, end-to-end thriller!" />
           </div>
         </div>
+      </Section>
+
+      <Section id="story" title="StoryDeck and StoryCard">
+        <p className="mb-3 text-ink-muted text-sm">
+          The Season Review's cards. Tap or swipe on phones; scroll on desktop.
+          Focus the deck to step through it with the arrow keys.
+        </p>
+        <StoryDeck
+          label="Sample Season Review"
+          fill="panel"
+          cards={SAMPLE_STORY}
+        />
       </Section>
 
       <Section id="campaign-panel" title="CampaignPanel">

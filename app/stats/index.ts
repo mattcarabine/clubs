@@ -5,6 +5,7 @@
  * formula import "~/stats/filter" or "~/stats/formulas" directly, so the
  * client bundle never pulls in the query modules.
  */
+export * from "./awards";
 export * from "./campaigns";
 export * from "./campaigns-query";
 export * from "./club-snapshot";
@@ -24,6 +25,8 @@ export * from "./player-profile";
 export * from "./positions";
 export * from "./recent-change";
 export * from "./scope";
+export * from "./season-review";
+export * from "./season-review-query";
 export * from "./seasons";
 export * from "./session-brief";
 export * from "./sessions";

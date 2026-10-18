@@ -9,10 +9,14 @@ import { FIXTURES_DIR, OUR_CLUB_ID } from "./match-builders.ts";
  * for `fakeEa.setPayload("currentSeasonLeaderboard/search", ...)`. A drop in
  * `gamesPlayed` between Polls starts a new Season. `currentDivision` is EA's
  * Division (1 = Elite to 6 = Division 5); the recording has 3 (Division 2).
+ * `stats` sets any other of Our Club's fields, e.g. `wins`.
  */
 export function leaderboardWithGamesPlayed(
   gamesPlayed: number,
-  { currentDivision }: { currentDivision?: number } = {},
+  {
+    currentDivision,
+    stats = {},
+  }: { currentDivision?: number; stats?: Record<string, number> } = {},
 ): Record<string, unknown>[] {
   const file = fixtureFileName({
     endpoint: "currentSeasonLeaderboard/search",
@@ -27,7 +31,14 @@ export function leaderboardWithGamesPlayed(
       : { currentDivision: String(currentDivision) };
   return clubs.map((club) =>
     club.clubId === OUR_CLUB_ID
-      ? { ...club, gamesPlayed: String(gamesPlayed), ...division }
+      ? {
+          ...club,
+          ...Object.fromEntries(
+            Object.entries(stats).map(([key, value]) => [key, String(value)]),
+          ),
+          gamesPlayed: String(gamesPlayed),
+          ...division,
+        }
       : club,
   );
 }

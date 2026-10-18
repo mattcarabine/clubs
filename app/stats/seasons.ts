@@ -20,3 +20,16 @@ export async function listSeasons(db: Db): Promise<Season[]> {
     .from(seasons)
     .orderBy(asc(seasons.number));
 }
+
+/**
+ * The Seasons that have ended, newest first: every Season but the current
+ * one, each ending where the next starts (CLUBS-45's Season Reviews).
+ */
+export function finishedSeasons(
+  known: readonly Season[],
+): (Season & { endedAt: Date })[] {
+  return known
+    .slice(0, -1)
+    .map((season, i) => ({ ...season, endedAt: known[i + 1].startedAt }))
+    .reverse();
+}

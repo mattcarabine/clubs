@@ -43,6 +43,13 @@
       "when": 1792295419210,
       "tag": "0005_dear_sentinels",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792297253944,
+      "tag": "0006_clean_shadow_king",
+      "breakpoints": true
     }
   ]
 }
