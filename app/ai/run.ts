@@ -7,6 +7,8 @@ import { gte, sum } from "drizzle-orm";
 
 import { type Db, getDb } from "~/db/client";
 import { aiJobs } from "~/db/schema";
+import { errorMessage } from "~/lib/text";
+
 import type { AiClientConfig } from "./client";
 import { DEFAULT_RETRY_BASE_MS, DEFAULT_TIMEOUT_MS } from "./config";
 import { drainQueue } from "./queue";
@@ -54,9 +56,12 @@ export async function runWriteups(env: Env): Promise<void> {
       }),
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     console.error(
-      JSON.stringify({ event: "ai", status: "failed", error: message }),
+      JSON.stringify({
+        event: "ai",
+        status: "failed",
+        error: errorMessage(error),
+      }),
     );
   }
 }

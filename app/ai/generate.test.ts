@@ -40,10 +40,10 @@ describe("buildRequest", () => {
     expect(request.messages[0].content).toEqual([
       {
         type: "text",
-        text: 'Background:\n{"baselines":[]}',
+        text: '<background>\n{"baselines":[]}\n</background>',
         cache_control: { type: "ephemeral" },
       },
-      { type: "text", text: 'Write it.\n\nData:\n{"score":"3-1"}' },
+      { type: "text", text: 'Write it.\n\n<data>\n{"score":"3-1"}\n</data>' },
     ]);
   });
 

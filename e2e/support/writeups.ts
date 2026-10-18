@@ -4,7 +4,7 @@
  */
 import type { AddMatchBody } from "../fake-ea/control.ts";
 import type { fakeEa as FakeEa } from "./fake-ea.ts";
-import { draw, loss, win, withLineup } from "./match-builders.ts";
+import { draw, loss, OUR_CLUB_ID, win, withLineup } from "./match-builders.ts";
 
 const MINUTE_MS = 60_000;
 
@@ -32,10 +32,13 @@ export async function serveSession(
     idPrefix,
     startedMinutesAgo,
     results,
+    opponentName,
   }: {
     idPrefix: string;
     startedMinutesAgo: number;
     results: ReadonlyArray<keyof typeof BUILDERS>;
+    /** Renames the Opponent, as any EA user can. */
+    opponentName?: string;
   },
 ): Promise<string[]> {
   const start = Date.now() - startedMinutesAgo * MINUTE_MS;
@@ -43,14 +46,19 @@ export async function serveSession(
   for (const [i, result] of results.entries()) {
     const matchId = `${idPrefix}${i + 1}`;
     ids.push(matchId);
-    await fakeEa.addMatch(
-      lineup(
-        BUILDERS[result]({
-          matchId,
-          playedAt: new Date(start + i * 30 * MINUTE_MS),
-        }),
-      ),
+    const body = lineup(
+      BUILDERS[result]({
+        matchId,
+        playedAt: new Date(start + i * 30 * MINUTE_MS),
+      }),
     );
+    if (opponentName) {
+      for (const [clubId, club] of Object.entries(body.match.clubs)) {
+        if (clubId !== OUR_CLUB_ID)
+          club.details = { ...club.details, name: opponentName };
+      }
+    }
+    await fakeEa.addMatch(body);
   }
   return ids;
 }

@@ -24,6 +24,7 @@ import type { GenerateTask, WriteupDraft } from "../generate";
 import type { Subject } from "../plan";
 import { HOUSE_STYLE } from "../prompts";
 import type { AiWriter } from "../queue";
+import { promptName } from "../sanitise";
 import { CLUB_SUBJECT } from "../writeups";
 
 interface SessionSubject extends Subject {
@@ -83,54 +84,88 @@ export function sessionTask(
       },
       matches: brief.matches.map(matchInput),
       sessionLeaderboard: brief.leaderboard.map((row) => ({
-        name: row.name,
+        name: promptName(row.name),
         ...totalsInput(row),
       })),
       ...(withClub && { club: clubInput(brief.club) }),
     },
     schema: outputSchema(matchIds, withClub),
-    writeups: (output) => sessionWriteups(output, subjectKey, matchIds),
+    writeups: (output) =>
+      sessionWriteups(output, subjectKey, matchIds, withClub),
   };
 }
 
-/** The write-ups in a reply, skipping anything off-schema. Exported for unit tests. */
+/** The longest recap or State of the club accepted, in characters. */
+export const MAX_PIECE_LENGTH = 4_000;
+/** The longest Match report accepted. */
+export const MAX_REPORT_LENGTH = 1_500;
+
+/**
+ * The write-ups in a reply, or none unless it fits the schema exactly: no
+ * unexpected fields, a report only for this Session's Matches and at most
+ * one each, `stateOfTheClub` only when it was asked for, and every text
+ * within its length cap. Exported for unit tests.
+ */
 export function sessionWriteups(
   output: unknown,
   sessionId: string,
   matchIds: readonly string[],
+  withClub: boolean,
 ): WriteupDraft[] {
-  if (!isRecord(output)) return [];
-  const drafts: WriteupDraft[] = [];
-  if (typeof output.recap === "string") {
-    drafts.push({ kind: "session", subjectKey: sessionId, text: output.recap });
+  const fields = withClub
+    ? ["recap", "matchReports", "stateOfTheClub"]
+    : ["recap", "matchReports"];
+  if (!hasExactly(output, fields)) return [];
+  const { recap, matchReports, stateOfTheClub } = output;
+  if (!isText(recap, MAX_PIECE_LENGTH) || !Array.isArray(matchReports)) {
+    return [];
   }
+  const drafts: WriteupDraft[] = [
+    { kind: "session", subjectKey: sessionId, text: recap },
+  ];
   const reported = new Set<string>();
-  for (const report of Array.isArray(output.matchReports)
-    ? output.matchReports
-    : []) {
+  for (const report of matchReports) {
     if (
-      isRecord(report) &&
-      typeof report.matchId === "string" &&
-      typeof report.report === "string" &&
-      matchIds.includes(report.matchId) &&
-      !reported.has(report.matchId)
+      !hasExactly(report, ["matchId", "report"]) ||
+      typeof report.matchId !== "string" ||
+      !matchIds.includes(report.matchId) ||
+      reported.has(report.matchId) ||
+      !isText(report.report, MAX_REPORT_LENGTH)
     ) {
-      reported.add(report.matchId);
-      drafts.push({
-        kind: "match",
-        subjectKey: report.matchId,
-        text: report.report,
-      });
+      return [];
     }
+    reported.add(report.matchId);
+    drafts.push({
+      kind: "match",
+      subjectKey: report.matchId,
+      text: report.report,
+    });
   }
-  if (typeof output.stateOfTheClub === "string") {
+  if (withClub) {
+    if (!isText(stateOfTheClub, MAX_PIECE_LENGTH)) return [];
     drafts.push({
       kind: "club",
       subjectKey: CLUB_SUBJECT,
-      text: output.stateOfTheClub,
+      text: stateOfTheClub,
     });
   }
   return drafts;
+}
+
+/** An object with exactly these keys. */
+function hasExactly(
+  value: unknown,
+  keys: readonly string[],
+): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const own = Object.keys(value);
+  return own.length === keys.length && keys.every((k) => own.includes(k));
+}
+
+function isText(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.length <= maxLength;
 }
 
 function outputSchema(matchIds: readonly string[], withClub: boolean) {
@@ -168,7 +203,7 @@ function matchInput(match: BriefMatch) {
     placeInSession: match.place,
     kickOff: formatLondonTime(match.playedAt),
     matchType: match.matchType,
-    opponent: match.opponent.name,
+    opponent: promptName(match.opponent.name),
     score: `${match.goalsFor}-${match.goalsAgainst}`,
     result: OUTCOME_LABEL[match.outcome],
     dnf: match.dnf,
@@ -177,8 +212,8 @@ function matchInput(match: BriefMatch) {
     // Why we dropped points: this Match against our typical Win.
     againstATypicalWin: match.droppedPoints?.deviations.map((d) => d.text),
     appearances: match.appearances.map((a) => ({
-      club: a.isOurClub ? "A Bloo Bloo" : match.opponent.name,
-      name: a.name,
+      club: a.isOurClub ? "A Bloo Bloo" : promptName(match.opponent.name),
+      name: promptName(a.name),
       positionGroup: a.positionGroup,
       minutes: Math.round(a.secondsPlayed / 60),
       goals: a.goals,
@@ -215,7 +250,7 @@ function baselineInput(baseline: PlayerBaseline) {
       assistsPer90: formatDecimal(totals.assistsPer90, 2),
     };
   return {
-    name: baseline.name,
+    name: promptName(baseline.name),
     beforeThisSession: per90s(baseline.allTime) ?? "Debut",
     last30Days: per90s(baseline.recent),
     bestRatingBefore: formatDecimal(baseline.bestRating),
@@ -257,7 +292,7 @@ function clubInput(club: ClubBrief) {
         ),
       })),
     squad: club.squad.map((row) => ({
-      name: row.name,
+      name: promptName(row.name),
       ...totalsInput(row),
       form: row.formIndicator?.status ?? null,
     })),
@@ -266,8 +301,4 @@ function clubInput(club: ClubBrief) {
       ...recordInput(s.record),
     })),
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

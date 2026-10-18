@@ -8,6 +8,8 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 
+import { errorMessage } from "~/lib/text";
+
 import type { TokenUsage } from "./cost";
 
 export interface AiClientConfig {
@@ -86,5 +88,5 @@ function describeError(error: unknown): string {
   if (error instanceof Anthropic.APIError) {
     return `${error.status ?? "no status"} ${error.message}`;
   }
-  return error instanceof Error ? error.message : String(error);
+  return errorMessage(error);
 }

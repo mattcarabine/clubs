@@ -1,25 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import { sessionWriteups } from "./session";
+import {
+  MAX_PIECE_LENGTH,
+  MAX_REPORT_LENGTH,
+  sessionWriteups,
+} from "./session";
 
 describe("sessionWriteups", () => {
   const ids = ["m1", "m2"];
+  const reply = {
+    recap: "What a night.",
+    matchReports: [
+      { matchId: "m1", report: "Won it late." },
+      { matchId: "m2", report: "Lost it early." },
+    ],
+    stateOfTheClub: "Flying.",
+  };
 
   it("stores the recap, a report per Match and the State of the club", () => {
-    expect(
-      sessionWriteups(
-        {
-          recap: "What a night.",
-          matchReports: [
-            { matchId: "m1", report: "Won it late." },
-            { matchId: "m2", report: "Lost it early." },
-          ],
-          stateOfTheClub: "Flying.",
-        },
-        "m1",
-        ids,
-      ),
-    ).toEqual([
+    expect(sessionWriteups(reply, "m1", ids, true)).toEqual([
       { kind: "session", subjectKey: "m1", text: "What a night." },
       { kind: "match", subjectKey: "m1", text: "Won it late." },
       { kind: "match", subjectKey: "m2", text: "Lost it early." },
@@ -27,30 +26,53 @@ describe("sessionWriteups", () => {
     ]);
   });
 
-  it("skips reports for other Matches, repeats and anything off-schema", () => {
-    expect(
-      sessionWriteups(
-        {
-          recap: "Recap.",
-          matchReports: [
-            { matchId: "elsewhere", report: "Not ours." },
-            { matchId: "m2", report: "First." },
-            { matchId: "m2", report: "Again." },
-            { matchId: "m1" },
-            "nonsense",
-          ],
-        },
-        "m1",
-        ids,
-      ),
-    ).toEqual([
-      { kind: "session", subjectKey: "m1", text: "Recap." },
-      { kind: "match", subjectKey: "m2", text: "First." },
-    ]);
+  it("takes no State of the club unless it was asked for", () => {
+    const { stateOfTheClub: _, ...withoutClub } = reply;
+    expect(sessionWriteups(withoutClub, "m1", ids, false)).toHaveLength(3);
+    expect(sessionWriteups(reply, "m1", ids, false)).toEqual([]);
+    expect(sessionWriteups(withoutClub, "m1", ids, true)).toEqual([]);
   });
 
-  it("stores nothing from a reply that is not an object", () => {
-    expect(sessionWriteups("Just text", "m1", ids)).toEqual([]);
-    expect(sessionWriteups(null, "m1", ids)).toEqual([]);
+  it.each([
+    ["an unexpected field", { ...reply, link: "https://spam.example" }],
+    [
+      "a report for another Match",
+      { ...reply, matchReports: [{ matchId: "elsewhere", report: "Spam." }] },
+    ],
+    [
+      "a second report for one Match",
+      {
+        ...reply,
+        matchReports: [
+          { matchId: "m1", report: "One." },
+          { matchId: "m1", report: "Two." },
+        ],
+      },
+    ],
+    [
+      "an extra field in a report",
+      {
+        ...reply,
+        matchReports: [{ matchId: "m1", report: "One.", extra: true }],
+      },
+    ],
+    [
+      "a recap over its cap",
+      { ...reply, recap: "x".repeat(MAX_PIECE_LENGTH + 1) },
+    ],
+    [
+      "a report over its cap",
+      {
+        ...reply,
+        matchReports: [
+          { matchId: "m1", report: "x".repeat(MAX_REPORT_LENGTH + 1) },
+        ],
+      },
+    ],
+    ["a missing recap", { matchReports: [], stateOfTheClub: "Fine." }],
+    ["plain text", "Just text"],
+    ["null", null],
+  ])("stores nothing from a reply with %s", (_, output) => {
+    expect(sessionWriteups(output, "m1", ids, true)).toEqual([]);
   });
 });

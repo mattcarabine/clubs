@@ -5,6 +5,7 @@
 import { getDb } from "../db/client.ts";
 import { pollRuns } from "../db/schema.ts";
 import { DEFAULT_EA_TIMEOUT_MS } from "../ea/client.ts";
+import { errorMessage } from "../lib/text.ts";
 import { type CollectedPoll, collectPoll, type PollConfig } from "./collect.ts";
 import { ratingState } from "./ratings.ts";
 import { type PollSummary, recordPoll } from "./record.ts";
@@ -34,7 +35,7 @@ export async function runPoll(env: Env): Promise<void> {
   } catch (error) {
     // Recording itself failed (e.g. D1 unavailable): make a best effort to
     // leave a trace, but never let the scheduled handler throw.
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     console.error(
       JSON.stringify({ event: "poll", status: "failed", error: message }),
     );

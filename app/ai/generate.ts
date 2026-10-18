@@ -10,6 +10,7 @@ import { and, eq, ne } from "drizzle-orm";
 import type { Db } from "~/db/client";
 import { aiJobs, aiWriteups } from "~/db/schema";
 import { sha256Hex } from "~/lib/sha256";
+import { errorMessage } from "~/lib/text";
 
 import {
   AiCallError,
@@ -26,6 +27,7 @@ import {
 } from "./config";
 import { estimateCost, type TokenUsage } from "./cost";
 import { isDue, retryDelay } from "./plan";
+import { cleanWriteupText, promptJson } from "./sanitise";
 import type { WriteupKind } from "./writeups";
 
 /** One piece of text to store for a subject. */
@@ -50,12 +52,19 @@ export interface GenerateTask {
   subjectKey: string;
   /** See `Subject.version`. */
   version: string;
-  /** Pre-computed numbers from `app/stats/`, never Raw Payloads. */
+  /**
+   * Pre-computed numbers from `app/stats/`, never Raw Payloads. Pass any
+   * third-party text (club and persona names) through `promptName`.
+   */
   input: unknown;
   prompt: Prompt;
   /** A JSON schema for structured output; without one the reply is plain text. */
   schema?: Record<string, unknown>;
-  /** The write-ups to store from the reply (the parsed JSON, or the text). */
+  /**
+   * The write-ups to store from the reply (the parsed JSON, or the text).
+   * Validate it strictly: return none for anything off-schema, and the job
+   * fails and is retried. Every text is then cleaned (`cleanWriteupText`).
+   */
   writeups(output: unknown): WriteupDraft[];
 }
 
@@ -116,7 +125,10 @@ export async function generate(
     usage = reply.usage;
     model = reply.model;
     const output = task.schema ? JSON.parse(reply.text) : reply.text;
-    const drafts = task.writeups(output).filter((d) => d.text.trim());
+    const drafts = task
+      .writeups(output)
+      .map((draft) => ({ ...draft, text: cleanWriteupText(draft.text) }))
+      .filter((draft) => draft.text);
     if (drafts.length === 0) throw new Error("The reply held no write-ups");
     const costUsd = estimateCost(usage, MODEL_PRICES[model]);
     await db.batch([
@@ -141,9 +153,11 @@ export async function generate(
     ]);
     return { status: "written", costUsd };
   } catch (error) {
-    usage ??= error instanceof AiCallError ? error.usage : undefined;
-    if (error instanceof AiCallError && error.model) model = error.model;
-    const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof AiCallError) {
+      usage ??= error.usage;
+      if (error.model) model = error.model;
+    }
+    const message = errorMessage(error);
     // Tokens spent on an unusable reply still count towards the bill.
     const costUsd = usage ? estimateCost(usage, MODEL_PRICES[model]) : null;
     await db
@@ -157,6 +171,15 @@ export async function generate(
     return { status: "failed", error: message, costUsd };
   }
 }
+
+/** The `ai_jobs` columns that make up a `JobState`. */
+export const jobStateColumns = {
+  subjectKey: aiJobs.subjectKey,
+  version: aiJobs.version,
+  status: aiJobs.status,
+  attempts: aiJobs.attempts,
+  nextAttemptAt: aiJobs.nextAttemptAt,
+};
 
 /** The Messages API request for a task: the stable prefix first, so it caches. */
 export function buildRequest(task: GenerateTask): ModelRequest {
@@ -183,13 +206,13 @@ export function buildRequest(task: GenerateTask): ModelRequest {
             : [
                 {
                   type: "text" as const,
-                  text: `Background:\n${JSON.stringify(context)}`,
+                  text: `<background>\n${promptJson(context)}\n</background>`,
                   cache_control: { type: "ephemeral" as const },
                 },
               ]),
           {
             type: "text",
-            text: `${instructions}\n\nData:\n${JSON.stringify(task.input)}`,
+            text: `${instructions}\n\n<data>\n${promptJson(task.input)}\n</data>`,
           },
         ],
       },
@@ -207,14 +230,7 @@ async function findOrCreateJob(
     eq(aiJobs.subjectKey, subjectKey),
     eq(aiJobs.version, version),
   );
-  const columns = {
-    id: aiJobs.id,
-    subjectKey: aiJobs.subjectKey,
-    version: aiJobs.version,
-    status: aiJobs.status,
-    attempts: aiJobs.attempts,
-    nextAttemptAt: aiJobs.nextAttemptAt,
-  };
+  const columns = { id: aiJobs.id, ...jobStateColumns };
   const [existing] = await db.select(columns).from(aiJobs).where(where);
   if (existing) return existing;
   const [created] = await db

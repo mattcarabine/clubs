@@ -128,7 +128,6 @@ export async function getSessionBrief(
   const leaderboard = leaderboardRows(sessionAppearances, {
     includeFormer: true,
   });
-  const outcomes = analysis.matches.map((m) => m.outcome);
   const earlier = analysis.matches.filter((m) => m.playedAt.getTime() < start);
 
   return {
@@ -147,7 +146,9 @@ export async function getSessionBrief(
     club: {
       record: summariseRecord(analysis.matches),
       split: analysis.split,
-      recentForm: outcomes.slice(-FORM_BEFORE_MATCHES),
+      recentForm: analysis.matches
+        .slice(-FORM_BEFORE_MATCHES)
+        .map((m) => m.outcome),
       squad: leaderboardRows(analysis.squad),
       recentSessions: sessions
         .slice(Math.max(0, index + 1 - RECENT_SESSIONS), index + 1)

@@ -13,7 +13,12 @@ import type { Db } from "~/db/client";
 import { aiJobs } from "~/db/schema";
 
 import { CALLS_PER_POLL, DRAIN_BUDGET_MS } from "./config";
-import { type GenerateContext, type GenerateTask, generate } from "./generate";
+import {
+  type GenerateContext,
+  type GenerateTask,
+  generate,
+  jobStateColumns,
+} from "./generate";
 import { dueSubjects, type Subject } from "./plan";
 
 export interface AiWriter<S extends Subject = Subject> {
@@ -54,13 +59,7 @@ export async function drainQueue(
     const [subjects, jobs] = await Promise.all([
       writer.subjects(ctx.db, ctx.now),
       ctx.db
-        .select({
-          subjectKey: aiJobs.subjectKey,
-          version: aiJobs.version,
-          status: aiJobs.status,
-          attempts: aiJobs.attempts,
-          nextAttemptAt: aiJobs.nextAttemptAt,
-        })
+        .select(jobStateColumns)
         .from(aiJobs)
         .where(eq(aiJobs.kind, writer.kind)),
     ]);
@@ -73,17 +72,25 @@ export async function drainQueue(
       const task = await writer.task(ctx.db, subject);
       if (!task) continue;
       const result = await generate(ctx, task);
-      if (result.status === "written" || result.status === "failed") {
-        calls++;
-        summary.costUsd += result.costUsd ?? 0;
-      }
-      if (result.status === "written") summary.written++;
-      if (result.status === "unchanged") summary.unchanged++;
-      if (result.status === "failed") {
-        summary.failed++;
-        summary.errors.push(
-          `${writer.kind} ${subject.subjectKey}: ${result.error}`,
-        );
+      switch (result.status) {
+        case "written":
+          calls++;
+          summary.written++;
+          summary.costUsd += result.costUsd ?? 0;
+          break;
+        case "failed":
+          calls++;
+          summary.failed++;
+          summary.costUsd += result.costUsd ?? 0;
+          summary.errors.push(
+            `${writer.kind} ${subject.subjectKey}: ${result.error}`,
+          );
+          break;
+        case "unchanged":
+          summary.unchanged++;
+          break;
+        case "skipped":
+          break;
       }
     }
   }

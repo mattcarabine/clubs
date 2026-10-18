@@ -19,3 +19,8 @@ export function firstSentence(text: string): string {
   const [lead = ""] = paragraphs(text);
   return lead.match(/^.+?[.!?](?=\s|$)/)?.[0] ?? lead;
 }
+
+/** A thrown value's message, for logs and stored errors. */
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

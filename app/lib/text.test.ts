@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { firstSentence, paragraphs } from "./text";
+import { errorMessage, firstSentence, paragraphs } from "./text";
+
+describe("errorMessage", () => {
+  it("reads an Error's message and stringifies anything else", () => {
+    expect(errorMessage(new Error("Timed out"))).toBe("Timed out");
+    expect(errorMessage("plain")).toBe("plain");
+  });
+});
 
 describe("paragraphs", () => {
   it("splits at blank lines and folds single line breaks", () => {
