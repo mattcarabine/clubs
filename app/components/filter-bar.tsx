@@ -8,10 +8,13 @@ import {
 import type { loader as rootLoader } from "~/root";
 
 import {
+  CAMPAIGN_REF_LABEL,
+  type CampaignRef,
   type DateRange,
   MATCH_TYPES,
   parseStatsFilter,
   type StatsFilter,
+  selectCampaign,
   toggleMatchType,
   writeStatsFilter,
 } from "~/stats/filter";
@@ -49,9 +52,10 @@ type FilterBarProps = {
 };
 
 /**
- * The global stats filter: Match Types, DNF, date range and Season. The
- * Season picker lists the Seasons from the root loader, and shows once there
- * are two to choose between. Every change rewrites the URL, so the page's
+ * The global stats filter: Match Types, DNF, date range, Season and
+ * Campaign. The Season picker lists the Seasons from the root loader, and
+ * shows once there are two to choose between; the Campaign chips show once a
+ * Campaign is tracked. Every change rewrites the URL, so the page's
  * loader reruns with the new filter and the view can be shared.
  *
  * With a `source`, it leads with the Recorded / EA totals toggle; with
@@ -64,7 +68,7 @@ export function FilterBar(props: FilterBarProps) {
   const [, setSearchParams] = useSearchParams();
   const pending = usePendingSearchParams();
   const filter = pending ? parseStatsFilter(pending) : props.filter;
-  const { seasons, firstMatchDate } = useRootFilterData();
+  const { seasons, firstMatchDate, campaignCount } = useRootFilterData();
   const source =
     pending && props.source !== undefined
       ? parseStatsSource(pending)
@@ -181,6 +185,14 @@ export function FilterBar(props: FilterBarProps) {
             />
           </ChipGroup>
         )}
+
+        {(campaignCount > 0 || filter.campaign !== undefined) && (
+          <CampaignChips
+            campaignCount={campaignCount}
+            value={filter.campaign?.ref}
+            onChange={(ref) => updateFilter((f) => selectCampaign(f, ref))}
+          />
+        )}
       </ScrollRail>
     </section>
   );
@@ -188,13 +200,47 @@ export function FilterBar(props: FilterBarProps) {
 
 const RAIL_PADDING = "px-3 py-3 sm:px-4";
 
-/** What the root loader knows for every FilterBar: Season numbers (oldest first) and the first Match's date. */
+/** What the root loader knows for every FilterBar: Season numbers (oldest first), the first Match's date and how many Campaigns there are. */
 function useRootFilterData() {
   const root = useRouteLoaderData<typeof rootLoader>("root");
   return {
     seasons: root?.seasons ?? [],
     firstMatchDate: root?.firstMatchDate ?? null,
+    campaignCount: root?.campaignCount ?? 0,
   };
+}
+
+type CampaignChipsProps = {
+  campaignCount: number;
+  /** Undefined for no Campaign. */
+  value: CampaignRef | undefined;
+  onChange: (ref: CampaignRef | undefined) => void;
+};
+
+/**
+ * "This Campaign" and, once there is one, "Last Campaign": pressing the
+ * selected chip again clears it. A Campaign by number, from a shared link,
+ * shows as its own chip.
+ */
+function CampaignChips({ campaignCount, value, onChange }: CampaignChipsProps) {
+  const refs: CampaignRef[] =
+    campaignCount > 1 ? ["current", "previous"] : ["current"];
+  if (typeof value === "number") refs.push(value);
+  return (
+    <ChipGroup label="Campaign" title="League Matches only">
+      {refs.map((ref) => (
+        <Chip
+          key={ref}
+          pressed={value === ref}
+          onClick={() => onChange(value === ref ? undefined : ref)}
+        >
+          {typeof ref === "number"
+            ? `Campaign ${ref}`
+            : CAMPAIGN_REF_LABEL[ref]}
+        </Chip>
+      ))}
+    </ChipGroup>
+  );
 }
 
 type SeasonSelectProps = {

@@ -8,11 +8,16 @@ Every number a page shows comes from here. Pages never write SQL or repeat a for
 import { env } from "cloudflare:workers";
 import { getDb } from "~/db/client";
 import { FilterBar } from "~/components";
-import { clubRecord, listMatches, statsFilterFromRequest } from "~/stats";
+import {
+  clubRecord,
+  listMatches,
+  resolveStatsFilter,
+  statsFilterFromRequest,
+} from "~/stats";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
-  const filter = statsFilterFromRequest(request);
+  const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
   const [record, matches] = await Promise.all([
     clubRecord(db, filter),
     listMatches(db, filter, { limit: 20 }),
@@ -32,7 +37,7 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 |---|---|
 | `formulas.ts` | Pure maths: `per90`, `passPercentage`, `tacklePercentage`, `average`, `form` (last 5 ratings), `rollingAverage`, `rollingWinPercentage`, `weightedMean` / `weightedVariance`, `effectSize` (Cohen's d, weighted), `standardScore` (one value's distance from a sample's mean in standard deviations) and `winRateEffectSize` (Cohen's h, so Win-rate gaps rank on the same scale), `outcomeFromScore`, `oppositeOutcome`, `points`, `cumulativePoints`, `winPercentage`, `currentStreak`, `minutesPlayed`. Uncomputable values are `null`, never `NaN`. |
 | `summaries.ts` | Pure roll-ups: `summariseRecord` (W/D/L, goals, points, DNFs), `summariseAppearances` (a Squad Member's totals, per-90s, %s, Form), `summariseMatchSides` (both clubs' totals in one Match, for the hero ScoreBar and the Match page), `groupBy`. |
-| `filter.ts` | `StatsFilter` and the URL format: `parseStatsFilter`, `statsFilterFromRequest`, `writeStatsFilter`, `toggleMatchType`. The date filter: `DateRange` (all, a `DATE_PRESETS` preset, or custom London dates), `dateWindow`, which turns it into instants, `presetRange` (the London days a preset covers, for the picker's highlight) and `dateRangeLabel` ("All dates", "Last 12 months", "5 Oct – 12 Oct"). |
+| `filter.ts` | `StatsFilter` and the URL format: `parseStatsFilter`, `statsFilterFromRequest`, `writeStatsFilter`, `toggleMatchType`. The date filter: `DateRange` (all, a `DATE_PRESETS` preset, or custom London dates), `dateWindow`, which turns it into instants, `presetRange` (the London days a preset covers, for the picker's highlight) and `dateRangeLabel` ("All dates", "Last 12 months", "5 Oct – 12 Oct"). The Campaign selection (`CampaignRef`, `selectCampaign`, which also narrows the Match Types to League). |
 | `scope.ts` | `matchScope(db, filter, { opponentClubId, now, playedBetween })` (`playedBetween` narrows to one Session's kick-offs): the SQL condition behind every query; `isShownMatch` (League and Playoff only) for the queries that ignore the filter; and `isOurAppearance`. |
 | `convert.ts` | Stored values to `~/lib/domain` ones (`"win"` to `"W"`, `"league"` to `"League"`, and so on). |
 | `matches.ts` | `listMatches`, `countMatches`, `latestMatch`, `clubRecord`, `getMatch` (both line-ups and both clubs' Skill Ratings) and `getMatchDetails` (the same for several Matches in two queries), `listKickoffs` (every shown Match's kick-off, whatever the filter, for Sessions), `firstMatchDate` (the root loader's, for the date picker). |
@@ -50,9 +55,9 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 | `recent-change.ts` | Recent changes (CLUBS-37), pure and client-safe: `recentChanges(appearances, name)` sets a Squad Member's last `RECENT_WINDOW` (10) filtered Appearances against every one before (the baseline) for each of `RECENT_STATS` (rating, per-90s, pass / tackle % and conversion weighted like the Outcome Split, Win % and MOTM % by Cohen's h), and reports up to `TOP_RECENT_CHANGES` each way with an effect of at least `MIN_RECENT_EFFECT` and `MIN_RECENT_APPEARANCES` a side, marking "Small sample" under `SMALL_BASELINE_APPEARANCES`. `biggest` (the largest effect either way) feeds the Squad table's Recent column; `splitRecent` is the recent-versus-baseline split anything comparing recent form reuses. Hot and Cold form (CLUBS-40): `formIndicator(appearances)` compares the last `FORM_WINDOW` (5) ratings with every one before, Hot or Cold at a gap of `HOT_COLD_GAP` (0.5) with `MIN_FORM_BASELINE` (10) before them; `squadLeaderboard` rows, `getPlayerProfile` and each Compare side carry it as `formIndicator`. `getPlayerProfile` and `squadLeaderboard` apply it after the Position Group selection. |
 | `seasons.ts` | `listSeasons`: every Season the Poll has detected, oldest first. The root loader passes their numbers to every `FilterBar`. |
 | `divisions.ts` | The Clubs League rules (CLUBS-41), hand-edited: `DIVISIONS` (per Division, keyed by EA's `currentDivision`, 1 = Elite to 6 = Division 5: Points Target, Promotion Series, points after a failed series, Relegation) and `LEAGUE_RULES` (Chances, points, Season start, Relegation Match resets). Every value carries its source and confidence; correct a number there and nowhere else. `toDivisionNumber`, `divisionName`. Client-safe. |
-| `campaigns.ts` | Campaigns (CLUBS-41), pure: `replayCampaigns` replays League Matches from each detected Season start (Division 5, 0 points) into Campaigns with their points path, Chances, Promotion Series, Relegation Match and outcome. Playoff Matches, and League Matches after one until the next Season, are skipped. `divisionTimeline` (Season starts, Promotions, Relegations), `divisionMismatch` (the tracked Division against EA's, skipped during the Playoffs), `campaignRecord`, `chancesLeft`. Client-safe. |
-| `campaigns-query.ts` | `getCampaignProgress(db)`: Seasons, every Competitive Match and the latest leaderboard Snapshot's `currentDivision`, in three parallel queries, then `campaigns.ts`. Not filtered. |
-| `snapshots.ts` | `clubSnapshots`, `memberSnapshots`, `snapshotNumber`, `lastSuccessfulPoll`. Not filtered: they are EA's own totals. |
+| `campaigns.ts` | Campaigns (CLUBS-41), pure: `replayCampaigns` replays League Matches from each detected Season start (Division 5, 0 points) into Campaigns with their points path, Chances, Promotion Series, Relegation Match and outcome. Playoff Matches, and League Matches after one until the next Season, are skipped. `divisionTimeline` (Season starts, Promotions, Relegations), `divisionMismatch` (the tracked Division against EA's, skipped during the Playoffs), `campaignRecord`, `chancesLeft`; for the Campaign filter (CLUBS-42), `findCampaign` (by `current`, `previous` or number) and `campaignKickoffs` (its first and last Match). Client-safe. |
+| `campaigns-query.ts` | `getCampaignProgress(db)`: Seasons, every Competitive Match and the latest leaderboard Snapshot's `currentDivision`, in three parallel queries, then `campaigns.ts`. Not filtered. `resolveStatsFilter(db, filter)` finds a selected Campaign's kick-offs (two queries, none without a Campaign); `countCampaigns(db, seasons)` feeds the root loader (no query before a Season start is detected). |
+| `snapshots.ts` | `clubSnapshots`, `memberSnapshots`, `snapshotNumber`. Not filtered: they are EA's own totals. `pollState` (CLUBS-46): when the latest Poll finished and a `version` that changes only when a Poll changes what Matchday shows (the latest Raw Payload ID and the latest Match's Skill Ratings), in three reads that start from the newest row; see "Pages that refresh themselves". |
 | `ea-totals.ts` | `eaMemberTotals` (each Squad Member's latest `members/stats` and `members/career/stats` Snapshot, in one query), the pure `eaSeasonTotals` / `eaCareerTotals` that read a Snapshot into numbers, and `eaCleanSheets`. Not filtered. |
 | `source.ts` | `StatsSource` (`"recorded"` or `"ea"`) and its URL format: `parseStatsSource`, `statsSourceFromRequest`, `writeStatsSource`, `STATS_SOURCE_LABEL`. |
 | `comparison-params.ts` | Compare's URL format (CLUBS-20), client-safe: `parseComparisonParams` (`players=A,B`, `scope=together`, `posA` / `posB`), `writeComparisonPlayers` / `writeComparisonScope` / `writeComparisonPositionGroups`, and `comparePath`, which opens Compare from the Squad table or a profile carrying the filter and source over (the global `pos` becomes each side's). |
@@ -67,6 +72,7 @@ Europe/London date formatting and day/hour buckets live in `~/lib/london-time` (
 - Dates (CLAUDE.md "Date filtering"): Europe/London calendar days, inclusive at both ends, so `to=2026-10-12` takes in a Match at 23:30 London that day. A preset covers today and the days before it (7, 30 or 365), counted from the request's London date, so a shared `range=7d` link stays relative. An invalid range (an unknown preset, a malformed date, `from` after `to`, only one of the two) falls back to all dates. Calendar-date helpers (`isCalendarDate`, `addCalendarDays`, `londonDayStart`) live in `~/lib/london-time`.
 - Season: `filter.season` is a Season number, absent for all Seasons. A Match belongs to the latest Season that started at or before it was played, worked out in `matchScope` at query time, so Matches stored before a boundary was detected still land in the right Season. The Poll detects a new Season when the current-season leaderboard Snapshot's `gamesPlayed` goes down (`app/poll/seasons.ts`); Season 1 starts at the epoch. The FilterBar shows the Season picker once there are two Seasons.
 - Position Groups: `filter.positionGroups` (`?pos=midfielder,forward`, empty for All Positions) narrows a Squad Member's Appearances, not Matches, so `matchScope` ignores it. Only player-level views apply it, by passing it explicitly: `squadLeaderboard(db, filter, { positionGroups })` keeps every Squad Member who played and counts only their Appearances in those groups (0 Appearances shows "–"), and `getPlayerProfile(db, id, filter, { positionGroups })` narrows totals, form and best Matches but keeps the Position Group split whole. Team-level pages never pass it, and their FilterBar hides the control.
+- Campaign (CLUBS-42): `?campaign=current|previous|<number>` (1 is the first tracked Campaign). The URL only names it, so every loader passes the parsed filter through `resolveStatsFilter`, which replays the Campaigns and sets `filter.campaign.kickoffs`; `matchScope` then keeps League Matches from the Campaign's first kick-off to its last (no SQL of its own), and throws on an unresolved Campaign. An unknown Campaign falls back to none. Selecting one in the FilterBar also narrows the Match Types to League. The FilterBar shows the Campaign chips once the root loader counts a Campaign, so they stay hidden until tracking starts.
 - Changing the filter resets `page`; other params are kept.
 - `squadLeaderboard` lists every Squad Member with at least one Appearance in the filtered Matches; there is no minimum.
 - DNF Matches are counted by default. Every `MatchSummary` and `SquadAppearance` carries `dnf`, so flag them in the UI.
@@ -83,6 +89,29 @@ A page that can show either our Recorded Appearances or EA's own totals (the Squ
 4. Keep maths out of SQL: fetch rows, then compute with `formulas.ts` / `summaries.ts`. Add a unit test for any new formula.
 5. Mind the free plan (ADR 0001): one or two queries per loader, no N+1. Run independent queries with `Promise.all`.
 
+## Pages that refresh themselves
+
+The D1 free plan allows 5M rows read a day, and a page left open refreshing itself all evening multiplies whatever one load reads. So a self-refreshing page never reruns its loaders on a timer. It uses one mechanism, "skip the work unless the Poll changed" (CLUBS-46):
+
+1. The loader reads `pollState(db)` first, before its other queries, and returns it.
+2. The component calls `useLivePoll(loaderData.poll, intervalMs)` (`~/lib/use-live-poll`) and shows the `lastPoll` it returns in the `LastUpdatedBadge`.
+3. While the tab is visible the hook fetches `/api/poll-state` every interval, and reruns the loaders only when the `version` has moved, so the badge follows every Poll but the page's data is read again only after a Poll changes something.
+
+Matchday is the only self-refreshing page today.
+
+### Read budget
+
+Rows read, from `meta.rows_read` (the E2E suite measures them with the test-only meter in `app/db/rows-read.ts`, `GET /__test/rows-read`; `e2e/matchday-reads.api.spec.ts` holds the budget):
+
+| What | Rows read |
+|---|---|
+| The `/api/poll-state` check, every minute while Matchday is open | 3, whatever the data (budget: 5) |
+| A full Matchday load (root and page loaders) | About 350 on the recorded fixtures, growing with Our Club's Appearances (`squadForm` reads them all), not with the number of Polls |
+
+One Matchday tab open for 6 hours costs about 1,100 rows for the checks, plus a full load each time a Poll changes something (in production about 1 Poll in 5). Before CLUBS-46 the page reran every loader each minute, and the latest-Poll lookup scanned every Poll run, so the same tab cost 360 full loads that grew by 2 rows with every Poll: about 170k rows on day one and over 6M, beyond the free plan, after a month.
+
+Keep any query a page runs on a timer to an indexed lookup or a walk from the newest row (`ORDER BY id DESC LIMIT 1`), never a scan of a table that grows with every Poll.
+
 ## Adding a filter dimension
 
-Add the field to `StatsFilter` and `DEFAULT_STATS_FILTER`, read it in `parseStatsFilter`, write it in `writeStatsFilter`, add its condition in `matchScope` (or, for a per-Appearance dimension like Position Groups, an option on the player queries), and add a control to `FilterBar` (`app/components/filter-bar.tsx`).
+Add the field to `StatsFilter` and `DEFAULT_STATS_FILTER`, read it in `parseStatsFilter`, write it in `writeStatsFilter`, add its condition in `matchScope` (or, for a per-Appearance dimension like Position Groups, an option on the player queries; for one that needs data the URL can't carry, like a Campaign's kick-offs, a step in `resolveStatsFilter`), and add a control to `FilterBar` (`app/components/filter-bar.tsx`).

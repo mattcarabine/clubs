@@ -21,6 +21,7 @@ import {
   isDefaultStatsFilter,
   type OpponentRecord,
   opponentRecords,
+  resolveStatsFilter,
   statsFilterFromRequest,
 } from "~/stats";
 
@@ -31,8 +32,9 @@ export function meta(_: Route.MetaArgs) {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const filter = statsFilterFromRequest(request);
-  const opponents = await opponentRecords(getDb(env.DB), filter);
+  const db = getDb(env.DB);
+  const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
+  const opponents = await opponentRecords(db, filter);
   return { clubName: env.EA_CLUB_NAME, filter, opponents };
 }
 
