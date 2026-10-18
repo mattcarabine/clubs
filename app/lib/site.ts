@@ -20,7 +20,16 @@ export const OG_IMAGE_PATH = "og-card.png";
 export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;
 
-/** An absolute URL on the site for a path such as "/matches/1". */
+const SITE_ORIGIN = new URL(SITE_URL).origin;
+
+/**
+ * An absolute URL on the site for a path such as "/matches/1". The path comes
+ * from the request, so it never leaves the site's origin: leading slashes and
+ * backslashes are stripped (a request for "//evil.example/x" would otherwise
+ * resolve to another host), and anything that still resolves elsewhere falls
+ * back to the home page.
+ */
 export function siteUrl(path: string): string {
-  return new URL(path, SITE_URL).href;
+  const url = new URL(`/${path.replace(/^[/\\]+/, "")}`, SITE_URL);
+  return url.origin === SITE_ORIGIN ? url.href : new URL(SITE_URL).href;
 }
