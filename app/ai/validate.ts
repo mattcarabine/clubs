@@ -16,9 +16,13 @@ export function hasExactly(
   return own.length === keys.length && keys.every((k) => own.includes(k));
 }
 
-/** A string of at most `maxLength` characters. */
+/** A string with something in it, of at most `maxLength` characters. */
 export function isText(value: unknown, maxLength: number): value is string {
-  return typeof value === "string" && value.length <= maxLength;
+  return (
+    typeof value === "string" &&
+    value.trim() !== "" &&
+    value.length <= maxLength
+  );
 }
 
 /** What a write-up's prose is checked against, beyond its own text. */

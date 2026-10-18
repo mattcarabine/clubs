@@ -117,7 +117,9 @@ test("a write-up is shown as plain text: no HTML, links or URLs from the model",
   await fakeAnthropic.reply({
     recap:
       '<img src=x onerror="window.__pwned=1"><b>Bold</b> claim. See [our stats](https://evil.example) or https://spam.example now.\n\nWe won 5 < 6 & 7 > 3.',
-    matchReports: [],
+    matchReports: [
+      { matchId: sessionId, report: "Won it.", headline: "Bloos win" },
+    ],
     stateOfTheClub: "Fine.",
   });
   await triggerPoll();
