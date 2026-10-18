@@ -5,13 +5,17 @@
  *   ?types=league&dnf=0&range=30d&season=2
  *   ?from=2026-10-05&to=2026-10-12
  *   ?pos=midfielder,forward
+ *   ?campaign=current|previous|3
  *
- * Defaults (Competitive Matches, DNF included, all dates, all Seasons) are
+ * Defaults (Competitive Matches, DNF included, all dates, all Seasons, no
+ * Campaign) are
  * left out of the URL, so an unfiltered page has a clean address.
  *
  * Adding a dimension: add a field to `StatsFilter` and `DEFAULT_STATS_FILTER`,
  * read it in `parseStatsFilter`, write it in `writeStatsFilter`, turn it into
- * SQL in `scope.ts`, and add a control to `FilterBar`.
+ * SQL in `scope.ts`, and add a control to `FilterBar`. A dimension that needs
+ * data the URL can't carry (a Campaign's kick-offs) is filled in by
+ * `resolveStatsFilter`, which every loader calls.
  */
 import type { MatchType } from "~/lib/domain";
 import {
@@ -128,6 +132,35 @@ export function dateWindow(range: DateRange, now: Date): DateWindow {
   }
 }
 
+/**
+ * `?campaign=`: the current Campaign, the one before it, or one by its
+ * number (1 is the first tracked, as `campaignNumber` counts them).
+ */
+export type CampaignRef = "current" | "previous" | number;
+
+export const CAMPAIGN_REF_LABEL: Record<"current" | "previous", string> = {
+  current: "This Campaign",
+  previous: "Last Campaign",
+};
+
+/** The kick-offs of a Campaign's first and last Match, both included. */
+export interface CampaignKickoffs {
+  first: Date;
+  last: Date;
+}
+
+/**
+ * A selected Campaign. The URL only names it; `resolveStatsFilter` (in
+ * `campaigns-query.ts`) replays the Campaigns to find its kick-offs, or drops
+ * the selection when no such Campaign exists. `matchScope` refuses an
+ * unresolved one.
+ */
+export interface CampaignSelection {
+  ref: CampaignRef;
+  /** Unset until resolved; null when the Campaign has no Matches yet. */
+  kickoffs?: CampaignKickoffs | null;
+}
+
 export interface StatsFilter {
   /** Never empty; always in `MATCH_TYPES` order. */
   matchTypes: readonly MatchType[];
@@ -143,6 +176,11 @@ export interface StatsFilter {
    * `matchScope` ignores it, since it narrows Appearances, not Matches.
    */
   positionGroups: PositionGroupSelection;
+  /**
+   * One Campaign's Matches: League only, from its first Match to its last.
+   * Absent means no Campaign narrowing.
+   */
+  campaign?: CampaignSelection;
 }
 
 export const DEFAULT_STATS_FILTER: StatsFilter = {
@@ -161,6 +199,7 @@ export const FILTER_PARAMS = {
   to: "to",
   season: "season",
   positionGroups: "pos",
+  campaign: "campaign",
 } as const;
 
 /** Reset whenever the filter changes, since the old page may no longer exist. */
@@ -176,6 +215,7 @@ export function parseStatsFilter(params: URLSearchParams): StatsFilter {
     positionGroups: parsePositionGroups(
       params.get(FILTER_PARAMS.positionGroups),
     ),
+    campaign: parseCampaign(params.get(FILTER_PARAMS.campaign)),
   };
 }
 
@@ -225,6 +265,11 @@ export function writeStatsFilter(
     FILTER_PARAMS.positionGroups,
     writePositionGroups(filter.positionGroups),
   );
+  setOrDelete(
+    next,
+    FILTER_PARAMS.campaign,
+    filter.campaign === undefined ? null : String(filter.campaign.ref),
+  );
   return next;
 }
 
@@ -234,7 +279,8 @@ export function isDefaultStatsFilter(filter: StatsFilter): boolean {
     filter.includeDnf === DEFAULT_STATS_FILTER.includeDnf &&
     filter.dates.kind === "all" &&
     filter.season === undefined &&
-    filter.positionGroups.length === 0
+    filter.positionGroups.length === 0 &&
+    filter.campaign === undefined
   );
 }
 
@@ -275,7 +321,31 @@ function parseDates(params: URLSearchParams): DateRange {
 
 /** A positive Season number, or undefined (all Seasons) for anything else. */
 function parseSeason(raw: string | null): number | undefined {
+  return parsePositiveInteger(raw);
+}
+
+/** `current`, `previous` or a positive Campaign number; anything else means no Campaign. */
+function parseCampaign(raw: string | null): CampaignSelection | undefined {
+  if (raw === "current" || raw === "previous") return { ref: raw };
+  const number = parsePositiveInteger(raw);
+  return number === undefined ? undefined : { ref: number };
+}
+
+function parsePositiveInteger(raw: string | null): number | undefined {
   return raw !== null && /^[1-9]\d*$/.test(raw) ? Number(raw) : undefined;
+}
+
+/**
+ * Selects a Campaign, or none. A Campaign counts League Matches only, so
+ * selecting one also narrows the Match Types to League, keeping the chips
+ * truthful.
+ */
+export function selectCampaign(
+  filter: StatsFilter,
+  ref: CampaignRef | undefined,
+): StatsFilter {
+  if (ref === undefined) return { ...filter, campaign: undefined };
+  return { ...filter, matchTypes: ["League"], campaign: { ref } };
 }
 
 /** The `types` param value, or null for the default Match Types. */

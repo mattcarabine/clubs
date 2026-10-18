@@ -14,7 +14,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { AppShell, crestUrl, isNotFound, PageHeader } from "~/components";
 import { getDb } from "~/db/client";
-import { firstMatchDate, listSeasons } from "~/stats";
+import { countCampaigns, firstMatchDate, listSeasons } from "~/stats";
 
 const FALLBACK_CLUB_NAME = "A Bloo Bloo";
 
@@ -51,6 +51,8 @@ export async function loader() {
     firstMatchDate(db),
   ]);
   return {
+    /** How many Campaigns are tracked, for the FilterBar; 0 before tracking starts. */
+    campaignCount: await countCampaigns(db, seasons),
     clubName: env.EA_CLUB_NAME,
     /** Season numbers, oldest first, for every page's FilterBar. */
     seasons: seasons.map((season) => season.number),

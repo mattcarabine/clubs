@@ -22,7 +22,12 @@ import type { Db } from "~/db/client";
 import { appearances, matches, seasons } from "~/db/schema";
 
 import { toMatchKind } from "./convert";
-import { dateWindow, MATCH_TYPES, type StatsFilter } from "./filter";
+import {
+  type CampaignSelection,
+  dateWindow,
+  MATCH_TYPES,
+  type StatsFilter,
+} from "./filter";
 
 /**
  * The Matches the app ever shows: League and Playoff. The Poll still stores
@@ -45,8 +50,9 @@ export interface ScopeOptions {
 }
 
 /**
- * The condition selecting the Matches a filter counts. The date range and
- * the Season are both applied, so the effective window is their intersection.
+ * The condition selecting the Matches a filter counts. The date range, the
+ * Season and the Campaign are all applied, so the effective window is their
+ * intersection. A Campaign must be resolved first (`resolveStatsFilter`).
  */
 export function matchScope(
   db: Db,
@@ -64,6 +70,24 @@ export function matchScope(
       ? between(matches.playedAt, playedBetween.start, playedBetween.end)
       : undefined,
     filter.season === undefined ? undefined : inSeason(db, filter.season),
+    filter.campaign && inCampaign(filter.campaign),
+  );
+}
+
+/**
+ * The Campaign's Matches: League Matches from its first kick-off to its
+ * last, both included. A Campaign with no Matches yet selects nothing.
+ */
+function inCampaign({ ref, kickoffs }: CampaignSelection): SQL | undefined {
+  if (kickoffs === undefined) {
+    throw new Error(
+      `Campaign "${ref}" is unresolved: pass the filter through resolveStatsFilter first`,
+    );
+  }
+  if (kickoffs === null) return inArray(matches.matchId, []);
+  return and(
+    eq(matches.matchType, toMatchKind("League")),
+    between(matches.playedAt, kickoffs.first, kickoffs.last),
   );
 }
 

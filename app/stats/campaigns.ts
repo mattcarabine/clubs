@@ -14,7 +14,6 @@
  * (in the Playoffs "league matches do not affect promotion or relegation").
  */
 import type { MatchType, Outcome } from "~/lib/domain";
-
 import {
   DIVISIONS,
   type DivisionNumber,
@@ -22,6 +21,7 @@ import {
   LEAGUE_RULES,
   type LeagueRules,
 } from "./divisions";
+import type { CampaignKickoffs, CampaignRef } from "./filter";
 
 /** The Match fields the replay reads. */
 export interface CampaignMatchInput {
@@ -321,6 +321,42 @@ export function divisionMismatch(
   return current.division === eaDivision
     ? null
     : { tracked: current.division, ea: eaDivision };
+}
+
+/**
+ * The Campaign a filter's `?campaign=` names, with its number (1 is the
+ * first tracked): the current one, the one before it, or one by number.
+ * Undefined when there is no such Campaign.
+ */
+export function findCampaign(
+  campaigns: readonly Campaign[],
+  ref: CampaignRef,
+): { number: number; campaign: Campaign } | undefined {
+  const number =
+    ref === "current"
+      ? campaigns.length
+      : ref === "previous"
+        ? campaigns.length - 1
+        : ref;
+  const campaign = campaigns[number - 1];
+  return campaign ? { number, campaign } : undefined;
+}
+
+/**
+ * The kick-offs of the Campaign's first and last Match (League Matches,
+ * Promotion Series and Relegation Match alike), or null before its first.
+ * The League Matches between them are exactly the Campaign's, since the
+ * replay hands each League Match to the Campaign in progress.
+ */
+export function campaignKickoffs(campaign: Campaign): CampaignKickoffs | null {
+  const played = [
+    ...campaign.leagueMatches,
+    ...campaign.promotionSeries,
+    ...(campaign.relegationMatch ? [campaign.relegationMatch] : []),
+  ];
+  const first = played[0];
+  const last = played.at(-1);
+  return first && last ? { first: first.playedAt, last: last.playedAt } : null;
 }
 
 function byKickOff(a: CampaignMatchInput, b: CampaignMatchInput): number {

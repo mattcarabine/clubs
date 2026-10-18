@@ -1,60 +1,17 @@
 import type { Page } from "@playwright/test";
 
-import type { AddMatchBody } from "./fake-ea/control.ts";
-import type { fakeEa as FakeEa } from "./support/fake-ea.ts";
-import { leaderboardWithGamesPlayed } from "./support/leaderboard.ts";
+import { play, startSeason } from "./support/campaigns.ts";
 import { draw, loss, win } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-41: the Trends page's Campaign section. Campaigns are rebuilt from
 // League Matches played after a detected Season start (Division 5, 0 points).
 
-interface Harness {
-  fakeEa: typeof FakeEa;
-  triggerPoll: () => Promise<void>;
-}
-
 test.beforeEach(async ({ fakeEa }) => {
   // Only the Matches each test adds.
   await fakeEa.setPayload("clubs/matches", [], "leagueMatch");
   await fakeEa.setPayload("clubs/matches", [], "playoffMatch");
 });
-
-/** Polls a full leaderboard, then a reset one: the second Poll starts Season 2. */
-async function startSeason(
-  { fakeEa, triggerPoll }: Harness,
-  currentDivision = 6,
-) {
-  await fakeEa.setPayload(
-    "currentSeasonLeaderboard/search",
-    leaderboardWithGamesPlayed(31, { currentDivision: 3 }),
-  );
-  await triggerPoll();
-  await fakeEa.setPayload(
-    "currentSeasonLeaderboard/search",
-    leaderboardWithGamesPlayed(0, { currentDivision }),
-  );
-  await triggerPoll();
-}
-
-/** Serves Matches a minute apart, after the Season start, then Polls. */
-async function play(
-  { fakeEa, triggerPoll }: Harness,
-  matches: ((options: { playedAt: Date }) => AddMatchBody)[],
-  currentDivision: number,
-) {
-  const start = Date.now();
-  for (const [i, build] of matches.entries()) {
-    await fakeEa.addMatch(
-      build({ playedAt: new Date(start + (i + 1) * 60_000) }),
-    );
-  }
-  await fakeEa.setPayload(
-    "currentSeasonLeaderboard/search",
-    leaderboardWithGamesPlayed(matches.length, { currentDivision }),
-  );
-  await triggerPoll();
-}
 
 const panel = (page: Page) =>
   page.getByRole("region", { name: "Current Campaign" });
