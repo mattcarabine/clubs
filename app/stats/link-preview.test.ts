@@ -72,12 +72,19 @@ describe("matchPreview", () => {
   });
 
   it("quotes the first sentence of a write-up", () => {
-    const { description } = matchPreview(
-      "A Bloo Bloo",
-      MATCH,
-      "Seven conceded. Nobody tracked back.",
-    );
+    const { description } = matchPreview("A Bloo Bloo", MATCH, {
+      writeUp: "Seven conceded. Nobody tracked back.",
+    });
     expect(description.endsWith(" · Seven conceded.")).toBe(true);
+  });
+
+  it("leads with the Match's headline", () => {
+    const { description } = matchPreview("A Bloo Bloo", MATCH, {
+      headline: "Kebab Over6pack run riot as Bloo Bloo collapse",
+    });
+    expect(description).toBe(
+      `Kebab Over6pack run riot as Bloo Bloo collapse · Playoff · ${formatLondonDateTime(PLAYED_AT)} · Loss · Top performer: Dan, 2 G · 1 A`,
+    );
   });
 });
 

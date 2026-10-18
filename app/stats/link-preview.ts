@@ -43,19 +43,28 @@ type MatchPreviewInput = Pick<
   ours: readonly PerformerInput[];
 };
 
+interface MatchWriting {
+  /** The Match's headline (CLUBS-43), which leads the description. */
+  headline?: string | null;
+  /** The Match report, whose first sentence ends it. */
+  writeUp?: string | null;
+}
+
 /**
- * Headline: the score line. Description: "Playoff · Sat 17 Oct, 20:30 ·
- * Loss · Top performer: Dan, 2 G · 1 A", then the write-up's first sentence.
+ * Headline: the score line. Description: the Match's headline, then
+ * "Playoff · Sat 17 Oct, 20:30 · Loss · Top performer: Dan, 2 G · 1 A", then
+ * the write-up's first sentence.
  */
 export function matchPreview(
   clubName: string,
   match: MatchPreviewInput,
-  writeUp?: string | null,
+  { headline, writeUp }: MatchWriting = {},
 ): PagePreview {
   const [top] = topPerformers(match.ours);
   return {
     title: scoreLine(clubName, match),
     description: joinPreviewFacts([
+      headline,
       match.matchType,
       formatLondonDateTime(match.playedAt),
       match.dnf
