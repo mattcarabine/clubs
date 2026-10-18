@@ -146,7 +146,7 @@ export function StoryDeck({ label, cards, fill = "viewport" }: StoryDeckProps) {
     >
       <ol
         aria-label="Progress"
-        className="absolute inset-x-0 top-0 z-10 flex gap-1 px-3 pt-3 lg:inset-x-auto lg:top-1/2 lg:-right-1 lg:-translate-y-1/2 lg:flex-col lg:gap-1.5 lg:px-0 lg:pt-0"
+        className="absolute inset-x-0 top-0 z-10 flex gap-1 px-3 pt-1 lg:inset-x-auto lg:top-1/2 lg:-right-1 lg:-translate-y-1/2 lg:flex-col lg:gap-1.5 lg:px-0 lg:pt-0"
       >
         {cards.map((card, i) => (
           <li key={card.id} className="flex flex-1 lg:flex-none">
@@ -155,8 +155,14 @@ export function StoryDeck({ label, cards, fill = "viewport" }: StoryDeckProps) {
               aria-label={`${i + 1} of ${count}: ${card.label}`}
               aria-current={i === active ? "step" : undefined}
               onClick={() => go(i)}
-              className={`h-1.5 w-full -skew-x-[24deg] transition-colors lg:h-7 lg:w-1.5 lg:skew-x-0 lg:-skew-y-[24deg] ${pipColour(i, active)}`}
-            />
+              // A 24px tall target around the thin visible bar.
+              className="flex h-6 w-full items-center lg:h-7 lg:w-3 lg:justify-center"
+            >
+              <span
+                aria-hidden
+                className={`block h-1.5 w-full -skew-x-[24deg] transition-colors lg:h-full lg:w-1.5 lg:skew-x-0 lg:-skew-y-[24deg] ${pipColour(i, active)}`}
+              />
+            </button>
           </li>
         ))}
       </ol>
