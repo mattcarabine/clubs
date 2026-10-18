@@ -53,7 +53,7 @@ Loaders import from `~/stats`. Components that only need the filter or a formula
 | `campaigns-query.ts` | `getCampaignProgress(db)`: Seasons, every Competitive Match and the latest leaderboard Snapshot's `currentDivision`, in three parallel queries, then `campaigns.ts`. Not filtered. |
 | `top-performers.ts` | `topPerformers` (one Match's Man of the Match, scorers and assisters, best first) and `formatPerformerStat` ("2 G · 1 A", or the rating). Pure. |
 | `link-preview.ts` | Link previews (CLUBS-38), pure and client-safe so route `meta()` can call them: `scoreLine`, `matchPreview`, `sessionPreview`, `playerPreview` and `opponentPreview` each return a `{ title, description }` for `pageMeta` (`~/lib/page-meta`). Match and Session previews take an optional write-up (CLUBS-35) and quote its first sentence, unlabelled. Import it directly, not through `~/stats`, to keep the query modules out of the client bundle. |
-| `snapshots.ts` | `clubSnapshots`, `memberSnapshots`, `snapshotNumber`, `lastSuccessfulPoll`. Not filtered: they are EA's own totals. |
+| `snapshots.ts` | `clubSnapshots`, `memberSnapshots`, `snapshotNumber`. Not filtered: they are EA's own totals. `pollState` (CLUBS-46): when the latest Poll finished and a `version` that changes only when a Poll changes what Matchday shows (the latest Raw Payload ID and the latest Match's Skill Ratings), in three reads that start from the newest row; see "Pages that refresh themselves". |
 | `ea-totals.ts` | `eaMemberTotals` (each Squad Member's latest `members/stats` and `members/career/stats` Snapshot, in one query), the pure `eaSeasonTotals` / `eaCareerTotals` that read a Snapshot into numbers, and `eaCleanSheets`. Not filtered. |
 | `source.ts` | `StatsSource` (`"recorded"` or `"ea"`) and its URL format: `parseStatsSource`, `statsSourceFromRequest`, `writeStatsSource`, `STATS_SOURCE_LABEL`. |
 | `comparison-params.ts` | Compare's URL format (CLUBS-20), client-safe: `parseComparisonParams` (`players=A,B`, `scope=together`, `posA` / `posB`), `writeComparisonPlayers` / `writeComparisonScope` / `writeComparisonPositionGroups`, and `comparePath`, which opens Compare from the Squad table or a profile carrying the filter and source over (the global `pos` becomes each side's). |
@@ -83,6 +83,29 @@ A page that can show either our Recorded Appearances or EA's own totals (the Squ
 3. Return domain types (`Outcome`, `MatchType`, `PositionGroup`, `Date`), converted with `convert.ts`, never raw columns.
 4. Keep maths out of SQL: fetch rows, then compute with `formulas.ts` / `summaries.ts`. Add a unit test for any new formula.
 5. Mind the free plan (ADR 0001): one or two queries per loader, no N+1. Run independent queries with `Promise.all`.
+
+## Pages that refresh themselves
+
+The D1 free plan allows 5M rows read a day, and a page left open refreshing itself all evening multiplies whatever one load reads. So a self-refreshing page never reruns its loaders on a timer. It uses one mechanism, "skip the work unless the Poll changed" (CLUBS-46):
+
+1. The loader reads `pollState(db)` first, before its other queries, and returns it.
+2. The component calls `useLivePoll(loaderData.poll, intervalMs)` (`~/lib/use-live-poll`) and shows the `lastPoll` it returns in the `LastUpdatedBadge`.
+3. While the tab is visible the hook fetches `/api/poll-state` every interval, and reruns the loaders only when the `version` has moved, so the badge follows every Poll but the page's data is read again only after a Poll changes something.
+
+Matchday is the only self-refreshing page today.
+
+### Read budget
+
+Rows read, from `meta.rows_read` (the E2E suite measures them with the test-only meter in `app/db/rows-read.ts`, `GET /__test/rows-read`; `e2e/matchday-reads.api.spec.ts` holds the budget):
+
+| What | Rows read |
+|---|---|
+| The `/api/poll-state` check, every minute while Matchday is open | 3, whatever the data (budget: 5) |
+| A full Matchday load (root and page loaders) | About 350 on the recorded fixtures, growing with Our Club's Appearances (`squadForm` reads them all), not with the number of Polls |
+
+One Matchday tab open for 6 hours costs about 1,100 rows for the checks, plus a full load each time a Poll changes something (in production about 1 Poll in 5). Before CLUBS-46 the page reran every loader each minute, and the latest-Poll lookup scanned every Poll run, so the same tab cost 360 full loads that grew by 2 rows with every Poll: about 170k rows on day one and over 6M, beyond the free plan, after a month.
+
+Keep any query a page runs on a timer to an indexed lookup or a walk from the newest row (`ORDER BY id DESC LIMIT 1`), never a scan of a table that grows with every Poll.
 
 ## Adding a filter dimension
 
