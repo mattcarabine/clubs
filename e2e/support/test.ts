@@ -8,6 +8,7 @@
 import { type APIRequestContext, test as base, expect } from "@playwright/test";
 
 import { fakeAnthropic } from "./fake-anthropic.ts";
+import { fakeDiscord } from "./fake-discord.ts";
 import { fakeEa } from "./fake-ea.ts";
 
 export interface TestDb {
@@ -19,10 +20,14 @@ interface HarnessFixtures {
   fakeEa: typeof fakeEa;
   /** The fake Anthropic upstream that write-ups call (docs/adr/0006). */
   fakeAnthropic: typeof fakeAnthropic;
+  /** The fake Discord webhook that Session posts call (CLUBS-39). */
+  fakeDiscord: typeof fakeDiscord;
   /** Runs one Poll through the Worker's real scheduled handler and waits for it. */
   triggerPoll: () => Promise<void>;
+  /** Runs one Poll as if the Worker had no `DISCORD_WEBHOOK_URL`. */
+  triggerPollWithoutDiscord: () => Promise<void>;
   db: TestDb;
-  /** Resets D1 and both fake upstreams before each test. Automatic. */
+  /** Resets D1 and every fake upstream before each test. Automatic. */
   cleanState: undefined;
 }
 
@@ -33,6 +38,7 @@ export const test = base.extend<HarnessFixtures>({
         resetDb(request),
         fakeEa.reset(),
         fakeAnthropic.reset(),
+        fakeDiscord.reset(),
       ]);
       await use(undefined);
     },
@@ -47,6 +53,18 @@ export const test = base.extend<HarnessFixtures>({
   // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructuring pattern.
   fakeAnthropic: async ({}, use) => {
     await use(fakeAnthropic);
+  },
+
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructuring pattern.
+  fakeDiscord: async ({}, use) => {
+    await use(fakeDiscord);
+  },
+
+  triggerPollWithoutDiscord: async ({ request }, use) => {
+    await use(async () => {
+      const res = await request.get("/__test/scheduled-without-discord");
+      expect(res.ok(), await res.text()).toBe(true);
+    });
   },
 
   triggerPoll: async ({ request }, use) => {

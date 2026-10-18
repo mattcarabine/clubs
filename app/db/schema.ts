@@ -275,3 +275,25 @@ export const aiWriteups = sqliteTable(
     ),
   ],
 );
+
+export type SessionPostStatus = "pending" | "posted" | "failed" | "skipped";
+
+/**
+ * The Discord post for each Session (CLUBS-39), keyed by the Session's ID,
+ * so a Session is never posted twice. `skipped` marks Sessions that had
+ * ended before posting was released; the `RELEASE_BASELINE` row records
+ * that release (`app/discord/run.ts`).
+ */
+export const sessionPosts = sqliteTable("session_posts", {
+  sessionId: text().primaryKey(),
+  status: text().$type<SessionPostStatus>().notNull(),
+  /** Polls that found the Session over but its recap not yet written. */
+  pollsWaited: integer().notNull().default(0),
+  /** Webhook calls made; the post gives up after `MAX_POST_ATTEMPTS`. */
+  attempts: integer().notNull().default(0),
+  /** Not before this, e.g. Discord's `retry_after` after a 429. */
+  nextAttemptAt: integer({ mode: "timestamp_ms" }),
+  lastError: text(),
+  postedAt: integer({ mode: "timestamp_ms" }),
+  createdAt: integer({ mode: "timestamp_ms" }).notNull(),
+});
