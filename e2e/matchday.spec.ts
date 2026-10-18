@@ -186,7 +186,8 @@ test("an open Matchday reloads nothing after a Poll that finds nothing new, but 
   await triggerPoll();
   await page.clock.fastForward("01:00");
 
-  await expect(page.getByText("Updated just now")).toBeVisible();
+  // The page clock ran a minute ahead of the Poll, so either reading is fresh.
+  await expect(page.getByText(/^Updated (just now|1 min ago)$/)).toBeVisible();
   await expect(page.getByText("Stale:")).toHaveCount(0);
   expect(reloads).toEqual([]);
 });
