@@ -2,9 +2,10 @@ import { Link } from "react-router";
 
 import type { Outcome } from "~/lib/domain";
 import { formatLondonTimeSpan } from "~/lib/london-time";
-import { formatCount, formatDecimal } from "~/lib/number-format";
+import { formatCount } from "~/lib/number-format";
 import type { PerformerTotals } from "~/stats/sessions";
 import type { RecordSummary } from "~/stats/summaries";
+import { formatPerformerStat } from "~/stats/top-performers";
 
 import { FormGuide } from "./form-guide";
 import { LondonTime } from "./london-time";
@@ -118,7 +119,10 @@ export function SessionHeader({
             </span>
             <PlayerChip
               name={topPerformer.name}
-              stat={performerStat(topPerformer)}
+              stat={formatPerformerStat(
+                topPerformer,
+                topPerformer.averageRating,
+              )}
             />
           </div>
         )}
@@ -130,15 +134,4 @@ export function SessionHeader({
       )}
     </Link>
   );
-}
-
-/** "2 G · 1 A", or the average rating when they neither scored nor assisted. */
-function performerStat(performer: PerformerTotals): string {
-  const parts = [
-    performer.goals > 0 && `${performer.goals} G`,
-    performer.assists > 0 && `${performer.assists} A`,
-  ].filter(Boolean);
-  return parts.length > 0
-    ? parts.join(" · ")
-    : formatDecimal(performer.averageRating);
 }

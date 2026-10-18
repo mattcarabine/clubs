@@ -33,6 +33,7 @@ import {
   formatDecimal,
   formatPercentage,
 } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import {
   comparePath,
   describePositionGroups,
@@ -42,6 +43,7 @@ import {
   resolveStatsFilter,
   statsFilterFromRequest,
 } from "~/stats";
+import { playerPreview } from "~/stats/link-preview";
 
 import type { Route } from "./+types/route";
 import { BestMatches } from "./best-matches";
@@ -51,9 +53,20 @@ import { OutcomeSplitPanel } from "./outcome-split-panel";
 import { PositionGroupTable } from "./position-group-table";
 import { RecentChangesPanel } from "./recent-changes";
 
-export function meta({ loaderData }: Route.MetaArgs) {
-  const name = loaderData?.profile.member.name ?? "Squad Member not found";
-  return [{ title: `A Bloo Bloo — ${name}` }];
+export function meta({ loaderData, location }: Route.MetaArgs) {
+  if (!loaderData) {
+    return pageMeta({
+      title: "A Bloo Bloo — Squad Member not found",
+      description: "No Squad Member has this ID.",
+      path: location.pathname,
+    });
+  }
+  const { member, totals } = loaderData.profile;
+  return pageMeta({
+    ...playerPreview(member.name, totals),
+    path: location.pathname,
+    type: "article",
+  });
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

@@ -15,6 +15,7 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import { formatLondonDate, formatLondonTimeSpan } from "~/lib/london-time";
+import { pageMeta } from "~/lib/page-meta";
 import { parsePage, withPage } from "~/lib/pagination";
 import { sessionPath } from "~/lib/paths";
 import {
@@ -29,8 +30,13 @@ import type { Route } from "./+types/matches";
 /** A page holds whole Sessions until it has at least this many Matches. */
 const PAGE_SIZE = 20;
 
-export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `${loaderData?.clubName ?? "A Bloo Bloo"} — Matches` }];
+export function meta({ location }: Route.MetaArgs) {
+  return pageMeta({
+    title: "A Bloo Bloo — Matches",
+    description:
+      "Every Match, grouped by Session, with scores, Outcomes and top performers.",
+    path: location.pathname,
+  });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

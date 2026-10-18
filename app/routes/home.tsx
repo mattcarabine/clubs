@@ -25,6 +25,7 @@ import {
 import { getDb } from "~/db/client";
 import type { FormStatus } from "~/lib/domain";
 import { formatCount, formatOptional } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import { playerPath, sessionPath } from "~/lib/paths";
 import { useLivePoll } from "~/lib/use-live-poll";
 import {
@@ -57,8 +58,13 @@ const RECENT_RESULTS = 4;
 /** How often an open Matchday checks for a new Poll. */
 const REFRESH_CHECK_MS = 60_000;
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: "A Bloo Bloo — Matchday" }];
+export function meta({ location }: Route.MetaArgs) {
+  return pageMeta({
+    title: "A Bloo Bloo — Matchday",
+    description:
+      "The latest Match and Session, the Squad's form and how the club stands this season.",
+    path: location.pathname,
+  });
 }
 
 export async function loader() {
