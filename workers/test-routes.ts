@@ -10,10 +10,13 @@
  * - `GET /__test/tables/:name` returns all rows of one table as JSON.
  * - `POST /__test/poll-runs/age?minutes=N` moves every Poll run N minutes
  *   into the past, e.g. to make the latest Poll stale.
+ * - `GET /__test/rows-read` returns `{ rowsRead }`: the D1 rows the app has
+ *   read since the last call (`app/db/rows-read.ts`), then starts again at 0.
  *
  * Every request also loads `TEST_ROSTER` (Roster entries for players that
  * exist only in E2E specs) into the Roster.
  */
+import { enableRowsReadMeter, takeRowsRead } from "../app/db/rows-read";
 import { setTestRoster } from "../app/roster";
 
 const PREFIX = "/__test/";
@@ -25,12 +28,17 @@ export async function handleTestRoute(
   const { pathname, searchParams } = new URL(request.url);
   if (env.TEST_ROUTES !== "1") return null;
   setTestRoster(JSON.parse(env.TEST_ROSTER ?? "{}"));
+  enableRowsReadMeter();
   if (!pathname.startsWith(PREFIX)) return null;
 
   const route = pathname.slice(PREFIX.length);
   if (route === "health" && request.method === "GET") {
     const ours = searchParams.get("ea") === env.EA_BASE_URL;
     return new Response(null, { status: ours ? 200 : 409 });
+  }
+
+  if (route === "rows-read" && request.method === "GET") {
+    return Response.json({ rowsRead: takeRowsRead() });
   }
 
   const tables = await appTables(env.DB);
