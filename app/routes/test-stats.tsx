@@ -25,6 +25,7 @@ import {
   clubRecord,
   type LeaderboardRow,
   listMatches,
+  resolveStatsFilter,
   squadLeaderboard,
   statsFilterFromRequest,
 } from "~/stats";
@@ -47,7 +48,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw data("Not Found", { status: 404 });
   }
   const db = getDb(env.DB);
-  const filter = statsFilterFromRequest(request);
+  const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
   const [record, matches, leaderboard] = await Promise.all([
     clubRecord(db, filter),
     listMatches(db, filter, { limit: 20 }),

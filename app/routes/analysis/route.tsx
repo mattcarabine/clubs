@@ -44,6 +44,7 @@ import {
   POSITION_OUTLIER_GAP,
   type PositionOutlier,
   ROLLING_WIN_WINDOW,
+  resolveStatsFilter,
   statsFilterFromRequest,
   type WithWithout,
   winRateBucket,
@@ -66,8 +67,8 @@ export function meta({ location }: Route.MetaArgs) {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const filter = statsFilterFromRequest(request);
   const db = getDb(env.DB);
+  const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
   const [{ playedAt, ...split }, winChance] = await Promise.all([
     getOutcomeSplit(db, filter, { positionGroups: filter.positionGroups }),
     getWinChanceAnalysis(db, filter),

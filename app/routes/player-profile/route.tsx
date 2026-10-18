@@ -40,6 +40,7 @@ import {
   getPlayerProfile,
   type PositionGroupSelection,
   RECENT_WINDOW,
+  resolveStatsFilter,
   statsFilterFromRequest,
 } from "~/stats";
 import { playerPreview } from "~/stats/link-preview";
@@ -80,13 +81,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const filter = statsFilterFromRequest(request);
-  const profile = await getPlayerProfile(
-    getDb(env.DB),
-    params.playerId,
-    filter,
-    { positionGroups: filter.positionGroups },
-  );
+  const db = getDb(env.DB);
+  const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
+  const profile = await getPlayerProfile(db, params.playerId, filter, {
+    positionGroups: filter.positionGroups,
+  });
   if (!profile) throw data("Not Found", { status: 404 });
   return { filter, profile };
 }

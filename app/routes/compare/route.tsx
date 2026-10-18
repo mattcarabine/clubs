@@ -49,6 +49,7 @@ import {
   parseStatsFilter,
   parseStatsSource,
   type RecordSummary,
+  resolveStatsFilter,
   writeComparisonScope,
 } from "~/stats";
 
@@ -70,9 +71,9 @@ export function meta({ location }: Route.MetaArgs) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
-  const filter = parseStatsFilter(params);
   const comparison = parseComparisonParams(params);
   const db = getDb(env.DB);
+  const filter = await resolveStatsFilter(db, parseStatsFilter(params));
   const data =
     parseStatsSource(params) === "ea"
       ? {

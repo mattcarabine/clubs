@@ -20,6 +20,7 @@ import { parsePage, withPage } from "~/lib/pagination";
 import { sessionPath } from "~/lib/paths";
 import {
   listSessionPage,
+  resolveStatsFilter,
   type SessionSummary,
   statsFilterFromRequest,
 } from "~/stats";
@@ -40,7 +41,7 @@ export function meta({ location }: Route.MetaArgs) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
-  const filter = statsFilterFromRequest(request);
+  const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
   const page = parsePage(new URL(request.url).searchParams);
   const { sessions, pages, total } = await listSessionPage(db, filter, {
     page,

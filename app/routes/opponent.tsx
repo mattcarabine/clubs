@@ -28,6 +28,7 @@ import {
   getOpponent,
   listMatches,
   type OpponentDetail,
+  resolveStatsFilter,
   squadLeaderboard,
   statsFilterFromRequest,
   summariseRecord,
@@ -59,7 +60,7 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const db = getDb(env.DB);
-  const filter = statsFilterFromRequest(request);
+  const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
   const scope = { opponentClubId: params.clubId };
   const [opponent, matches, performers] = await Promise.all([
     getOpponent(db, params.clubId),

@@ -53,6 +53,7 @@ import {
   parseStatsSource,
   RECENT_WINDOW,
   type RecentChange,
+  resolveStatsFilter,
   squadLeaderboard,
 } from "~/stats";
 
@@ -72,9 +73,9 @@ export function meta({ location }: Route.MetaArgs) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
-  const filter = parseStatsFilter(params);
   const includeFormer = params.get(FORMER_PARAM) === "1";
   const db = getDb(env.DB);
+  const filter = await resolveStatsFilter(db, parseStatsFilter(params));
   if (parseStatsSource(params) === "ea") {
     return {
       source: "ea" as const,

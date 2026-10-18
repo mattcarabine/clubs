@@ -7,6 +7,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  type ShouldRevalidateFunctionArgs,
   useRouteLoaderData,
 } from "react-router";
 
@@ -16,7 +17,7 @@ import { AppShell, crestUrl, isNotFound, PageHeader } from "~/components";
 import { getDb } from "~/db/client";
 import { pageMeta } from "~/lib/page-meta";
 import { SITE_NAME, THEME_COLOR } from "~/lib/site";
-import { firstMatchDate, listSeasons } from "~/stats";
+import { countCampaigns, firstMatchDate, listSeasons } from "~/stats";
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: crestUrl, type: "image/png" },
@@ -54,12 +55,31 @@ export async function loader() {
     firstMatchDate(db),
   ]);
   return {
+    /** How many Campaigns are tracked, for the FilterBar; 0 before tracking starts. */
+    campaignCount: await countCampaigns(db, seasons),
     clubName: env.EA_CLUB_NAME,
     /** Season numbers, oldest first, for every page's FilterBar. */
     seasons: seasons.map((season) => season.number),
     /** The FilterBar's date picker mutes the days before it. */
     firstMatchDate: firstMatch,
   };
+}
+
+/**
+ * The root's data changes only with a Poll, never with the filter, so a
+ * navigation that only changes the search params (a FilterBar click) skips
+ * it, and with it the Campaign replay.
+ */
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formMethod,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  if (formMethod === undefined && currentUrl.pathname === nextUrl.pathname) {
+    return false;
+  }
+  return defaultShouldRevalidate;
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
