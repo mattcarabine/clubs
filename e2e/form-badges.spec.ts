@@ -129,6 +129,7 @@ test("Matchday lists who is in form and out of form, only when someone qualifies
   fakeEa,
   triggerPoll,
 }) => {
+  await page.clock.install();
   // 14 Matches: nobody has 10 before their last 5 yet.
   const matches = season();
   await record(fakeEa, triggerPoll, matches.slice(0, 14));
@@ -136,8 +137,9 @@ test("Matchday lists who is in form and out of form, only when someone qualifies
   await expect(page.getByRole("heading", { name: "Matchday" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Form watch" })).toHaveCount(0);
 
+  // CLUBS-46: the open page picks the new Match up at its next check.
   await record(fakeEa, triggerPoll, matches.slice(14));
-  await page.reload();
+  await page.clock.fastForward("01:00");
   const strip = page.getByRole("region", { name: "Form watch" });
   const inForm = strip.getByRole("list", { name: "In form" });
   await expect(inForm.getByRole("listitem")).toHaveCount(1);
