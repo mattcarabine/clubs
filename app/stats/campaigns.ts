@@ -332,14 +332,21 @@ export function findCampaign(
   campaigns: readonly Campaign[],
   ref: CampaignRef,
 ): { number: number; campaign: Campaign } | undefined {
-  const number =
-    ref === "current"
-      ? campaigns.length
-      : ref === "previous"
-        ? campaigns.length - 1
-        : ref;
+  const number = numberForRef(campaigns.length, ref);
   const campaign = campaigns[number - 1];
   return campaign ? { number, campaign } : undefined;
+}
+
+/** The 1-based number a ref names, given how many Campaigns there are. */
+function numberForRef(count: number, ref: CampaignRef): number {
+  switch (ref) {
+    case "current":
+      return count;
+    case "previous":
+      return count - 1;
+    default:
+      return ref;
+  }
 }
 
 /**

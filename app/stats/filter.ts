@@ -8,8 +8,8 @@
  *   ?campaign=current|previous|3
  *
  * Defaults (Competitive Matches, DNF included, all dates, all Seasons, no
- * Campaign) are
- * left out of the URL, so an unfiltered page has a clean address.
+ * Campaign) are left out of the URL, so an unfiltered page has a clean
+ * address.
  *
  * Adding a dimension: add a field to `StatsFilter` and `DEFAULT_STATS_FILTER`,
  * read it in `parseStatsFilter`, write it in `writeStatsFilter`, turn it into
@@ -134,7 +134,7 @@ export function dateWindow(range: DateRange, now: Date): DateWindow {
 
 /**
  * `?campaign=`: the current Campaign, the one before it, or one by its
- * number (1 is the first tracked, as `campaignNumber` counts them).
+ * number (1 is the first tracked, as `findCampaign` counts them).
  */
 export type CampaignRef = "current" | "previous" | number;
 

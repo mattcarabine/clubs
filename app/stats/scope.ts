@@ -70,7 +70,7 @@ export function matchScope(
       ? between(matches.playedAt, playedBetween.start, playedBetween.end)
       : undefined,
     filter.season === undefined ? undefined : inSeason(db, filter.season),
-    filter.campaign && inCampaign(filter.campaign),
+    filter.campaign === undefined ? undefined : inCampaign(filter.campaign),
   );
 }
 
