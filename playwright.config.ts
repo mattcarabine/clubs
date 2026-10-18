@@ -4,6 +4,7 @@ import {
   APP_PORT,
   APP_URL,
   E2E_INSTANCE,
+  FAKE_ANTHROPIC_URL,
   FAKE_EA_BASE_URL,
   FAKE_EA_URL,
 } from "./e2e/support/ports.ts";
@@ -54,11 +55,22 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
+      // Answers write-up calls (docs/adr/0006); the real API is never called.
+      command: "node e2e/fake-anthropic/main.ts",
+      url: `${FAKE_ANTHROPIC_URL}/__control/health?instance=${E2E_INSTANCE}`,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
       // Production build in workerd (`test` Wrangler env) on a fresh, migrated
-      // local D1, polling this run's fake EA upstream.
+      // local D1, polling this run's fake EA upstream and writing through its
+      // fake Anthropic upstream with a dummy key.
       command: `pnpm e2e:server --port ${APP_PORT}`,
-      env: { EA_BASE_URL: FAKE_EA_BASE_URL },
-      url: `${APP_URL}/__test/health?ea=${encodeURIComponent(FAKE_EA_BASE_URL)}`,
+      env: {
+        EA_BASE_URL: FAKE_EA_BASE_URL,
+        ANTHROPIC_BASE_URL: FAKE_ANTHROPIC_URL,
+        ANTHROPIC_API_KEY: "e2e-dummy-key",
+      },
+      url: `${APP_URL}/__test/health?ea=${encodeURIComponent(FAKE_EA_BASE_URL)}&anthropic=${encodeURIComponent(FAKE_ANTHROPIC_URL)}`,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
     },

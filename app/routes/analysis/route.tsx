@@ -8,7 +8,9 @@
 import { env } from "cloudflare:workers";
 import { useSearchParams } from "react-router";
 
+import { CLUB_SUBJECT, latestWriteup } from "~/ai/writeups";
 import {
+  AiWriteup,
   ChartFrame,
   DataTable,
   type DataTableColumn,
@@ -69,14 +71,18 @@ export function meta({ location }: Route.MetaArgs) {
 export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
-  const [{ playedAt, ...split }, winChance] = await Promise.all([
-    getOutcomeSplit(db, filter, { positionGroups: filter.positionGroups }),
-    getWinChanceAnalysis(db, filter),
-  ]);
+  const [{ playedAt, ...split }, winChance, stateOfTheClub] = await Promise.all(
+    [
+      getOutcomeSplit(db, filter, { positionGroups: filter.positionGroups }),
+      getWinChanceAnalysis(db, filter),
+      latestWriteup(db, "club", CLUB_SUBJECT),
+    ],
+  );
   return {
     filter,
     split,
     winChance,
+    stateOfTheClub,
     matchLabels: playedAt.map(formatLondonShortDate),
   };
 }
@@ -84,13 +90,27 @@ export async function loader({ request }: Route.LoaderArgs) {
 type AnalysisData = Route.ComponentProps["loaderData"];
 
 export default function Analysis({ loaderData }: Route.ComponentProps) {
-  const { filter, split, winChance } = loaderData;
+  const { filter, split, winChance, stateOfTheClub } = loaderData;
   return (
     <>
       <PageHeader
         title="Analysis"
         subtitle="What changes between Wins and Dropped Points (draws and losses)."
       />
+      {/* Written after the latest Session, whatever the filter, so it sits above the FilterBar. */}
+      {stateOfTheClub && (
+        <section aria-label="State of the club" className="mb-8">
+          <SectionHeading
+            title="State of the club"
+            subtitle="After the latest Session, across every Competitive Match"
+          />
+          <AiWriteup
+            label="State of the club"
+            text={stateOfTheClub.text}
+            writtenAt={stateOfTheClub.writtenAt}
+          />
+        </section>
+      )}
       <FilterBar filter={filter} />
       {split.ready ? (
         <OutcomeSplitSections {...loaderData} />

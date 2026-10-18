@@ -70,12 +70,15 @@ type SessionHeaderProps = {
   /** The shown Matches' Outcomes, oldest first. */
   form: readonly Outcome[];
   topPerformer: PerformerTotals | null;
+  /** The recap's first sentence, once the Session has one. */
+  teaser?: string;
 };
 
 /**
  * The header over one Session's Matches on the Matches page: a green
- * "Session" tab, the London date and time span, the record, a form run and
- * the top performer. The whole header links to the Session page.
+ * "Session" tab, the London date and time span, the record, a form run, the
+ * top performer and the recap's opening line. The whole header links to the
+ * Session page.
  */
 export function SessionHeader({
   to,
@@ -86,6 +89,7 @@ export function SessionHeader({
   record,
   form,
   topPerformer,
+  teaser,
 }: SessionHeaderProps) {
   return (
     <Link
@@ -127,6 +131,11 @@ export function SessionHeader({
           </div>
         )}
       </div>
+      {teaser && (
+        <p className="mt-3 border-shale-700 border-l-2 pl-3 text-ink-soft">
+          {teaser}
+        </p>
+      )}
       {shownCount < matchCount && (
         <p className="mt-2 text-ink-muted text-sm">
           {shownCount} of {formatCount(matchCount, "Match", "Matches")} shown

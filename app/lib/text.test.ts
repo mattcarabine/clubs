@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { capitalise, clampText, firstSentence } from "./text";
+import {
+  capitalise,
+  clampText,
+  errorMessage,
+  firstSentence,
+  paragraphs,
+} from "./text";
 
 describe("capitalise", () => {
   it("upper-cases the first letter only", () => {
@@ -8,10 +14,34 @@ describe("capitalise", () => {
   });
 });
 
+describe("errorMessage", () => {
+  it("reads an Error's message and stringifies anything else", () => {
+    expect(errorMessage(new Error("Timed out"))).toBe("Timed out");
+    expect(errorMessage("plain")).toBe("plain");
+  });
+});
+
+describe("paragraphs", () => {
+  it("splits at blank lines and folds single line breaks", () => {
+    expect(paragraphs("One\ntwo.\n\n  \nThree.\r\n\r\nFour.")).toEqual([
+      "One two.",
+      "Three.",
+      "Four.",
+    ]);
+  });
+
+  it("gives nothing for blank text", () => {
+    expect(paragraphs(" \n\n ")).toEqual([]);
+  });
+});
+
 describe("firstSentence", () => {
-  it("keeps the first sentence and its full stop", () => {
+  it("keeps the first sentence and its end mark", () => {
     expect(firstSentence("A late collapse. Then a rally!")).toBe(
       "A late collapse.",
+    );
+    expect(firstSentence("What a night! Kab scored twice.")).toBe(
+      "What a night!",
     );
   });
 
@@ -23,6 +53,12 @@ describe("firstSentence", () => {
 
   it("returns the whole text, trimmed, when it has no end mark", () => {
     expect(firstSentence("  A run of five wins  ")).toBe("A run of five wins");
+  });
+
+  it("stops at the first paragraph", () => {
+    expect(firstSentence("No full stop here\n\nSecond.")).toBe(
+      "No full stop here",
+    );
   });
 });
 

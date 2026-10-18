@@ -27,10 +27,10 @@ import {
   usualComparison,
 } from "./outcome-split";
 import { ALL_POSITIONS, type PositionGroupSelection } from "./positions";
-import { matchScope } from "./scope";
+import { matchScope, type ScopeOptions } from "./scope";
 import { sessionPlaces } from "./sessions";
 import { ratingGap } from "./skill-rating";
-import { squadAppearances } from "./squad";
+import { type SquadAppearance, squadAppearances } from "./squad";
 
 export interface OutcomeSplitOptions {
   /** Narrows only the per-player rows. */
@@ -49,10 +49,58 @@ export async function getOutcomeSplit(
   filter: StatsFilter,
   { positionGroups = ALL_POSITIONS }: OutcomeSplitOptions = {},
 ): Promise<OutcomeSplitPage> {
+  const { summaries, squad, split } = await splitData(db, filter);
+  return {
+    ...split,
+    players: playerSplits(squad, positionGroups),
+    playedAt: summaries.map((m) => m.playedAt),
+  };
+}
+
+/**
+ * Our Club as it stood at `end`: every Competitive Match up to then (the
+ * default filter), its Outcome Split, and each Match's performance. Write-ups
+ * read it, so what they are given never changes once the moment has passed
+ * (docs/adr/0006).
+ */
+export interface AnalysisAsOf {
+  /** Oldest first. */
+  matches: MatchSummary[];
+  /** Our Club's Appearances in them, oldest first. */
+  squad: SquadAppearance[];
+  split: OutcomeSplit;
+  /** A Match's totals, both clubs, as the Outcome Split reads them. */
+  performance(matchId: string): MatchPerformance;
+}
+
+/** `AnalysisAsOf` at `end`, in four parallel queries. */
+export async function getAnalysisAsOf(
+  db: Db,
+  end: Date,
+): Promise<AnalysisAsOf> {
+  const { summaries, totals, squad, split } = await splitData(
+    db,
+    DEFAULT_STATS_FILTER,
+    { playedBetween: { start: new Date(0), end } },
+  );
+  return {
+    matches: summaries,
+    squad,
+    split,
+    performance: (matchId) => performanceOf(totals.get(matchId)),
+  };
+}
+
+/** The Outcome Split and what it was worked out from, over the Matches `filter` and `scope` select. */
+async function splitData(
+  db: Db,
+  filter: StatsFilter,
+  scope: ScopeOptions = {},
+) {
   const [summaries, totals, squad, kickoffs] = await Promise.all([
-    listMatches(db, filter, { order: "oldest" }),
-    clubMatchTotals(db, matchScope(db, filter)),
-    squadAppearances(db, filter),
+    listMatches(db, filter, { ...scope, order: "oldest" }),
+    clubMatchTotals(db, matchScope(db, filter, scope)),
+    squadAppearances(db, filter, scope),
     listKickoffs(db),
   ]);
   const places = sessionPlaces(kickoffs);
@@ -74,11 +122,7 @@ export async function getOutcomeSplit(
       ratingGap: ratingGap(m.skillRatings),
     };
   });
-  return {
-    ...outcomeSplit(splitMatches, squad),
-    players: playerSplits(squad, positionGroups),
-    playedAt: summaries.map((m) => m.playedAt),
-  };
+  return { summaries, totals, squad, split: outcomeSplit(splitMatches, squad) };
 }
 
 /**

@@ -7,6 +7,7 @@ import { OPPONENT_RATINGS_VARIANT } from "../app/ea/endpoints.ts";
 import { win } from "./support/match-builders.ts";
 import {
   E2E_INSTANCE,
+  FAKE_ANTHROPIC_URL,
   FAKE_EA_BASE_URL,
   FAKE_EA_URL,
 } from "./support/ports.ts";
@@ -170,13 +171,20 @@ test("a failure on one endpoint is a partial Poll that still stores the rest", a
 test("each server's health check accepts only this checkout's run (CLUBS-18)", async ({
   request,
 }) => {
-  const workerHealth = (ea: string) =>
-    request.get(`/__test/health?ea=${encodeURIComponent(ea)}`);
+  const workerHealth = (ea: string, anthropic = FAKE_ANTHROPIC_URL) =>
+    request.get(
+      `/__test/health?ea=${encodeURIComponent(ea)}&anthropic=${encodeURIComponent(anthropic)}`,
+    );
   expect((await workerHealth(FAKE_EA_BASE_URL)).status()).toBe(200);
   expect((await workerHealth("http://localhost:1/api/fc/")).status()).toBe(409);
+  expect(
+    (await workerHealth(FAKE_EA_BASE_URL, "http://localhost:1")).status(),
+  ).toBe(409);
 
-  const fakeEaHealth = (instance: string) =>
-    request.get(`${FAKE_EA_URL}/__control/health?instance=${instance}`);
-  expect((await fakeEaHealth(E2E_INSTANCE)).status()).toBe(200);
-  expect((await fakeEaHealth("another-checkout")).status()).toBe(409);
+  for (const fake of [FAKE_EA_URL, FAKE_ANTHROPIC_URL]) {
+    const health = (instance: string) =>
+      request.get(`${fake}/__control/health?instance=${instance}`);
+    expect((await health(E2E_INSTANCE)).status()).toBe(200);
+    expect((await health("another-checkout")).status()).toBe(409);
+  }
 });

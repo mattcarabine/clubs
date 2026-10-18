@@ -29,6 +29,13 @@
       "when": 1792276004153,
       "tag": "0003_opponent_ratings",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792282411483,
+      "tag": "0004_ai_writeups",
+      "breakpoints": true
     }
   ]
 }
