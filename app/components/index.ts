@@ -49,6 +49,11 @@ export { PageHeader, SectionHeading } from "./headings";
 export { LastUpdatedBadge } from "./last-updated-badge";
 export { LondonTime } from "./london-time";
 export { MatchScoreBar } from "./match-score-bar";
+export {
+  MilestoneCard,
+  type MilestoneCardData,
+  MilestoneList,
+} from "./milestone-card";
 export { OutcomeBadge } from "./outcome-badge";
 export { PERFORMER_COLUMNS } from "./performer-columns";
 export { PlayerChip } from "./player-chip";

@@ -785,6 +785,7 @@ function detectRecords(
     if (isWin) session.wins++;
     if (
       counts &&
+      isWin &&
       !session.recorded &&
       session.wins > bestSessionWins &&
       session.wins >= MIN_RECORD_RUN

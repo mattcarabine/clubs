@@ -13,6 +13,8 @@
  *   into the past, e.g. to make the latest Poll stale.
  * - `GET /__test/rows-read` returns `{ rowsRead }`: the D1 rows the app has
  *   read since the last call (`app/db/rows-read.ts`), then starts again at 0.
+ * - `POST /__test/milestones/forget` deletes every Milestone and its
+ *   comments, as before Milestones were released, so the next Poll backfills.
  *
  * Every request also loads `TEST_ROSTER` (Roster entries for players that
  * exist only in E2E specs) into the Roster.
@@ -71,6 +73,15 @@ export async function handleTestRoute(
     )
       .bind(Math.round(minutes * 60_000))
       .run();
+    return new Response(null, { status: 204 });
+  }
+
+  if (route === "milestones/forget" && request.method === "POST") {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM ai_writeups WHERE kind = 'milestone'"),
+      env.DB.prepare("DELETE FROM ai_jobs WHERE kind = 'milestone'"),
+      env.DB.prepare("DELETE FROM milestones"),
+    ]);
     return new Response(null, { status: 204 });
   }
 

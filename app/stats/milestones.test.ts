@@ -378,6 +378,17 @@ describe("club records", () => {
     ]);
   });
 
+  it("puts a record only on a Match that set it, never a later loss", () => {
+    // The Session's two Wins come before records count; its loss after.
+    const matches = history([]).slice(0, 3);
+    const session = (["W", "W", "L"] as Outcome[]).map((outcome, i) => ({
+      ...match(i, outcome, outcome === "W" ? 1 : 0, outcome === "W" ? 0 : 1),
+      matchId: `s${i}`,
+      playedAt: new Date(T0 + 10 * DAY + i * 20 * MINUTE),
+    }));
+    expect(keys(input({ matches: [...matches, ...session] }))).toEqual([]);
+  });
+
   it("records the best Session by Wins once", () => {
     const matches = [
       ...history([]),

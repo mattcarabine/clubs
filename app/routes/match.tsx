@@ -14,6 +14,7 @@ import {
   LINKED_ROW_HEADER,
   LondonTime,
   MatchScoreBar,
+  MilestoneList,
   PageHeader,
   PlayerChip,
   ROW_HEADER_LINK,
@@ -37,6 +38,7 @@ import {
   getDroppedPointsReasons,
   getMatch,
   getMatchWinChance,
+  listMilestones,
   type MatchAppearance,
   type MatchSides,
   type MatchWinChance,
@@ -79,12 +81,14 @@ export async function loader({ params }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const match = await getMatch(db, params.matchId);
   if (!match) throw data("Match not found", { status: 404 });
-  const [droppedPoints, session, winChance, report] = await Promise.all([
-    getDroppedPointsReasons(db, match),
-    sessionOfMatch(db, match.matchId),
-    getMatchWinChance(db, match),
-    latestWriteup(db, "match", match.matchId),
-  ]);
+  const [droppedPoints, session, winChance, report, milestones] =
+    await Promise.all([
+      getDroppedPointsReasons(db, match),
+      sessionOfMatch(db, match.matchId),
+      getMatchWinChance(db, match),
+      latestWriteup(db, "match", match.matchId),
+      listMilestones(db, env.EA_CLUB_NAME, { matchId: match.matchId }),
+    ]);
   const ours = match.appearances.filter((a) => a.isOurClub);
   const theirs = match.appearances.filter((a) => !a.isOurClub);
   return {
@@ -97,6 +101,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     totals: summariseMatchSides(match.appearances),
     sessionId: session?.id ?? null,
     report,
+    milestones,
   };
 }
 
@@ -111,6 +116,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
     totals,
     sessionId,
     report,
+    milestones,
   } = loaderData;
   const { opponent } = match;
   const motm = match.appearances.find((a) => a.manOfTheMatch);
@@ -159,6 +165,18 @@ export default function Match({ loaderData }: Route.ComponentProps) {
             label="Match report"
             text={report.text}
             writtenAt={report.writtenAt}
+          />
+        </section>
+      )}
+
+      {milestones.length > 0 && (
+        <section aria-label="Milestones in this Match" className="mb-8">
+          <SectionHeading title="Milestones in this Match" />
+          <MilestoneList
+            clubName={clubName}
+            milestones={milestones}
+            showMatch={false}
+            className="grid gap-3 lg:grid-cols-2"
           />
         </section>
       )}
