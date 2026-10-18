@@ -177,18 +177,19 @@ test.describe("Match list", () => {
     await fakeEa.setPayload("clubs/matches", [], "leagueMatch");
   });
 
-  test("lists Matches newest first, 20 to a page", async ({
+  test("lists Matches newest first, about 20 to a page", async ({
     page,
     fakeEa,
     triggerPoll,
   }) => {
-    // EA returns at most 10 Matches per Poll, so record 21 over three Polls.
+    // EA returns at most 10 Matches per Poll, so record 21 over three Polls,
+    // an hour apart so each is its own Session.
     const start = Date.now() - 2 * 24 * 60 * MINUTE_MS;
     for (let i = 0; i < 21; i++) {
       await fakeEa.addMatch(
         win({
           matchId: String(810_000_000_000_000 + i),
-          playedAt: new Date(start + i * MINUTE_MS),
+          playedAt: new Date(start + i * 60 * MINUTE_MS),
         }),
       );
       if (i % 10 === 9) await triggerPoll();
