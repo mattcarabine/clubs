@@ -141,10 +141,11 @@ export const MAX_REPORT_LENGTH = 1_500;
 
 /**
  * The write-ups in a reply, or none unless it fits the schema exactly: no
- * unexpected fields, a report only for this Session's Matches and at most
- * one each, `stateOfTheClub` only when it was asked for, and every text
- * within its length cap (a headline is cut to fit instead). Exported for
- * unit tests.
+ * unexpected fields, exactly one report for each of this Session's Matches
+ * (a reply that skips some would leave old text showing), `stateOfTheClub`
+ * only when it was asked for, and every text non-blank and within its
+ * length cap (a headline is cut to fit instead, and a blank one is left to
+ * the headline backlog). Exported for unit tests.
  */
 export function sessionWriteups(
   output: unknown,
@@ -171,6 +172,7 @@ export function sessionWriteups(
       !matchIds.includes(report.matchId) ||
       reported.has(report.matchId) ||
       !isText(report.report, MAX_REPORT_LENGTH) ||
+      // A blank headline is left to the headline backlog.
       typeof report.headline !== "string"
     ) {
       return [];
@@ -181,6 +183,7 @@ export function sessionWriteups(
       headlineDraft(report.matchId, report.headline),
     );
   }
+  if (reported.size !== matchIds.length) return [];
   if (withClub) {
     if (!isText(stateOfTheClub, MAX_PIECE_LENGTH)) return [];
     drafts.push({

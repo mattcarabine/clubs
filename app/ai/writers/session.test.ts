@@ -36,12 +36,33 @@ describe("sessionWriteups", () => {
         matchReports: [{ matchId: "m1", report: "Won.", headline: long }],
       },
       "m1",
-      ids,
+      ["m1"],
       true,
     );
     expect(headline.kind).toBe("headline");
     expect(headline.text.length).toBeLessThanOrEqual(80);
     expect(headline.text).toMatch(/^Bloo Bloo collapse .*…$/);
+  });
+
+  it("takes nothing when a Match is missing its report, or a piece is blank (CLUBS-48)", () => {
+    const [first] = reply.matchReports;
+    expect(
+      sessionWriteups({ ...reply, matchReports: [first] }, "m1", ids, true),
+    ).toEqual([]);
+    expect(
+      sessionWriteups({ ...reply, stateOfTheClub: " " }, "m1", ids, true),
+    ).toEqual([]);
+    expect(
+      sessionWriteups(
+        {
+          ...reply,
+          matchReports: [{ ...first, report: "" }, reply.matchReports[1]],
+        },
+        "m1",
+        ids,
+        true,
+      ),
+    ).toEqual([]);
   });
 
   it("takes no State of the club unless it was asked for", () => {
