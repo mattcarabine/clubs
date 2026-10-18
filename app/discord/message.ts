@@ -1,0 +1,135 @@
+/**
+ * The Discord post for one Session (CLUBS-39): one embed with the Session's
+ * title and link, its Matches' scorelines and headlines, the top performer
+ * and the recap's first paragraph, unlabelled. Pure, so it is unit tested.
+ *
+ * Club names, persona names and the model's text all reach Discord, so each
+ * is escaped (`discordText`) and the webhook pings nobody
+ * (`allowed_mentions`).
+ */
+import { clampText, paragraphs } from "~/lib/text";
+import { scoreLine, sessionPreview } from "~/stats/link-preview";
+import type { MatchSummary } from "~/stats/matches";
+import { type PerformerTotals, sessionTopPerformer } from "~/stats/sessions";
+import type { RecordSummary } from "~/stats/summaries";
+import { formatPerformerStat } from "~/stats/top-performers";
+
+/** The `sound-900` token in `app/app.css`, as Discord's integer colour. */
+export const EMBED_COLOR = 0x0f3f7a;
+
+/** Discord's embed limits, in characters. */
+export const EMBED_LIMITS = {
+  title: 256,
+  description: 4096,
+  fieldValue: 1024,
+  /** Title, description and every field's name and value together. */
+  total: 6000,
+};
+
+/** The recap excerpt's cap, so the scorelines always fit beside it. */
+const MAX_RECAP_LENGTH = 1_500;
+
+/**
+ * Third-party or model text made inert in Discord: on one line, with every
+ * Markdown character escaped (so no formatting, masked link or `https://`
+ * auto-link), and `@` broken by a zero-width space so nothing reads as a
+ * mention, even where `allowed_mentions` would not apply.
+ */
+export function discordText(text: string): string {
+  return text
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[\\*_~`|>#[\]()<:-]/g, "\\$&")
+    .replace(/@/g, "@​");
+}
+
+export interface SessionPostInput {
+  /** The Session page, absolute. */
+  url: string;
+  clubName: string;
+  start: Date;
+  record: RecordSummary;
+  /** Oldest first. */
+  matches: readonly MatchSummary[];
+  players: readonly PerformerTotals[];
+  /** Each Match's headline (CLUBS-43), by Match ID. */
+  headlines: ReadonlyMap<string, string>;
+  /** The Session recap, if written. */
+  recap: string | null;
+}
+
+export interface WebhookBody {
+  allowed_mentions: { parse: [] };
+  embeds: [Embed];
+}
+
+interface Embed {
+  title: string;
+  url: string;
+  color: number;
+  description: string;
+  fields: { name: string; value: string }[];
+}
+
+export function sessionPostBody(input: SessionPostInput): WebhookBody {
+  const { title } = sessionPreview(input);
+  const top = sessionTopPerformer(input.players);
+  const [lede] = input.recap ? paragraphs(input.recap) : [];
+  const excerpt = lede && discordText(clampText(lede, MAX_RECAP_LENGTH));
+  const fields = top
+    ? [
+        {
+          name: "Top performer",
+          value: `${discordText(top.name)} · ${formatPerformerStat(top, top.averageRating)}`,
+        },
+      ]
+    : [];
+  const room = EMBED_LIMITS.description - (excerpt ? excerpt.length + 2 : 0);
+  return {
+    allowed_mentions: { parse: [] },
+    embeds: [
+      {
+        title: clampText(title, EMBED_LIMITS.title),
+        url: input.url,
+        color: EMBED_COLOR,
+        description: [excerpt, scorelines(input, room)]
+          .filter(Boolean)
+          .join("\n\n"),
+        fields,
+      },
+    ],
+  };
+}
+
+/**
+ * One line per Match, oldest first: "**W** A Bloo Bloo 3–1 Opponent — its
+ * headline". Lines that would pass `room` characters are left out and
+ * counted instead.
+ */
+function scorelines(input: SessionPostInput, room: number): string {
+  const lines = input.matches.map((match) => {
+    const headline = input.headlines.get(match.matchId);
+    return [
+      `**${match.outcome}**`,
+      discordText(scoreLine(input.clubName, match)),
+      match.dnf && "(DNF)",
+      headline && `— ${discordText(headline)}`,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  });
+  const kept: string[] = [];
+  let length = 0;
+  for (const [i, line] of lines.entries()) {
+    const more = `…and ${lines.length - i} more`;
+    const isLast = i === lines.length - 1;
+    // Always leave room for the "…and N more" line unless this is the last.
+    if (length + line.length + 1 + (isLast ? 0 : more.length + 1) > room) {
+      kept.push(more);
+      break;
+    }
+    kept.push(line);
+    length += line.length + 1;
+  }
+  return kept.join("\n");
+}
