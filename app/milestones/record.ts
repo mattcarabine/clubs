@@ -18,7 +18,7 @@ import { milestones } from "~/db/schema";
 import { errorMessage } from "~/lib/text";
 import { type DetectedMilestone, detectMilestones } from "~/stats/milestones";
 import { milestoneDetectionInput } from "~/stats/milestones-query";
-import { groupSessions } from "~/stats/sessions";
+import { sessionIdsByMatch } from "~/stats/sessions";
 
 /**
  * Snapshots per source a Poll reads: enough to cover a few Polls whose
@@ -62,10 +62,7 @@ export async function recordMilestones(
   );
   if (detected.length === 0) return { backfill, detected: 0 };
 
-  const sessionOf = new Map<string, string>();
-  for (const session of groupSessions(input.matches)) {
-    for (const id of session.matchIds) sessionOf.set(id, session.id);
-  }
+  const sessionOf = sessionIdsByMatch(input.matches);
   const rows = detected.map((m) => toRow(m, now, sessionOf));
   const statements: BatchItem<"sqlite">[] = [];
   for (let i = 0; i < rows.length; i += INSERT_CHUNK) {

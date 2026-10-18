@@ -7,6 +7,7 @@ import {
   type PerformerTotals,
   pageSessions,
   SESSION_GAP_MINUTES,
+  sessionIdsByMatch,
   sessionPlaces,
   sessionTopPerformer,
 } from "./sessions";
@@ -67,6 +68,17 @@ describe("groupSessions", () => {
 
   it("has no Sessions without Matches", () => {
     expect(groupSessions([])).toEqual([]);
+  });
+});
+
+describe("sessionIdsByMatch", () => {
+  it("maps each Match to its Session's ID, the first Match's", () => {
+    const ids = sessionIdsByMatch([
+      { matchId: "d", playedAt: at("21:15") },
+      { matchId: "a", playedAt: at("19:00") },
+      { matchId: "b", playedAt: at("19:30") },
+    ]);
+    expect(Object.fromEntries(ids)).toEqual({ a: "a", b: "a", d: "d" });
   });
 });
 

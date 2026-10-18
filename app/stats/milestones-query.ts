@@ -46,7 +46,7 @@ import {
   type TotalsPoint,
 } from "./milestones";
 import { isOurAppearance, isShownMatch } from "./scope";
-import { groupSessions } from "./sessions";
+import { sessionIdsByMatch } from "./sessions";
 
 const CAREER_SOURCE = "members/career/stats";
 const CLUB_SOURCE = "clubs/overallStats";
@@ -215,10 +215,7 @@ export async function listMilestones(
     "milestone",
     known.map((row) => String(row.id)),
   );
-  const sessionOf = new Map<string, string>();
-  for (const session of groupSessions(kickoffs)) {
-    for (const id of session.matchIds) sessionOf.set(id, session.id);
-  }
+  const sessionOf = sessionIdsByMatch(kickoffs);
 
   return known.map((row) => {
     const kind = row.kind as MilestoneKind;

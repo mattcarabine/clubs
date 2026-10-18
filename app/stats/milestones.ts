@@ -22,7 +22,7 @@ import type { PositionGroup as StoredPositionGroup } from "~/ea/parse";
 import type { Outcome } from "~/lib/domain";
 import { formatDecimal } from "~/lib/number-format";
 
-import { groupSessions } from "./sessions";
+import { sessionIdsByMatch } from "./sessions";
 
 export type { MilestoneSubject };
 
@@ -742,10 +742,7 @@ function detectRecords(
       dedupeKey: `club:${kind}:${key}`,
     });
 
-  const sessionOf = new Map<string, string>();
-  for (const session of groupSessions(matches)) {
-    for (const id of session.matchIds) sessionOf.set(id, session.id);
-  }
+  const sessionOf = sessionIdsByMatch(matches);
 
   let bestMargin = 0;
   let bestGoals = 0;
