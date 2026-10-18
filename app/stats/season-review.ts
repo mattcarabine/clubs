@@ -286,57 +286,84 @@ export function whenWePlay(
   matches: readonly MatchSummary[],
 ): WhenWePlay | null {
   if (matches.length < MIN_SPLIT_MATCHES) return null;
-  const day = (m: MatchSummary) => {
-    const weekday = londonParts(m.playedAt).weekday;
-    return { label: weekday, order: WEEKDAYS.indexOf(weekday) };
-  };
-  const band = (m: MatchSummary) => {
-    const order = TIME_OF_DAY.findIndex((b) => b.id === timeOfDay(m.playedAt));
-    return { label: TIME_OF_DAY[order].label, order };
-  };
   const busiest = (slots: RankedSlot[]) =>
-    slots.sort(
+    top(
+      slots,
       (a, b) => b.played - a.played || rate(b) - rate(a) || a.order - b.order,
-    )[0];
-  const qualifying = slotsBy(matches, (m) => {
-    const d = day(m);
-    const b = band(m);
-    return {
-      label: `${d.label} ${b.label}`,
-      order: d.order * TIME_OF_DAY.length + b.order,
-    };
-  }).filter((s) => s.played >= MIN_SPLIT_MATCHES);
+    );
+  const qualifying = slotsBy(matches, weekdayAndKickOff).filter(
+    (s) => s.played >= MIN_SPLIT_MATCHES,
+  );
   const byRate = (sign: 1 | -1) =>
-    [...qualifying].sort(
+    top(
+      qualifying,
       (a, b) =>
         sign * (rate(b) - rate(a)) || b.played - a.played || a.order - b.order,
-    )[0];
+    );
+  const busiestNight = busiest(slotsBy(matches, weekday));
+  const busiestTime = busiest(slotsBy(matches, kickOff));
+  // Never hit: every Match falls on some weekday and in some band.
+  if (!busiestNight || !busiestTime) return null;
   const best = byRate(1);
   const worst = byRate(-1);
   const differ = best && worst && rate(best) > rate(worst);
   return {
-    busiestNight: slot(busiest(slotsBy(matches, day))),
-    busiestTime: slot(busiest(slotsBy(matches, band))),
+    busiestNight: slot(busiestNight),
+    busiestTime: slot(busiestTime),
     best: differ ? slot(best) : null,
     worst: differ ? slot(worst) : null,
   };
 }
 
-interface RankedSlot extends Slot {
-  /** Where the slot falls in the week or day, for ties. */
+/** A slot's label and where it falls in the week or day, for ties. */
+interface SlotPosition {
+  label: string;
   order: number;
+}
+
+type RankedSlot = Slot & SlotPosition;
+
+/** The London weekday: "Fri". */
+function weekday(match: MatchSummary): SlotPosition {
+  const label = londonParts(match.playedAt).weekday;
+  return { label, order: WEEKDAYS.indexOf(label) };
+}
+
+/** The kick-off band: "20:00–22:00". */
+function kickOff(match: MatchSummary): SlotPosition {
+  const id = timeOfDay(match.playedAt);
+  const order = TIME_OF_DAY.findIndex((band) => band.id === id);
+  return { label: TIME_OF_DAY[order].label, order };
+}
+
+/** The weekday and kick-off band together: "Fri 20:00–22:00". */
+function weekdayAndKickOff(match: MatchSummary): SlotPosition {
+  const day = weekday(match);
+  const band = kickOff(match);
+  return {
+    label: `${day.label} ${band.label}`,
+    order: day.order * TIME_OF_DAY.length + band.order,
+  };
 }
 
 function slotsBy(
   matches: readonly MatchSummary[],
-  describe: (m: MatchSummary) => { label: string; order: number },
+  position: (m: MatchSummary) => SlotPosition,
 ): RankedSlot[] {
-  const groups = groupBy(matches, (m) => describe(m).label);
+  const groups = groupBy(matches, (m) => position(m).label);
   return [...groups].map(([label, group]) => ({
     label,
-    order: describe(group[0]).order,
+    order: position(group[0]).order,
     ...winRecord(group.map((m) => m.outcome)),
   }));
+}
+
+/** The first slot by `compare`, without sorting `slots` in place. */
+function top(
+  slots: readonly RankedSlot[],
+  compare: (a: RankedSlot, b: RankedSlot) => number,
+): RankedSlot | undefined {
+  return [...slots].sort(compare)[0];
 }
 
 function slot({ order: _, ...rest }: RankedSlot): Slot {

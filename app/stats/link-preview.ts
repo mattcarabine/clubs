@@ -90,7 +90,11 @@ type RecordLine = Pick<
 >;
 
 /** "W4 D0 L4". */
-function formatRecord({ wins, draws, losses }: RecordLine): string {
+export function formatRecord({
+  wins,
+  draws,
+  losses,
+}: Pick<RecordSummary, "wins" | "draws" | "losses">): string {
   return `W${wins} D${draws} L${losses}`;
 }
 

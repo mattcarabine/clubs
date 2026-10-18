@@ -24,14 +24,16 @@ import { pageMeta } from "~/lib/page-meta";
 import { playerPath, sessionPath } from "~/lib/paths";
 import { paragraphs } from "~/lib/text";
 import {
+  type Award,
   divisionName,
   getSeasonReview,
   listMilestones,
   type MatchSummary,
-  type RecordSummary,
   type SeasonReview as Review,
+  type RivalRecord,
+  type Slot,
 } from "~/stats";
-import { seasonReviewPreview } from "~/stats/link-preview";
+import { formatRecord, seasonReviewPreview } from "~/stats/link-preview";
 
 import type { Route } from "./+types/season-review";
 
@@ -121,81 +123,44 @@ function reviewCards({
   milestones,
 }: ReviewData): StoryDeckCard[] {
   const cards: (StoryDeckCard | null)[] = [
-    {
-      id: "intro",
-      label: "Intro",
-      content: (
-        <StoryCard
-          heading="h1"
-          kicker="Season Review"
-          title={`Season ${review.number}`}
-          tone="club"
-        >
-          <p className="font-display font-bold text-ink text-xl uppercase tracking-wide">
-            {formatLondonDate(review.coveredFrom, review.endedAt)} –{" "}
-            {formatLondonDate(review.endedAt, review.endedAt)}
-          </p>
-          {review.partial && (
-            <p>
-              Since records began on{" "}
-              {formatLondonDate(review.coveredFrom, review.endedAt)}.
-            </p>
-          )}
-          <Prose text={intro} />
-          <p className="text-ink-muted text-sm">
-            <span className="lg:hidden">Tap or swipe for the next card.</span>
-            <span className="max-lg:hidden">
-              Scroll, or use the arrow keys.
-            </span>
-          </p>
-        </StoryCard>
-      ),
-    },
+    introCard(review, intro),
     recordCard(review),
     divisionCard(review),
     extremesCard(clubName, review, headlines),
     bestSessionCard(review),
     whenWePlayCard(review),
     opponentsCard(review),
-    ...review.awards.map(
-      (award): StoryDeckCard => ({
-        id: `award-${award.id}`,
-        label: award.title,
-        content: (
-          <StoryCard
-            kicker={award.title}
-            title={
-              <Link to={playerPath(award.playerId)} className="hover:text-rave">
-                {award.name}
-              </Link>
-            }
-            figure={award.value}
-            figureCaption={award.unit}
-          >
-            {citations[award.id] && <Prose text={citations[award.id] ?? ""} />}
-            <p className="text-ink-muted">{award.detail}</p>
-          </StoryCard>
-        ),
-      }),
-    ),
+    ...review.awards.map((award) => awardCard(award, citations[award.id])),
     milestonesCard(milestones),
-    outro
-      ? {
-          id: "outro",
-          label: "Next Season",
-          content: (
-            <StoryCard
-              kicker="Next Season"
-              title={`Season ${review.number + 1}`}
-              tone="club"
-            >
-              <Prose text={outro} />
-            </StoryCard>
-          ),
-        }
-      : null,
+    outroCard(review, outro),
   ];
   return cards.filter((card): card is StoryDeckCard => card !== null);
+}
+
+function introCard(review: Review, intro: string): StoryDeckCard {
+  const from = formatLondonDate(review.coveredFrom, review.endedAt);
+  return {
+    id: "intro",
+    label: "Intro",
+    content: (
+      <StoryCard
+        heading="h1"
+        kicker="Season Review"
+        title={`Season ${review.number}`}
+        tone="club"
+      >
+        <p className="font-display font-bold text-ink text-xl uppercase tracking-wide">
+          {from} – {formatLondonDate(review.endedAt, review.endedAt)}
+        </p>
+        {review.partial && <p>Since records began on {from}.</p>}
+        <Prose text={intro} />
+        <p className="text-ink-muted text-sm">
+          <span className="lg:hidden">Tap or swipe for the next card.</span>
+          <span className="max-lg:hidden">Scroll, or use the arrow keys.</span>
+        </p>
+      </StoryCard>
+    ),
+  };
 }
 
 function recordCard({ record, eaRecord, partial }: Review): StoryDeckCard {
@@ -207,7 +172,7 @@ function recordCard({ record, eaRecord, partial }: Review): StoryDeckCard {
     content: (
       <StoryCard
         kicker="The record"
-        title={wdl(headline)}
+        title={formatRecord(headline)}
         figure={headline.played}
         figureCaption={headline.played === 1 ? "Match" : "Matches"}
       >
@@ -217,8 +182,9 @@ function recordCard({ record, eaRecord, partial }: Review): StoryDeckCard {
         {eaRecord && (
           <p>
             {partial ? "Recorded since records began" : "Recorded"}:{" "}
-            {formatCount(record.played, "Match", "Matches")}, {wdl(record)},{" "}
-            {record.goalsFor} scored and {record.goalsAgainst} conceded.
+            {formatCount(record.played, "Match", "Matches")},{" "}
+            {formatRecord(record)}, {record.goalsFor} scored and{" "}
+            {record.goalsAgainst} conceded.
           </p>
         )}
       </StoryCard>
@@ -266,39 +232,63 @@ function extremesCard(
   headlines: Record<string, string>,
 ): StoryDeckCard | null {
   if (!biggestWin && !heaviestDefeat) return null;
-  const item = (label: string, match: MatchSummary | null) =>
-    match && (
-      <div>
-        <p className="mb-2 font-display font-bold text-ink text-xl uppercase tracking-wide">
-          {label}
-        </p>
-        <Link
-          to={`/matches/${match.matchId}`}
-          className="block transition-[filter] hover:brightness-125"
-        >
-          <MatchScoreBar
-            clubName={clubName}
-            match={match}
-            when={formatLondonDate(match.playedAt, match.playedAt)}
-          />
-        </Link>
-        {headlines[match.matchId] && (
-          <MatchHeadline text={headlines[match.matchId]} size="hero" />
-        )}
-      </div>
-    );
   return {
     id: "extremes",
     label: "Best and worst",
     content: (
       <StoryCard kicker="Best and worst" title="The highs and the lows">
         <div className="space-y-6 text-base">
-          {item("Biggest Win", biggestWin)}
-          {item("Heaviest defeat", heaviestDefeat)}
+          {biggestWin && (
+            <ExtremeMatch
+              label="Biggest Win"
+              clubName={clubName}
+              match={biggestWin}
+              headline={headlines[biggestWin.matchId]}
+            />
+          )}
+          {heaviestDefeat && (
+            <ExtremeMatch
+              label="Heaviest defeat"
+              clubName={clubName}
+              match={heaviestDefeat}
+              headline={headlines[heaviestDefeat.matchId]}
+            />
+          )}
         </div>
       </StoryCard>
     ),
   };
+}
+
+function ExtremeMatch({
+  label,
+  clubName,
+  match,
+  headline,
+}: {
+  label: string;
+  clubName: string;
+  match: MatchSummary;
+  headline: string | undefined;
+}): ReactNode {
+  return (
+    <div>
+      <p className="mb-2 font-display font-bold text-ink text-xl uppercase tracking-wide">
+        {label}
+      </p>
+      <Link
+        to={`/matches/${match.matchId}`}
+        className="block transition-[filter] hover:brightness-125"
+      >
+        <MatchScoreBar
+          clubName={clubName}
+          match={match}
+          when={formatLondonDate(match.playedAt, match.playedAt)}
+        />
+      </Link>
+      {headline && <MatchHeadline text={headline} size="hero" />}
+    </div>
+  );
 }
 
 function bestSessionCard({
@@ -318,14 +308,12 @@ function bestSessionCard({
         figureCaption={record.wins === 1 ? "Win in a night" : "Wins in a night"}
       >
         <p>
-          {wdl(record)} from {formatCount(record.played, "Match", "Matches")},{" "}
-          {record.goalsFor} scored and {record.goalsAgainst} conceded.
+          {formatRecord(record)} from{" "}
+          {formatCount(record.played, "Match", "Matches")}, {record.goalsFor}{" "}
+          scored and {record.goalsAgainst} conceded.
         </p>
         <p>
-          <Link
-            to={sessionPath(bestSession.id)}
-            className="text-sound-300 underline underline-offset-4 hover:text-ink"
-          >
+          <Link to={sessionPath(bestSession.id)} className={ONWARD_LINK}>
             Open the Session
           </Link>
         </p>
@@ -336,12 +324,6 @@ function bestSessionCard({
 
 function whenWePlayCard({ whenWePlay: when }: Review): StoryDeckCard | null {
   if (!when) return null;
-  const slot = (label: string, s: NonNullable<typeof when.best>) => (
-    <p>
-      {label}: {s.label}, {formatPercentage(s.winPercentage)} Wins over{" "}
-      {formatCount(s.played, "Match", "Matches")}.
-    </p>
-  );
   return {
     id: "when-we-play",
     label: "When we play",
@@ -356,11 +338,20 @@ function whenWePlayCard({ whenWePlay: when }: Review): StoryDeckCard | null {
           Busiest kick-off: {when.busiestTime.label}, with{" "}
           {formatCount(when.busiestTime.played, "Match", "Matches")}.
         </p>
-        {when.best && slot("Best slot", when.best)}
-        {when.worst && slot("Worst slot", when.worst)}
+        {when.best && <SlotLine label="Best slot" slot={when.best} />}
+        {when.worst && <SlotLine label="Worst slot" slot={when.worst} />}
       </StoryCard>
     ),
   };
+}
+
+function SlotLine({ label, slot }: { label: string; slot: Slot }): ReactNode {
+  return (
+    <p>
+      {label}: {slot.label}, {formatPercentage(slot.winPercentage)} Wins over{" "}
+      {formatCount(slot.played, "Match", "Matches")}.
+    </p>
+  );
 }
 
 function opponentsCard({
@@ -368,11 +359,42 @@ function opponentsCard({
   favouriteOpponent: favourite,
 }: Review): StoryDeckCard | null {
   if (!nemesis && !favourite) return null;
-  const rival = (
-    label: string,
-    club: NonNullable<typeof nemesis>,
-    fact: string,
-  ) => (
+  return {
+    id: "opponents",
+    label: "Opponents",
+    content: (
+      <StoryCard kicker="Opponents" title="Nemesis and favourite">
+        <div className="space-y-6">
+          {nemesis && (
+            <Rival
+              label="Nemesis"
+              club={nemesis}
+              fact={`Took points off us ${nemesis.droppedPoints} times in ${formatCount(nemesis.played, "Match", "Matches")}.`}
+            />
+          )}
+          {favourite && (
+            <Rival
+              label="Favourite Opponent"
+              club={favourite}
+              fact={`${formatCount(favourite.wins, "Win", "Wins")} in ${formatCount(favourite.played, "Match", "Matches")}.`}
+            />
+          )}
+        </div>
+      </StoryCard>
+    ),
+  };
+}
+
+function Rival({
+  label,
+  club,
+  fact,
+}: {
+  label: string;
+  club: RivalRecord;
+  fact: string;
+}): ReactNode {
+  return (
     <div>
       <p className="font-display font-bold text-ink-muted text-lg uppercase tracking-wide">
         {label}
@@ -386,25 +408,25 @@ function opponentsCard({
       <p className="mt-1">{fact}</p>
     </div>
   );
+}
+
+function awardCard(award: Award, citation: string | null): StoryDeckCard {
   return {
-    id: "opponents",
-    label: "Opponents",
+    id: `award-${award.id}`,
+    label: award.title,
     content: (
-      <StoryCard kicker="Opponents" title="Nemesis and favourite">
-        <div className="space-y-6">
-          {nemesis &&
-            rival(
-              "Nemesis",
-              nemesis,
-              `Took points off us ${nemesis.droppedPoints} times in ${formatCount(nemesis.played, "Match", "Matches")}.`,
-            )}
-          {favourite &&
-            rival(
-              "Favourite Opponent",
-              favourite,
-              `${formatCount(favourite.wins, "Win", "Wins")} in ${formatCount(favourite.played, "Match", "Matches")}.`,
-            )}
-        </div>
+      <StoryCard
+        kicker={award.title}
+        title={
+          <Link to={playerPath(award.playerId)} className="hover:text-rave">
+            {award.name}
+          </Link>
+        }
+        figure={award.value}
+        figureCaption={award.unit}
+      >
+        {citation && <Prose text={citation} />}
+        <p className="text-ink-muted">{award.detail}</p>
       </StoryCard>
     ),
   };
@@ -441,10 +463,7 @@ function milestonesCard(
         </ul>
         {more > 0 && (
           <p>
-            <Link
-              to="/milestones"
-              className="text-sound-300 underline underline-offset-4 hover:text-ink"
-            >
+            <Link to="/milestones" className={ONWARD_LINK}>
               {formatCount(more, "more Milestone", "more Milestones")}
             </Link>
           </p>
@@ -454,17 +473,32 @@ function milestonesCard(
   };
 }
 
+function outroCard(
+  { number }: Review,
+  outro: string | null,
+): StoryDeckCard | null {
+  if (!outro) return null;
+  return {
+    id: "outro",
+    label: "Next Season",
+    content: (
+      <StoryCard
+        kicker="Next Season"
+        title={`Season ${number + 1}`}
+        tone="club"
+      >
+        <Prose text={outro} />
+      </StoryCard>
+    ),
+  };
+}
+
 /** How many Milestones the card lists before linking to the rest. */
 const MILESTONES_SHOWN = 6;
 
-/** "W12 D3 L6". */
-function wdl({
-  wins,
-  draws,
-  losses,
-}: Pick<RecordSummary, "wins" | "draws" | "losses">) {
-  return `W${wins} D${draws} L${losses}`;
-}
+/** A link off the card to another page: "Open the Session". */
+const ONWARD_LINK =
+  "text-sound-300 underline underline-offset-4 hover:text-ink";
 
 function Prose({ text }: { text: string }): ReactNode {
   return paragraphs(text).map((paragraph, i) => (

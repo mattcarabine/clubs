@@ -10,7 +10,7 @@
  */
 import { clampText, paragraphs } from "~/lib/text";
 import type { Award } from "~/stats/awards";
-import { scoreLine, sessionPreview } from "~/stats/link-preview";
+import { formatRecord, scoreLine, sessionPreview } from "~/stats/link-preview";
 import type { MatchSummary } from "~/stats/matches";
 import { type PerformerTotals, sessionTopPerformer } from "~/stats/sessions";
 import type { RecordSummary } from "~/stats/summaries";
@@ -170,7 +170,6 @@ export interface SeasonReviewPostInput {
 export function seasonReviewPostBody(
   input: SeasonReviewPostInput,
 ): WebhookBody {
-  const { wins, draws, losses } = input.record;
   return {
     allowed_mentions: { parse: [] },
     embeds: [
@@ -178,7 +177,7 @@ export function seasonReviewPostBody(
         title: `Season ${input.number} Review is in`,
         url: input.url,
         color: EMBED_COLOR,
-        description: `W${wins} D${draws} L${losses}. The Awards, the best and worst of it, and a look at next Season.`,
+        description: `${formatRecord(input.record)}. The Awards, the best and worst of it, and a look at next Season.`,
         fields: input.awards.slice(0, POSTED_AWARDS).map((award) => ({
           name: award.title,
           value: `${discordText(award.name)} · ${award.value} ${award.unit}`,
