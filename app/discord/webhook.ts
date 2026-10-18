@@ -31,7 +31,11 @@ export async function postWebhook(
       }),
     };
   } catch (error) {
-    return { ok: false, error: errorMessage(error) };
+    // A runtime error can quote the URL, which holds the webhook's token.
+    return {
+      ok: false,
+      error: errorMessage(error).replaceAll(url, "[webhook]"),
+    };
   }
 }
 

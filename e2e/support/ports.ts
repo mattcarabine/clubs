@@ -2,8 +2,8 @@
  * Where this checkout's E2E servers listen. Each checkout (worktree) gets its
  * own ports, so parallel `pnpm test:e2e` runs in different worktrees never
  * share a server. `E2E_PORT`, `FAKE_EA_PORT`, `FAKE_ANTHROPIC_PORT` and
- * `FAKE_DISCORD_PORT` override them; otherwise all four are derived from the checkout's path,
- * so they stay the same between runs.
+ * `FAKE_DISCORD_PORT` override them; otherwise all four are derived from the
+ * checkout's path, so they stay the same between runs.
  */
 import { createHash } from "node:crypto";
 import path from "node:path";
