@@ -2,7 +2,7 @@
  * Matchday (`/`): the latest Competitive Match as the lead score strip, its
  * top performers on a ticker, Our Club's form and EA's club totals. While it
  * is open the page checks for a new Poll every minute (CLUBS-7), and reloads
- * its data only when one stored something (CLUBS-46).
+ * its data only when one changed something (CLUBS-46).
  */
 import { env } from "cloudflare:workers";
 import { Link } from "react-router";

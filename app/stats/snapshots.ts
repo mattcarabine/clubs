@@ -6,8 +6,9 @@
 import { and, asc, desc, eq, max, ne } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
-import { pollRuns, rawPayloads, snapshots } from "~/db/schema";
+import { matches, pollRuns, rawPayloads, snapshots } from "~/db/schema";
 import type { SnapshotEndpoint } from "~/ea/parse";
+import { isShownMatch } from "./scope";
 
 export interface SnapshotPoint {
   takenAt: Date;
@@ -55,23 +56,25 @@ export { snapshotNumber } from "~/ea/parse";
 
 /**
  * What a page that refreshes itself needs to know about the Poll (CLUBS-46),
- * in two single-row reads.
+ * in three reads of a row or two each, however much data there is.
  */
 export interface PollState {
   /** When the latest Poll that reached EA finished (a partial Poll counts), or null before the first. */
   lastPoll: Date | null;
   /**
-   * Changes only when a Poll stores new data: the latest Raw Payload's ID, 0
-   * before the first. The Poll derives Matches, Appearances and Snapshots in
-   * the batch that stores their Raw Payload, so an unchanged version means
-   * the pages' data is unchanged too.
+   * Opaque; it changes when a Poll changes what Matchday shows. The Poll
+   * derives Matches, Appearances and Snapshots in the batch that stores their
+   * Raw Payload, so the latest Raw Payload's ID covers those. A Skill Rating
+   * can land in a Poll that stores no payload (EA's ratings response hashed
+   * as the last one did), so the latest Match's two Skill Ratings are part of
+   * it too. A backfilled rating on an older Match does not move it.
    */
-  version: number;
+  version: string;
 }
 
 export async function pollState(db: Db): Promise<PollState> {
-  // Both walk the rowid from the end, so neither scans the table.
-  const [[poll], [payload]] = await Promise.all([
+  // Each walks a rowid or index from the newest row, so none scans a table.
+  const [[poll], [payload], [latest]] = await Promise.all([
     db
       .select({ finishedAt: pollRuns.finishedAt })
       .from(pollRuns)
@@ -79,6 +82,20 @@ export async function pollState(db: Db): Promise<PollState> {
       .orderBy(desc(pollRuns.id))
       .limit(1),
     db.select({ id: max(rawPayloads.id) }).from(rawPayloads),
+    db
+      .select({
+        ours: matches.ourSkillRating,
+        theirs: matches.opponentSkillRating,
+      })
+      .from(matches)
+      .where(isShownMatch)
+      .orderBy(desc(matches.playedAt))
+      .limit(1),
   ]);
-  return { lastPoll: poll?.finishedAt ?? null, version: payload?.id ?? 0 };
+  return {
+    lastPoll: poll?.finishedAt ?? null,
+    version: [payload?.id ?? 0, latest?.ours ?? "", latest?.theirs ?? ""].join(
+      ".",
+    ),
+  };
 }

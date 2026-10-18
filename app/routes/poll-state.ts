@@ -1,6 +1,6 @@
 /**
  * `GET /api/poll-state`: the latest Poll's `PollState` as JSON, for pages that
- * refresh themselves (`useLivePoll`). Two rows read, however much data there is.
+ * refresh themselves (`useLivePoll`). A few rows read, however much data there is.
  */
 import { env } from "cloudflare:workers";
 

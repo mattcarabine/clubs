@@ -8,14 +8,22 @@ import type { APIRequestContext } from "@playwright/test";
 import { win } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
+/** The builders' Opponent (from the recorded fixture). */
+const OPPONENT_ID = "356611";
+
 /** The check an open Matchday makes every minute (`POLL_STATE_PATH`). */
 const POLL_STATE_PATH = "/api/poll-state";
 /** The per-check budget in `app/stats/README.md`. */
 const POLL_CHECK_ROWS = 5;
 
+interface MatchRatingRow {
+  match_id: string;
+  opponent_skill_rating: number | null;
+}
+
 interface PollStateJson {
   lastPoll: string | null;
-  version: number;
+  version: string;
 }
 
 /** Fetches `path` and returns the rows the app read to answer it. */
@@ -58,17 +66,18 @@ test("a full Matchday load does not grow with the number of Polls", async ({
   expect(await rowsRead(request, "/")).toBe(before);
 });
 
-test("the version changes only when a Poll stores new data", async ({
+test("the version changes only when a Poll changes the data", async ({
   request,
   fakeEa,
   triggerPoll,
 }) => {
-  expect(await pollState(request)).toEqual({ lastPoll: null, version: 0 });
+  const empty = await pollState(request);
+  expect(empty.lastPoll).toBeNull();
 
   // The next two Polls rate the Opponents the first one recorded.
   for (let i = 0; i < 3; i++) await triggerPoll();
   const first = await pollState(request);
-  expect(first.version).toBeGreaterThan(0);
+  expect(first.version).not.toBe(empty.version);
   expect(first.lastPoll).not.toBeNull();
 
   // Nothing new at EA: the Poll is newer, the data is not.
@@ -81,7 +90,41 @@ test("the version changes only when a Poll stores new data", async ({
 
   await fakeEa.addMatch(win());
   await triggerPoll();
-  expect((await pollState(request)).version).toBeGreaterThan(first.version);
+  expect((await pollState(request)).version).not.toBe(first.version);
+});
+
+test("a Skill Rating for the latest Match moves the version, even with no new Raw Payload", async ({
+  request,
+  fakeEa,
+  triggerPoll,
+  db,
+}) => {
+  // Only the Matches this test adds, against the builders' Opponent.
+  await fakeEa.setPayload("clubs/matches", [], "leagueMatch");
+  await fakeEa.addMatch(
+    win({ matchId: "46001", playedAt: new Date(Date.now() - 60_000) }),
+  );
+  await triggerPoll();
+
+  // The next Match's Opponent rating fails, so it waits for the next Poll.
+  await fakeEa.failNext(403, 1, {
+    endpoint: "clubs/overallStats",
+    clubId: OPPONENT_ID,
+  });
+  await fakeEa.addMatch(win({ matchId: "46002", playedAt: new Date() }));
+  await triggerPoll();
+  const before = await pollState(request);
+  const payloads = (await db.rows("raw_payloads")).length;
+
+  // EA rates the Opponent as it did for the first Match: an identical
+  // response, so no new Raw Payload, but the Match gains its rating.
+  await triggerPoll();
+  expect(await db.rows("raw_payloads")).toHaveLength(payloads);
+  const latest = (await db.rows<MatchRatingRow>("matches")).find(
+    (m) => m.match_id === "46002",
+  );
+  expect(latest?.opponent_skill_rating).not.toBeNull();
+  expect((await pollState(request)).version).not.toBe(before.version);
 });
 
 test("a failed Poll moves neither the last Poll nor the version", async ({

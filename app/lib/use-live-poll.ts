@@ -12,7 +12,7 @@ export type LivePollState = Omit<PollState, "lastPoll"> & {
 /**
  * Keeps a page left open up to date with the Poll, cheaply (CLUBS-7,
  * CLUBS-46). Every `intervalMs` while the tab is visible it asks
- * `/api/poll-state` (two rows read) for the latest `PollState`, and reruns the
+ * `/api/poll-state` (a few rows read) for the latest `PollState`, and reruns the
  * page's loaders only when its `version` differs from the one they loaded, so
  * a page refreshing all evening reads its data again only after a Poll stores
  * something new. A hidden tab stops checking; when it comes back after a full
