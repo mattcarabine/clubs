@@ -1,7 +1,8 @@
 /**
  * Matchday (`/`): the latest Competitive Match as the lead score strip, its
- * top performers on a ticker, Our Club's form and EA's club totals. The page
- * refreshes itself every minute while it is open (CLUBS-7).
+ * top performers on a ticker, Our Club's form and EA's club totals. While it
+ * is open the page checks for a new Poll every minute (CLUBS-7), and reloads
+ * its data only when one stored something (CLUBS-46).
  */
 import { env } from "cloudflare:workers";
 import { Link } from "react-router";
@@ -25,17 +26,17 @@ import { getDb } from "~/db/client";
 import type { FormStatus } from "~/lib/domain";
 import { formatCount, formatOptional } from "~/lib/number-format";
 import { playerPath } from "~/lib/paths";
-import { useRevalidateWhileVisible } from "~/lib/use-revalidate-while-visible";
+import { useLivePoll } from "~/lib/use-live-poll";
 import {
   type ClubSnapshotSummary,
   clubSnapshots,
   DEFAULT_STATS_FILTER,
   getMatch,
-  lastSuccessfulPoll,
   listMatches,
   type MatchSides,
   type MatchSkillRatings,
   type MatchSummary,
+  pollState,
   type SquadFormRow,
   squadForm,
   summariseClubSnapshots,
@@ -51,7 +52,8 @@ import type { Route } from "./+types/home";
 const FORM_LENGTH = 10;
 /** How many Matches after the lead one the "Recent results" list shows. */
 const RECENT_RESULTS = 4;
-const REVALIDATE_MS = 60_000;
+/** How often an open Matchday checks for a new Poll. */
+const REFRESH_CHECK_MS = 60_000;
 
 export function meta(_: Route.MetaArgs) {
   return [{ title: "A Bloo Bloo — Matchday" }];
@@ -59,10 +61,11 @@ export function meta(_: Route.MetaArgs) {
 
 export async function loader() {
   const db = getDb(env.DB);
-  const [recent, snapshots, lastPoll, squadFormRows] = await Promise.all([
+  // First, so the version it carries is never newer than the data below.
+  const poll = await pollState(db);
+  const [recent, snapshots, squadFormRows] = await Promise.all([
     listMatches(db, DEFAULT_STATS_FILTER, { limit: FORM_LENGTH }),
     clubSnapshots(db),
-    lastSuccessfulPoll(db),
     squadForm(db, DEFAULT_STATS_FILTER),
   ]);
   const latest = recent[0];
@@ -76,7 +79,7 @@ export async function loader() {
       detail?.appearances.filter((a) => a.isOurClub) ?? [],
     ),
     club: summariseClubSnapshots(snapshots),
-    lastPoll,
+    poll,
     squadForm: squadFormRows,
   };
 }
@@ -89,10 +92,10 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
     sides,
     performers,
     club,
-    lastPoll,
+    poll,
     squadForm,
   } = loaderData;
-  useRevalidateWhileVisible(REVALIDATE_MS);
+  const { lastPoll } = useLivePoll(poll, REFRESH_CHECK_MS);
   const [latest, ...earlier] = recent;
 
   return (

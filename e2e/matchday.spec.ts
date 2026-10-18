@@ -165,6 +165,32 @@ test("picks up a new result after 60s without a reload", async ({
   ).toBe(true);
 });
 
+test("an open Matchday reloads nothing after a Poll that finds nothing new, but shows the new Poll time", async ({
+  page,
+  request,
+  triggerPoll,
+}) => {
+  await page.clock.install();
+  // The next two Polls rate the Opponents the first one recorded.
+  for (let i = 0; i < 3; i++) await triggerPoll();
+  const aged = await request.post("/__test/poll-runs/age?minutes=120");
+  expect(aged.ok()).toBe(true);
+  await page.goto("/");
+  await expect(page.getByText("Updated 2 hr ago")).toBeVisible();
+
+  // Page data reloads go to `*.data`; the Poll check does not.
+  const reloads: string[] = [];
+  page.on("request", (req) => {
+    if (new URL(req.url()).pathname.endsWith(".data")) reloads.push(req.url());
+  });
+  await triggerPoll();
+  await page.clock.fastForward("01:00");
+
+  await expect(page.getByText("Updated just now")).toBeVisible();
+  await expect(page.getByText("Stale:")).toHaveCount(0);
+  expect(reloads).toEqual([]);
+});
+
 test("warns when the last successful Poll was 2 hours ago", async ({
   page,
   request,

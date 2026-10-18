@@ -1,5 +1,7 @@
 import { index, type RouteConfig, route } from "@react-router/dev/routes";
 
+import { POLL_STATE_PATH } from "./lib/paths";
+
 export default [
   index("routes/home.tsx"),
   route("styleguide", "routes/styleguide.tsx"),
@@ -12,6 +14,7 @@ export default [
   route("opponents/:clubId", "routes/opponent.tsx"),
   route("players/:playerId", "routes/player-profile/route.tsx"),
   route("compare", "routes/compare/route.tsx"),
+  route(POLL_STATE_PATH, "routes/poll-state.ts"),
   // Test-only: 404s outside the `test` Wrangler env and dev (see the route).
   route("test/stats", "routes/test-stats.tsx"),
 ] satisfies RouteConfig;
