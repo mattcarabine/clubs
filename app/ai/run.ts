@@ -15,16 +15,19 @@ import { drainQueue } from "./queue";
 import { coachingWriter } from "./writers/coaching";
 import { headlineWriter } from "./writers/headline";
 import { milestoneWriter } from "./writers/milestones";
+import { seasonReviewWriter } from "./writers/season-review";
 import { sessionWriter } from "./writers/session";
 
 /**
- * Every writer, drained in this order. Milestone comments go first: one short
- * call per Poll that found any, so they never wait behind a backlog of recaps.
- * The weekly coaching notes (one call) come before the headline backlog,
- * which follows the Session writer, which writes new Sessions' headlines
- * itself.
+ * Every writer, drained in this order. A Season Review (once a Season) goes
+ * first, so it is written on the Poll that sees the Season end. Milestone
+ * comments next: one short call per Poll that found any, so they never wait
+ * behind a backlog of recaps. The weekly coaching notes (one call) come
+ * before the headline backlog, which follows the Session writer, which
+ * writes new Sessions' headlines itself.
  */
 const WRITERS = [
+  seasonReviewWriter,
   milestoneWriter,
   sessionWriter,
   coachingWriter,

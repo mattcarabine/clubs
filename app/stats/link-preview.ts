@@ -12,6 +12,7 @@ import { formatCount, formatDecimal } from "~/lib/number-format";
 import { joinPreviewFacts, type PagePreview } from "~/lib/page-meta";
 import { firstSentence } from "~/lib/text";
 
+import type { Award } from "./awards";
 import type { MatchDetail } from "./matches";
 import { type PerformerTotals, sessionTopPerformer } from "./sessions";
 import type { PlayerTotals, RecordSummary } from "./summaries";
@@ -89,7 +90,11 @@ type RecordLine = Pick<
 >;
 
 /** "W4 D0 L4". */
-function formatRecord({ wins, draws, losses }: RecordLine): string {
+export function formatRecord({
+  wins,
+  draws,
+  losses,
+}: Pick<RecordSummary, "wins" | "draws" | "losses">): string {
   return `W${wins} D${draws} L${losses}`;
 }
 
@@ -145,6 +150,31 @@ export function playerPreview(
       `${totals.assists} A`,
       totals.averageRating !== null &&
         `${formatDecimal(totals.averageRating)} average rating`,
+    ]),
+  };
+}
+
+/**
+ * Headline: "Season 3 Review · A Bloo Bloo". Description: "W12 D3 L6 · 21
+ * Matches · 48 scored, 30 conceded · Player of the Season: Kabeeble ·
+ * Golden Boot: Trevor", the first two Awards.
+ */
+export function seasonReviewPreview(
+  clubName: string,
+  review: {
+    number: number;
+    record: RecordLine;
+    awards: readonly Pick<Award, "title" | "name">[];
+  },
+): PagePreview {
+  return {
+    title: `Season ${review.number} Review · ${clubName}`,
+    description: joinPreviewFacts([
+      formatRecord(review.record),
+      ...recordFacts(review.record),
+      ...review.awards
+        .slice(0, 2)
+        .map((award) => `${award.title}: ${award.name}`),
     ]),
   };
 }

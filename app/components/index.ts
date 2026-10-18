@@ -79,6 +79,7 @@ export { ScrollRail } from "./scroll-rail";
 export { SessionHeader, SessionRecord } from "./session-header";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";
+export { StoryCard, StoryDeck, type StoryDeckCard } from "./story";
 export { EstimateTag, SmallSampleTag, Tag } from "./tag";
 export { Ticker, type TickerItem } from "./ticker";
 export { TopPerformersStrip } from "./top-performers-strip";

@@ -16,6 +16,8 @@ export default [
   route("opponents", "routes/opponents.tsx"),
   route("opponents/:clubId", "routes/opponent.tsx"),
   route("players/:playerId", "routes/player-profile/route.tsx"),
+  // Reached only from its Discord post (CLUBS-45): no page links here.
+  route("seasons/:number/review", "routes/season-review.tsx"),
   route("compare", "routes/compare/route.tsx"),
   route(POLL_STATE_PATH, "routes/poll-state.ts"),
   // Test-only: 404s outside the `test` Wrangler env and dev (see the route).

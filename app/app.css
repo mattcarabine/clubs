@@ -59,12 +59,19 @@
   --text-score--line-height: 1;
   --text-score-lg: 5rem;
   --text-score-lg--line-height: 1;
+  /* A Season Review card's one big figure (StoryCard). */
+  --text-figure: 7rem;
+  --text-figure--line-height: 0.85;
+  --text-figure-lg: 12rem;
+  --text-figure-lg--line-height: 0.85;
 
   /* The broadcast slant: horizontal offset of an angled edge. */
   --slant: 0.75rem;
 
   --animate-ticker: ticker var(--ticker-duration, 40s) linear infinite;
   --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  /* A StoryDeck card coming on, like a broadcast graphic wiping in. */
+  --animate-story-in: story-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 
   @keyframes ticker {
     to {
@@ -75,6 +82,13 @@
   @keyframes shimmer {
     50% {
       opacity: 0.45;
+    }
+  }
+
+  @keyframes story-in {
+    from {
+      opacity: 0;
+      transform: translateX(1.5rem);
     }
   }
 }

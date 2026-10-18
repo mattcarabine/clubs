@@ -7,6 +7,7 @@ import {
   opponentPreview,
   playerPreview,
   scoreLine,
+  seasonReviewPreview,
   sessionPreview,
 } from "./link-preview";
 import type { PerformerTotals } from "./sessions";
@@ -177,6 +178,33 @@ describe("opponentPreview", () => {
     ).toEqual({
       title: "A Bloo Bloo v Kebab Over6pack",
       description: "Head-to-head W1 D1 L1 · 3 Matches · 5 scored, 4 conceded",
+    });
+  });
+});
+
+describe("seasonReviewPreview", () => {
+  it("names the Season, its record and the first two Award winners", () => {
+    expect(
+      seasonReviewPreview("A Bloo Bloo", {
+        number: 3,
+        record: {
+          played: 21,
+          wins: 12,
+          draws: 3,
+          losses: 6,
+          goalsFor: 48,
+          goalsAgainst: 30,
+        },
+        awards: [
+          { title: "Player of the Season", name: "Kabeeble" },
+          { title: "Golden Boot", name: "Trevor" },
+          { title: "Playmaker", name: "Dan" },
+        ],
+      }),
+    ).toEqual({
+      title: "Season 3 Review · A Bloo Bloo",
+      description:
+        "W12 D3 L6 · 21 Matches · 48 scored, 30 conceded · Player of the Season: Kabeeble · Golden Boot: Trevor",
     });
   });
 });

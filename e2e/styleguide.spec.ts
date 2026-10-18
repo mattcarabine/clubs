@@ -170,3 +170,20 @@ test("the date-range picker opens its presets and calendar", async ({
   ).toBeChecked();
   await expect(dialog.getByRole("grid").first()).toBeVisible();
 });
+
+test("the StoryDeck takes the arrow keys only while it has focus", async ({
+  page,
+}) => {
+  const deck = page
+    .getByTestId("sg-story")
+    .getByRole("region", { name: "Sample Season Review" });
+  const pip = (n: number) =>
+    deck.getByRole("button", { name: new RegExp(`^${n} of 3`) });
+  await expect(pip(1)).toHaveAttribute("aria-current", "step");
+  await page.keyboard.press("ArrowRight");
+  await expect(pip(1)).toHaveAttribute("aria-current", "step");
+
+  await deck.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(pip(2)).toHaveAttribute("aria-current", "step");
+});

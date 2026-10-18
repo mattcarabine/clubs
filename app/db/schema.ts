@@ -340,3 +340,22 @@ export const sessionPosts = sqliteTable("session_posts", {
   postedAt: integer({ mode: "timestamp_ms" }),
   createdAt: integer({ mode: "timestamp_ms" }).notNull(),
 });
+
+export type SeasonReviewPostStatus = "pending" | "posted" | "failed";
+
+/**
+ * The Discord post announcing each Season Review (CLUBS-45), keyed by the
+ * Season's number, so a review is announced once. A row appears only once
+ * the review is written (`app/discord/season-review.ts`).
+ */
+export const seasonReviewPosts = sqliteTable("season_review_posts", {
+  season: integer().primaryKey(),
+  status: text().$type<SeasonReviewPostStatus>().notNull(),
+  /** Webhook calls made; the post gives up after `MAX_POST_ATTEMPTS`. */
+  attempts: integer().notNull().default(0),
+  /** Not before this, e.g. Discord's `retry_after` after a 429. */
+  nextAttemptAt: integer({ mode: "timestamp_ms" }),
+  lastError: text(),
+  postedAt: integer({ mode: "timestamp_ms" }),
+  createdAt: integer({ mode: "timestamp_ms" }).notNull(),
+});

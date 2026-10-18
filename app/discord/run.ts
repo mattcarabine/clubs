@@ -39,7 +39,8 @@ export const MAX_POST_ATTEMPTS = 3;
 /** The `session_posts` row that records the release (no Session has this ID). */
 export const RELEASE_BASELINE = "release-baseline";
 
-const DEFAULT_TIMEOUT_MS = 10_000;
+/** How long one webhook call may take. */
+export const DEFAULT_POST_TIMEOUT_MS = 10_000;
 
 type PostRow = typeof sessionPosts.$inferSelect;
 
@@ -55,7 +56,7 @@ export async function runSessionPosts(env: Env): Promise<void> {
       url,
       clubName: env.EA_CLUB_NAME,
       now: new Date(),
-      timeoutMs: Number(env.DISCORD_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS,
+      timeoutMs: Number(env.DISCORD_TIMEOUT_MS) || DEFAULT_POST_TIMEOUT_MS,
     });
     console.log(JSON.stringify({ event: "discord", ...summary }));
   } catch (error) {

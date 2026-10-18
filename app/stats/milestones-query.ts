@@ -9,8 +9,10 @@ import {
   count,
   desc,
   eq,
+  gte,
   inArray,
   isNotNull,
+  lt,
   max,
   type SQL,
 } from "drizzle-orm";
@@ -164,6 +166,8 @@ export interface MilestoneQuery {
   matchIds?: readonly string[];
   /** Only those detected together (one write-up call). */
   batchKey?: string;
+  /** Only those achieved from `start` up to (not including) `end`, e.g. one Season's (CLUBS-45). */
+  achievedBetween?: { start: Date; end: Date };
   /** Newest first, at most this many (and at most 90, for D1's bound-parameter cap). */
   limit?: number;
 }
@@ -178,13 +182,25 @@ export const MILESTONE_PAGE_SIZE = 60;
 export async function listMilestones(
   db: Db,
   clubName: string,
-  { who, matchIds, batchKey, limit = MILESTONE_PAGE_SIZE }: MilestoneQuery = {},
+  {
+    who,
+    matchIds,
+    batchKey,
+    achievedBetween,
+    limit = MILESTONE_PAGE_SIZE,
+  }: MilestoneQuery = {},
 ): Promise<MilestoneEntry[]> {
   const conditions: SQL[] = [isShownMatch];
   if (who === "club") conditions.push(eq(milestones.subject, "club"));
   else if (who) conditions.push(eq(milestones.playerId, who.playerId));
   if (matchIds) conditions.push(inArray(milestones.matchId, [...matchIds]));
   if (batchKey) conditions.push(eq(milestones.batchKey, batchKey));
+  if (achievedBetween) {
+    conditions.push(
+      gte(milestones.achievedAt, achievedBetween.start),
+      lt(milestones.achievedAt, achievedBetween.end),
+    );
+  }
 
   const [rows, kickoffs] = await Promise.all([
     db

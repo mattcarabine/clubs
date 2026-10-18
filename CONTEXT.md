@@ -157,6 +157,14 @@ _Avoid_: Advice, feedback, tips, AI coaching
 A London week, Monday 00:00 to Monday 00:00. Its Coaching notes are written by the first Poll after 09:00 London on the Monday that ends it; only the latest such week is ever written, so nothing is invented for older weeks.
 _Avoid_: Training week, gameweek
 
+**Season Review**:
+The story of one finished Season, told as a deck of cards: its record, Division journey, best and worst Matches, best Session, when we play, Nemesis and favourite Opponent, the Awards, and Write-ups to open and close it. Written once, on the Poll that sees the next Season start, and announced only by a Discord post with its link: nothing on the site links to it.
+_Avoid_: Wrapped, season summary, recap
+
+**Award**:
+A Season Review's prize for one Squad Member (Player of the Season, Golden Boot, Playmaker, Most Improved, Ever-present, Hot Streak), decided by a fixed rule with documented tie-breaks; its citation is a Write-up.
+_Avoid_: Trophy, badge, honour
+
 **The Gaff**:
 The sign-off on advice aimed at one Squad Member, such as their Coaching notes.
 _Avoid_: Coach, manager, AI coach
