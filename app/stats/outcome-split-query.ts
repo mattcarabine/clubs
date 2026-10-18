@@ -239,9 +239,12 @@ async function clubMatchTotals(
       row;
     const entry = byMatch.get(matchId) ?? { secondsPlayed: 0, squadSize: 0 };
     entry.secondsPlayed = Math.max(entry.secondsPlayed, secondsPlayed ?? 0);
-    if (ours) entry.squadSize = players;
-    if (!ours) entry.opponent = stats;
-    else if (!weQuit({ dnf, outcome: toOutcome(result) })) entry.ours = stats;
+    if (!ours) {
+      entry.opponent = stats;
+    } else {
+      entry.squadSize = players;
+      if (!weQuit({ dnf, outcome: toOutcome(result) })) entry.ours = stats;
+    }
     byMatch.set(matchId, entry);
   }
   return byMatch;

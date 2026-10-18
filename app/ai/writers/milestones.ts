@@ -26,11 +26,15 @@ import type { AiWriter } from "../queue";
 import { promptName } from "../sanitise";
 import { hasExactly, isText } from "../validate";
 import { recentWriteups } from "../writeups";
-import { OUR_CLUB, resultInput } from "./inputs";
+import {
+  daysBetween,
+  OUR_CLUB,
+  recentWritingContext,
+  resultInput,
+} from "./inputs";
 
 /** How many recent comments a call sees, so it doesn't repeat them. */
 const RECENT_COMMENTS = 15;
-const DAY_MS = 86_400_000;
 /** The recent ratings a player Milestone's comment can draw on. */
 const RECENT_FORM = 5;
 /** The longest comment accepted, in characters. */
@@ -74,19 +78,19 @@ export function milestoneTask(
 ): GenerateTask {
   const ids = milestones.map((m) => String(m.id));
   const first = history[0]?.playedAt;
-  const latest = Math.max(...milestones.map((m) => m.achievedAt.getTime()));
+  const latest = new Date(
+    Math.max(...milestones.map((m) => m.achievedAt.getTime())),
+  );
   return {
     kind: "milestone",
     subjectKey,
     version,
     ...(first && {
-      prose: { trackedDays: (latest - first.getTime()) / DAY_MS },
+      prose: { trackedDays: daysBetween(first, latest) },
     }),
     prompt: {
       system: HOUSE_STYLE,
-      ...(recentComments.length > 0 && {
-        context: { recentWriting: { milestoneComments: recentComments } },
-      }),
+      ...recentWritingContext("milestoneComments", recentComments),
       instructions: INSTRUCTIONS,
     },
     input: { milestones: milestones.map((m) => milestoneInput(m, history)) },

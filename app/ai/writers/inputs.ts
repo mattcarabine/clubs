@@ -72,18 +72,18 @@ export function lineupInput(
 ) {
   const played = match.appearances.filter(isPlayedAppearance);
   const quit = weQuit(match);
-  const statsFor = (a: MatchAppearance) => ({
+  const who = (a: MatchAppearance) => ({
     club: promptClub(a.isOurClub, match.opponent.name),
     name: promptName(a.name),
+  });
+  const statsFor = (a: MatchAppearance) => ({
+    ...who(a),
     positionGroup: a.positionGroup,
     ...appearanceStatsInput(a),
   });
   const droppedOut = match.appearances
     .filter((a) => !isPlayedAppearance(a))
-    .map((a) => ({
-      club: promptClub(a.isOurClub, match.opponent.name),
-      name: promptName(a.name),
-    }));
+    .map(who);
   return {
     ...(match.dnf && { endedAtMinute: endMinute(played) }),
     appearances: played.filter((a) => !(quit && a.isOurClub)).map(statsFor),
@@ -105,6 +105,26 @@ export function proseLabels(text: string): string {
     .replace(/\bDropped Points\b/g, "draws and defeats")
     .replace(/\bSquad Members\b/g, "players")
     .replace(/\bSquad Member\b/g, "player");
+}
+
+/**
+ * The prompt context that shows a writer its recent pieces of one kind,
+ * under `recentWriting` (HOUSE_STYLE); nothing when there are none.
+ */
+export function recentWritingContext(
+  name: string,
+  pieces: readonly string[],
+): { context?: { recentWriting: Record<string, readonly string[]> } } {
+  return pieces.length > 0
+    ? { context: { recentWriting: { [name]: pieces } } }
+    : {};
+}
+
+const DAY_MS = 86_400_000;
+
+/** Days from one moment to a later one, e.g. `ProseContext.trackedDays`. */
+export function daysBetween(from: Date, to: Date): number {
+  return (to.getTime() - from.getTime()) / DAY_MS;
 }
 
 /** The minute a Match stopped: its longest Appearance. */

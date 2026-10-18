@@ -20,7 +20,7 @@ import type { AiWriter } from "../queue";
 import { promptClub, promptName } from "../sanitise";
 import { hasExactly } from "../validate";
 import { recentWriteups, writtenSubjects } from "../writeups";
-import { resultInput } from "./inputs";
+import { recentWritingContext, resultInput } from "./inputs";
 
 /** The longest headline shown, in characters. */
 export const MAX_HEADLINE_LENGTH = 80;
@@ -85,9 +85,7 @@ export function headlineTask(
     version,
     prompt: {
       system: HOUSE_STYLE,
-      ...(recentHeadlines.length > 0 && {
-        context: { recentWriting: { headlines: recentHeadlines } },
-      }),
+      ...recentWritingContext("headlines", recentHeadlines),
       instructions: INSTRUCTIONS,
     },
     input: { matches: matches.map(matchInput) },

@@ -30,7 +30,12 @@ import type { AiWriter } from "../queue";
 import { promptName } from "../sanitise";
 import { hasExactly } from "../validate";
 import { recentWriteups } from "../writeups";
-import { appearanceStatsInput, proseLabels, resultInput } from "./inputs";
+import {
+  appearanceStatsInput,
+  proseLabels,
+  recentWritingContext,
+  resultInput,
+} from "./inputs";
 
 /** How many recent players' notes a call sees, so it doesn't repeat them. */
 const RECENT_NOTES = 8;
@@ -86,9 +91,7 @@ export function coachingTask(
     version,
     prompt: {
       system: HOUSE_STYLE,
-      ...(recentNotes.length > 0 && {
-        context: { recentWriting: { coachingNotes: recentNotes } },
-      }),
+      ...recentWritingContext("coachingNotes", recentNotes),
       instructions: INSTRUCTIONS,
     },
     input: {

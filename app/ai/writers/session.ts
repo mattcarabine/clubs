@@ -28,7 +28,7 @@ import { promptName } from "../sanitise";
 import { hasExactly, isText } from "../validate";
 import { CLUB_SUBJECT, recentWriteups } from "../writeups";
 import { HEADLINE_RULES, headlineDraft } from "./headline";
-import { lineupInput, proseLabels, resultInput } from "./inputs";
+import { daysBetween, lineupInput, proseLabels, resultInput } from "./inputs";
 
 interface SessionSubject extends Subject {
   /** The newest Session that is over also gets the State of the club. */
@@ -78,8 +78,6 @@ export interface RecentWriting {
   stateOfTheClub?: string[];
 }
 
-const DAY_MS = 86_400_000;
-
 const INSTRUCTIONS = `Write about the Session in the data, which has just finished.
 - "recap": the Session recap, two to four short paragraphs. Tell the story of the night, then the players who stood out against their own usual numbers (their baselines are in the background) and, after any defeats or draws, what went wrong.
 - "matchReports": one per Match, using its matchId: a "report" and a "headline".
@@ -98,8 +96,7 @@ export function sessionTask(
   recentWriting?: RecentWriting,
 ): GenerateTask {
   const matchIds = brief.matches.map((m) => m.matchId);
-  const trackedDays =
-    (brief.session.start.getTime() - brief.trackedSince.getTime()) / DAY_MS;
+  const trackedDays = daysBetween(brief.trackedSince, brief.session.start);
   const withRecent = trackedDays >= RECENT_BASELINE_DAYS;
   return {
     kind: "session",
