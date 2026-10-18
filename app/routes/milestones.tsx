@@ -79,7 +79,7 @@ export default function Milestones({ loaderData }: Route.ComponentProps) {
           <div className="flex gap-1 sm:flex-wrap">
             {options.map(({ who, label }) => (
               <Link
-                key={label}
+                key={who ?? "all"}
                 to={who ? `?who=${who}` : "?"}
                 aria-current={selected === who ? "page" : undefined}
                 className={`${chipClassName(selected === who)} inline-flex items-center`}
