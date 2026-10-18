@@ -26,6 +26,7 @@ export {
   type StepChartPoint,
   type StepMarker,
 } from "./charts/step-chart";
+export { WinChanceChart } from "./charts/win-chance-chart";
 export { WinRateBarChart } from "./charts/win-rate-bar-chart";
 export { Chip, ChipGroup, chipClassName } from "./chip";
 export { CrestMark } from "./crest-mark";
@@ -70,6 +71,6 @@ export { ScrollRail } from "./scroll-rail";
 export { SessionHeader, SessionRecord } from "./session-header";
 export { LoadingState, Skeleton } from "./skeleton";
 export { type StatDelta, StatGrid, StatTile } from "./stat-tile";
-export { SmallSampleTag, Tag } from "./tag";
+export { EstimateTag, SmallSampleTag, Tag } from "./tag";
 export { Ticker, type TickerItem } from "./ticker";
 export { TopPerformersStrip } from "./top-performers-strip";
