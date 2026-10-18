@@ -7,6 +7,7 @@
  */
 import { and, eq, ne } from "drizzle-orm";
 
+import { bulkInsert } from "~/db/bulk";
 import type { Db } from "~/db/client";
 import { aiJobs, aiWriteups } from "~/db/schema";
 import { sha256Hex } from "~/lib/sha256";
@@ -143,7 +144,10 @@ export async function generate(
           finishedAt: new Date(),
         })
         .where(eq(aiJobs.id, job.id)),
-      db.insert(aiWriteups).values(
+      // One bound parameter however many drafts (D1 caps a statement at 100).
+      bulkInsert(
+        db,
+        aiWriteups,
         drafts.map((draft) => ({
           ...draft,
           jobId: job.id,

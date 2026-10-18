@@ -96,6 +96,39 @@ test("a Session over for 45 minutes gets one call: its recap, a report per Match
   expect(job.input_hash).toMatch(/^[0-9a-f]{64}$/);
 });
 
+test("a long Session's recap and all its Match reports are stored, past D1's 100-parameter cap", async ({
+  fakeEa,
+  triggerPoll,
+  db,
+}) => {
+  // 22 Matches, 30 minutes apart; EA serves 10 a Poll, so they arrive in three.
+  const chunks = [
+    { idPrefix: "93517000000000", startedMinutesAgo: 700, count: 10 },
+    { idPrefix: "93517100000000", startedMinutesAgo: 400, count: 10 },
+    { idPrefix: "93517200000000", startedMinutesAgo: 100, count: 2 },
+  ];
+  const ids: string[] = [];
+  for (const { idPrefix, startedMinutesAgo, count } of chunks) {
+    ids.push(
+      ...(await serveSession(fakeEa, {
+        idPrefix,
+        startedMinutesAgo,
+        results: Array(count).fill("W"),
+      })),
+    );
+    await triggerPoll();
+  }
+
+  const jobs = await db.rows<AiJobRow>("ai_jobs");
+  const latest = jobs.at(-1);
+  expect(latest).toMatchObject({ version: ids.join(","), status: "done" });
+  const written = (await db.rows<AiWriteupRow>("ai_writeups")).filter(
+    (w) => w.job_id === latest?.id,
+  );
+  // The recap, 22 Match reports and the State of the club.
+  expect(written).toHaveLength(24);
+});
+
 test("a Session still within 45 minutes of its last kick-off gets no call yet", async ({
   fakeEa,
   fakeAnthropic,
