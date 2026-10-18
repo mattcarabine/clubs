@@ -1,8 +1,6 @@
 import { createRequestHandler } from "react-router";
 
-import { runWriteups } from "../app/ai/run";
-import { runMilestones } from "../app/milestones/record";
-import { runPoll } from "../app/poll/run";
+import { runScheduled } from "./scheduled";
 import { handleTestRoute } from "./test-routes";
 
 const requestHandler = createRequestHandler(
@@ -32,13 +30,6 @@ export default {
   },
 
   async scheduled(_controller, env) {
-    const poll = await runPoll(env);
-    // Right after the Poll's data lands, so their comments queue below.
-    await runMilestones(
-      env,
-      Boolean(poll && (poll.matchesAdded > 0 || poll.snapshotsAdded > 0)),
-    );
-    // After the Poll's own work, so a write-up never delays or fails it.
-    await runWriteups(env);
+    await runScheduled(env);
   },
 } satisfies ExportedHandler<Env>;

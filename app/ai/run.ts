@@ -12,14 +12,17 @@ import { errorMessage } from "~/lib/text";
 import type { AiClientConfig } from "./client";
 import { DEFAULT_RETRY_BASE_MS, DEFAULT_TIMEOUT_MS } from "./config";
 import { drainQueue } from "./queue";
+import { headlineWriter } from "./writers/headline";
 import { milestoneWriter } from "./writers/milestones";
 import { sessionWriter } from "./writers/session";
 
 /**
  * Every writer, drained in this order. Milestone comments go first: one short
  * call per Poll that found any, so they never wait behind a backlog of recaps.
+ * The headline backlog follows the Session writer, which writes new Sessions'
+ * headlines itself.
  */
-const WRITERS = [milestoneWriter, sessionWriter];
+const WRITERS = [milestoneWriter, sessionWriter, headlineWriter];
 
 /** The client config from Worker env, or null without an API key (local dev, by default). */
 export function aiClientConfig(env: Env): AiClientConfig | null {

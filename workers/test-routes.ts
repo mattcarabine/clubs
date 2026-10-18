@@ -3,10 +3,12 @@
  * only when `TEST_ROUTES` is "1", which is set solely in the `test` Wrangler
  * environment; everywhere else they fall through to the app's 404.
  *
- * - `GET /__test/health?ea=URL&anthropic=URL` is 200 when the Worker's
- *   `EA_BASE_URL` (and `ANTHROPIC_BASE_URL`, if given) are those URLs, 409
- *   otherwise, so an E2E run never reuses a server that calls another
- *   checkout's fake upstreams.
+ * - `GET /__test/health?ea=URL&anthropic=URL&discord=URL` is 200 when the
+ *   Worker's `EA_BASE_URL` (and `ANTHROPIC_BASE_URL` and
+ *   `DISCORD_WEBHOOK_URL`, if given) are those URLs, 409 otherwise, so an
+ *   E2E run never reuses a server that calls another checkout's fakes.
+ * - `GET /__test/scheduled-without-discord` runs the scheduled handler as
+ *   if `DISCORD_WEBHOOK_URL` were not set.
  * - `POST /__test/reset` empties every table, so each test starts clean.
  * - `GET /__test/tables/:name` returns all rows of one table as JSON.
  * - `POST /__test/poll-runs/age?minutes=N` moves every Poll run N minutes
@@ -21,6 +23,7 @@
  */
 import { enableRowsReadMeter, takeRowsRead } from "../app/db/rows-read";
 import { setTestRoster } from "../app/roster";
+import { runScheduled } from "./scheduled";
 
 const PREFIX = "/__test/";
 
@@ -36,11 +39,20 @@ export async function handleTestRoute(
 
   const route = pathname.slice(PREFIX.length);
   if (route === "health" && request.method === "GET") {
-    const anthropic = searchParams.get("anthropic");
+    const matches = (param: string, value: string | undefined) => {
+      const expected = searchParams.get(param);
+      return expected === null || expected === value;
+    };
     const ours =
       searchParams.get("ea") === env.EA_BASE_URL &&
-      (anthropic === null || anthropic === env.ANTHROPIC_BASE_URL);
+      matches("anthropic", env.ANTHROPIC_BASE_URL) &&
+      matches("discord", env.DISCORD_WEBHOOK_URL);
     return new Response(null, { status: ours ? 200 : 409 });
+  }
+
+  if (route === "scheduled-without-discord" && request.method === "GET") {
+    await runScheduled({ ...env, DISCORD_WEBHOOK_URL: undefined });
+    return new Response(null, { status: 204 });
   }
 
   if (route === "rows-read" && request.method === "GET") {

@@ -8,6 +8,7 @@
 import { env } from "cloudflare:workers";
 import { Link } from "react-router";
 
+import { latestWriteup } from "~/ai/writeups";
 import {
   EmptyState,
   FormBadge,
@@ -15,6 +16,7 @@ import {
   HERO_WIDTH,
   LastUpdatedBadge,
   LondonTime,
+  MatchHeadline,
   MatchScoreBar,
   MilestoneCard,
   PageHeader,
@@ -84,10 +86,16 @@ export async function loader() {
       listMilestones(db, env.EA_CLUB_NAME, { limit: 1 }),
     ]);
   const latest = recent[0];
-  const detail = latest ? await getMatch(db, latest.matchId) : null;
+  const [detail, headline] = latest
+    ? await Promise.all([
+        getMatch(db, latest.matchId),
+        latestWriteup(db, "headline", latest.matchId),
+      ])
+    : [null, null];
   return {
     clubName: env.EA_CLUB_NAME,
     recent,
+    headline: headline?.text ?? null,
     skillRatings: detail?.skillRatings,
     sides: detail ? summariseMatchSides(detail.appearances) : undefined,
     performers: topPerformers(
@@ -108,6 +116,7 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
   const {
     clubName,
     recent,
+    headline,
     skillRatings,
     sides,
     performers,
@@ -131,6 +140,7 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
           <LatestMatch
             clubName={clubName}
             match={latest}
+            headline={headline}
             skillRatings={skillRatings}
             sides={sides}
             performers={performers}
@@ -164,6 +174,7 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
 function LatestMatch({
   clubName,
   match,
+  headline,
   skillRatings,
   sides,
   performers,
@@ -171,6 +182,7 @@ function LatestMatch({
 }: {
   clubName: string;
   match: MatchSummary;
+  headline: string | null;
   skillRatings?: MatchSkillRatings;
   sides?: MatchSides;
   performers: TopPerformer[];
@@ -191,6 +203,7 @@ function LatestMatch({
           skillRatings={skillRatings}
           sides={sides}
         />
+        {headline && <MatchHeadline text={headline} size="hero" />}
       </Link>
       {performers.length > 0 && (
         <div className="mt-1">

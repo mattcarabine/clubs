@@ -9,11 +9,16 @@ import type { Db } from "~/db/client";
 import { aiWriteups } from "~/db/schema";
 
 /**
- * What a write-up is about. `session` and `match` are keyed by the Session's
- * or Match's ID; `club` (the State of the club) by `CLUB_SUBJECT`; a
- * `milestone` comment by the Milestone's ID.
+ * What a write-up is about. `session` is keyed by the Session's ID, `match`
+ * (the Match report) and `headline` by the Match's; `club` (the State of the
+ * club) by `CLUB_SUBJECT`; a `milestone` comment by the Milestone's ID.
  */
-export type WriteupKind = "session" | "match" | "club" | "milestone";
+export type WriteupKind =
+  | "session"
+  | "match"
+  | "headline"
+  | "club"
+  | "milestone";
 
 /** The State of the club has one subject: Our Club. */
 export const CLUB_SUBJECT = "club";
@@ -38,6 +43,18 @@ export async function latestWriteup(
     .orderBy(desc(aiWriteups.id))
     .limit(1);
   return row ?? null;
+}
+
+/** Every subject with at least one write-up of this kind. One query. */
+export async function writtenSubjects(
+  db: Db,
+  kind: WriteupKind,
+): Promise<Set<string>> {
+  const rows = await db
+    .selectDistinct({ subjectKey: aiWriteups.subjectKey })
+    .from(aiWriteups)
+    .where(eq(aiWriteups.kind, kind));
+  return new Set(rows.map((row) => row.subjectKey));
 }
 
 /**

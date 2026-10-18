@@ -160,8 +160,8 @@ export interface MilestoneEntry extends MilestoneFigures {
 export interface MilestoneQuery {
   /** Our Club's Milestones, or one Squad Member's; everyone's when absent. */
   who?: "club" | { playerId: string };
-  /** Only this Match's. */
-  matchId?: string;
+  /** Only these Matches' (at most 90, for D1's bound-parameter cap), e.g. a Session's. */
+  matchIds?: readonly string[];
   /** Only those detected together (one write-up call). */
   batchKey?: string;
   /** Newest first, at most this many (and at most 90, for D1's bound-parameter cap). */
@@ -178,12 +178,12 @@ export const MILESTONE_PAGE_SIZE = 60;
 export async function listMilestones(
   db: Db,
   clubName: string,
-  { who, matchId, batchKey, limit = MILESTONE_PAGE_SIZE }: MilestoneQuery = {},
+  { who, matchIds, batchKey, limit = MILESTONE_PAGE_SIZE }: MilestoneQuery = {},
 ): Promise<MilestoneEntry[]> {
   const conditions: SQL[] = [isShownMatch];
   if (who === "club") conditions.push(eq(milestones.subject, "club"));
   else if (who) conditions.push(eq(milestones.playerId, who.playerId));
-  if (matchId) conditions.push(eq(milestones.matchId, matchId));
+  if (matchIds) conditions.push(inArray(milestones.matchId, [...matchIds]));
   if (batchKey) conditions.push(eq(milestones.batchKey, batchKey));
 
   const [rows, kickoffs] = await Promise.all([

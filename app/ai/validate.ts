@@ -1,7 +1,4 @@
-/**
- * Strict checks on a model's reply (docs/adr/0006): a writer stores nothing
- * from a reply that strays from its schema.
- */
+/** Strict checks for structured replies: anything off-schema stores nothing. */
 
 /** An object with exactly these keys. */
 export function hasExactly(
@@ -15,7 +12,7 @@ export function hasExactly(
   return own.length === keys.length && keys.every((k) => own.includes(k));
 }
 
-/** A string no longer than `maxLength`. */
+/** A string of at most `maxLength` characters. */
 export function isText(value: unknown, maxLength: number): value is string {
   return typeof value === "string" && value.length <= maxLength;
 }

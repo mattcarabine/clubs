@@ -20,11 +20,11 @@ import {
 } from "~/stats";
 
 import type { GenerateTask, WriteupDraft } from "../generate";
-import { hasExactly, isText } from "../output";
 import type { Subject } from "../plan";
 import { HOUSE_STYLE } from "../prompts";
 import type { AiWriter } from "../queue";
 import { promptName } from "../sanitise";
+import { hasExactly, isText } from "../validate";
 
 /** How Our Club is named in the prompt, as in the house style. */
 const OUR_CLUB = "A Bloo Bloo";

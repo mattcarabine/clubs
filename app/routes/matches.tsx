@@ -10,6 +10,7 @@ import {
   EmptyState,
   FilterBar,
   LondonTime,
+  MatchHeadline,
   MatchScoreBar,
   PageHeader,
   SessionHeader,
@@ -49,11 +50,18 @@ export async function loader({ request }: Route.LoaderArgs) {
     page,
     pageSize: PAGE_SIZE,
   });
-  const recaps = await latestWriteups(
-    db,
-    "session",
-    sessions.map((s) => s.id),
-  );
+  const [recaps, headlines] = await Promise.all([
+    latestWriteups(
+      db,
+      "session",
+      sessions.map((s) => s.id),
+    ),
+    latestWriteups(
+      db,
+      "headline",
+      sessions.flatMap((s) => s.matches.map((m) => m.matchId)),
+    ),
+  ]);
   // Only each recap's first sentence leaves the server.
   const teasers = Object.fromEntries(
     [...recaps].map(([id, recap]) => [id, firstSentence(recap.text)]),
@@ -63,6 +71,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     filter,
     sessions,
     teasers,
+    headlines: Object.fromEntries(
+      [...headlines].map(([id, headline]) => [id, headline.text]),
+    ),
     page,
     pages,
     total,
@@ -70,7 +81,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Matches({ loaderData }: Route.ComponentProps) {
-  const { clubName, filter, sessions, teasers, page, pages, total } =
+  const { clubName, filter, sessions, teasers, headlines, page, pages, total } =
     loaderData;
   const pageLink = usePageLink();
   return (
@@ -105,6 +116,7 @@ export default function Matches({ loaderData }: Route.ComponentProps) {
               clubName={clubName}
               session={session}
               teaser={teasers[session.id]}
+              headlines={headlines}
             />
           ))}
         </div>
@@ -119,11 +131,14 @@ function SessionMatches({
   clubName,
   session,
   teaser,
+  headlines,
 }: {
   clubName: string;
   session: SessionSummary;
   /** The recap's first sentence, once written. */
   teaser?: string;
+  /** Each Match's headline by Match ID, once written. */
+  headlines: Record<string, string>;
 }) {
   const { matches } = session;
   return (
@@ -144,7 +159,7 @@ function SessionMatches({
       />
       <ul className="mt-4 grid gap-x-6 gap-y-4 lg:grid-cols-2">
         {matches.map((match) => (
-          <li key={match.matchId}>
+          <li key={match.matchId} className="min-w-0">
             <Link
               to={`/matches/${match.matchId}`}
               className="block transition-[filter] hover:brightness-125 focus-visible:outline-2 focus-visible:outline-rave focus-visible:outline-offset-4"
@@ -154,6 +169,9 @@ function SessionMatches({
                 match={match}
                 when={<LondonTime date={match.playedAt} format="time" />}
               />
+              {headlines[match.matchId] && (
+                <MatchHeadline text={headlines[match.matchId]} />
+              )}
             </Link>
           </li>
         ))}
