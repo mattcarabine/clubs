@@ -53,6 +53,8 @@ describe("proseProblems", () => {
     "Kick-offs between 18:00–20:00 suit us; Kabeeble's 8.7 led the way.",
     "Loltown95 took two shots, scored twice and set up a third in a 4-1 rout.",
     "Rage quit at 3-0 down after 8 minutes. Nothing to say.",
+    "Lined up 4-2-3-1, then a 3-5-2, and still conceded 2-3 goals a night.",
+    "Between minutes 15-20 it fell apart; a 2-1 win all the same.",
   ])("passes clean prose: %j", (sentence) => {
     expect(proseProblems(sentence)).toEqual([]);
   });

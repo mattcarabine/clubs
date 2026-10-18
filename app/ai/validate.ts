@@ -95,8 +95,12 @@ const SINCE_RECORDS = /\bsince records began\b/gi;
 const MONTH_FRAMING =
   /\b(?:in|over|for) (?:a|the (?:last|past)) month\b|\b(?:last|past) (?:30 days|month)\b|\bthis month\b/i;
 
-/** A score: 1 or 2 digits each side of a hyphen or dash, not part of a time, date or decimal. */
-const SCORE = /(?<![\d.,:/])(\d{1,2}) ?[-–] ?(\d{1,2})(?![\d.,:/])/g;
+/**
+ * A score: 1 or 2 digits each side of a hyphen or dash, not part of a time,
+ * date, decimal or formation (4-2-3-1), nor a range of units ("15-20 minutes").
+ */
+const SCORE =
+  /(?<![\d.,:/–-])(?<!\b(?:minutes?|mins?) )(\d{1,2}) ?[-–] ?(\d{1,2})(?![\d.,:/–-])(?! ?(?:minutes?|mins?|goals?|games?|matches|days|shots|passes|tackles|points|per cent|%))/gi;
 
 /**
  * Every house-style rule a piece of prose breaks, described for the model's
