@@ -88,6 +88,18 @@ export function isTonight(
 }
 
 /**
+ * Whether a Session has ended: more than `SESSION_GAP_MINUTES` have passed
+ * since its last kick-off, so no further Match can join it. Anything that
+ * acts once a Session is over (its recap, a Discord post) asks this.
+ */
+export function isSessionOver(
+  session: Pick<SessionGroup, "end">,
+  now: Date = new Date(),
+): boolean {
+  return now.getTime() - session.end.getTime() > SESSION_GAP_MINUTES * 60_000;
+}
+
+/**
  * Splits Sessions (given as their Match counts, in page order) into pages of
  * at least `pageSize` Matches, the last page excepted, without ever splitting
  * a Session. Each page is a `[start, end)` range of Session indexes.

@@ -13,6 +13,7 @@ import {
   real,
   sqliteTable,
   text,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 import type { MatchKind, MatchResult, PositionGroup } from "../ea/parse.ts";
@@ -201,3 +202,76 @@ export const seasons = sqliteTable("seasons", {
   number: integer().primaryKey(),
   startedAt: integer({ mode: "timestamp_ms" }).notNull(),
 });
+
+export type AiJobStatus = "pending" | "done" | "failed";
+
+/**
+ * Write-up work queued by the Poll (docs/adr/0006), one row per subject and
+ * version: a Session's recap is written once per set of Matches, so a Match
+ * added later makes a new version and a new job. A done job is also the
+ * audit record of its call: the input sent, its hash, the model, the tokens
+ * and the estimated cost.
+ */
+export const aiJobs = sqliteTable(
+  "ai_jobs",
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    /** The writer that queued it, e.g. `session` (`app/ai/writers/`). */
+    kind: text().notNull(),
+    subjectKey: text().notNull(),
+    /** A cheap fingerprint of what the write-up covers, e.g. a Session's Match IDs. */
+    version: text().notNull(),
+    status: text().$type<AiJobStatus>().notNull(),
+    attempts: integer().notNull().default(0),
+    /** When a pending job may next be tried (exponential backoff). */
+    nextAttemptAt: integer({ mode: "timestamp_ms" }),
+    lastError: text(),
+    /** SHA-256 of `input`: a done job with the same hash is never paid for twice. */
+    inputHash: text(),
+    /** The JSON sent to the model, for auditing a write-up. */
+    input: text(),
+    model: text(),
+    inputTokens: integer(),
+    outputTokens: integer(),
+    cacheReadTokens: integer(),
+    cacheWriteTokens: integer(),
+    /** Estimated from the prices in `app/ai/config.ts`. */
+    costUsd: real(),
+    createdAt: integer({ mode: "timestamp_ms" }).notNull(),
+    finishedAt: integer({ mode: "timestamp_ms" }),
+  },
+  (table) => [
+    uniqueIndex("ai_jobs_subject_idx").on(
+      table.kind,
+      table.subjectKey,
+      table.version,
+    ),
+  ],
+);
+
+/**
+ * The text written for one subject: a Session recap, a Match report, the
+ * State of the club. One job can write several (a Session's recap and its
+ * Match reports come from one call). Pages show the latest per subject.
+ */
+export const aiWriteups = sqliteTable(
+  "ai_writeups",
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    jobId: integer()
+      .notNull()
+      .references(() => aiJobs.id),
+    /** `WriteupKind` in `app/ai/writeups.ts`. */
+    kind: text().notNull(),
+    subjectKey: text().notNull(),
+    text: text().notNull(),
+    createdAt: integer({ mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    index("ai_writeups_subject_idx").on(
+      table.kind,
+      table.subjectKey,
+      sql`${table.id} DESC`,
+    ),
+  ],
+);

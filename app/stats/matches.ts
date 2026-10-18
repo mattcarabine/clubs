@@ -1,5 +1,5 @@
 /** Match queries: lists, counts, a single Match with both line-ups, and the club record. */
-import { and, asc, count, desc, eq, min } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, min } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
 import { appearances, clubs, matches, players } from "~/db/schema";
@@ -14,6 +14,7 @@ import { isShownMatch, matchScope, type ScopeOptions } from "./scope";
 import type { Kickoff } from "./sessions";
 import {
   type AppearanceStats,
+  groupBy,
   type RecordSummary,
   summariseRecord,
 } from "./summaries";
@@ -164,38 +165,50 @@ export async function getMatch(
   db: Db,
   matchId: string,
 ): Promise<MatchDetail | null> {
-  const [match] = await db
-    .select(summaryColumns)
-    .from(matches)
-    .innerJoin(clubs, eq(clubs.clubId, matches.opponentClubId))
-    .where(and(eq(matches.matchId, matchId), isShownMatch));
-  if (!match) return null;
+  const [match] = await getMatchDetails(db, [matchId]);
+  return match ?? null;
+}
 
-  const rows = await db
-    .select({ appearance: appearances, personaName: players.personaName })
-    .from(appearances)
-    .innerJoin(players, eq(players.playerId, appearances.playerId))
-    .where(eq(appearances.matchId, matchId));
+/**
+ * Several Matches with both clubs' Appearances, oldest first, in two queries
+ * whatever their number (at most 90, for D1's bound-parameter cap). Unknown
+ * IDs and Friendlies are left out. Ignores the filter.
+ */
+export async function getMatchDetails(
+  db: Db,
+  matchIds: readonly string[],
+): Promise<MatchDetail[]> {
+  if (matchIds.length === 0) return [];
+  const [found, rows] = await Promise.all([
+    selectSummaries(db)
+      .where(and(inArray(matches.matchId, [...matchIds]), isShownMatch))
+      .orderBy(asc(matches.playedAt), asc(matches.matchId)),
+    db
+      .select({ appearance: appearances, personaName: players.personaName })
+      .from(appearances)
+      .innerJoin(players, eq(players.playerId, appearances.playerId))
+      .where(inArray(appearances.matchId, [...matchIds])),
+  ]);
+  const byMatch = groupBy(rows, (row) => row.appearance.matchId);
 
-  const lineups = rows
-    .map(({ appearance, personaName }): MatchAppearance => {
-      const { matchId: _, positionGroup, ...stats } = appearance;
-      const isOurClub = appearance.clubId !== match.opponentClubId;
-      return {
-        ...stats,
-        positionGroup: toPositionGroup(positionGroup),
-        isOurClub,
-        name: isOurClub
-          ? displayName(appearance.playerId, personaName)
-          : (personaName ?? appearance.playerId),
-      };
-    })
-    .sort((a, b) => Number(b.isOurClub) - Number(a.isOurClub));
+  return found.map((match) => {
+    const lineups = (byMatch.get(match.matchId) ?? [])
+      .map(({ appearance, personaName }): MatchAppearance => {
+        const { matchId: _, positionGroup, ...stats } = appearance;
+        const isOurClub = appearance.clubId !== match.opponentClubId;
+        return {
+          ...stats,
+          positionGroup: toPositionGroup(positionGroup),
+          isOurClub,
+          name: isOurClub
+            ? displayName(appearance.playerId, personaName)
+            : (personaName ?? appearance.playerId),
+        };
+      })
+      .sort((a, b) => Number(b.isOurClub) - Number(a.isOurClub));
 
-  return {
-    ...toSummary(match),
-    appearances: lineups,
-  };
+    return { ...toSummary(match), appearances: lineups };
+  });
 }
 
 interface SummaryRow {

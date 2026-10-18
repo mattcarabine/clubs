@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   groupSessions,
+  isSessionOver,
   isTonight,
   type PerformerTotals,
   pageSessions,
@@ -81,6 +82,24 @@ describe("isTonight", () => {
 
   it("is the last Session after that", () => {
     expect(isTonight(session, hoursLater(6.001))).toBe(false);
+  });
+});
+
+describe("isSessionOver", () => {
+  const session = { end: at("21:00") };
+  const minutesLater = (minutes: number) =>
+    new Date(at("21:00").getTime() + minutes * 60_000);
+
+  it("is still on up to 45 minutes after its last kick-off, since a Match could join it", () => {
+    expect(isSessionOver(session, minutesLater(0))).toBe(false);
+    expect(isSessionOver(session, minutesLater(SESSION_GAP_MINUTES))).toBe(
+      false,
+    );
+  });
+
+  it("is over once more than 45 minutes have passed", () => {
+    expect(isSessionOver(session, minutesLater(45.01))).toBe(true);
+    expect(isSessionOver(session, minutesLater(600))).toBe(true);
   });
 });
 
