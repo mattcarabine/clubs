@@ -30,9 +30,10 @@ describe("isDue", () => {
     ).toBe(false);
   });
 
-  it("is never due once written, failed or out of attempts", () => {
+  it("is never due once written, failed, empty or out of attempts", () => {
     expect(isDue(job({ status: "done" }), NOW)).toBe(false);
     expect(isDue(job({ status: "failed" }), NOW)).toBe(false);
+    expect(isDue(job({ status: "empty" }), NOW)).toBe(false);
     expect(isDue(job({ attempts: MAX_ATTEMPTS }), NOW)).toBe(false);
   });
 });

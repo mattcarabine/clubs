@@ -203,7 +203,11 @@ export const seasons = sqliteTable("seasons", {
   startedAt: integer({ mode: "timestamp_ms" }).notNull(),
 });
 
-export type AiJobStatus = "pending" | "done" | "failed";
+/**
+ * `empty`: the writer had nothing to write about for this version (e.g. a
+ * finished Season with no recorded Matches), so it is never checked again.
+ */
+export type AiJobStatus = "pending" | "done" | "failed" | "empty";
 
 /**
  * Write-up work queued by the Poll (docs/adr/0006), one row per subject and

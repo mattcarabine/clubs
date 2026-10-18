@@ -26,7 +26,11 @@ export interface AiWriter<S extends Subject = Subject> {
   kind: string;
   /** Every subject that should have a write-up, newest first. Keep it to a query or two. */
   subjects(db: Db, now: Date): Promise<S[]>;
-  /** The work for one subject, or null if it no longer exists. */
+  /**
+   * The work for one subject, or null when there is nothing to write about
+   * (it no longer exists, or a finished Season had no Matches). The queue
+   * then settles that version as `empty`, so it is never checked again.
+   */
   task(db: Db, subject: S): Promise<GenerateTask | null>;
 }
 
@@ -34,6 +38,8 @@ export interface DrainSummary {
   written: number;
   unchanged: number;
   failed: number;
+  /** Subjects settled with nothing to write about. */
+  empty: number;
   /** Due subjects left for later Polls. */
   waiting: number;
   costUsd: number;
@@ -49,6 +55,7 @@ export async function drainQueue(
     written: 0,
     unchanged: 0,
     failed: 0,
+    empty: 0,
     waiting: 0,
     costUsd: 0,
     errors: [],
@@ -70,7 +77,11 @@ export async function drainQueue(
         continue;
       }
       const task = await writer.task(ctx.db, subject);
-      if (!task) continue;
+      if (!task) {
+        await settleEmpty(ctx, writer.kind, subject);
+        summary.empty++;
+        continue;
+      }
       const result = await generate(ctx, task);
       switch (result.status) {
         case "written":
@@ -95,4 +106,23 @@ export async function drainQueue(
     }
   }
   return summary;
+}
+
+/**
+ * Records that `subject`'s version has nothing to write about, so later
+ * Polls skip it without building its task again (CLUBS-47). One write.
+ */
+async function settleEmpty(
+  { db, now }: GenerateContext,
+  kind: string,
+  { subjectKey, version }: Subject,
+): Promise<void> {
+  const settled = { status: "empty", finishedAt: now } as const;
+  await db
+    .insert(aiJobs)
+    .values({ kind, subjectKey, version, createdAt: now, ...settled })
+    .onConflictDoUpdate({
+      target: [aiJobs.kind, aiJobs.subjectKey, aiJobs.version],
+      set: settled,
+    });
 }
