@@ -21,6 +21,7 @@ import {
 } from "~/stats";
 
 import type { GenerateTask, WriteupDraft } from "../generate";
+import { hasExactly, isText } from "../output";
 import type { Subject } from "../plan";
 import { HOUSE_STYLE } from "../prompts";
 import type { AiWriter } from "../queue";
@@ -150,22 +151,6 @@ export function sessionWriteups(
     });
   }
   return drafts;
-}
-
-/** An object with exactly these keys. */
-function hasExactly(
-  value: unknown,
-  keys: readonly string[],
-): value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const own = Object.keys(value);
-  return own.length === keys.length && keys.every((k) => own.includes(k));
-}
-
-function isText(value: unknown, maxLength: number): value is string {
-  return typeof value === "string" && value.length <= maxLength;
 }
 
 function outputSchema(matchIds: readonly string[], withClub: boolean) {

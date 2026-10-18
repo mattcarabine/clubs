@@ -24,14 +24,17 @@ export function pollConfigFromEnv(env: Env): PollConfig {
   };
 }
 
-export async function runPoll(env: Env): Promise<void> {
+/** Runs one Poll; returns what it stored, or null when recording failed. */
+export async function runPoll(env: Env): Promise<PollSummary | null> {
   const db = getDb(env.DB);
   const startedAt = Date.now();
   let poll: CollectedPoll | undefined;
   try {
     const ratings = await ratingState(db, env.EA_CLUB_ID, startedAt);
     poll = await collectPoll(pollConfigFromEnv(env), { ratings });
-    log(await recordPoll(db, poll, env.EA_CLUB_ID), poll);
+    const summary = await recordPoll(db, poll, env.EA_CLUB_ID);
+    log(summary, poll);
+    return summary;
   } catch (error) {
     // Recording itself failed (e.g. D1 unavailable): make a best effort to
     // leave a trace, but never let the scheduled handler throw.
@@ -60,6 +63,7 @@ export async function runPoll(env: Env): Promise<void> {
     } catch {
       // Already logged above.
     }
+    return null;
   }
 }
 

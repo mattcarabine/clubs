@@ -16,6 +16,8 @@ export * from "./ea-totals";
 export * from "./filter";
 export * from "./formulas";
 export * from "./matches";
+export * from "./milestones";
+export * from "./milestones-query";
 export * from "./opponents";
 export * from "./outcome-split";
 export * from "./outcome-split-query";

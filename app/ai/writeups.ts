@@ -10,9 +10,10 @@ import { aiWriteups } from "~/db/schema";
 
 /**
  * What a write-up is about. `session` and `match` are keyed by the Session's
- * or Match's ID; `club` (the State of the club) by `CLUB_SUBJECT`.
+ * or Match's ID; `club` (the State of the club) by `CLUB_SUBJECT`; a
+ * `milestone` comment by the Milestone's ID.
  */
-export type WriteupKind = "session" | "match" | "club";
+export type WriteupKind = "session" | "match" | "club" | "milestone";
 
 /** The State of the club has one subject: Our Club. */
 export const CLUB_SUBJECT = "club";
