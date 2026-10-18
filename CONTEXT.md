@@ -53,7 +53,7 @@ A League or Playoff Match; the default scope for all stats.
 _Avoid_: Ranked match, real match
 
 **Appearance**:
-One player's participation in one Match, with that player's stats for it.
+One player's participation in one Match, with that player's stats for it. An Appearance with no minutes (EA's record of a player who dropped out, rated 3.0) is never counted.
 _Avoid_: Cap, game played, player-match
 
 **Position Group**:
@@ -61,8 +61,8 @@ The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfield
 _Avoid_: Position, role, attack, midfield, defence, GK/DEF/MID/FWD
 
 **DNF**:
-A Match ended early because one side quit; EA awards the result to the side that stayed.
-_Avoid_: Forfeit, rage quit
+A Match ended early because one side quit; EA awards the result to the side that stayed. A DNF loss means we quit, a DNF Win that the Opponent did. In a DNF we quit EA keeps almost none of our stats, so our side's are not counted; its result is.
+_Avoid_: Forfeit, rage quit (in labels and code; Write-up prose may say it)
 
 **Dropped Points**:
 A Match drawn or lost.
@@ -134,7 +134,7 @@ _Avoid_: Partnership, joint match, common game
 ### Write-ups
 
 **Write-up**:
-Prose about our stats, written by the Poll (never on a page view) and shown as ordinary site copy, with no label saying how it was written.
+Prose about our stats, written by the Poll (never on a page view) and shown as ordinary site copy, with no label saying how it was written. It talks like a pundit, in football words: the labels in this glossary are for headings, not its prose.
 _Avoid_: AI summary, generated text, insight
 
 **Session recap**:

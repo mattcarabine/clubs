@@ -76,6 +76,7 @@ export async function milestoneDetectionInput(
           goalsFor: matches.goalsFor,
           goalsAgainst: matches.goalsAgainst,
           result: matches.result,
+          dnf: matches.dnf,
         })
         .from(matches)
         .where(isShownMatch)
@@ -89,6 +90,7 @@ export async function milestoneDetectionInput(
           assists: appearances.assists,
           rating: appearances.rating,
           manOfTheMatch: appearances.manOfTheMatch,
+          secondsPlayed: appearances.secondsPlayed,
         })
         .from(appearances)
         .innerJoin(matches, eq(matches.matchId, appearances.matchId))

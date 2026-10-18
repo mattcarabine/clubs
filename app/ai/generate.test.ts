@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { AI_MODEL } from "./config";
-import { buildRequest, type GenerateTask } from "./generate";
+import { buildRequest, type GenerateTask, withRewriteNote } from "./generate";
 
 const task: GenerateTask = {
   kind: "session",
@@ -45,6 +45,19 @@ describe("buildRequest", () => {
       },
       { type: "text", text: 'Write it.\n\n<data>\n{"score":"3-1"}\n</data>' },
     ]);
+  });
+
+  it("adds the house-style problems after the data for a rewrite, keeping the cached prefix", () => {
+    const request = buildRequest(task);
+    const rewrite = withRewriteNote(request, ['the site label "DNF"']);
+    const content = rewrite.messages[0].content;
+    expect(Array.isArray(content) && content.slice(0, 2)).toEqual(
+      request.messages[0].content,
+    );
+    expect(JSON.stringify(content)).toContain(
+      'rejected because its prose used: the site label \\"DNF\\"',
+    );
+    expect(rewrite.system).toEqual(request.system);
   });
 
   it("asks for plain text without a schema or background", () => {

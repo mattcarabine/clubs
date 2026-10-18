@@ -10,6 +10,7 @@ import {
   type ClubMatchTotals,
   dayType,
   droppedPointsReasons,
+  matchAngle,
   outcomeSplit,
   POSITION_OUTLIER_GAP,
   playerOutcomeSplit,
@@ -324,6 +325,30 @@ describe("byOpponentStrength", () => {
   });
 });
 
+describe("matchAngle", () => {
+  const usual = () =>
+    [10, 12, 14].map((shots) => match("W", { ours: { shots, goals: 0 } }));
+
+  it("is the one stat furthest from every other Match, against our usual", () => {
+    expect(
+      matchAngle(match("W", { ours: { shots: 24, goals: 0 } }), usual()),
+    ).toMatchObject({
+      id: "ours-shots",
+      text: "12.0 more shots per 90 than usual (24.0 vs 12.0)",
+    });
+  });
+
+  it("is null with fewer than 3 other Matches, or nothing different", () => {
+    expect(matchAngle(match("W"), usual().slice(0, 2))).toBeNull();
+    expect(
+      matchAngle(
+        match("W"),
+        many(3, () => match("W")),
+      ),
+    ).toBeNull();
+  });
+});
+
 describe("droppedPointsReasons", () => {
   /** Three Wins with 10, 12 and 14 shots (mean 12, standard deviation 1.63) and no goals. */
   const wins = () =>
@@ -383,6 +408,14 @@ describe("droppedPointsReasons", () => {
     expect(reasons?.deviations.map((d) => d.text)).toEqual([
       "6.0 more shots per 90 than in a typical Win (18.0 vs 12.0)",
     ]);
+  });
+
+  it("compares only the Opponent's stats when ours are not counted (a DNF we quit)", () => {
+    const reasons = droppedPointsReasons(
+      { ...match("L", { opponent: { passesMade: 92 } }), ours: null },
+      wins(),
+    );
+    expect(reasons?.deviations.map((d) => d.club)).toEqual(["opponent"]);
   });
 
   it("has no deviations when the Match was like every Win", () => {

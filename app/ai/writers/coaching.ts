@@ -13,7 +13,6 @@ import {
   coachingWeekLastMoment,
   latestCoachingWeek,
 } from "~/lib/coaching-week";
-import { OUTCOME_LABEL } from "~/lib/domain";
 import { formatLondonDate } from "~/lib/london-time";
 import { formatDecimal, formatPercentage } from "~/lib/number-format";
 import {
@@ -23,14 +22,18 @@ import {
   type PlayerTotals,
   type SquadAppearance,
 } from "~/stats";
-
+import { revised } from "../config";
 import type { GenerateTask, WriteupDraft } from "../generate";
 import type { Subject } from "../plan";
 import { HOUSE_STYLE } from "../prompts";
 import type { AiWriter } from "../queue";
 import { promptName } from "../sanitise";
 import { hasExactly } from "../validate";
-import { appearanceStatsInput } from "./inputs";
+import { recentWriteups } from "../writeups";
+import { appearanceStatsInput, proseLabels, resultInput } from "./inputs";
+
+/** How many recent players' notes a call sees, so it doesn't repeat them. */
+const RECENT_NOTES = 8;
 
 /** The most points one Squad Member's notes may have. */
 export const MAX_POINTS = 4;
@@ -46,14 +49,17 @@ export const coachingWriter: AiWriter = {
     const week = latestCoachingWeek(now);
     const playerIds = await coachingPlayerIds(db, week);
     if (playerIds.length === 0) return [];
-    return [{ subjectKey: week.start, version: playerIds.join(",") }];
+    return [{ subjectKey: week.start, version: revised(playerIds.join(",")) }];
   },
 
   async task(db, subject) {
     // The subject's key is the week's Monday.
     const week = coachingWeek(subject.subjectKey);
-    const briefs = await getCoachingBriefs(db, week, promptName);
-    return briefs.length ? coachingTask(week, briefs, subject) : null;
+    const [briefs, recent] = await Promise.all([
+      getCoachingBriefs(db, week, promptName),
+      recentWriteups(db, "coaching", RECENT_NOTES),
+    ]);
+    return briefs.length ? coachingTask(week, briefs, subject, recent) : null;
   },
 };
 
@@ -61,7 +67,9 @@ const INSTRUCTIONS = `Write this week's coaching notes for each Squad Member in 
 - For these notes you are the club's coach rather than a pundit: encouraging but honest, specific and practical.
 - "notes": one entry per Squad Member, using their playerId. "points" holds 2 to 4 short points, each one or two plain sentences: what is working, what to work on, and one concrete focus for next week, e.g. "Conversion fell to 18% while shots rose; take one more touch."
 - Name the Squad Member in the third person, by the name in the data, never "you": the whole squad reads every note.
-- Ground every point in their numbers: this week's Appearances against their recent changes, their form, their stats by Position Group, their Outcome Split (their stats in Wins against Dropped Points) and their all-time totals. Every number must be in the data.
+- Ground every point in their numbers: this week's Matches against their recent changes, their form, their stats by Position Group, their stats in wins against draws and defeats, and their all-time totals. Every number must be in the data.
+- Honest means blunt about what went badly, but always about football, never the person, and never about a gap in EA's data.
+- Vary the points' openings and phrasing from player to player, and from the recent notes in the background.
 - Each point stands alone: no numbering, dashes or bullet characters, and no sign-off.`;
 
 /** The task for one week, from its briefs. Exported for unit tests. */
@@ -69,13 +77,20 @@ export function coachingTask(
   week: CoachingWeek,
   briefs: readonly PlayerCoachingBrief[],
   { subjectKey, version }: Subject,
+  recentNotes: readonly string[] = [],
 ): GenerateTask {
   const playerIds = briefs.map((b) => b.playerId);
   return {
     kind: "coaching",
     subjectKey,
     version,
-    prompt: { system: HOUSE_STYLE, instructions: INSTRUCTIONS },
+    prompt: {
+      system: HOUSE_STYLE,
+      ...(recentNotes.length > 0 && {
+        context: { recentWriting: { coachingNotes: recentNotes } },
+      }),
+      instructions: INSTRUCTIONS,
+    },
     input: {
       week: {
         from: formatLondonDate(week.from, week.from),
@@ -169,34 +184,32 @@ function briefInput(brief: PlayerCoachingBrief) {
         }
       : "Not enough Appearances yet to compare",
     form: brief.formIndicator
-      ? `${brief.formIndicator.status === "hot" ? "Hot" : "Cold"} form: ${brief.formIndicator.text}`
-      : "Neither Hot nor Cold form",
+      ? `${brief.formIndicator.status === "hot" ? "Well above" : "Well below"} their usual ratings: ${brief.formIndicator.text}`
+      : "Rating close to their usual",
     byPositionGroup: brief.byPositionGroup.map((totals) => ({
       positionGroup: totals.positionGroup ?? "Unknown",
       ...totalsInput(totals),
     })),
-    outcomeSplit: {
+    inWinsAgainstTheRest: {
       inWins: totalsInput(brief.outcomeSplit.wins),
-      inDroppedPoints: totalsInput(brief.outcomeSplit.dropped),
+      inDrawsAndDefeats: totalsInput(brief.outcomeSplit.dropped),
     },
     allTime: totalsInput(brief.allTime),
   };
 }
 
 function changeInput(change: { text: string; smallSample: boolean }) {
+  const text = proseLabels(change.text);
   return change.smallSample
-    ? { change: change.text, smallSample: true }
-    : { change: change.text };
+    ? { change: text, smallSample: true }
+    : { change: text };
 }
 
 function appearanceInput(a: SquadAppearance) {
   return {
     date: formatLondonDate(a.playedAt, a.playedAt),
     matchType: a.matchType,
-    opponent: promptName(a.opponentName),
-    score: `${a.goalsFor}-${a.goalsAgainst}`,
-    result: OUTCOME_LABEL[a.outcome],
-    dnf: a.dnf,
+    ...resultInput({ ...a, opponent: { name: a.opponentName } }),
     positionGroup: a.positionGroup ?? "Unknown",
     ...appearanceStatsInput(a),
   };

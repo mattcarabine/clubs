@@ -26,9 +26,10 @@ import {
   MAX_ATTEMPTS,
   MODEL_PRICES,
 } from "./config";
-import { estimateCost, type TokenUsage } from "./cost";
+import { addUsage, estimateCost, type TokenUsage } from "./cost";
 import { isDue, retryDelay } from "./plan";
 import { cleanWriteupText, promptJson } from "./sanitise";
+import { type ProseContext, proseProblems } from "./validate";
 import type { WriteupKind } from "./writeups";
 
 /** One piece of text to store for a subject. */
@@ -67,6 +68,8 @@ export interface GenerateTask {
    * fails and is retried. Every text is then cleaned (`cleanWriteupText`).
    */
   writeups(output: unknown): WriteupDraft[];
+  /** What the house style's prose checks need to know (`proseProblems`). */
+  prose?: ProseContext;
 }
 
 export interface GenerateContext {
@@ -119,18 +122,37 @@ export async function generate(
     })
     .where(eq(aiJobs.id, job.id));
 
-  let usage: TokenUsage | undefined;
+  // Every call's tokens: a reply that breaks the house style costs two.
+  const spent: TokenUsage[] = [];
   let model = AI_MODEL;
+  const call = async (req: ModelRequest) => {
+    try {
+      const reply = await callModel(ctx.client, req);
+      spent.push(reply.usage);
+      model = reply.model;
+      return draftsFrom(task, reply.text);
+    } catch (error) {
+      if (error instanceof AiCallError) {
+        if (error.usage) spent.push(error.usage);
+        if (error.model) model = error.model;
+      }
+      throw error;
+    }
+  };
   try {
-    const reply = await callModel(ctx.client, request);
-    usage = reply.usage;
-    model = reply.model;
-    const output = task.schema ? JSON.parse(reply.text) : reply.text;
-    const drafts = task
-      .writeups(output)
-      .map((draft) => ({ ...draft, text: cleanWriteupText(draft.text) }))
-      .filter((draft) => draft.text);
-    if (drafts.length === 0) throw new Error("The reply held no write-ups");
+    let drafts = await call(request);
+    // A reply that breaks the house style is written again, once (CLUBS-48).
+    const problems = draftProblems(task, drafts);
+    if (problems.length > 0) {
+      drafts = await call(withRewriteNote(request, problems));
+      const still = draftProblems(task, drafts);
+      if (still.length > 0) {
+        throw new Error(
+          `The rewrite still broke the house style: ${still.join("; ")}`,
+        );
+      }
+    }
+    const usage = spent.reduce(addUsage);
     const costUsd = estimateCost(usage, MODEL_PRICES[model]);
     await db.batch([
       db
@@ -157,10 +179,7 @@ export async function generate(
     ]);
     return { status: "written", costUsd };
   } catch (error) {
-    if (error instanceof AiCallError) {
-      usage ??= error.usage;
-      if (error.model) model = error.model;
-    }
+    const usage = spent.length > 0 ? spent.reduce(addUsage) : undefined;
     const message = errorMessage(error);
     // Tokens spent on an unusable reply still count towards the bill.
     const costUsd = usage ? estimateCost(usage, MODEL_PRICES[model]) : null;
@@ -174,6 +193,44 @@ export async function generate(
       .where(eq(aiJobs.id, job.id));
     return { status: "failed", error: message, costUsd };
   }
+}
+
+/** A reply's write-ups, cleaned; throws when it holds none. */
+function draftsFrom(task: GenerateTask, text: string): WriteupDraft[] {
+  const output = task.schema ? JSON.parse(text) : text;
+  const drafts = task
+    .writeups(output)
+    .map((draft) => ({ ...draft, text: cleanWriteupText(draft.text) }))
+    .filter((draft) => draft.text);
+  if (drafts.length === 0) throw new Error("The reply held no write-ups");
+  return drafts;
+}
+
+/** Every house-style rule the drafts break, each named once. */
+function draftProblems(
+  task: GenerateTask,
+  drafts: readonly WriteupDraft[],
+): string[] {
+  return [...new Set(drafts.flatMap((d) => proseProblems(d.text, task.prose)))];
+}
+
+/**
+ * The same request with a note, after the data, on what the first reply got
+ * wrong. Its cached prefix is unchanged.
+ */
+export function withRewriteNote(
+  request: ModelRequest,
+  problems: readonly string[],
+): ModelRequest {
+  const [message] = request.messages;
+  const content = Array.isArray(message.content) ? message.content : [];
+  const note = `A first draft of this was rejected because its prose used: ${problems.join("; ")}. Write it again from scratch, following the house style.`;
+  return {
+    ...request,
+    messages: [
+      { ...message, content: [...content, { type: "text", text: note }] },
+    ],
+  };
 }
 
 /** The `ai_jobs` columns that make up a `JobState`. */

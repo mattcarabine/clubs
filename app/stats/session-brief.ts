@@ -8,10 +8,13 @@
 import type { Db } from "~/db/client";
 import type { Outcome } from "~/lib/domain";
 
+import { weQuit } from "./counted";
 import { getMatchDetails, listKickoffs, type MatchDetail } from "./matches";
 import {
+  type Deviation,
   type DroppedPointsReasons,
   droppedPointsReasons,
+  matchAngle,
   type OutcomeSplit,
 } from "./outcome-split";
 import { getAnalysisAsOf } from "./outcome-split-query";
@@ -41,8 +44,14 @@ export const RECENT_SESSIONS = 5;
 export interface BriefMatch extends MatchDetail {
   /** 1 for the Session's first Match. */
   place: number;
-  /** Against the Wins up to the Session's end; null for a Win or too few Wins. */
+  /** Against the Wins up to the Session's end; null for a Win, a DNF we quit or too few Wins. */
   droppedPoints: DroppedPointsReasons | null;
+  /**
+   * Its most unusual stat against every other Match up to the Session's end
+   * (`matchAngle`); null for a DNF, whose per-90s over a few minutes say
+   * nothing, or with too few Matches.
+   */
+  angle: Deviation | null;
 }
 
 /** A Squad Member's form going into the Session. */
@@ -80,6 +89,8 @@ export interface ClubBrief {
 
 export interface SessionBrief {
   session: SessionGroup;
+  /** The first recorded Competitive Match's kick-off: how far back anything "recent" can reach. */
+  trackedSince: Date;
   record: RecordSummary;
   /** Oldest first. */
   matches: BriefMatch[];
@@ -109,16 +120,21 @@ export async function getSessionBrief(
   const wins = analysis.matches
     .filter((m) => m.outcome === "W")
     .map((m) => analysis.performance(m.matchId));
-  const matches = details.map(
-    (match, i): BriefMatch => ({
+  const matches = details.map((match, i): BriefMatch => {
+    const performance = analysis.performance(match.matchId);
+    const others = analysis.matches
+      .filter((m) => m.matchId !== match.matchId)
+      .map((m) => analysis.performance(m.matchId));
+    return {
       ...match,
       place: i + 1,
       droppedPoints:
-        match.outcome === "W"
+        match.outcome === "W" || weQuit(match)
           ? null
-          : droppedPointsReasons(analysis.performance(match.matchId), wins),
-    }),
-  );
+          : droppedPointsReasons(performance, wins),
+      angle: match.dnf ? null : matchAngle(performance, others),
+    };
+  });
 
   const inSession = new Set(session.matchIds);
   const sessionAppearances = analysis.squad.filter((a) =>
@@ -132,6 +148,7 @@ export async function getSessionBrief(
 
   return {
     session,
+    trackedSince: analysis.matches[0]?.playedAt ?? session.start,
     record: summariseRecord(matches),
     matches,
     leaderboard,

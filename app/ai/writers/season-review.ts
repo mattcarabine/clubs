@@ -18,7 +18,7 @@ import {
   type SeasonReview,
   type Slot,
 } from "~/stats";
-
+import { revised } from "../config";
 import type { GenerateTask, WriteupDraft } from "../generate";
 import type { Subject } from "../plan";
 import { HOUSE_STYLE } from "../prompts";
@@ -26,6 +26,7 @@ import type { AiWriter } from "../queue";
 import { promptName } from "../sanitise";
 import { hasExactly, isText } from "../validate";
 import { seasonReviewKey } from "../writeups";
+import { resultInput } from "./inputs";
 
 /** A review is written once; bump this only to rewrite every review. */
 export const SEASON_REVIEW_VERSION = "1";
@@ -41,7 +42,7 @@ export const seasonReviewWriter: AiWriter = {
   async subjects(db) {
     return (await listFinishedSeasons(db)).map((season) => ({
       subjectKey: String(season.number),
-      version: SEASON_REVIEW_VERSION,
+      version: revised(SEASON_REVIEW_VERSION),
     }));
   },
 
@@ -208,8 +209,7 @@ function recordInput(record: RecordSummary) {
 
 function matchInput(match: MatchSummary) {
   return {
-    opponent: promptName(match.opponent.name),
-    score: `${match.goalsFor}-${match.goalsAgainst}`,
+    ...resultInput(match),
     matchType: match.matchType,
     date: formatLondonDate(match.playedAt, match.playedAt),
   };
@@ -229,7 +229,7 @@ function rivalInput(rival: RivalRecord) {
     name: promptName(rival.name),
     matches: rival.played,
     wins: rival.wins,
-    droppedPoints: rival.droppedPoints,
+    drawsAndDefeats: rival.droppedPoints,
   };
 }
 

@@ -13,6 +13,7 @@ export * from "./coaching-brief";
 export * from "./comparison";
 export * from "./comparison-params";
 export * from "./convert";
+export * from "./counted";
 export * from "./divisions";
 export * from "./ea-totals";
 export * from "./filter";

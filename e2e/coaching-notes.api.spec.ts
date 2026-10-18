@@ -3,6 +3,7 @@
  * 09:00 London for every Squad Member who played that week, in one call to
  * the fake Anthropic upstream.
  */
+import { revised } from "../app/ai/config.ts";
 import {
   afterRelease,
   coachingRequests,
@@ -67,7 +68,7 @@ test("the first Poll after Monday 09:00 London writes notes for everyone who pla
   expect(jobs).toEqual([
     expect.objectContaining({
       subject_key: week.start,
-      version: [KAB.id, TREV.id].join(","),
+      version: revised([KAB.id, TREV.id].join(",")),
       status: "done",
       attempts: 1,
     }),
@@ -116,12 +117,12 @@ test("the request carries the week's Appearances, Recent changes, form, per-posi
     // Recent changes (CLUBS-37), in the profile's own words.
     '"recentChanges":{"improving":[{"change":',
     `{"change":"${KAB.name}'s average rating is up 1.5 over the last 10 Appearances (7.5 vs 6.0)"`,
-    // Hot form (CLUBS-40).
-    '"form":"Hot form: Last 5: 9.0 avg vs',
+    // Hot form (CLUBS-40), in football words (CLUBS-48).
+    '"form":"Well above their usual ratings: Last 5: 9.0 avg vs',
     // Stats by Position Group.
     '"byPositionGroup":[{"positionGroup":"Midfielder","appearances":15',
     '{"positionGroup":"Forward","appearances":5',
-    '"outcomeSplit":{"inWins":',
+    '"inWinsAgainstTheRest":{"inWins":',
     '"allTime":{"appearances":20',
     '"thisWeek":{"totals":{"appearances":5,',
     '"positionGroup":"Forward","minutes":',

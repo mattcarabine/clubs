@@ -16,6 +16,7 @@ import {
   ne,
   notExists,
   type SQL,
+  sql,
 } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
@@ -114,3 +115,13 @@ function inSeason(db: Db, number: number): SQL | undefined {
  * `matches` joined to `appearances`.
  */
 export const isOurAppearance = ne(appearances.clubId, matches.opponentClubId);
+
+/** `isPlayedAppearance` (`counted.ts`) in SQL. Needs `appearances`. */
+export const isPlayedAppearanceSql: SQL = gt(appearances.secondsPlayed, 0);
+
+/**
+ * `isCountedAppearance` (`counted.ts`) in SQL, for either club's Appearances: only Our
+ * Club's side of a DNF we quit is left out. Needs `matches` joined to
+ * `appearances`.
+ */
+export const isCountedAppearanceSql: SQL = sql`(${isPlayedAppearanceSql} and not (${isOurAppearance} and ${matches.dnf} = 1 and ${matches.result} = 'loss'))`;

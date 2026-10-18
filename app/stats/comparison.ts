@@ -10,6 +10,7 @@ import {
   type ComparisonParams,
   type ComparisonScope,
 } from "./comparison-params";
+import { isCountedAppearance } from "./counted";
 import { type EaSeasonTotals, eaMemberTotals } from "./ea-totals";
 import type { StatsFilter } from "./filter";
 import { type FormPoint, formSeries } from "./player";
@@ -39,7 +40,11 @@ export function isSmallSample(matches: number): boolean {
   return matches > 0 && matches < SMALL_SAMPLE;
 }
 
-/** One side's input: a Squad Member's filtered Appearances, oldest first, and their Position Groups. */
+/**
+ * One side's input: a Squad Member's filtered Appearances, oldest first,
+ * DNFs we quit included (they count in records, not stats), and their
+ * Position Groups.
+ */
 export interface ComparisonSideInput {
   appearances: readonly SquadAppearance[];
   positionGroups: PositionGroupSelection;
@@ -92,16 +97,20 @@ export function compareSides(
     shared ? appearances.filter((a) => shared.has(a.matchId)) : appearances;
   return {
     sides: inputs.map(({ appearances, positionGroups }) => {
-      const counted = filterByPositionGroups(
+      const selected = filterByPositionGroups(
         inScope(appearances),
         positionGroups,
       );
+      // Our side's stats in a DNF we quit are left out; its result is not.
+      const counted = selected.filter(isCountedAppearance);
       return {
         totals: summariseAppearances(counted),
         form: formSeries(counted),
-        record: summariseRecord(counted),
+        record: summariseRecord(selected),
         formIndicator: formIndicator(
-          filterByPositionGroups(appearances, positionGroups),
+          filterByPositionGroups(appearances, positionGroups).filter(
+            isCountedAppearance,
+          ),
         ),
       };
     }),
@@ -144,7 +153,7 @@ export async function getComparison(
   const [members, ...appearances] = await Promise.all([
     listSquadMembers(db),
     ...params.players.map((playerId) =>
-      squadAppearances(db, filter, { playerId }),
+      squadAppearances(db, filter, { playerId, includeQuitMatches: true }),
     ),
   ]);
   const players = resolveComparisonPlayers(params.players, members);
