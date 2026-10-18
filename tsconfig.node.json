@@ -9,6 +9,7 @@
     "e2e/**/*",
     "scripts/**/*",
     "live/**/*",
+    "app/lib/london-time.ts",
     "app/lib/relative-time.ts",
     "app/ea/**/*",
     "app/poll/rating-targets.ts",

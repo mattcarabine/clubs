@@ -1,10 +1,11 @@
 /** Match queries: lists, counts, a single Match with both line-ups, and the club record. */
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, min } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
 import { appearances, clubs, matches, players } from "~/db/schema";
 import type { MatchKind, MatchResult } from "~/ea/parse";
 import type { MatchType, Outcome, PositionGroup } from "~/lib/domain";
+import { type CalendarDate, londonDateKey } from "~/lib/london-time";
 import { displayName } from "~/roster";
 
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
@@ -24,6 +25,12 @@ export interface Club {
   name: string;
 }
 
+/** Both clubs' Skill Ratings at a Match; null when it was never rated. */
+export interface MatchSkillRatings {
+  ours: number | null;
+  opponent: number | null;
+}
+
 /** One Match from Our Club's point of view. */
 export interface MatchSummary {
   matchId: string;
@@ -35,6 +42,7 @@ export interface MatchSummary {
   outcome: Outcome;
   /** Flag these in the UI: EA awarded the result because a side quit. */
   dnf: boolean;
+  skillRatings: MatchSkillRatings;
 }
 
 export interface MatchListOptions extends ScopeOptions {
@@ -54,6 +62,8 @@ const summaryColumns = {
   goalsAgainst: matches.goalsAgainst,
   result: matches.result,
   dnf: matches.dnf,
+  ourSkillRating: matches.ourSkillRating,
+  opponentSkillRating: matches.opponentSkillRating,
 };
 
 /** Matches joined to their Opponent, selecting the columns `toSummary` reads. */
@@ -107,6 +117,15 @@ export async function latestMatch(
   return match ?? null;
 }
 
+/** The London date of the first recorded Match, or null before any. Ignores the filter. */
+export async function firstMatchDate(db: Db): Promise<CalendarDate | null> {
+  const [row] = await db
+    .select({ playedAt: min(matches.playedAt) })
+    .from(matches)
+    .where(isShownMatch);
+  return row?.playedAt ? londonDateKey(row.playedAt) : null;
+}
+
 /** Our Club's W/D/L, goals and points over the Matches a filter selects. */
 export async function clubRecord(
   db: Db,
@@ -136,14 +155,7 @@ export interface MatchAppearance
   positionGroup: PositionGroup | null;
 }
 
-/** Both clubs' Skill Ratings at a Match; null when it was never rated. */
-export interface MatchSkillRatings {
-  ours: number | null;
-  opponent: number | null;
-}
-
 export interface MatchDetail extends MatchSummary {
-  skillRatings: MatchSkillRatings;
   /** Our Club's Appearances, then the Opponent's. */
   appearances: MatchAppearance[];
 }
@@ -168,14 +180,7 @@ export async function getMatchDetails(
 ): Promise<MatchDetail[]> {
   if (matchIds.length === 0) return [];
   const [found, rows] = await Promise.all([
-    db
-      .select({
-        ...summaryColumns,
-        ourSkillRating: matches.ourSkillRating,
-        opponentSkillRating: matches.opponentSkillRating,
-      })
-      .from(matches)
-      .innerJoin(clubs, eq(clubs.clubId, matches.opponentClubId))
+    selectSummaries(db)
       .where(and(inArray(matches.matchId, [...matchIds]), isShownMatch))
       .orderBy(asc(matches.playedAt), asc(matches.matchId)),
     db
@@ -202,14 +207,7 @@ export async function getMatchDetails(
       })
       .sort((a, b) => Number(b.isOurClub) - Number(a.isOurClub));
 
-    return {
-      ...toSummary(match),
-      skillRatings: {
-        ours: match.ourSkillRating,
-        opponent: match.opponentSkillRating,
-      },
-      appearances: lineups,
-    };
+    return { ...toSummary(match), appearances: lineups };
   });
 }
 
@@ -223,6 +221,8 @@ interface SummaryRow {
   goalsAgainst: number;
   result: MatchResult;
   dnf: boolean;
+  ourSkillRating: number | null;
+  opponentSkillRating: number | null;
 }
 
 function toSummary(row: SummaryRow): MatchSummary {
@@ -238,5 +238,9 @@ function toSummary(row: SummaryRow): MatchSummary {
     goalsAgainst: row.goalsAgainst,
     outcome: toOutcome(row.result),
     dnf: row.dnf,
+    skillRatings: {
+      ours: row.ourSkillRating,
+      opponent: row.opponentSkillRating,
+    },
   };
 }

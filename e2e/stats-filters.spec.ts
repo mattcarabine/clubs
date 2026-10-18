@@ -2,6 +2,7 @@
 /// <reference lib="dom" />
 import type { Page } from "@playwright/test";
 
+import { choosePreset, dateTrigger } from "./support/date-picker.ts";
 import { dnf, draw, loss, win } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
@@ -82,7 +83,7 @@ test("toggling filters updates the URL and the totals", async ({
   await expectPressed(page, "League", true);
   await expectPressed(page, "Playoff", true);
   await expectPressed(page, "Include DNF", true);
-  await expectPressed(page, "All", true);
+  await expect(dateTrigger(page)).toHaveText("All dates");
   const everything = {
     played: "6",
     wdl: "4-1-1",
@@ -118,7 +119,7 @@ test("toggling filters updates the URL and the totals", async ({
     dnf: "0",
   });
 
-  await filterButton(page, "Last 30 days").click();
+  await choosePreset(page, "Last 30 days");
   await expect.poll(() => searchParam(page, "range")).toBe("30d");
   await expectRecord(page, {
     played: "3",
@@ -131,7 +132,7 @@ test("toggling filters updates the URL and the totals", async ({
   // Back to the defaults: the filter leaves the URL entirely.
   await filterButton(page, "Playoff").click();
   await filterButton(page, "Include DNF").click();
-  await filterButton(page, "All").click();
+  await choosePreset(page, "All dates");
   await expect.poll(() => new URL(page.url()).search).toBe("");
   await expectRecord(page, everything);
 });
@@ -175,13 +176,8 @@ test("on a phone the FilterBar is one scrolling row, not a screenful", async ({
   // One row of legends and chips, about 80px; wrapped it was over 300px.
   expect(box?.height).toBeLessThan(120);
   // The rest of the chips are reachable by scrolling the bar itself.
-  // Retry the click: one that lands before hydration does nothing.
-  await expect(async () => {
-    await filterButton(page, "Last 30 days").click();
-    await expect
-      .poll(() => searchParam(page, "range"), { timeout: 1000 })
-      .toBe("30d");
-  }).toPass();
+  await choosePreset(page, "Last 30 days");
+  await expect.poll(() => searchParam(page, "range")).toBe("30d");
 });
 
 test("the FilterBar fits a 375px phone without horizontal page scroll", async ({

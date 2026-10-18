@@ -29,6 +29,7 @@ import {
 import { ALL_POSITIONS, type PositionGroupSelection } from "./positions";
 import { matchScope, type ScopeOptions } from "./scope";
 import { sessionPlaces } from "./sessions";
+import { ratingGap } from "./skill-rating";
 import { type SquadAppearance, squadAppearances } from "./squad";
 
 export interface OutcomeSplitOptions {
@@ -118,6 +119,7 @@ async function splitData(
       squadSize: sides?.squadSize ?? 0,
       session,
       sessionPlace: place,
+      ratingGap: ratingGap(m.skillRatings),
     };
   });
   return { summaries, totals, squad, split: outcomeSplit(splitMatches, squad) };

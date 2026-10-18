@@ -22,6 +22,10 @@ _Avoid_: Elo, SR, club rating, strength
 The Opponent's Skill Rating at a Match, read within an hour of it. Matches recorded before ratings were captured are backfilled with the Opponent's current rating instead.
 _Avoid_: Opposition strength, enemy rating
 
+**Win Chance**:
+Our Club's chance of a Win before kick-off, from the gap between our Skill Rating and the Opponent Rating. Fitted to our rated Competitive Matches (draws count as Dropped Points) once there are 20 of them; before that it is an Elo-style estimate, shown as "Estimate".
+_Avoid_: Odds, win probability, expected result
+
 **Squad Member**:
 Anyone who has made an Appearance for Our Club, identified by their stable EA player ID (persona names can change; IDs don't). Our Club has no guests.
 _Avoid_: Member, user, teammate, guest
