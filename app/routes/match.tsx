@@ -26,7 +26,7 @@ import {
   formatPercentage,
   NO_VALUE,
 } from "~/lib/number-format";
-import { playerPath } from "~/lib/paths";
+import { playerPath, sessionPath } from "~/lib/paths";
 import {
   type Deviation,
   type DroppedPointsReasons,
@@ -34,6 +34,7 @@ import {
   getMatch,
   type MatchAppearance,
   type MatchSides,
+  sessionOfMatch,
   summariseMatchSides,
 } from "~/stats";
 // The component groups line-ups, so import the pure helper directly to keep
@@ -41,6 +42,8 @@ import {
 import { groupBy } from "~/stats/summaries";
 
 import type { Route } from "./+types/match";
+
+const ASIDE_LINK = "text-sound-300 text-sm underline-offset-4 hover:underline";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData) return [{ title: "A Bloo Bloo — Match not found" }];
@@ -56,7 +59,10 @@ export async function loader({ params }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const match = await getMatch(db, params.matchId);
   if (!match) throw data("Match not found", { status: 404 });
-  const droppedPoints = await getDroppedPointsReasons(db, match);
+  const [droppedPoints, session] = await Promise.all([
+    getDroppedPointsReasons(db, match),
+    sessionOfMatch(db, match.matchId),
+  ]);
   const ours = match.appearances.filter((a) => a.isOurClub);
   const theirs = match.appearances.filter((a) => !a.isOurClub);
   return {
@@ -66,11 +72,13 @@ export async function loader({ params }: Route.LoaderArgs) {
     theirs,
     droppedPoints,
     totals: summariseMatchSides(match.appearances),
+    sessionId: session?.id ?? null,
   };
 }
 
 export default function Match({ loaderData }: Route.ComponentProps) {
-  const { clubName, match, ours, theirs, droppedPoints, totals } = loaderData;
+  const { clubName, match, ours, theirs, droppedPoints, totals, sessionId } =
+    loaderData;
   const { opponent } = match;
   const motm = match.appearances.find((a) => a.manOfTheMatch);
   return (
@@ -80,12 +88,16 @@ export default function Match({ loaderData }: Route.ComponentProps) {
         title={`v ${opponent.name}`}
         subtitle={<LondonTime date={match.playedAt} format="moment" />}
         aside={
-          <Link
-            to={`/opponents/${opponent.clubId}`}
-            className="text-sound-300 text-sm underline-offset-4 hover:underline"
-          >
-            Head-to-head with {opponent.name}
-          </Link>
+          <div className="flex flex-wrap gap-x-5 gap-y-1">
+            {sessionId && (
+              <Link to={sessionPath(sessionId)} className={ASIDE_LINK}>
+                This Match's Session
+              </Link>
+            )}
+            <Link to={`/opponents/${opponent.clubId}`} className={ASIDE_LINK}>
+              Head-to-head with {opponent.name}
+            </Link>
+          </div>
         }
       />
 

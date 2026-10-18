@@ -69,6 +69,13 @@ test("every component section renders", async ({ page }) => {
       name: "Form, oldest to newest: Win, Win, Draw, Loss, Win, Win",
     }),
   ).toBeVisible();
+  // CLUBS-34: a whole Session, and one the filter narrowed.
+  await expect(
+    section("session-header").getByText("2 Dropped Points"),
+  ).toBeVisible();
+  await expect(
+    section("session-header").getByText("1 of 3 Matches shown"),
+  ).toBeVisible();
   await expect(section("player-chip").getByText("Kopite Kev")).toBeVisible();
   await expect(
     section("last-updated-badge").getByText("4 min ago"),

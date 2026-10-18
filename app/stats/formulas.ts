@@ -102,6 +102,15 @@ export function points(outcomes: readonly Outcome[]): number {
   return outcomes.reduce((sum, outcome) => sum + POINTS[outcome], 0);
 }
 
+/** Running points total after each Outcome (oldest first), e.g. across a Session. */
+export function cumulativePoints(outcomes: readonly Outcome[]): number[] {
+  let total = 0;
+  return outcomes.map((outcome) => {
+    total += POINTS[outcome];
+    return total;
+  });
+}
+
 /** Win % of a run of Outcomes, or null with no Matches. */
 export function winPercentage(outcomes: readonly Outcome[]): number | null {
   return percentage(outcomes.filter((o) => o === "W").length, outcomes.length);

@@ -5,14 +5,14 @@
  * Appearance. The Match page's "Why we dropped points" panel (CLUBS-27)
  * reads the same totals.
  */
-import { asc, count, eq, max, or, type SQL, sql } from "drizzle-orm";
+import { count, eq, max, or, type SQL, sql } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
 import type { Db } from "~/db/client";
 import { appearances, matches } from "~/db/schema";
 
 import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
-import { listMatches, type MatchSummary } from "./matches";
+import { listKickoffs, listMatches, type MatchSummary } from "./matches";
 import {
   type ClubMatchTotals,
   type DroppedPointsReasons,
@@ -23,10 +23,13 @@ import {
   type PlayerSplitRow,
   playerSplits,
   type SplitMatch,
+  type UsualComparisonRow,
+  usualComparison,
 } from "./outcome-split";
 import { ALL_POSITIONS, type PositionGroupSelection } from "./positions";
-import { isShownMatch, matchScope } from "./scope";
-import { type Kickoff, sessionPlaces } from "./sessions";
+import { matchScope } from "./scope";
+import { sessionPlaces } from "./sessions";
+import { ratingGap } from "./skill-rating";
 import { squadAppearances } from "./squad";
 
 export interface OutcomeSplitOptions {
@@ -50,7 +53,7 @@ export async function getOutcomeSplit(
     listMatches(db, filter, { order: "oldest" }),
     clubMatchTotals(db, matchScope(db, filter)),
     squadAppearances(db, filter),
-    allKickoffs(db),
+    listKickoffs(db),
   ]);
   const places = sessionPlaces(kickoffs);
   const splitMatches = summaries.map((m, i): SplitMatch => {
@@ -68,6 +71,7 @@ export async function getOutcomeSplit(
       squadSize: sides?.squadSize ?? 0,
       session,
       sessionPlace: place,
+      ratingGap: ratingGap(m.skillRatings),
     };
   });
   return {
@@ -97,6 +101,25 @@ export async function getDroppedPointsReasons(
     .filter((m) => m.outcome === "W")
     .map((m) => performanceOf(totals.get(m.matchId)));
   return droppedPointsReasons(performanceOf(totals.get(match.matchId)), wins);
+}
+
+/**
+ * One Session's Matches beside every Match over the default filter
+ * (Competitive Matches, all time, DNFs included): "Compared with your
+ * usual" on the Session page (CLUBS-34). One query.
+ */
+export async function getUsualComparison(
+  db: Db,
+  matchIds: readonly string[],
+): Promise<UsualComparisonRow[] | null> {
+  const totals = await clubMatchTotals(
+    db,
+    matchScope(db, DEFAULT_STATS_FILTER),
+  );
+  return usualComparison(
+    matchIds.map((id) => performanceOf(totals.get(id))),
+    [...totals.values()].map(performanceOf),
+  );
 }
 
 /** A Match's totals as the Outcome Split reads them, zero for a Match with no Appearances. */
@@ -172,13 +195,4 @@ async function clubMatchTotals(
     byMatch.set(matchId, entry);
   }
   return byMatch;
-}
-
-/** Every shown Match's kick-off, whatever the filter: Sessions span Match Types. */
-async function allKickoffs(db: Db): Promise<Kickoff[]> {
-  return db
-    .select({ matchId: matches.matchId, playedAt: matches.playedAt })
-    .from(matches)
-    .where(isShownMatch)
-    .orderBy(asc(matches.playedAt));
 }

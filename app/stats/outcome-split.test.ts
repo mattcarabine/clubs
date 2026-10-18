@@ -6,6 +6,7 @@ import {
   type AfterResultScope,
   type AfterResultSplit,
   afterResult,
+  byOpponentStrength,
   type ClubMatchTotals,
   dayType,
   droppedPointsReasons,
@@ -15,6 +16,7 @@ import {
   positionOutliers,
   type SplitMatch,
   timeOfDay,
+  usualComparison,
   withAndWithout,
 } from "./outcome-split";
 import type { SquadAppearance } from "./squad";
@@ -64,6 +66,7 @@ function match(
     // Each Match its own Session unless a test says otherwise.
     session: sequence,
     sessionPlace: 1,
+    ratingGap: null,
     ...rest,
   };
 }
@@ -244,6 +247,83 @@ describe("afterResult", () => {
   });
 });
 
+describe("byOpponentStrength", () => {
+  /** `n` Matches at a rating gap (ours minus theirs), the first `wins` of them Wins. */
+  const rated = (n: number, gap: number | null, wins: number) =>
+    Array.from({ length: n }, (_, i) =>
+      match(i < wins ? "W" : "L", { ratingGap: gap }),
+    );
+
+  it("groups rated Matches by the Opponent's strength with each group's Win rate", () => {
+    const { groups, hidden, unrated } = byOpponentStrength([
+      ...rated(5, -150, 1),
+      ...rated(4, 20, 2),
+      ...rated(6, 100, 5),
+    ]);
+    expect(
+      groups.map(({ id, played, wins, winPercentage }) => ({
+        id,
+        played,
+        wins,
+        winPercentage,
+      })),
+    ).toEqual([
+      { id: "stronger", played: 5, wins: 1, winPercentage: 20 },
+      { id: "similar", played: 4, wins: 2, winPercentage: 50 },
+      { id: "weaker", played: 6, wins: 5, winPercentage: (5 / 6) * 100 },
+    ]);
+    expect(hidden).toEqual([]);
+    expect(unrated).toBe(0);
+  });
+
+  it("counts W/D/L and the Outcome Split highlights per group", () => {
+    const [group] = byOpponentStrength([
+      match("W", { ratingGap: -200, ours: { goals: 3, shots: 12 } }),
+      match("D", { ratingGap: -200, ours: { goals: 1, shots: 8 } }),
+      match("L", { ratingGap: -200, opponent: { goals: 4 } }),
+    ]).groups;
+    expect(group).toMatchObject({ played: 3, wins: 1, draws: 1, losses: 1 });
+    expect(group.highlights).toEqual({
+      goals: "1.7",
+      conceded: "2.0",
+      shots: "10.0",
+      pass: "80%",
+      rating: "7.0",
+    });
+  });
+
+  it("leaves out unrated Matches and hides groups under 3 Matches", () => {
+    const { groups, hidden, unrated } = byOpponentStrength([
+      ...rated(3, -150, 1),
+      ...rated(2, 0, 2),
+      ...rated(4, null, 4),
+    ]);
+    expect(groups.map((g) => g.id)).toEqual(["stronger"]);
+    expect(hidden).toEqual([{ label: "Similar", played: 2 }]);
+    expect(unrated).toBe(4);
+  });
+
+  it("joins the findings as the Stronger against the Weaker group", () => {
+    const { findings } = outcomeSplit(
+      [...rated(5, -150, 1), ...rated(4, 0, 2), ...rated(6, 150, 5)],
+      [],
+    );
+    expect(findings.find((f) => f.id === "strength")).toMatchObject({
+      factor: "Opponent strength",
+      text: "Against Stronger Opponents we win 20% (5) vs 83% against Weaker (6)",
+      counts: "5 Matches against Stronger Opponents, 6 against Weaker",
+    });
+  });
+
+  it("makes no finding from fewer than two groups shown", () => {
+    const { findings } = outcomeSplit(
+      [...rated(5, -150, 1), ...rated(2, 150, 2), ...rated(4, null, 2)],
+      [],
+    );
+    expect(findings.map((f) => f.id)).not.toContain("strength");
+  });
+});
+
 describe("droppedPointsReasons", () => {
   /** Three Wins with 10, 12 and 14 shots (mean 12, standard deviation 1.63) and no goals. */
   const wins = () =>
@@ -314,6 +394,46 @@ describe("droppedPointsReasons", () => {
     ).toEqual({
       wins: 3,
       deviations: [],
+    });
+  });
+});
+
+describe("usualComparison", () => {
+  it("is null until 3 Matches fall outside the set", () => {
+    const set = many(2, () => match("W"));
+    const others = many(2, () => match("L"));
+    expect(usualComparison(set, [...set, ...others])).toBeNull();
+  });
+
+  it("sets the set's per-90s and rates beside every Match's", () => {
+    // A 45-minute DNF with 3 goals is 6 per 90; the usual weights it by time played.
+    const set = [
+      match("W", {
+        secondsPlayed: FULL / 2,
+        ours: { goals: 3, passesMade: 90 },
+      }),
+    ];
+    const others = many(3, () => match("L", { ours: { goals: 0 } }));
+    const rows = usualComparison(set, [...set, ...others]);
+    expect(rows?.map((r) => [r.label, r.value, r.usual])).toEqual([
+      // (3 goals in 45 min + 0 in 270 min) per 90: 3 / 3.5 = 0.857.
+      ["Goals per 90", "6.0", "0.9"],
+      // Opponents' 1 goal a Match: 2 per 90 in the half Match, 1 elsewhere.
+      ["Opponent goals per 90", "2.0", "1.1"],
+      ["Shots per 90", "20.0", "11.4"],
+      // Rates weight by attempts: (90 + 3 × 80) / 400.
+      ["Pass completion", "90%", "83%"],
+      ["Tackle success", "50%", "50%"],
+      ["Average rating", "7.0", "7.0"],
+    ]);
+  });
+
+  it("shows a dash for a stat the set has no figures for", () => {
+    const set = [match("W", { ours: { ratings: 0, ratingSum: 0 } })];
+    const rows = usualComparison(set, [...set, ...many(3, () => match("L"))]);
+    expect(rows?.find((r) => r.id === "ours-rating")).toMatchObject({
+      value: "–",
+      usual: "7.0",
     });
   });
 });

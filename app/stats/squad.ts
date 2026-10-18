@@ -135,10 +135,21 @@ export async function squadLeaderboard(
     ...scope
   }: LeaderboardOptions = {},
 ): Promise<LeaderboardRow[]> {
-  const byPlayer = groupBy(
-    await squadAppearances(db, filter, scope),
-    (a) => a.playerId,
-  );
+  return leaderboardRows(await squadAppearances(db, filter, scope), {
+    includeFormer,
+    positionGroups,
+  });
+}
+
+/** `squadLeaderboard`'s rows from Appearances already fetched (oldest first), e.g. one Session's. */
+export function leaderboardRows(
+  appearances: readonly SquadAppearance[],
+  {
+    includeFormer = false,
+    positionGroups = ALL_POSITIONS,
+  }: Pick<LeaderboardOptions, "includeFormer" | "positionGroups"> = {},
+): LeaderboardRow[] {
+  const byPlayer = groupBy(appearances, (a) => a.playerId);
   return [...byPlayer.entries()]
     .map(([playerId, apps]) => {
       const name = apps[apps.length - 1].name;

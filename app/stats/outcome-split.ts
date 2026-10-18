@@ -36,6 +36,11 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
+import {
+  OPPONENT_STRENGTHS,
+  type OpponentStrength,
+  opponentStrength,
+} from "./skill-rating";
 import type { SquadAppearance } from "./squad";
 import { groupBy, type PlayerTotals, summariseAppearances } from "./summaries";
 import type { SplitBucket } from "./trends";
@@ -89,6 +94,8 @@ export interface SplitMatch {
   session: number;
   /** 1 for the first Match in its Session. */
   sessionPlace: number;
+  /** Our Skill Rating minus the Opponent's at the Match (`ratingGap`), or null when unrated. */
+  ratingGap: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -484,13 +491,134 @@ function afterResultFinding({
 }
 
 // ---------------------------------------------------------------------------
+// Opponent strength (CLUBS-29): bad nights or tough draws?
+
+/** The Outcome Split highlights each strength group shows, in table order: one club's stat each. */
+export const STRENGTH_HIGHLIGHTS = [
+  { id: "goals", label: "Goals per 90", club: "ours", metric: "goals" },
+  {
+    id: "conceded",
+    label: "Conceded per 90",
+    club: "opponent",
+    metric: "goals",
+  },
+  { id: "shots", label: "Shots per 90", club: "ours", metric: "shots" },
+  { id: "pass", label: "Pass completion", club: "ours", metric: "pass" },
+  { id: "rating", label: "Average rating", club: "ours", metric: "rating" },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  club: Club;
+  metric: string;
+}[];
+
+export type StrengthHighlightId = (typeof STRENGTH_HIGHLIGHTS)[number]["id"];
+
+/** Our record against one strength of Opponent, with its Outcome Split highlights. */
+export interface StrengthGroup extends WinRecord {
+  id: OpponentStrength;
+  label: string;
+  draws: number;
+  losses: number;
+  /** Formatted averages over the group's Matches, by highlight. */
+  highlights: Record<StrengthHighlightId, string>;
+}
+
+export interface ByStrength {
+  /** The groups with at least `MIN_SPLIT_MATCHES`, Stronger first. */
+  groups: StrengthGroup[];
+  /** Rated groups with too few Matches to show, and how many they have. */
+  hidden: { label: string; played: number }[];
+  /** Matches left out because either club's Skill Rating is missing. */
+  unrated: number;
+}
+
+/** Our rated Matches grouped by the Opponent's strength; groups under `MIN_SPLIT_MATCHES` are hidden. */
+export function byOpponentStrength(matches: readonly SplitMatch[]): ByStrength {
+  const rated = matches.filter((m) => m.ratingGap !== null);
+  const byGroup = groupBy(rated, (m) => opponentStrength(m.ratingGap) ?? "");
+  const groups: StrengthGroup[] = [];
+  const hidden: ByStrength["hidden"] = [];
+  for (const { id, label } of OPPONENT_STRENGTHS) {
+    const group = byGroup.get(id) ?? [];
+    if (group.length >= MIN_SPLIT_MATCHES) {
+      groups.push(strengthGroup(id, label, group));
+    } else if (group.length > 0) {
+      hidden.push({ label, played: group.length });
+    }
+  }
+  return {
+    groups,
+    hidden,
+    unrated: matches.length - rated.length,
+  };
+}
+
+function strengthGroup(
+  id: OpponentStrength,
+  label: string,
+  matches: readonly SplitMatch[],
+): StrengthGroup {
+  const outcomes = matches.map((m) => m.outcome);
+  const highlights = Object.fromEntries(
+    STRENGTH_HIGHLIGHTS.map(({ id, club, metric }) => [
+      id,
+      clubAverage(metricById(metric), club, matches),
+    ]),
+  ) as Record<StrengthHighlightId, string>;
+  return {
+    id,
+    label,
+    ...winRecord(outcomes),
+    draws: outcomes.filter((o) => o === "D").length,
+    losses: outcomes.filter((o) => o === "L").length,
+    highlights,
+  };
+}
+
+function metricById(id: string): PerformanceMetric {
+  const metric = PERFORMANCE_METRICS.find((m) => m.id === id);
+  if (!metric) throw new Error(`Unknown performance metric ${id}`);
+  return metric;
+}
+
+/** One club's formatted average for a stat over some Matches, weighted like the Outcome Split. */
+function clubAverage(
+  metric: PerformanceMetric,
+  club: Club,
+  matches: readonly SplitMatch[],
+): string {
+  const mean = weightedMean(
+    withoutNulls(matches.map((m) => metric.sample(m[club], m.secondsPlayed))),
+  );
+  return mean === null ? NO_VALUE : metric.format(mean);
+}
+
+/** "Against Stronger Opponents we win 20% (5) vs 70% against Weaker (6)": the two most different groups shown. */
+function strengthFinding({ groups }: ByStrength): RankedFinding | null {
+  if (groups.length < 2) return null;
+  const strongest = groups[0];
+  const weakest = groups[groups.length - 1];
+  return winRateFinding(
+    "strength",
+    "Opponent strength",
+    { group: strongest, rest: weakest },
+    {
+      text: `Against ${strongest.label} Opponents we win ${formatPercentage(strongest.winPercentage)} (${strongest.played}) vs ${formatPercentage(weakest.winPercentage)} against ${weakest.label} (${weakest.played})`,
+      counts: `${formatCount(strongest.played, "Match", "Matches")} against ${strongest.label} Opponents, ${weakest.played} against ${weakest.label}`,
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Findings
 
 export type Factor =
   | "Performance"
   | "Personnel"
   | "Circumstances"
-  | "After a result";
+  | "After a result"
+  | "Opponent strength";
 
 /** One plain-English difference between Wins and Dropped Points. */
 export interface Finding {
@@ -609,6 +737,8 @@ export interface OutcomeSplit {
   bySessionPlace: SplitBucket[];
   /** Win % after a Win against after Dropped Points, one per `AFTER_RESULT_SCOPES`. */
   afterResult: AfterResultSplit[];
+  /** Rated Matches by the Opponent's strength (CLUBS-29). */
+  byStrength: ByStrength;
   /** Win % over the last `ROLLING_WIN_WINDOW` Matches at each Match, oldest first. */
   rollingWinPercentage: number[];
 }
@@ -635,6 +765,7 @@ export function outcomeSplit(
   const outliers = positionOutliers(matches, appearances);
   const sizes = squadSizes(matches);
   const afterResultSplits = afterResult(matches);
+  const strength = byOpponentStrength(matches);
   // A Squad Member who only ever plays one Position Group would say the same
   // thing twice: once with and without them, once as an outlier.
   const withCounts = new Set(
@@ -725,6 +856,7 @@ export function outcomeSplit(
           }),
         ),
         ...withoutNulls(afterResultSplits.map(afterResultFinding)),
+        ...withoutNulls([strengthFinding(strength)]),
       ]
     : [];
 
@@ -750,6 +882,7 @@ export function outcomeSplit(
       sessionPlaceBucket(m.sessionPlace),
     ),
     afterResult: afterResultSplits,
+    byStrength: strength,
     rollingWinPercentage: rollingWinPercentage(outcomes),
   };
 }
@@ -889,6 +1022,61 @@ function deviationFrom(
     },
     relativeChange: typical === 0 ? Infinity : Math.abs(diff / typical),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Compared with your usual (CLUBS-34): one Session against every Match
+
+/** The stats a Session is compared on, as `[club, metric id]`, in order. */
+const USUAL_STATS: ReadonlyArray<readonly [Club, string]> = [
+  ["ours", "goals"],
+  ["opponent", "goals"],
+  ["ours", "shots"],
+  ["ours", "pass"],
+  ["ours", "tackle"],
+  ["ours", "rating"],
+];
+
+/** One stat over a set of Matches beside Our Club's usual. */
+export interface UsualComparisonRow {
+  id: string;
+  /** "Goals per 90", "Opponent goals per 90". */
+  label: string;
+  /** Over the set, e.g. one Session's Matches. */
+  value: string;
+  /** Over every Match. */
+  usual: string;
+}
+
+/**
+ * A set of Matches (one Session's) beside the average over every Match
+ * (`usual`, which includes the set), with the Outcome Split's per-90 and
+ * rate formulas. Null until `MIN_SPLIT_MATCHES` Matches fall outside the
+ * set, since a usual made mostly of the set itself says nothing.
+ */
+export function usualComparison(
+  set: readonly MatchPerformance[],
+  usual: readonly MatchPerformance[],
+): UsualComparisonRow[] | null {
+  if (usual.length - set.length < MIN_SPLIT_MATCHES) return null;
+  return USUAL_STATS.flatMap(([club, id]) => {
+    const metric = PERFORMANCE_METRICS.find((m) => m.id === id);
+    if (!metric) return [];
+    const mean = (from: readonly MatchPerformance[]) => {
+      const value = weightedMean(
+        withoutNulls(from.map((m) => metric.sample(m[club], m.secondsPlayed))),
+      );
+      return value === null ? NO_VALUE : metric.format(value);
+    };
+    return [
+      {
+        id: `${club}-${id}`,
+        label: statName(club, metric.label),
+        value: mean(set),
+        usual: mean(usual),
+      },
+    ];
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -25,13 +25,15 @@ import {
 import { getDb } from "~/db/client";
 import type { FormStatus } from "~/lib/domain";
 import { formatCount, formatOptional } from "~/lib/number-format";
-import { playerPath } from "~/lib/paths";
+import { playerPath, sessionPath } from "~/lib/paths";
 import { useLivePoll } from "~/lib/use-live-poll";
 import {
   type ClubSnapshotSummary,
   clubSnapshots,
   DEFAULT_STATS_FILTER,
   getMatch,
+  isTonight,
+  latestSession,
   listMatches,
   type MatchSides,
   type MatchSkillRatings,
@@ -63,10 +65,11 @@ export async function loader() {
   const db = getDb(env.DB);
   // First, so the version it carries is never newer than the data below.
   const poll = await pollState(db);
-  const [recent, snapshots, squadFormRows] = await Promise.all([
+  const [recent, snapshots, squadFormRows, session] = await Promise.all([
     listMatches(db, DEFAULT_STATS_FILTER, { limit: FORM_LENGTH }),
     clubSnapshots(db),
     squadForm(db, DEFAULT_STATS_FILTER),
+    latestSession(db),
   ]);
   const latest = recent[0];
   const detail = latest ? await getMatch(db, latest.matchId) : null;
@@ -80,6 +83,10 @@ export async function loader() {
     ),
     club: summariseClubSnapshots(snapshots),
     poll,
+    session: session && {
+      path: sessionPath(session.id),
+      label: isTonight(session) ? "Tonight's Session" : "Last Session",
+    },
     squadForm: squadFormRows,
   };
 }
@@ -93,6 +100,7 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
     performers,
     club,
     poll,
+    session,
     squadForm,
   } = loaderData;
   const { lastPoll } = useLivePoll(poll, REFRESH_CHECK_MS);
@@ -112,6 +120,7 @@ export default function Matchday({ loaderData }: Route.ComponentProps) {
             skillRatings={skillRatings}
             sides={sides}
             performers={performers}
+            session={session}
           />
           {squadForm.length > 0 && <FormWatch rows={squadForm} />}
           {club && <ClubSnapshot club={club} />}
@@ -141,12 +150,15 @@ function LatestMatch({
   skillRatings,
   sides,
   performers,
+  session,
 }: {
   clubName: string;
   match: MatchSummary;
   skillRatings?: MatchSkillRatings;
   sides?: MatchSides;
   performers: TopPerformer[];
+  /** The latest Session's page, which holds this Match. */
+  session: { path: string; label: string } | null;
 }) {
   return (
     <section aria-labelledby="latest-match" className={HERO_WIDTH}>
@@ -167,6 +179,14 @@ function LatestMatch({
         <div className="mt-1">
           <TopPerformersStrip performers={performers} />
         </div>
+      )}
+      {session && (
+        <Link
+          to={session.path}
+          className="mt-3 inline-block font-display font-bold text-lg text-sound-300 uppercase tracking-wide hover:text-ink"
+        >
+          {session.label} <span aria-hidden>›</span>
+        </Link>
       )}
     </section>
   );
