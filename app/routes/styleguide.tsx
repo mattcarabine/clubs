@@ -41,13 +41,18 @@ import {
   type PositionGroup,
 } from "~/lib/domain";
 import { formatDecimal } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import { type DateRange, dateRangeLabel } from "~/stats/filter";
 import type { TopPerformer } from "~/stats/top-performers";
 import type { Route } from "./+types/styleguide";
 
-export function meta(_: Route.MetaArgs) {
+export function meta({ location }: Route.MetaArgs) {
   return [
-    { title: "A Bloo Bloo — Styleguide" },
+    ...pageMeta({
+      title: "A Bloo Bloo — Styleguide",
+      description: "Every A Bloo Bloo component and token, live.",
+      path: location.pathname,
+    }),
     { name: "robots", content: "noindex" },
   ];
 }

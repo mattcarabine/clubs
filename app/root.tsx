@@ -15,9 +15,9 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { AppShell, crestUrl, isNotFound, PageHeader } from "~/components";
 import { getDb } from "~/db/client";
+import { pageMeta } from "~/lib/page-meta";
+import { SITE_NAME, THEME_COLOR } from "~/lib/site";
 import { countCampaigns, firstMatchDate, listSeasons } from "~/stats";
-
-const FALLBACK_CLUB_NAME = "A Bloo Bloo";
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: crestUrl, type: "image/png" },
@@ -35,14 +35,17 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-/** Only used when no route below matched or every boundary failed: each page sets its own title. */
-export function meta({ error }: Route.MetaArgs) {
+/** Only used when no route below matched or every boundary failed: each page sets its own meta. */
+export function meta({ error, location }: Route.MetaArgs) {
   if (!error) return [];
-  return [
-    {
-      title: `${FALLBACK_CLUB_NAME} — ${isNotFound(error) ? "Page not found" : "Something went wrong"}`,
-    },
-  ];
+  const notFound = isNotFound(error);
+  return pageMeta({
+    title: `${SITE_NAME} — ${notFound ? "Page not found" : "Something went wrong"}`,
+    description: notFound
+      ? "There is nothing at this address."
+      : "This page failed to load.",
+    path: location.pathname,
+  });
 }
 
 export async function loader() {
@@ -85,7 +88,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#0d1721" />
+        <meta name="theme-color" content={THEME_COLOR} />
         <Meta />
         <Links />
       </head>
@@ -99,9 +102,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 function useClubName(): string {
-  return (
-    useRouteLoaderData<typeof loader>("root")?.clubName ?? FALLBACK_CLUB_NAME
-  );
+  return useRouteLoaderData<typeof loader>("root")?.clubName ?? SITE_NAME;
 }
 
 export default function App() {

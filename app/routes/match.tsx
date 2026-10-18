@@ -29,6 +29,7 @@ import {
   formatPercentage,
   NO_VALUE,
 } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import { playerPath, sessionPath } from "~/lib/paths";
 import {
   type Deviation,
@@ -42,8 +43,9 @@ import {
   sessionOfMatch,
   summariseMatchSides,
 } from "~/stats";
-// The component groups line-ups, so import the pure helper directly to keep
-// the query modules out of the client bundle.
+// meta() builds the preview and the component groups line-ups, so import the
+// pure helpers directly to keep the query modules out of the client bundle.
+import { matchPreview } from "~/stats/link-preview";
 import { groupBy } from "~/stats/summaries";
 import {
   formatWinChance,
@@ -55,14 +57,22 @@ import type { Route } from "./+types/match";
 
 const ASIDE_LINK = "text-sound-300 text-sm underline-offset-4 hover:underline";
 
-export function meta({ loaderData }: Route.MetaArgs) {
-  if (!loaderData) return [{ title: "A Bloo Bloo — Match not found" }];
-  const { clubName, match } = loaderData;
-  return [
-    {
-      title: `${clubName} ${match.goalsFor}–${match.goalsAgainst} ${match.opponent.name}`,
-    },
-  ];
+export function meta({ loaderData, location }: Route.MetaArgs) {
+  if (!loaderData) {
+    return pageMeta({
+      title: "A Bloo Bloo — Match not found",
+      description: "No Match has this ID.",
+      path: location.pathname,
+    });
+  }
+  const { clubName, match, ours } = loaderData;
+  // CLUBS-35: pass the AI Match report here once it lands, as matchPreview's
+  // third argument; its first sentence joins the description, unlabelled.
+  return pageMeta({
+    ...matchPreview(clubName, { ...match, ours }),
+    path: location.pathname,
+    type: "article",
+  });
 }
 
 export async function loader({ params }: Route.LoaderArgs) {

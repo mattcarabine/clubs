@@ -25,20 +25,31 @@ import {
   SessionRecord,
 } from "~/components";
 import { getDb } from "~/db/client";
-import { formatLondonDate, formatLondonTimeSpan } from "~/lib/london-time";
+import { formatLondonTimeSpan } from "~/lib/london-time";
 import { formatCount } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import { playerPath } from "~/lib/paths";
 import { cumulativePoints, getSession, type UsualComparisonRow } from "~/stats";
+import { sessionPreview } from "~/stats/link-preview";
 
 import type { Route } from "./+types/session";
 
-export function meta({ loaderData }: Route.MetaArgs) {
-  if (!loaderData) return [{ title: "A Bloo Bloo — Session not found" }];
-  return [
-    {
-      title: `A Bloo Bloo — Session, ${formatLondonDate(loaderData.session.start)}`,
-    },
-  ];
+export function meta({ loaderData, location }: Route.MetaArgs) {
+  if (!loaderData) {
+    return pageMeta({
+      title: "A Bloo Bloo — Session not found",
+      description: "No Session starts with this Match.",
+      path: location.pathname,
+    });
+  }
+  // CLUBS-35: pass the AI Session recap here once it lands, as
+  // sessionPreview's second argument; its first sentence joins the
+  // description, unlabelled.
+  return pageMeta({
+    ...sessionPreview(loaderData.session),
+    path: location.pathname,
+    type: "article",
+  });
 }
 
 export async function loader({ params }: Route.LoaderArgs) {

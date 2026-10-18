@@ -35,6 +35,7 @@ import {
   formatThousands,
   NO_VALUE,
 } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import { playerPath } from "~/lib/paths";
 import { sortBy } from "~/lib/sort";
 import {
@@ -61,8 +62,13 @@ import type { Route } from "./+types/squad";
 /** `?former=1` includes Former Squad Members; absent means the current squad. */
 const FORMER_PARAM = "former";
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: "A Bloo Bloo — Squad" }];
+export function meta({ location }: Route.MetaArgs) {
+  return pageMeta({
+    title: "A Bloo Bloo — Squad",
+    description:
+      "Every Squad Member's Appearances, goals, assists and ratings, with Hot and Cold form.",
+    path: location.pathname,
+  });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

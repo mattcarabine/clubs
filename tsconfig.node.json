@@ -11,6 +11,7 @@
     "live/**/*",
     "app/lib/london-time.ts",
     "app/lib/relative-time.ts",
+    "app/lib/site.ts",
     "app/ea/**/*",
     "app/poll/rating-targets.ts",
     "app/ai/config.ts"

@@ -23,6 +23,7 @@ import {
   formatPercentage,
   formatSigned,
 } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import {
   getOpponent,
   listMatches,
@@ -32,6 +33,7 @@ import {
   statsFilterFromRequest,
   summariseRecord,
 } from "~/stats";
+import { opponentPreview } from "~/stats/link-preview";
 
 import type { Route } from "./+types/opponent";
 
@@ -40,12 +42,20 @@ const FORM_LENGTH = 5;
 /** Fewer results than this read as a stray badge rather than a run of form. */
 const MIN_FORM = 3;
 
-export function meta({ loaderData }: Route.MetaArgs) {
-  return [
-    {
-      title: `A Bloo Bloo — ${loaderData?.opponent.name ?? "Opponent not found"}`,
-    },
-  ];
+export function meta({ loaderData, location }: Route.MetaArgs) {
+  if (!loaderData) {
+    return pageMeta({
+      title: "A Bloo Bloo — Opponent not found",
+      description: "Our Club has not played a club with this ID.",
+      path: location.pathname,
+    });
+  }
+  const { clubName, opponent, record } = loaderData;
+  return pageMeta({
+    ...opponentPreview(clubName, opponent.name, record),
+    path: location.pathname,
+    type: "article",
+  });
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

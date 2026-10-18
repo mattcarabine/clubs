@@ -28,6 +28,7 @@ Read before changing anything:
 | `pnpm test` | Vitest unit tests (pure logic only) |
 | `pnpm test:e2e` | Playwright against the production build in workerd (`test` Wrangler env, fresh D1 in `.wrangler/e2e`) and the fake EA upstream |
 | `pnpm fixtures:record` | Re-record `fixtures/ea/` from live EA (never in CI) |
+| `pnpm og:card` | Redraw the static link-preview card, `public/og-card.png`; commit the result |
 | `pnpm test:live` | Smoke tests in `live/` (never in CI): every Poll request to live EA still has the fields we read (`app/ea/shape.ts`), and production serves Matchday with a Poll under 15 minutes old. `LIVE_SITE_URL` overrides the site |
 
 To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in dev and preview.
@@ -74,7 +75,8 @@ To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in 
 - The Worker serves https://clubs.marabine.co.uk, declared as a custom domain in `routes` in `wrangler.jsonc`. Keep it there: a deploy without it would detach the domain.
 - Workers Builds runs `pnpm run deploy` on every push to `main`: build, then `wrangler d1 migrations apply DB --remote`, then `wrangler deploy`.
 - **Migrations must be backward compatible.** They reach production D1 before the new code does, so the code that is still live (including its 5-minute Poll) must keep working against the migrated schema. Add columns as nullable or with defaults, and add tables freely. To rename or drop something, first ship code that no longer uses it, then remove it in a later PR.
-- The site is private and never indexed: every Worker response gets `X-Robots-Tag: noindex, nofollow` (`workers/app.ts`), static assets get it from `public/_headers`, and `public/robots.txt` disallows everything.
+- The site is private and never indexed: every Worker response gets `X-Robots-Tag: noindex, nofollow` (`workers/app.ts`), static assets get it from `public/_headers`, and `public/robots.txt` disallows everything except the link-preview bots (Discordbot, WhatsApp, facebookexternalhit, Twitterbot, Slackbot, TelegramBot).
+- Link previews (CLUBS-38, ADR 0006): every route's `meta()` returns `pageMeta({ title, description, path })` from `~/lib/page-meta` (title, description, Open Graph and `twitter:card`); a route's meta replaces its parents', so never return a bare `{ title }`. Match, Session, Squad Member and Opponent text comes from `~/stats/link-preview`; descriptions stay under 200 characters. Absolute URLs come from `SITE_URL` in `~/lib/site`. `og:image` is always the static `public/og-card.png`: **no request-time image rendering**, which the free plan's CPU and Worker size limits rule out. Previews never label text as AI-written.
 
 ## Visual design
 A TV sports-broadcast look: angled score bars, ticker strips and bold condensed numerals on blue-slate surfaces. The palette is inspired by the Seattle Sounders but uses none of their marks, and nothing is copied from Sky Sports or any other broadcaster. Dark is the only theme. See every component live at `/styleguide`.

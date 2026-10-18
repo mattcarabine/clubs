@@ -28,6 +28,7 @@ import {
   formatPercentage,
   formatSigned,
 } from "~/lib/number-format";
+import { pageMeta } from "~/lib/page-meta";
 import {
   clubSnapshots,
   getCampaignProgress,
@@ -52,8 +53,13 @@ import { CampaignSection, campaignsView } from "./campaigns";
 /** The run-of-results strip shows this many of the latest Matches. */
 const STRIP_LENGTH = 40;
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: "A Bloo Bloo — Trends" }];
+export function meta({ location }: Route.MetaArgs) {
+  return pageMeta({
+    title: "A Bloo Bloo — Trends",
+    description:
+      "Results, goal difference and form over time, by day and time of day, and Campaign by Campaign.",
+    path: location.pathname,
+  });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

@@ -20,6 +20,7 @@ import {
 } from "~/components";
 import { getDb } from "~/db/client";
 import { formatLondonDateTime } from "~/lib/london-time";
+import { pageMeta } from "~/lib/page-meta";
 import {
   clubRecord,
   type LeaderboardRow,
@@ -31,9 +32,13 @@ import {
 
 import type { Route } from "./+types/test-stats";
 
-export function meta(_: Route.MetaArgs) {
+export function meta({ location }: Route.MetaArgs) {
   return [
-    { title: "A Bloo Bloo — Stats check" },
+    ...pageMeta({
+      title: "A Bloo Bloo — Stats check",
+      description: "Test-only check of the shared stats layer.",
+      path: location.pathname,
+    }),
     { name: "robots", content: "noindex" },
   ];
 }
