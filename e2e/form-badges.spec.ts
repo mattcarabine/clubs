@@ -193,15 +193,22 @@ test.describe("on a 375px phone", () => {
       expect(fits, path).toBe(true);
     }
 
-    // The badge fits inside the name's phone cap (CLUBS-22, 6rem), so the
-    // headline stats keep their place beside it.
+    // On phones the badge sits under the name, so the name column is no
+    // wider than with no badges (League only: the same Squad Members) and
+    // the headline stats keep their place beside it (CLUBS-22).
+    const nameColumnWidth = async () =>
+      (
+        await page
+          .getByRole("table", { name: "Squad Members" })
+          .getByRole("columnheader", { name: "Squad Member" })
+          .boundingBox()
+      )?.width;
+    await page.goto("/squad?types=league");
+    await expect(page.locator("[title^='Last 5']")).toHaveCount(0);
+    const withoutBadges = await nameColumnWidth();
     await page.goto("/squad");
-    for (const player of [HOT, COLD]) {
-      const name = squadRow(page, player.name).getByRole("link", {
-        name: new RegExp(player.name),
-      });
-      expect((await name.boundingBox())?.width).toBeLessThanOrEqual(96);
-    }
+    await expect(badge(page, HOT_DETAIL)).toHaveCount(1);
+    expect(await nameColumnWidth()).toBe(withoutBadges);
 
     // On phones the badge is just its arrow; the word is only read out.
     const hot = badge(squadRow(page, HOT.name), HOT_DETAIL);
