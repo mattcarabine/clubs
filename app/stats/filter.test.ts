@@ -8,6 +8,7 @@ import {
   parseStatsFilter,
   presetRange,
   type StatsFilter,
+  selectCampaign,
   statsFilterFromRequest,
   toggleMatchType,
   writeStatsFilter,
@@ -104,6 +105,23 @@ describe("parseStatsFilter", () => {
     }
   });
 
+  it("reads a Campaign: current, previous or a number, else none", () => {
+    expect(parseStatsFilter(params("campaign=current")).campaign).toEqual({
+      ref: "current",
+    });
+    expect(parseStatsFilter(params("campaign=previous")).campaign).toEqual({
+      ref: "previous",
+    });
+    expect(parseStatsFilter(params("campaign=3")).campaign).toEqual({
+      ref: 3,
+    });
+    for (const raw of ["", "0", "-1", "2.5", "latest"]) {
+      expect(
+        parseStatsFilter(params(`campaign=${raw}`)).campaign,
+      ).toBeUndefined();
+    }
+  });
+
   it("reads a loader's request", () => {
     const request = new Request("https://stats.test/squad?dnf=0");
     expect(statsFilterFromRequest(request).includeDnf).toBe(false);
@@ -181,6 +199,53 @@ describe("writeStatsFilter", () => {
         filter,
       );
     }
+  });
+});
+
+describe("Campaign in the URL", () => {
+  it("writes the Campaign's ref, never its resolved kick-offs", () => {
+    const kickoffs = { first: new Date(0), last: new Date(1) };
+    expect(
+      writeStatsFilter(params(""), {
+        ...DEFAULT_STATS_FILTER,
+        campaign: { ref: "previous", kickoffs },
+      }).toString(),
+    ).toBe("campaign=previous");
+    expect(
+      writeStatsFilter(params("campaign=2"), {
+        ...DEFAULT_STATS_FILTER,
+        campaign: { ref: 2 },
+      }).toString(),
+    ).toBe("campaign=2");
+    expect(
+      writeStatsFilter(params("campaign=2"), DEFAULT_STATS_FILTER).size,
+    ).toBe(0);
+  });
+
+  it("is not the default filter", () => {
+    expect(
+      isDefaultStatsFilter({
+        ...DEFAULT_STATS_FILTER,
+        campaign: { ref: "current" },
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("selectCampaign", () => {
+  it("narrows to League, since a Campaign counts League Matches only", () => {
+    expect(selectCampaign(DEFAULT_STATS_FILTER, "current")).toEqual({
+      ...DEFAULT_STATS_FILTER,
+      matchTypes: ["League"],
+      campaign: { ref: "current" },
+    });
+  });
+
+  it("clears the Campaign and keeps the Match Types", () => {
+    const selected = selectCampaign(DEFAULT_STATS_FILTER, 2);
+    const cleared = selectCampaign(selected, undefined);
+    expect(cleared.campaign).toBeUndefined();
+    expect(cleared.matchTypes).toEqual(["League"]);
   });
 });
 

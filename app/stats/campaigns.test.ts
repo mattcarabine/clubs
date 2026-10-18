@@ -6,10 +6,12 @@ import {
   CAMPAIGN_RULES,
   type CampaignMatchInput,
   type CampaignRuleSet,
+  campaignKickoffs,
   campaignRecord,
   chancesLeft,
   divisionMismatch,
   divisionTimeline,
+  findCampaign,
   replayCampaigns,
 } from "./campaigns";
 import { DIVISIONS, type DivisionNumber } from "./divisions";
@@ -316,5 +318,56 @@ describe("divisionMismatch", () => {
       divisionMismatch({ campaigns: [], inPlayoffs: false }, 3),
     ).toBeNull();
     expect(divisionMismatch(replay("W"), null)).toBeNull();
+  });
+});
+
+describe("findCampaign", () => {
+  // Division 5 promoted after W W D W, then Division 4 in progress.
+  const { campaigns } = replay("WWDWW");
+
+  it("finds the current Campaign, the one before it, or one by number", () => {
+    expect(findCampaign(campaigns, "current")).toEqual({
+      number: 2,
+      campaign: campaigns[1],
+    });
+    expect(findCampaign(campaigns, "previous")).toEqual({
+      number: 1,
+      campaign: campaigns[0],
+    });
+    expect(findCampaign(campaigns, 1)?.campaign).toBe(campaigns[0]);
+  });
+
+  it("finds nothing for an unknown Campaign", () => {
+    expect(findCampaign(campaigns, 3)).toBeUndefined();
+    expect(findCampaign([], "current")).toBeUndefined();
+    expect(findCampaign(campaigns.slice(0, 1), "previous")).toBeUndefined();
+  });
+});
+
+describe("campaignKickoffs", () => {
+  it("spans the first League Match to the last Match, series included", () => {
+    const matches = run("WWDLW");
+    const [promoted, next] = replayCampaigns(matches, [SEASON_START]).campaigns;
+    // W W D reaches 7; the series goes L then W.
+    expect(campaignKickoffs(promoted)).toEqual({
+      first: matches[0].playedAt,
+      last: matches[4].playedAt,
+    });
+    expect(campaignKickoffs(next)).toBeNull();
+  });
+
+  it("includes a Relegation Match", () => {
+    // Division 4 from the start: three losses use every Chance, then the Relegation Match.
+    const matches = run("LLLW");
+    const [campaign] = replayCampaigns(
+      matches,
+      [SEASON_START],
+      startingIn(5),
+    ).campaigns;
+    expect(campaign.relegationMatch).not.toBeNull();
+    expect(campaignKickoffs(campaign)).toEqual({
+      first: matches[0].playedAt,
+      last: matches[3].playedAt,
+    });
   });
 });
