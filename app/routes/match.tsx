@@ -7,6 +7,7 @@ import { data, Link } from "react-router";
 
 import {
   BackLink,
+  EstimateTag,
   LINKED_ROW,
   LINKED_ROW_HEADER,
   LondonTime,
@@ -32,14 +33,21 @@ import {
   type DroppedPointsReasons,
   getDroppedPointsReasons,
   getMatch,
+  getMatchWinChance,
   type MatchAppearance,
   type MatchSides,
+  type MatchWinChance,
   sessionOfMatch,
   summariseMatchSides,
 } from "~/stats";
 // The component groups line-ups, so import the pure helper directly to keep
 // the query modules out of the client bundle.
 import { groupBy } from "~/stats/summaries";
+import {
+  formatWinChance,
+  SHOULD_HAVE_WON_CHANCE,
+  UPSET_WIN_CHANCE,
+} from "~/stats/win-chance";
 
 import type { Route } from "./+types/match";
 
@@ -59,9 +67,10 @@ export async function loader({ params }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const match = await getMatch(db, params.matchId);
   if (!match) throw data("Match not found", { status: 404 });
-  const [droppedPoints, session] = await Promise.all([
+  const [droppedPoints, session, winChance] = await Promise.all([
     getDroppedPointsReasons(db, match),
     sessionOfMatch(db, match.matchId),
+    getMatchWinChance(db, match),
   ]);
   const ours = match.appearances.filter((a) => a.isOurClub);
   const theirs = match.appearances.filter((a) => !a.isOurClub);
@@ -71,14 +80,23 @@ export async function loader({ params }: Route.LoaderArgs) {
     ours,
     theirs,
     droppedPoints,
+    winChance,
     totals: summariseMatchSides(match.appearances),
     sessionId: session?.id ?? null,
   };
 }
 
 export default function Match({ loaderData }: Route.ComponentProps) {
-  const { clubName, match, ours, theirs, droppedPoints, totals, sessionId } =
-    loaderData;
+  const {
+    clubName,
+    match,
+    ours,
+    theirs,
+    droppedPoints,
+    winChance,
+    totals,
+    sessionId,
+  } = loaderData;
   const { opponent } = match;
   const motm = match.appearances.find((a) => a.manOfTheMatch);
   return (
@@ -110,6 +128,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
           skillRatings={match.skillRatings}
           sides={totals}
         />
+        {winChance && <WinChanceNote winChance={winChance} />}
         {match.dnf &&
           (match.outcome === "W" ? (
             <DnfNote winner={clubName} quitter={opponent.name} />
@@ -179,6 +198,39 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       notFoundDescription="No recorded Match has this ID. It may be older than the first Poll."
       back={{ to: "/matches", children: "All Matches" }}
     />
+  );
+}
+
+/** Our Win Chance before kick-off, and a flag when the result went against it. */
+function WinChanceNote({ winChance }: { winChance: MatchWinChance }) {
+  const { chance, source, expectation } = winChance;
+  return (
+    <aside
+      aria-label="Win chance"
+      className="mt-4 flex flex-col gap-2 border-shale-700 border-t-2 bg-shale-900 px-4 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4"
+    >
+      <p className="flex flex-wrap items-center gap-2 text-ink-soft">
+        <span>
+          Win chance before kick-off:{" "}
+          <strong className="font-display font-extrabold text-ink text-xl tabular">
+            {formatWinChance(chance)}
+          </strong>
+        </span>
+        {source === "estimate" && <EstimateTag />}
+      </p>
+      {expectation && (
+        <p className="flex flex-wrap items-center gap-2 text-ink-soft">
+          <span
+            className={`clip-slant px-2 py-0.5 font-display font-bold text-shale-950 text-xs uppercase tracking-wide [--slant:0.2rem] ${expectation === "upset-win" ? "bg-win" : "bg-loss"}`}
+          >
+            {expectation === "upset-win" ? "Upset Win" : "Should have won"}
+          </span>
+          {expectation === "upset-win"
+            ? `A Win from a Win Chance under ${formatWinChance(UPSET_WIN_CHANCE)}.`
+            : `Dropped Points from a Win Chance over ${formatWinChance(SHOULD_HAVE_WON_CHANCE)}.`}
+        </p>
+      )}
+    </aside>
   );
 }
 
