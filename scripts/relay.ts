@@ -1,10 +1,11 @@
 /**
  * `pnpm relay [--once]`: the home relay (docs/adr/0007). EA's Akamai answers
- * only a real, windowed Chrome, so this runs on the always-on Mac mini: every
- * 5 minutes it opens Chrome, makes the Poll's requests through it and sends
- * them to the Worker, which records them as it would its own Poll.
+ * only a real, windowed Chrome, so this runs on the always-on Mac mini: it
+ * keeps one minimised Chrome open and every 5 minutes makes the Poll's
+ * requests through it, then sends them to the Worker, which records them as
+ * it would its own Poll.
  *
- * Needs Google Chrome installed, a logged-in desktop (the window must open),
+ * Needs Google Chrome installed, a logged-in desktop (the window must exist),
  * and `RELAY_TOKEN` (the Worker secret) from the shell or `.relay.env`;
  * `scripts/relay.sh` loads it. `RELAY_SITE_URL` overrides the site.
  * Never run in CI (docs/adr/0004).
@@ -29,8 +30,12 @@ if (!token) {
 }
 const siteUrl = process.env.RELAY_SITE_URL ?? SITE_URL;
 
+/** The one Chrome every Poll shares, so it takes focus only when it opens. */
+let chrome: { browser: Browser; page: Page } | undefined;
+
 if (process.argv.includes("--once")) {
   process.exitCode = (await pollOnce()) ? 0 : 1;
+  await closeChrome();
 } else {
   for (;;) {
     await pollOnce();
@@ -39,40 +44,58 @@ if (process.argv.includes("--once")) {
   }
 }
 
-/** One Poll through a fresh Chrome; logs one line and never throws. */
+/** One Poll; logs one line and never throws. */
 async function pollOnce(): Promise<boolean> {
   const startedAt = Date.now();
-  let browser: Browser | undefined;
   try {
-    // Headless Chrome and Playwright's own Chromium are both refused
-    // (ERR_HTTP2_PROTOCOL_ERROR); a windowed Chrome is not (2026-10-26).
-    browser = await chromium.launch({
-      channel: "chrome",
-      headless: false,
-      args: ["--window-size=480,320"],
-    });
-    const page = await browser.newPage();
     const summary = await runRelayOnce({
       siteUrl,
       token: token as string,
       eaBaseUrl: LIVE_EA_BASE_URL,
-      fetcher: browserFetcher(page),
+      fetcher: browserFetcher(await openChrome()),
     });
     log({ ...summary, durationMs: Date.now() - startedAt });
+    // A fresh Chrome next time, in case this one's session is what EA refused.
+    if (summary.status === "failed") await closeChrome();
     return summary.status !== "failed";
   } catch (error) {
     log({ status: "error", error: String(error) });
+    await closeChrome();
     return false;
-  } finally {
-    await browser?.close();
   }
+}
+
+/** The shared Chrome, opened and minimised on first use or after it closed. */
+async function openChrome(): Promise<Page> {
+  if (chrome?.browser.isConnected()) return chrome.page;
+  // Headless Chrome and Playwright's own Chromium are both refused
+  // (ERR_HTTP2_PROTOCOL_ERROR); a windowed Chrome is not, even minimised
+  // (2026-10-26).
+  const browser = await chromium.launch({ channel: "chrome", headless: false });
+  const page = await browser.newPage();
+  const cdp = await page.context().newCDPSession(page);
+  const { windowId } = await cdp.send("Browser.getWindowForTarget");
+  await cdp.send("Browser.setWindowBounds", {
+    windowId,
+    bounds: { windowState: "minimized" },
+  });
+  chrome = { browser, page };
+  return page;
+}
+
+async function closeChrome(): Promise<void> {
+  await chrome?.browser.close().catch(() => {});
+  chrome = undefined;
 }
 
 /** Fetches each EA request by loading its URL in the page, as a person's browser would. */
 function browserFetcher(page: Page): EaFetcher {
   return async (request) => {
     try {
+      // "commit": a minimised window may never fire `load`, and the body
+      // is all we need.
       const response = await page.goto(requestUrl(LIVE_EA_BASE_URL, request), {
+        waitUntil: "commit",
         timeout: LIVE_EA_TIMEOUT_MS,
       });
       if (!response) {
