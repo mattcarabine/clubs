@@ -10,6 +10,7 @@ import {
   FAKE_EA_BASE_URL,
   FAKE_EA_URL,
 } from "./e2e/support/ports.ts";
+import { E2E_RELAY_TOKEN } from "./e2e/support/relay.ts";
 
 /** Data-only specs: run once, not per viewport. */
 const API_SPECS = /.*\.api\.spec\.ts/;
@@ -72,12 +73,14 @@ export default defineConfig({
       // Production build in workerd (`test` Wrangler env) on a fresh, migrated
       // local D1, polling this run's fake EA upstream, writing through its
       // fake Anthropic upstream with a dummy key and posting to its fake Discord.
+      // A dummy RELAY_TOKEN opens the home relay's routes (docs/adr/0007).
       command: `pnpm e2e:server --port ${APP_PORT}`,
       env: {
         EA_BASE_URL: FAKE_EA_BASE_URL,
         ANTHROPIC_BASE_URL: FAKE_ANTHROPIC_URL,
         ANTHROPIC_API_KEY: "e2e-dummy-key",
         DISCORD_WEBHOOK_URL: FAKE_DISCORD_WEBHOOK_URL,
+        RELAY_TOKEN: E2E_RELAY_TOKEN,
       },
       url: `${APP_URL}/__test/health?ea=${encodeURIComponent(FAKE_EA_BASE_URL)}&anthropic=${encodeURIComponent(FAKE_ANTHROPIC_URL)}&discord=${encodeURIComponent(FAKE_DISCORD_WEBHOOK_URL)}`,
       reuseExistingServer: !process.env.CI,

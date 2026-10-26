@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Keeps `pnpm relay` running on the Mac mini (docs/adr/0007). A LaunchAgent,
+  not a LaunchDaemon: Chrome must open a window, so it runs in the logged-in
+  user's session. Install with scripts/relay-install.sh, which fills in
+  __REPO__ and __PATH__.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>uk.co.marabine.clubs-relay</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>__REPO__/scripts/relay.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+  <key>StandardOutPath</key>
+  <string>__REPO__/.relay.log</string>
+  <key>StandardErrorPath</key>
+  <string>__REPO__/.relay.log</string>
+</dict>
+</plist>

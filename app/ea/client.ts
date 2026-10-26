@@ -39,16 +39,21 @@ export interface EaClientOptions {
  * - `network`: the connection itself failed.
  * - `invalid_json`: a 2xx whose body is not JSON.
  */
-export type EaFailureKind =
-  | "blocked"
-  | "timeout"
-  | "http"
-  | "network"
-  | "invalid_json";
+export const EA_FAILURE_KINDS = [
+  "blocked",
+  "timeout",
+  "http",
+  "network",
+  "invalid_json",
+] as const;
+export type EaFailureKind = (typeof EA_FAILURE_KINDS)[number];
 
 export type EaResponse =
   | { ok: true; status: number; body: string; json: unknown }
   | { ok: false; status: number | null; kind: EaFailureKind; error: string };
+
+/** Fetches one EA request; never throws. */
+export type EaFetcher = (request: EaRequest) => Promise<EaResponse>;
 
 /** Fetches one EA request. Never throws: every failure becomes an `EaResponse`. */
 export async function fetchEa(
@@ -77,22 +82,30 @@ export async function fetchEa(
       : { ok: false, status: null, kind: "network", error: String(error) };
   }
 
-  if (!response.ok) {
-    const blocked = response.status === 403 || response.status === 429;
+  return toEaResponse(response.status, body);
+}
+
+/**
+ * Classifies one EA answer, however it was fetched (the Worker's `fetch`, or
+ * the home relay's browser).
+ */
+export function toEaResponse(status: number, body: string): EaResponse {
+  if (status < 200 || status > 299) {
+    const blocked = status === 403 || status === 429;
     return {
       ok: false,
-      status: response.status,
+      status,
       kind: blocked ? "blocked" : "http",
-      error: `HTTP ${response.status}: ${body.slice(0, 200)}`,
+      error: `HTTP ${status}: ${body.slice(0, 200)}`,
     };
   }
 
   try {
-    return { ok: true, status: response.status, body, json: JSON.parse(body) };
+    return { ok: true, status, body, json: JSON.parse(body) };
   } catch {
     return {
       ok: false,
-      status: response.status,
+      status,
       kind: "invalid_json",
       error: `Body is not JSON: ${body.slice(0, 200)}`,
     };

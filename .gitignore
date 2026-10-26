@@ -1,6 +1,7 @@
 .DS_Store
 .env
 .ai.env
+.relay.env
 /node_modules/
 *.tsbuildinfo
 
@@ -23,3 +24,4 @@ worker-configuration.d.ts
 
 # Claude Code local settings and agent worktrees
 /.claude/
+.relay.log

@@ -15,6 +15,9 @@
     "EA_CLUB_ID": "332191",
     "EA_CLUB_NAME": "A Bloo Bloo",
     "EA_TIMEOUT_MS": "10000",
+    // "relay": EA answers only a real browser, so the home relay polls it and
+    // pushes each Poll to /relay/poll (docs/adr/0007). "worker": the cron polls EA.
+    "EA_POLL_SOURCE": "relay",
     // "1" enables the /__test/* routes (workers/test-routes.ts). Only the test environment sets it.
     "TEST_ROUTES": "0"
   },
@@ -45,6 +48,7 @@
         "EA_CLUB_ID": "332191",
         "EA_CLUB_NAME": "A Bloo Bloo",
         "EA_TIMEOUT_MS": "1000",
+        "EA_POLL_SOURCE": "worker",
         "TEST_ROUTES": "1",
         // Write-ups (app/ai/config.ts): a short call timeout and no backoff, so a
         // spec can fail a call and retry it on the very next Poll. The fake
