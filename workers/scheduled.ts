@@ -17,7 +17,9 @@ export async function runScheduled(
   env: Env,
   now: Date = new Date(),
 ): Promise<void> {
-  const poll = await runPoll(env);
+  // With the home relay polling EA (docs/adr/0007), its Polls arrive at
+  // `/relay/poll`, which runs Milestone detection itself.
+  const poll = env.EA_POLL_SOURCE === "relay" ? null : await runPoll(env);
   await runMilestones(
     env,
     Boolean(poll && (poll.matchesAdded > 0 || poll.snapshotsAdded > 0)),

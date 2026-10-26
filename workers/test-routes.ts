@@ -10,6 +10,8 @@
  * - `GET /__test/scheduled-without-discord` runs the scheduled handler as
  *   if `DISCORD_WEBHOOK_URL` were not set; `?time=` (epoch ms) sets its
  *   scheduled time, as for `/cdn-cgi/local/scheduled`.
+ * - `GET /__test/scheduled-relay-mode` runs the scheduled handler as in
+ *   production, where the home relay polls EA (`EA_POLL_SOURCE` "relay").
  * - `POST /__test/reset` empties every table, so each test starts clean.
  * - `GET /__test/tables/:name` returns all rows of one table as JSON.
  * - `POST /__test/poll-runs/age?minutes=N` moves every Poll run N minutes
@@ -58,6 +60,11 @@ export async function handleTestRoute(
       { ...env, DISCORD_WEBHOOK_URL: undefined },
       time ? new Date(Number(time)) : undefined,
     );
+    return new Response(null, { status: 204 });
+  }
+
+  if (route === "scheduled-relay-mode" && request.method === "GET") {
+    await runScheduled({ ...env, EA_POLL_SOURCE: "relay" });
     return new Response(null, { status: 204 });
   }
 

@@ -1,0 +1,11 @@
+# Poll EA through Chrome on the home relay
+
+Supersedes the "Worker polls EA" half of ADR 0005; its fallback is now the way we poll.
+
+From 2026-10-17, EA's Akamai sent occasional 403s to the Worker's Polls, and from 2026-10-21 05:20 UTC it refused every one. Nothing we had deployed had changed. On 2026-10-26 we tested from the owner's home connection. `curl` with the Worker's browser headers got a 403, and so did headless Chrome and Playwright's Chromium (`ERR_HTTP2_PROTOCOL_ERROR`). A person's browser, and a windowed Google Chrome driven by Playwright, got a 200. Akamai is judging the client, not just the IP address, so moving the same `fetch` to the Mac mini would not help.
+
+EA offers no Pro Clubs API to apply for: its Community API covers only approved Ultimate Team sites. We considered a hosted browser (Browserbase). Its free plan's 60 browser-minutes a month allow about 5 seconds per Poll at an evening-only, 10-minute cadence. That is about what one Poll takes, so the minutes would run out.
+
+So the always-on Mac mini runs `pnpm relay`. Every 5 minutes, a minute before the cron, it opens Chrome in a window and loads each of the Poll's EA URLs (`collectPoll` with a browser `EaFetcher`). It sends the result to `POST /relay/poll`, which records it with the same `recordPoll` as before and runs Milestone detection. `GET /relay/plan` gives it Our Club and the Opponents still to rate. Both routes need the `RELAY_TOKEN` Worker secret. With `EA_POLL_SOURCE` set to `relay`, the cron no longer calls EA but still runs write-ups and Discord posts. Recording, the Raw Payloads, the API key and the site all stay on Cloudflare, so a Mac mini that is off only leaves the data stale.
+
+Consequences: the Mac mini must stay logged in, because the window has to open; a LaunchAgent (`scripts/relay-install.sh`) keeps the relay running. If the Mac mini is off, Matches roll off EA's 10-per-type list after about 10 more Matches of that type. The owner accepted that this deliberately gets past EA's bot protection, at the same low rate a person refreshing the page would make. If EA blocks a windowed Chrome too, we stop rather than escalate. Setting `EA_POLL_SOURCE` back to `worker` restores direct polling.

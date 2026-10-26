@@ -1,5 +1,6 @@
 import { createRequestHandler } from "react-router";
 
+import { handleRelayRoute } from "./relay-routes";
 import { runScheduled } from "./scheduled";
 import { handleTestRoute } from "./test-routes";
 
@@ -25,7 +26,9 @@ function noindex(response: Response): Response {
 export default {
   async fetch(request, env) {
     return noindex(
-      (await handleTestRoute(request, env)) ?? (await requestHandler(request)),
+      (await handleTestRoute(request, env)) ??
+        (await handleRelayRoute(request, env)) ??
+        (await requestHandler(request)),
     );
   },
 

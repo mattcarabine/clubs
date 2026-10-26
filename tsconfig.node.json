@@ -14,7 +14,9 @@
     "app/lib/relative-time.ts",
     "app/lib/site.ts",
     "app/ea/**/*",
+    "app/poll/collect.ts",
     "app/poll/rating-targets.ts",
+    "app/poll/relay.ts",
     "app/ai/config.ts"
   ],
   "compilerOptions": {

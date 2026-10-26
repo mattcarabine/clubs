@@ -1,10 +1,10 @@
 /**
  * The fetching half of a Poll: asks EA for everything one Poll needs.
  *
- * Kept free of D1 and Worker APIs so the same code can run as a Node script on
- * the home relay and push its result to the Worker (docs/adr/0005).
+ * Kept free of D1 and Worker APIs so the same code runs as a Node script on
+ * the home relay, which pushes its result to the Worker (docs/adr/0005, 0007).
  */
-import { type EaResponse, fetchEa } from "../ea/client.ts";
+import { type EaFetcher, type EaResponse, fetchEa } from "../ea/client.ts";
 import {
   type ClubRef,
   type EaRequest,
@@ -29,6 +29,8 @@ export interface CollectOptions {
   now?: () => number;
   /** Which Opponents still need rating; without it, every recent Match's Opponent is rated. */
   ratings?: RatingState;
+  /** How each request reaches EA; the Worker's `fetch` unless given (the home relay drives a browser). */
+  fetcher?: EaFetcher;
 }
 
 export interface CollectedResponse {
@@ -55,7 +57,11 @@ export interface CollectedPoll {
  */
 export async function collectPoll(
   config: PollConfig,
-  { now = Date.now, ratings = NO_RATING_STATE }: CollectOptions = {},
+  {
+    now = Date.now,
+    ratings = NO_RATING_STATE,
+    fetcher = (request) => fetchEa(request, config),
+  }: CollectOptions = {},
 ): Promise<CollectedPoll> {
   const startedAt = now();
   const responses: CollectedResponse[] = [];
@@ -66,7 +72,7 @@ export async function collectPoll(
   /** Sends one request; false when the Poll should stop. */
   async function send(request: EaRequest): Promise<boolean> {
     const fetchedAt = now();
-    const response = await fetchEa(request, config);
+    const response = await fetcher(request);
     responses.push({
       request,
       fetchedAt,
