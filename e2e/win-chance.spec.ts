@@ -130,6 +130,43 @@ test("an upset Win and a should-have-won loss are flagged on their Match pages",
   await expect(matchNote(page)).not.toContainText("Should have won");
 });
 
+test("the Match page bills us Favourites, a Toss-up or Underdogs, in words and colour", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // Elo: 85%, 50% and 15%.
+  await recordRated(fakeEa, triggerPoll, [
+    { gap: 300, build: win({ matchId: "30151" }) },
+    { gap: 0, build: draw({ matchId: "30152" }) },
+    { gap: -300, build: loss({ matchId: "30153" }) },
+  ]);
+
+  const cases = [
+    { id: "30151", chance: "85%", label: "Favourites", colour: "--color-win" },
+    { id: "30152", chance: "50%", label: "Toss-up", colour: "--color-draw" },
+    { id: "30153", chance: "15%", label: "Underdogs", colour: "--color-loss" },
+  ];
+  for (const { id, chance, label, colour } of cases) {
+    await page.goto(`/matches/${id}`);
+    const note = matchNote(page);
+    await expect(note.getByText(label, { exact: true })).toBeVisible();
+    for (const other of cases.filter((c) => c.label !== label)) {
+      await expect(note.getByText(other.label, { exact: true })).toHaveCount(0);
+    }
+    const figure = note.getByText(chance, { exact: true });
+    const [figureColour, expected] = await figure.evaluate((el, token) => {
+      const probe = document.createElement("span");
+      probe.style.color = `var(${token})`;
+      document.body.append(probe);
+      const want = getComputedStyle(probe).color;
+      probe.remove();
+      return [getComputedStyle(el).color, want];
+    }, colour);
+    expect(figureColour, label).toBe(expected);
+  }
+});
+
 test("20 or more rated Matches fit a curve where a bigger gap gives a bigger chance", async ({
   page,
   fakeEa,
