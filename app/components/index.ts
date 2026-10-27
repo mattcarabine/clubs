@@ -30,6 +30,7 @@ export {
 export { WinChanceChart } from "./charts/win-chance-chart";
 export { WinRateBarChart } from "./charts/win-rate-bar-chart";
 export { Chip, ChipGroup, chipClassName } from "./chip";
+export { ClubLeaders } from "./club-leaders";
 export { CrestMark } from "./crest-mark";
 export {
   DataTable,
@@ -53,6 +54,7 @@ export {
   MilestoneCard,
   type MilestoneCardData,
   MilestoneList,
+  MilestoneRow,
 } from "./milestone-card";
 export { OutcomeBadge } from "./outcome-badge";
 export { PERFORMER_COLUMNS } from "./performer-columns";

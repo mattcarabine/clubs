@@ -119,8 +119,10 @@ async function splitData(
       matchId: m.matchId,
       playedAt: m.playedAt,
       outcome: m.outcome,
+      dnf: m.dnf,
       ...performanceOf(sides),
       squadSize: sides?.squadSize ?? 0,
+      opponentHumans: sides?.opponentHumans ?? 0,
       session,
       sessionPlace: place,
       ratingGap: ratingGap(m.skillRatings),
@@ -192,6 +194,8 @@ interface MatchTotals {
   secondsPlayed: number;
   /** Our Club's Appearances with minutes, a DNF we quit's included. */
   squadSize: number;
+  /** The Opponent's Appearances with minutes: its humans, since EA lists no AI players. */
+  opponentHumans: number;
 }
 
 function total(column: SQLiteColumn): SQL<number> {
@@ -237,10 +241,15 @@ async function clubMatchTotals(
   for (const row of rows) {
     const { matchId, ours, players, secondsPlayed, dnf, result, ...stats } =
       row;
-    const entry = byMatch.get(matchId) ?? { secondsPlayed: 0, squadSize: 0 };
+    const entry = byMatch.get(matchId) ?? {
+      secondsPlayed: 0,
+      squadSize: 0,
+      opponentHumans: 0,
+    };
     entry.secondsPlayed = Math.max(entry.secondsPlayed, secondsPlayed ?? 0);
     if (!ours) {
       entry.opponent = stats;
+      entry.opponentHumans = players;
     } else {
       entry.squadSize = players;
       if (!weQuit({ dnf, outcome: toOutcome(result) })) entry.ours = stats;
