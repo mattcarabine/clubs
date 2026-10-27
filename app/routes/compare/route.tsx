@@ -315,6 +315,20 @@ function recordedRows(sides: readonly ComparedTotals[]): TapeRow[] {
       smallSample: smallSamples(sides, (s) => s.vsTeam.matches),
       bars: false,
     },
+    // Consistency (CLUBS-74): a dash under 5 rated Appearances.
+    {
+      label: "Floor",
+      values: pair(sides, (s) => s.consistency.floor),
+      format: formatDecimal,
+      better: "higher",
+    },
+    {
+      label: "Spread",
+      values: pair(sides, (s) => s.consistency.spread),
+      format: (v) => formatDecimal(v, 2),
+      better: "lower",
+      bars: false,
+    },
     stat("MOTM", (t) => t.manOfTheMatch),
     stat("Form", (t) => t.form, formatDecimal),
   ];

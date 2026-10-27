@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  consistency,
   type LinkStrength,
   linkReading,
   linkStrength,
@@ -180,5 +181,40 @@ describe("linkReading", () => {
   it("says nothing without a verdict", () => {
     expect(read(null, "together")).toBeNull();
     expect(read("together", null)).toBeNull();
+  });
+});
+
+describe("consistency (CLUBS-74)", () => {
+  const ratings = (values: number[]) =>
+    values.map((r, i) => rated(`m${i}`, "a", r));
+
+  it("sets a steady high Floor apart from a swingy one", () => {
+    const rock = consistency(ratings([7.5, 7.8, 8, 7.6, 7.9, 7.7]));
+    const swingy = consistency(ratings([9.5, 5.5, 9, 6, 9.2, 5.8]));
+    expect(rock.floor).toBeGreaterThan(swingy.floor ?? 0);
+    expect(rock.spread).toBeLessThan(swingy.spread ?? 0);
+    expect(rock).toMatchObject({ matches: 6, smallSample: true });
+  });
+
+  it("is the 20th percentile and the standard deviation", () => {
+    const result = consistency(ratings([6, 7, 8, 9, 10, 6, 7, 8, 9, 10]));
+    expect(result.floor).toBeCloseTo(6.8);
+    expect(result.spread).toBeCloseTo(Math.SQRT2);
+    expect(result.smallSample).toBe(false);
+  });
+
+  it("needs 5 counted, rated Appearances", () => {
+    const four = [
+      ...ratings([7, 7, 7, 7]),
+      rated("m8", "a", 3, { secondsPlayed: 0 }),
+      rated("m9", "a", 9, { dnf: true, outcome: "L" }),
+      rated("m10", "a", null),
+    ];
+    expect(consistency(four)).toEqual({
+      matches: 4,
+      floor: null,
+      spread: null,
+      smallSample: false,
+    });
   });
 });
