@@ -87,12 +87,12 @@ export function ComparisonSection({
     <section aria-label="Comparison" className="flex flex-col gap-4">
       <SectionHeading
         title="Comparison"
-        subtitle={`${currentLabel} against ${previousLabel}: ${formatCount(previousPlayed, "Match", "Matches")} then.`}
+        subtitle={`${currentLabel} against ${previousLabel}: ${formatCount(previousPlayed, "match", "matches")} then.`}
       />
       {previousPlayed === 0 ? (
         <EmptyState
-          title={`No Matches in ${previousLabel}`}
-          description="There is nothing to compare with yet. Pick another period, or check back once there are Matches in it."
+          title={`No matches in ${previousLabel}`}
+          description="There is nothing to compare with yet. Pick another period, or check back once there are matches in it."
         />
       ) : (
         <>
@@ -141,14 +141,14 @@ function formatFigure(figure: ComparedFigure, value: number | null): string {
     : formatDecimal(value, 2);
 }
 
-/** "12 pts better" / "0.40 per Match worse" / "No change". */
+/** "12 pts better" / "0.40 per match worse" / "No change". */
 function changeInWords(figure: ComparedFigure): string {
   const { change, good } = figure;
   if (change === null || change === 0 || good === null) return "No change";
   const size =
     figure.unit === "pts"
       ? `${formatDecimal(Math.abs(change), 0)} pts`
-      : `${formatDecimal(Math.abs(change), 2)} per Match`;
+      : `${formatDecimal(Math.abs(change), 2)} per match`;
   return `${size} ${good ? "better" : "worse"}`;
 }
 

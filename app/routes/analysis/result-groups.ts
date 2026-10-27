@@ -26,5 +26,5 @@ export function hiddenNote({
 }: Pick<GroupedResults<unknown>, "hidden">): string | null {
   return hidden.length === 0
     ? null
-    : `Hidden with fewer than ${MIN_SPLIT_MATCHES} Matches: ${hidden.map((h) => `${h.label} (${h.played})`).join(", ")}.`;
+    : `Hidden with fewer than ${MIN_SPLIT_MATCHES} matches: ${hidden.map((h) => `${h.label} (${h.played})`).join(", ")}.`;
 }

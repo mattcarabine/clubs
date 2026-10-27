@@ -28,7 +28,7 @@ export function OverTimeSection({
     <section aria-label="Over time" className="flex flex-col gap-6">
       <SectionHeading
         title="Over time"
-        subtitle="EA's Skill Rating and our Division since tracking began. Not affected by the filters."
+        subtitle="How EA's skill rating and our division have moved. The filters don't change these."
       />
       <SkillRatingSection skillRating={skillRating} />
       <DivisionHistory view={campaigns} />
@@ -42,7 +42,7 @@ function SkillRatingSection({ skillRating }: { skillRating: SkillRatingView }) {
       {skillRating.values.length === 0 ? (
         <EmptyState
           title="No skill rating yet"
-          description="The rating appears after the first Poll that records club totals."
+          description="The rating appears once we've picked up EA's club totals."
         />
       ) : (
         <ChartFrame

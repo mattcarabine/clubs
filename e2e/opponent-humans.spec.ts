@@ -103,9 +103,9 @@ test("Matches land under their exact count, band and our numbers, and small coun
   ]);
   await expect(humansRow(page, "7 humans")).toHaveCount(0);
   await expect(
-    section(page).getByText("Hidden with fewer than 3 Matches: 7 humans (1)."),
+    section(page).getByText("Hidden with fewer than 3 matches: 7 humans (1)."),
   ).toBeVisible();
-  await expect(bars(page, "Win % by Opponent humans")).toHaveCount(3);
+  await expect(bars(page, "Win % by opponent humans")).toHaveCount(3);
 
   // Bands: 1–3 holds the 2s, 4–6 the 4s and 6s; 7–9 has only the one 7.
   await expect(bars(page, "Win % by band")).toHaveCount(2);
@@ -124,7 +124,7 @@ test("Matches land under their exact count, band and our numbers, and small coun
   await expect(ours.nth(1)).toContainText("Same (4)");
   await expect(ours.nth(2)).toContainText("Slightly more (3)");
   await expect(
-    section(page).getByText("Hidden with fewer than 3 Matches: Much more (1)."),
+    section(page).getByText("Hidden with fewer than 3 matches: Much more (1)."),
   ).toBeVisible();
 
   await expect(
@@ -214,7 +214,7 @@ test("with every count under 3 Matches it says what each needs", async ({
   await page.goto("/analysis");
   await expect(
     section(page).getByText(
-      "Hidden with fewer than 3 Matches: 2 humans (2), 3 humans (2), 5 humans (2). Each number of humans needs at least 3 Matches to show.",
+      "Hidden with fewer than 3 matches: 2 humans (2), 3 humans (2), 5 humans (2). Each number of humans needs at least 3 matches to show.",
     ),
   ).toBeVisible();
   await expect(

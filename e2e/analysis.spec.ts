@@ -108,9 +108,9 @@ test("the top finding names shots with both per-90 values and the counts", async
   await page.goto("/analysis");
   const top = findings(page).first();
   await expect(top).toContainText(
-    "In draws and defeats we take 3.0 fewer shots per 90 than in Wins (9.0 vs 12.0)",
+    "In draws and defeats we take 3.0 fewer shots per 90 than in wins (9.0 vs 12.0)",
   );
-  await expect(top).toContainText("3 Wins, 3 draws and defeats");
+  await expect(top).toContainText("3 wins, 3 draws and defeats");
   await expect(top).not.toContainText("Dropped Points");
   await expect(top).toContainText("Small sample");
 });
@@ -177,9 +177,9 @@ test("findings from 10 Matches a side drop the Small sample mark", async ({
   await page.goto("/analysis");
   const top = findings(page).first();
   await expect(top).toContainText(
-    "fewer shots per 90 than in Wins (9.0 vs 12.0)",
+    "fewer shots per 90 than in wins (9.0 vs 12.0)",
   );
-  await expect(top).toContainText("10 Wins, 10 draws and defeats");
+  await expect(top).toContainText("10 wins, 10 draws and defeats");
   await expect(top).not.toContainText("Small sample");
 });
 
@@ -453,7 +453,7 @@ test("the trend chart shows a rolling 10-Match Win %", async ({
   const trend = region(page, "Trend");
   await expect(trend.getByRole("slider")).toBeVisible();
   const cells = trend
-    .getByRole("table", { name: "Rolling 10-Match Win %" })
+    .getByRole("table", { name: "Rolling 10-match win %" })
     .getByRole("cell");
   await expect(cells).toHaveCount(13);
   await expect(cells.nth(9)).toHaveText("100%");
@@ -685,12 +685,12 @@ test.describe("After a result (CLUBS-26)", () => {
     await page.goto("/analysis");
     const tilt = findings(page).filter({
       hasText:
-        "After a draw or defeat in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
+        "After a draw or defeat in the same session we win 20% (5 matches) vs 60% after a win (5)",
     });
     await expect(tilt).toHaveCount(1);
     await expect(tilt).toContainText("After a result");
     await expect(tilt).toContainText(
-      "5 Matches after a draw or defeat, 5 after a Win in the same Session",
+      "5 matches after a draw or defeat, 5 after a win in the same session",
     );
     await expect(tilt).toContainText("Small sample");
   });

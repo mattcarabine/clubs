@@ -17,7 +17,7 @@ export function LineupsSection({
     <section aria-label="Line-ups" className="min-w-0">
       <SectionHeading
         title="Line-ups"
-        subtitle={`Each set of Squad Members who played together, with at least ${MIN_LINEUP_MATCHES} Matches.`}
+        subtitle={`How each group of squad members gets on together, once they have played ${MIN_LINEUP_MATCHES} matches as a group.`}
       />
       <DataTable
         caption="Line-up performance"
@@ -27,7 +27,7 @@ export function LineupsSection({
         empty={
           <EmptyState
             title="No regular line-ups"
-            description={`A line-up appears once the same Squad Members have played ${MIN_LINEUP_MATCHES} Matches together.`}
+            description={`A line-up appears once the same squad members have played ${MIN_LINEUP_MATCHES} matches together.`}
           />
         }
       />

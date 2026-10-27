@@ -102,7 +102,7 @@ test("respects the FilterBar's Match Types", async ({
   const results = page.getByRole("region", { name: "Results" });
   await page.goto("/analysis");
   await expect(
-    results.getByText("2 Matches: 1 won, 0 drawn, 1 lost."),
+    results.getByText("2 matches: 1 won, 0 drawn, 1 lost."),
   ).toBeVisible();
 
   await page.goto("/analysis?types=league");
@@ -137,7 +137,7 @@ test("charts no points total; the other Results charts stay", async ({
     page.getByRole("slider", { name: "Cumulative points" }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("slider", { name: /Goals per Match/ }),
+    page.getByRole("slider", { name: /Goals per match/ }),
   ).toBeVisible();
 });
 
@@ -217,7 +217,7 @@ test("Over time ignores the filters and says so", async ({
   for (const path of ["/analysis", "/analysis?range=7d&types=playoff"]) {
     await page.goto(path);
     const overTime = page.getByRole("region", { name: "Over time" });
-    await expect(overTime).toContainText("Not affected by the filters");
+    await expect(overTime).toContainText("The filters don't change these");
     await expect(
       overTime
         .getByRole("table", { name: "Skill rating over time" })
