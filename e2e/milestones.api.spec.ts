@@ -150,7 +150,7 @@ test("one call writes the comments on every Milestone a Poll found", async ({
   await triggerPoll();
   await serveMatch(fakeEa, "936400000000001", 10, [
     { player: KAB, goals: 3 },
-    { player: LOL, rating: 9.4 },
+    { player: LOL, rating: 10 },
   ]);
   await serveCareerTotals(fakeEa, {
     Kabeeble: { goals: 52, gamesPlayed: 121 },
@@ -161,7 +161,7 @@ test("one call writes the comments on every Milestone a Poll found", async ({
   expect(milestones.map((m) => m.kind).sort()).toEqual([
     "goals",
     "hat-trick",
-    "rating",
+    "perfect-rating",
   ]);
   expect(new Set(milestones.map((m) => m.batch_key)).size).toBe(1);
 
@@ -175,7 +175,7 @@ test("one call writes the comments on every Milestone a Poll found", async ({
   for (const headline of [
     "Kabeeble — 50th goal",
     "Kabeeble — Hat-trick",
-    "Loltown95 — 9.4 rating",
+    "Loltown95 — Perfect rating",
   ]) {
     expect(requests[0].raw).toContain(headline);
   }
@@ -200,7 +200,7 @@ test("on release, the Milestones already in D1's Matches and Snapshots are backf
     fakeEa,
     "936500000000002",
     2 * DAY_MINUTES,
-    [{ player: KAB }, { player: LOL, rating: 9.5 }],
+    [{ player: KAB }, { player: LOL, rating: 10 }],
   );
   await serveCareerTotals(fakeEa, {
     Kabeeble: { goals: 52, gamesPlayed: 99 },
@@ -222,7 +222,7 @@ test("on release, the Milestones already in D1's Matches and Snapshots are backf
   const backfilled = [
     ["appearances", 100, hundredth],
     ["hat-trick", 3, hatTrick],
-    ["rating", 9.5, standout],
+    ["perfect-rating", 10, standout],
   ];
   expect((await stored(db)).sort()).toEqual(backfilled);
   // No 50th goal: it was passed before the first Snapshot.
