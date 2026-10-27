@@ -17,6 +17,7 @@ import {
   columnMenuAt,
   useColumnDrag,
 } from "./column-menu";
+import { HeaderTooltip, useHeaderTooltip } from "./header-tooltip";
 import {
   LINKED_ROW,
   LINKED_ROW_HEADER,
@@ -34,6 +35,11 @@ export type DataTableColumn<T> = {
    * picker (CLUBS-80). Without one it has no effect.
    */
   defaultHidden?: boolean;
+  /**
+   * What the column means, e.g. "Goals plus assists" (CLUBS-81): a tooltip
+   * on the header for mice and keyboards, and its accessible description.
+   */
+  description?: string;
   cell: (row: T) => ReactNode;
   /** Makes the column sortable. Return null for missing values; they sort last. */
   sortValue?: (row: T) => SortValue;
@@ -109,6 +115,7 @@ export function DataTable<T>({
   const { drag, start: startDrag } = useColumnDrag((id, target) =>
     layout?.move(id, target),
   );
+  const tooltip = useHeaderTooltip();
   const shown = arrangeColumns(columns, layout);
   // A hidden column no longer sorts the table.
   const sortColumn = shown.find((c) => c.id === sort?.columnId);
@@ -153,16 +160,26 @@ export function DataTable<T>({
                     key={column.id}
                     scope="col"
                     aria-sort={direction && ARIA_SORT[direction]}
+                    aria-description={
+                      column.sortValue ? undefined : column.description
+                    }
+                    {...(column.description &&
+                      tooltip.headerProps(column.id, column.description))}
+                    // Pressing a header (to sort or drag it) puts the tooltip away.
+                    onPointerDown={(event) => {
+                      tooltip.hide();
+                      if (movable) startDrag(column.id)(event);
+                    }}
                     {...(movable && {
                       "data-column-drop": column.id,
                       onContextMenu: (event) => {
                         event.preventDefault();
+                        tooltip.hide();
                         // Read now: React clears the event before a state
                         // updater would run.
                         setMenu(columnMenuAt(column.id, event, opens.current));
                         opens.current += 1;
                       },
-                      onPointerDown: startDrag(column.id),
                     })}
                     className={[
                       "border-shale-700 border-b bg-shale-800 px-2 py-2 font-display font-bold text-base text-ink-muted uppercase leading-tight tracking-wide first:pl-3 sm:px-3",
@@ -179,6 +196,7 @@ export function DataTable<T>({
                     {column.sortValue ? (
                       <button
                         type="button"
+                        aria-description={column.description}
                         onClick={() => toggle(column)}
                         className={`inline-flex items-center gap-1 text-left uppercase hover:text-ink ${direction ? "text-ink" : ""}`}
                       >
@@ -235,6 +253,7 @@ export function DataTable<T>({
           </tbody>
         </table>
       </section>
+      {tooltip.tip && <HeaderTooltip tip={tooltip.tip} />}
       {menu && layout && (
         <HeaderMenu
           at={menu}

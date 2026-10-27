@@ -155,9 +155,9 @@ _Avoid_: Head-to-head (reserved for Our Club vs an Opponent), versus, matchup
 A Match in which both Squad Members in a Comparison made an Appearance; shown in the app as "Played together".
 _Avoid_: Partnership, joint match, common game
 
-**Vs team**:
+**Above team**:
 A Squad Member's rating minus the average rating of their teammates (Our Club's other counted Appearances) in the same Match, averaged over their Matches. Above 0, they outperform the team around them; near 0, they rise and fall with it. A Match with no other rated teammate gives no figure.
-_Avoid_: Relative rating, plus-minus, outperformance score
+_Avoid_: Vs team (its old name, unclear about the sign), relative rating, plus-minus, outperformance score
 
 **Rating link**:
 Whether two Squad Members rate well and badly in the same Matches: the correlation of their ratings over their Shared Matches (from −1 to +1), shown on Compare as "Rise and fall together?". "Beyond the team" repeats it with the rest of the line-up's average held fixed (a partial correlation), so two who only ride the team's tide read weaker there. Needs 8 rated Shared Matches for a verdict, with "Small sample" under 15.

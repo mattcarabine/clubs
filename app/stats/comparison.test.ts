@@ -143,7 +143,7 @@ describe("compareSides", () => {
   it("rates each side against their teammates and links the two (CLUBS-66)", () => {
     const { sides, link } = compareSides(inputs(), "all", RATINGS);
     // Everyone rates 7, so A and B sit level with the team in m3..m5.
-    expect(sides.map((s) => s.vsTeam)).toEqual([
+    expect(sides.map((s) => s.aboveTeam)).toEqual([
       { matches: 3, gap: 0 },
       { matches: 3, gap: 0 },
     ]);

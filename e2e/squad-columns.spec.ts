@@ -20,7 +20,7 @@ const DEFAULT_HEADERS = [
   "Rating",
   "Form",
   "Apps",
-  "Vs team",
+  "Above team",
   "G",
   "A",
   "G/90",
