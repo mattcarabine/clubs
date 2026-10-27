@@ -1,7 +1,7 @@
 # A Bloo Bloo Stats: agent guide
 
 Read before changing anything:
-- [CONTEXT.md](CONTEXT.md) is the domain glossary. Use its terms exactly (Match, Appearance, Squad Member, Poll, Snapshot, Raw Payload, Season, ...) in code, UI copy and tests.
+- [CONTEXT.md](CONTEXT.md) is the domain glossary. Use its terms exactly (Match, Appearance, Squad Member, Poll, Snapshot, Raw Payload, Season, ...) in code, comments, docs and test names. On the page they are ordinary lowercase words: see "Writing copy".
 - [docs/adr/](docs/adr) holds decisions that are hard to reverse. Do not contradict one without writing a new ADR.
 - Linear (team **CLUBS**, project "v1 — A Bloo Bloo Stats") is the source of truth for work. Each issue's acceptance criteria are end-to-end scenarios.
 
@@ -72,6 +72,14 @@ To trigger the cron locally: `GET /cdn-cgi/local/scheduled`. This only works in 
   - **URL:** presets serialise as `?range=7d|30d|1y`, so shared links stay relative; custom ranges as `?from=YYYY-MM-DD&to=YYYY-MM-DD`.
   - **Bad input:** an invalid range falls back to "All".
 - Every page must work at 375px wide with no horizontal page scroll, and use the extra width on desktop.
+
+## Writing copy
+Everything a viewer reads (headings, section and chart descriptions, notes, empty states, table headers, generated sentences such as Analysis findings) is for casual players, not statisticians (CLUBS-75).
+- **Plain English.** Say what the viewer is looking at and why it matters, in everyday football words. No internals: not "effect size", "fitted", "Elo", "curve", "calibration", "standard deviation", "percentile", "Poll" or "per 90 over how long each Match ran". "Per 90 minutes" is fine.
+- **Short, or nothing.** One sentence under a heading is usually enough. Cut a description that repeats the heading, the chart's own labels or another description. Explain a made-up stat (Swing, Floor, Spread) once, in a short key, not in a run-on sentence.
+- **Lowercase the glossary.** CONTEXT.md's capitals are for code and docs. On the page write "our skill rating", "wins against stronger opponents", "squad members", "this season", "next session". Capitals only start a sentence, heading, label or table header ("Win %", "Opponent humans"), or name one thing: EA, a club or player, "Season 3", "Division 5".
+- **Say which way is good** when it isn't obvious ("low is steady", "green past the marker means we won more than expected").
+- Filters: say "The filters don't change this" for anything that ignores them.
 
 ## Workflow
 - One branch and one PR per Linear issue. Name the branch with the issue's `gitBranchName`, and put the issue ID (e.g. `CLUBS-9`) in the PR title.
@@ -176,7 +184,7 @@ One approach on every page: **hand-rolled SVG and HTML in `app/components/charts
 ### Do
 - Design at 375px first, then use the width at 1440px (`lg:grid-cols-2`, four-up `StatGrid`). On a phone a page's main content (e.g. the Squad table) starts on the first screen: summary tiles above it go compact below `sm`.
 - Put wide content in its own scroll container (`DataTable` already does). The page itself must never scroll sideways.
-- Keep the copy in sentence case, using CONTEXT.md terms ("Squad Member", "Match").
+- Keep the copy in sentence case and follow "Writing copy" above.
 
 ### Don't
 - Add hex values or Tailwind default colours in components; add a token instead.
