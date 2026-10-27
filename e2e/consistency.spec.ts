@@ -110,9 +110,7 @@ test("Analysis shows each Squad Member's Floor and Spread beside Swing", async (
   await expect(
     await cell(page, ANALYSIS_TABLE, SWINGY.name, "Swing"),
   ).toContainText("+100 pts");
-  await expect(
-    page.getByText("so a high Floor is consistently good"),
-  ).toBeVisible();
+  await expect(page.getByText("High is reliably good.")).toBeVisible();
 });
 
 test("Compare's tale of the tape leads on the higher Floor and the lower Spread", async ({

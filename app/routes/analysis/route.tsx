@@ -457,9 +457,20 @@ function PlayerSection({
   return (
     <section aria-label="Squad Members" className="flex flex-col gap-4">
       <SectionHeading
-        title="Squad Members"
-        subtitle="Swing: our Win % when they rate above their own average minus when they rate below it, so a big Swing means results follow how they play. Floor: the rating they reach in 4 of 5 Matches, so a high Floor is consistently good; Spread: how far their ratings wander, so low is steady. Then each Squad Member in Wins (W) against draws and defeats (D/L), per 90 over their own minutes. The Position Group applies to this table only."
+        title="Squad members"
+        subtitle="How each squad member plays, and how much our results depend on it. The position picker changes this table only."
       />
+      <dl
+        aria-label="Key"
+        className="grid gap-x-4 gap-y-1 text-ink-muted text-sm sm:grid-cols-[auto_1fr]"
+      >
+        {SQUAD_KEY.map(([term, meaning]) => (
+          <div key={term} className="contents">
+            <dt className="font-semibold text-ink-soft">{term}</dt>
+            <dd className="mb-1 sm:mb-0">{meaning}</dd>
+          </div>
+        ))}
+      </dl>
       <div className="border-shale-700 border-t-2 bg-shale-900">
         <ScrollRail className="px-3 py-3 sm:px-4">
           <PositionGroupPicker
@@ -501,6 +512,20 @@ function rageQuitNote(rageQuits: Record<QuitBy, number>): string {
     ? ""
     : ` Leaves out ${sides.join(" and ")}, since EA wipes the stats of a side that rage quits.`;
 }
+
+/** What the Squad members table's own stats mean, in plain words. */
+const SQUAD_KEY: readonly [string, string][] = [
+  [
+    "Swing",
+    "How much more often we win when they play above their usual level than below it. Big means our results follow their form.",
+  ],
+  ["Floor", "The rating they hit in 4 of 5 matches. High is reliably good."],
+  ["Spread", "How much their ratings go up and down. Low is steady."],
+  [
+    "W and D/L",
+    "Their stats in wins, and in draws and defeats, per 90 minutes.",
+  ],
+];
 
 const PERFORMANCE_COLUMNS: DataTableColumn<PerformanceRow>[] = [
   { id: "stat", header: "Stat", cell: (r) => r.label },
