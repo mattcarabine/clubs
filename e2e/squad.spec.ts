@@ -90,6 +90,38 @@ test("sorting by goals per 90 ranks the sharper finisher first", async ({
   await expect(bodyRows(page).nth(1)).toContainText(BRAVO.name);
 });
 
+// CLUBS-62: red cards in total and per 90. EA sends no yellow cards.
+test("red cards show in total and per 90, and sort", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const ninety = { secondsPlayed: "5400", redcards: "0" };
+  await fakeEa.addMatch(
+    withLineup(win(), [
+      { player: ALPHA, stats: { ...ninety, redcards: "1" } },
+      { player: BRAVO, stats: ninety },
+    ]),
+  );
+  await fakeEa.addMatch(
+    withLineup(win(), [
+      { player: ALPHA, stats: ninety },
+      { player: BRAVO, stats: ninety },
+    ]),
+  );
+  await triggerPoll();
+  await page.goto("/squad");
+
+  await expect(await memberCell(page, ALPHA.name, "Red")).toHaveText("1");
+  await expect(await memberCell(page, ALPHA.name, "Red/90")).toHaveText("0.50");
+  await expect(await memberCell(page, BRAVO.name, "Red")).toHaveText("0");
+  await expect(await memberCell(page, BRAVO.name, "Red/90")).toHaveText("0.00");
+
+  await squadTable(page).getByRole("button", { name: "Red/90" }).click();
+  await expect(bodyRows(page).first()).toContainText(ALPHA.name);
+  await expect(page.getByText(/EA does not report yellow cards/)).toBeVisible();
+});
+
 // CLUBS-24: there is no threshold, so one Appearance is enough to be listed.
 test("a Squad Member with one Appearance is listed by default", async ({
   page,

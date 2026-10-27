@@ -108,6 +108,7 @@ export interface PlayerTotals {
   assistsPer90: number | null;
   goalContributionsPer90: number | null;
   shotsPer90: number | null;
+  redCardsPer90: number | null;
   /** The Position Group played most often (the latest wins a tie). */
   positionGroup: PositionGroup | null;
 }
@@ -126,6 +127,7 @@ export function summariseAppearances(
   const passAttempts = total((a) => a.passAttempts);
   const tacklesMade = total((a) => a.tacklesMade);
   const tackleAttempts = total((a) => a.tackleAttempts);
+  const redCards = total((a) => a.redCards);
   const ratings = appearances.map((a) => a.rating);
   return {
     appearances: appearances.length,
@@ -139,7 +141,7 @@ export function summariseAppearances(
     tacklesMade,
     tackleAttempts,
     manOfTheMatch: appearances.filter((a) => a.manOfTheMatch).length,
-    redCards: total((a) => a.redCards),
+    redCards,
     saves: total((a) => a.saves),
     cleanSheets: appearances.filter(
       (a) =>
@@ -154,6 +156,7 @@ export function summariseAppearances(
     assistsPer90: per90(assists, seconds),
     goalContributionsPer90: per90(goals + assists, seconds),
     shotsPer90: per90(shots, seconds),
+    redCardsPer90: per90(redCards, seconds),
     positionGroup: mostFrequent(appearances.map((a) => a.positionGroup)),
   };
 }

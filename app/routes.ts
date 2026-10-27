@@ -6,7 +6,7 @@ export default [
   index("routes/matches.tsx"),
   route("styleguide", "routes/styleguide.tsx"),
   route("squad", "routes/squad.tsx"),
-  route("trends", "routes/trends/route.tsx"),
+  route("trends", "routes/to-analysis.ts"),
   route("analysis", "routes/analysis/route.tsx"),
   route("matches", "routes/to-matches.ts", { id: "matches-redirect" }),
   route("matches/:matchId", "routes/match.tsx"),

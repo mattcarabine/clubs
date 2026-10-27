@@ -112,7 +112,7 @@ test.describe("on a 375px phone", () => {
   }) => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Primary" });
-    await expect(nav.getByRole("link")).toHaveCount(5);
+    await expect(nav.getByRole("link")).toHaveCount(4);
     await expectNoHorizontalScroll(page);
 
     await nav.getByRole("link", { name: "Milestones" }).click();

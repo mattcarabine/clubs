@@ -334,9 +334,11 @@ test("kick-off and weekday groups use London time across a BST change", async ({
     /^20:00–22:00 \(2\)\s*100%$/,
     /^22:00 or later \(1\)\s*0%$/,
   ]);
-  await expect(barList(page, "Win % on weekdays and weekends")).toHaveText([
-    /^Weekday \(3\)\s*67%$/,
-    /^Weekend \(3\)\s*33%$/,
+  // The day chart came from Trends (CLUBS-59), Monday first.
+  await expect(barList(page, "Win % by day of the week")).toHaveText([
+    /^Tue \(2\)\s*100%$/,
+    /^Fri \(1\)\s*0%$/,
+    /^Sat \(3\)\s*33%$/,
   ]);
 });
 

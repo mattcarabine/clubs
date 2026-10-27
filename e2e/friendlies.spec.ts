@@ -19,10 +19,9 @@ const FRIENDLY_ID = "880000000000001";
 /** Every page that mounts the FilterBar. */
 const FILTER_BAR_PAGES = [
   "/squad",
-  "/matches",
+  "/",
   "/opponents",
   `/opponents/${LEAGUE_OPPONENT.clubId}`,
-  "/trends",
   "/analysis",
   `/players/${REGULAR.id}`,
   "/compare",
@@ -153,7 +152,7 @@ test("a Friendly recorded by a Poll appears on no page and in no count", async (
   // Counts cover the League Match alone.
   await page.goto("/");
   await expect(page.getByText("1 Match, newest first")).toBeVisible();
-  await page.goto("/trends");
+  await page.goto("/analysis");
   await expect(
     page
       .getByRole("region", { name: "Results" })
