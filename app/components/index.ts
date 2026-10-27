@@ -39,7 +39,6 @@ export {
   type RowSelection,
 } from "./data-table";
 export { DateRangePicker } from "./date-range-picker";
-export { DnfBadge } from "./dnf-badge";
 export { EmptyState } from "./empty-state";
 export { FilterBar } from "./filter-bar";
 export { FormBadge } from "./form-badge";
@@ -62,6 +61,7 @@ export {
   EA_POSITIONS_DISABLED,
   PositionGroupPicker,
 } from "./position-group-picker";
+export { RageQuitBadge } from "./rage-quit-badge";
 export { BackLink, isNotFound, RouteError } from "./route-error";
 export {
   LINKED_ROW,

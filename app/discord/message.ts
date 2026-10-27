@@ -10,7 +10,12 @@
  */
 import { clampText, paragraphs } from "~/lib/text";
 import type { Award } from "~/stats/awards";
-import { formatRecord, scoreLine, sessionPreview } from "~/stats/link-preview";
+import {
+  formatRecord,
+  rageQuitAside,
+  scoreLine,
+  sessionPreview,
+} from "~/stats/link-preview";
 import type { MatchSummary } from "~/stats/matches";
 import { type PerformerTotals, sessionTopPerformer } from "~/stats/sessions";
 import type { RecordSummary } from "~/stats/summaries";
@@ -120,7 +125,7 @@ function scorelines(input: SessionPostInput, room: number): string {
     return [
       `**${match.outcome}**`,
       discordText(scoreLine(input.clubName, match)),
-      match.dnf && "(DNF)",
+      rageQuitAside(match),
       headline && `— ${discordText(headline)}`,
     ]
       .filter(Boolean)

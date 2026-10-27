@@ -35,7 +35,7 @@ Data gaps (EA's, not the players'):
 
 Words: site labels are for headings, not prose. The site shows these labels; never write them in your prose, and say what they mean in ordinary football words instead:
 - "Dropped Points" (say draws and defeats, points dropped, a loss).
-- "DNF" (say they quit, rage quit, bailed, walked off, pulled the plug; it was abandoned, cut short).
+- "DNF" or "did not finish" (the site calls it a rage quit: say we or they rage quit, bailed, walked off, pulled the plug).
 - "Hot form" / "Cold form" (say flying, on fire, in a purple patch; off the boil, struggling).
 - "Outcome Split" (say what separates our wins from the rest).
 - "Squad Member" (say player, the lads, the squad, or use the name).
