@@ -162,24 +162,24 @@ export function CampaignSection({ view }: { view: CampaignsView }) {
     <section aria-label="Campaign" className="flex min-w-0 flex-col gap-4">
       <SectionHeading
         title="Campaign"
-        subtitle="Our Club's League Matches in each Division, from the start of the Season. Not affected by the filters."
+        subtitle="Our league run towards promotion this season. The filters don't change this."
       />
       {division === null ? (
         <EmptyState
-          title="No Division yet"
-          description="The Division appears after the first Poll that records the season leaderboard. Campaign tracking starts at the beginning of next Season."
+          title="No division yet"
+          description="The division appears once we've picked up EA's season leaderboard. Campaign tracking starts at the beginning of next season."
         />
       ) : (
         <CampaignPanel division={division} progress={progress ?? undefined}>
           {!progress && (
             <Note>
-              Campaign tracking starts at the beginning of next Season.
+              Campaign tracking starts at the beginning of next season.
             </Note>
           )}
           {inPlayoffs && (
             <Note>
-              Playoffs: League Matches don't count towards a Campaign until next
-              Season starts.
+              Playoffs: league matches don't count towards a campaign until next
+              season starts.
             </Note>
           )}
           {mismatch && (
@@ -205,13 +205,10 @@ export function DivisionHistory({ view }: { view: CampaignsView }) {
     >
       <SectionHeading
         title="Division history"
-        subtitle="Each Season start, Promotion and Relegation, and how each Campaign ended."
+        subtitle="Promotions, relegations and how each campaign ended."
       />
       {timeline.length > 1 && (
-        <ChartFrame
-          title="Division timeline"
-          subtitle="Each Season start, Promotion and Relegation"
-        >
+        <ChartFrame title="Division timeline">
           <StepChart
             label="Division over time"
             levels={DIVISION_LEVELS}
@@ -259,7 +256,7 @@ const HISTORY_COLUMNS: DataTableColumn<CampaignRow>[] = [
   },
   {
     id: "series",
-    header: "Promotion Series",
+    header: "Promotion series",
     cell: (r) =>
       r.series.length > 0 ? <FormGuide results={r.series} /> : NO_VALUE,
   },

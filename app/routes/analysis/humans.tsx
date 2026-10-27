@@ -29,13 +29,13 @@ export function HumansSection({ byHumans }: { byHumans: ByOpponentHumans }) {
   return (
     <section aria-label="By Opponent humans" className="flex flex-col gap-4">
       <SectionHeading
-        title="By Opponent humans"
-        subtitle="How many humans played for the Opponent: EA lists no AI players. Matches played in brackets; rage quit rates are the share of Matches each side rage quit."
+        title="By opponent humans"
+        subtitle="How we do against opponents with more or fewer human players. Matches played in brackets."
       />
       {note && <p className="text-ink-muted text-sm">{note}</p>}
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-6">
         <HumansPanel
-          title="Win % by Opponent humans"
+          title="Win % by opponent humans"
           caption="Results by Opponent humans"
           header="Opponent humans"
           results={exact}
@@ -43,7 +43,7 @@ export function HumansSection({ byHumans }: { byHumans: ByOpponentHumans }) {
         />
         <HumansPanel
           title="Win % against our numbers"
-          subtitle={`The Opponent's humans against our Squad Members playing: much is ${MUCH_HUMANS_GAP} or more apart`}
+          subtitle={`Their human players compared with ours. "Much" means ${MUCH_HUMANS_GAP} or more apart.`}
           caption="Results against our numbers"
           header="Opponent had"
           results={againstOurs}
@@ -64,14 +64,14 @@ function humansNote({ exact, unknown }: ByOpponentHumans): string {
   const notes: string[] = [];
   if (unknown > 0) {
     notes.push(
-      `${formatCount(unknown, "Match", "Matches")} without the Opponent's players ${unknown === 1 ? "is" : "are"} left out.`,
+      `${formatCount(unknown, "match", "matches")} where EA didn't list the opponent's players ${unknown === 1 ? "is" : "are"} left out.`,
     );
   }
   const hidden = hiddenNote(exact);
   if (hidden) notes.push(hidden);
   if (exact.groups.length === 0) {
     notes.push(
-      `Each number of humans needs at least ${MIN_SPLIT_MATCHES} Matches to show.`,
+      `Each number of humans needs at least ${MIN_SPLIT_MATCHES} matches to show.`,
     );
   }
   return notes.join(" ");

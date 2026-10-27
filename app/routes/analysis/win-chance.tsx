@@ -30,30 +30,30 @@ export function WinChanceSection({
     <section aria-label="Win chance" className="flex flex-col gap-4">
       <SectionHeading
         title="Win chance"
-        subtitle="Our chance of a Win before kick-off from the Skill Rating gap: ours minus the Opponent's. A draw counts against us, like a defeat."
+        subtitle="How likely we were to win before kick-off, judged by our skill rating against the opponent's."
       />
       <div className="flex flex-wrap items-center gap-2 text-ink-muted text-sm">
         {model.source === "estimate" ? (
           <>
             <EstimateTag />
             <span>
-              {`The Elo-style curve until there are ${MIN_FITTED_MATCHES} rated Matches (${model.matches} so far).`}
+              {`A rough estimate until we have ${MIN_FITTED_MATCHES} matches with both skill ratings (${model.matches} so far).`}
             </span>
           </>
         ) : (
           <span>
-            {`Fitted to all ${model.matches} rated Competitive Matches.`}
+            {`Based on our ${model.matches} matches with both skill ratings.`}
           </span>
         )}
         {unrated > 0 && (
           <span>
-            {`${formatCount(unrated, "Match", "Matches")} without Skill Ratings ${unrated === 1 ? "is" : "are"} left out.`}
+            {`${formatCount(unrated, "match", "matches")} without skill ratings ${unrated === 1 ? "is" : "are"} left out.`}
           </span>
         )}
       </div>
       {bands.length === 0 ? (
         <p className="text-ink-muted text-sm">
-          No rated Matches in these filters yet.
+          No matches with skill ratings in these filters yet.
         </p>
       ) : (
         <>
@@ -62,28 +62,28 @@ export function WinChanceSection({
             className="flex flex-col gap-2 border-rave border-t-2 bg-sound-900 p-4 lg:flex-row lg:items-center lg:gap-8 lg:p-6"
           >
             <p className="shrink-0 font-display font-extrabold text-4xl text-ink uppercase italic leading-none tabular lg:text-5xl">
-              {`${formatCount(vsExpected.wins, "Win", "Wins")} vs ${formatDecimal(vsExpected.expected)} expected`}
+              {`${formatCount(vsExpected.wins, "win", "wins")} vs ${formatDecimal(vsExpected.expected)} expected`}
             </p>
             <div className="flex flex-col gap-2 text-sm">
               <p className="text-ink-soft">
-                {`Over ${formatCount(vsExpected.played, "rated Match", "rated Matches")} in these filters: ${verdict(vsExpected.wins, vsExpected.expected)}`}
+                {`Over ${formatCount(vsExpected.played, "rated match", "rated matches")} in these filters: ${verdict(vsExpected.wins, vsExpected.expected)}`}
               </p>
               {model.source === "fitted" &&
                 vsExpected.played === model.matches && (
                   <p className="text-ink-muted">
-                    Over every Match it was fitted to, the curve expects as many
-                    Wins as we got. Narrow the dates to see whether we are
-                    beating it.
+                    Across every match this always equals our wins, because the
+                    estimate is built from them. Pick a date range to see if we
+                    are beating it.
                   </p>
                 )}
             </div>
           </section>
           <ChartFrame
             title="Results by rating gap"
-            subtitle="Our Skill Rating minus the Opponent's: below 0 they were rated higher. Green past the marker means we won more than expected."
+            subtitle="Grouped by how far our skill rating was above or below the opponent's (minus means they were rated higher). Green past the white marker means we won more than expected."
             legend={<GapBandLegend />}
           >
-            <GapBandChart label="Results by Skill Rating gap" bands={bands} />
+            <GapBandChart label="Results by skill rating gap" bands={bands} />
           </ChartFrame>
           {byStrength && <StrengthPanel byStrength={byStrength} />}
         </>

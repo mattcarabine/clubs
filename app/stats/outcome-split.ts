@@ -138,10 +138,10 @@ interface PerformanceMetric {
   compare: (club: Club, diff: number) => string;
 }
 
-const SUBJECT: Record<Club, string> = { ours: "we", opponent: "Opponents" };
+const SUBJECT: Record<Club, string> = { ours: "we", opponent: "opponents" };
 const POSSESSIVE: Record<Club, string> = {
   ours: "our",
-  opponent: "Opponents'",
+  opponent: "opponents'",
 };
 /** Names one Match's stat: "Opponent pass completion". */
 const OWNER: Record<Club, string> = { ours: "", opponent: "Opponent " };
@@ -503,8 +503,8 @@ function squadSizeOf(match: SplitMatch): string {
 
 /** Which Match counts as the one after a result. */
 export const AFTER_RESULT_SCOPES = [
-  { id: "any-next", label: "Any next Match" },
-  { id: "same-session", label: "Same Session" },
+  { id: "any-next", label: "Any next match" },
+  { id: "same-session", label: "Same session" },
 ] as const;
 
 export type AfterResultScope = (typeof AFTER_RESULT_SCOPES)[number]["id"];
@@ -560,15 +560,15 @@ function afterResultFinding({
   afterWin,
   afterDropped,
 }: AfterResultSplit): RankedFinding | null {
-  const when = scope === "same-session" ? " in the same Session" : "";
-  const droppedCount = formatCount(afterDropped.played, "Match", "Matches");
+  const when = scope === "same-session" ? " in the same session" : "";
+  const droppedCount = formatCount(afterDropped.played, "match", "matches");
   return winRateFinding(
     `after-${scope}`,
     "After a result",
     { group: afterDropped, rest: afterWin },
     {
-      text: `After a draw or defeat${when} we win ${formatPercentage(afterDropped.winPercentage)} (${droppedCount}) vs ${formatPercentage(afterWin.winPercentage)} after a Win (${afterWin.played})`,
-      counts: `${droppedCount} after a draw or defeat, ${afterWin.played} after a Win${when}`,
+      text: `After a draw or defeat${when} we win ${formatPercentage(afterDropped.winPercentage)} (${droppedCount}) vs ${formatPercentage(afterWin.winPercentage)} after a win (${afterWin.played})`,
+      counts: `${droppedCount} after a draw or defeat, ${afterWin.played} after a win${when}`,
     },
   );
 }
@@ -663,8 +663,8 @@ function strengthFinding({ groups }: ByStrength): RankedFinding | null {
     "Opponent strength",
     { group: strongest, rest: weakest },
     {
-      text: `Against ${strongest.label} Opponents we win ${formatPercentage(strongest.winPercentage)} (${strongest.played}) vs ${formatPercentage(weakest.winPercentage)} against ${weakest.label} (${weakest.played})`,
-      counts: `${formatCount(strongest.played, "Match", "Matches")} against ${strongest.label} Opponents, ${weakest.played} against ${weakest.label}`,
+      text: `Against ${strongest.label.toLowerCase()} opponents we win ${formatPercentage(strongest.winPercentage)} (${strongest.played}) vs ${formatPercentage(weakest.winPercentage)} against ${weakest.label.toLowerCase()} (${weakest.played})`,
+      counts: `${formatCount(strongest.played, "match", "matches")} against ${strongest.label.toLowerCase()} opponents, ${weakest.played} against ${weakest.label.toLowerCase()}`,
     },
   );
 }
@@ -816,7 +816,7 @@ function humanFindings(matches: readonly SplitMatch[]): RankedFinding[] {
       HUMAN_BANDS,
       (m) => humanBand(m.opponentHumans) ?? "",
       ({ label }) => ({
-        group: `against Opponents with ${label}`,
+        group: `against opponents with ${label}`,
         rest: "otherwise",
         counts: [`against ${label}`, "otherwise"],
       }),
@@ -828,7 +828,7 @@ function humanFindings(matches: readonly SplitMatch[]): RankedFinding[] {
       HUMANS_AGAINST_OURS,
       (m) => humansAgainstOurs(m) ?? "",
       ({ phrase }) => ({
-        group: `against Opponents with ${phrase}`,
+        group: `against opponents with ${phrase}`,
         rest: "otherwise",
         counts: [`against ${phrase}`, "otherwise"],
       }),
@@ -921,8 +921,8 @@ function splitFinding(
 ): RankedFinding | null {
   const { group, rest } = split;
   return winRateFinding(id, factor, split, {
-    text: `We win ${formatPercentage(group.winPercentage)} of Matches ${words.group}, against ${formatPercentage(rest.winPercentage)} ${words.rest}`,
-    counts: `${formatCount(group.played, "Match", "Matches")} ${words.counts[0]}, ${rest.played} ${words.counts[1]}`,
+    text: `We win ${formatPercentage(group.winPercentage)} of matches ${words.group}, against ${formatPercentage(rest.winPercentage)} ${words.rest}`,
+    counts: `${formatCount(group.played, "match", "matches")} ${words.counts[0]}, ${rest.played} ${words.counts[1]}`,
   });
 }
 
@@ -1029,8 +1029,8 @@ export function outcomeSplit(
           ({ id }) => {
             const squad = formatCount(
               Number(id),
-              "Squad Member",
-              "Squad Members",
+              "squad member",
+              "squad members",
             );
             return {
               group: `with ${squad} playing`,
@@ -1086,7 +1086,7 @@ export function outcomeSplit(
           SESSION_PLACES,
           (m) => sessionPlaceBucket(m.sessionPlace),
           ({ label }) => ({
-            group: `played ${label} in a Session`,
+            group: `played ${label} in a session`,
             rest: "otherwise",
             counts: [label, "otherwise"],
           }),
@@ -1166,8 +1166,8 @@ function performanceSplit(
     finding: {
       id: `${club}-${metric.id}`,
       factor: "Performance",
-      text: `In draws and defeats ${metric.describe(club, dropped - wins)} than in Wins (${values.dropped} vs ${values.wins})`,
-      counts: `${formatCount(n.wins, "Win", "Wins")}, ${formatDroppedCount(n.dropped)}`,
+      text: `In draws and defeats ${metric.describe(club, dropped - wins)} than in wins (${values.dropped} vs ${values.wins})`,
+      counts: `${formatCount(n.wins, "win", "wins")}, ${formatDroppedCount(n.dropped)}`,
       smallSample: isSmall(n.wins, n.dropped),
       strength: Math.abs(effect),
     },

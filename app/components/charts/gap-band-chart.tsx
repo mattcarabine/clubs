@@ -66,7 +66,7 @@ export function GapBandChart({ bands, label }: GapBandChartProps) {
                   <ExpectedTooltip band={band} expectedShare={expectedShare} />
                 </span>
                 <span className="text-ink-soft text-xs">
-                  {`${resultsInWords(band)} · ${formatDecimal(band.expectedWins)} Wins expected (${formatPercentage(expectedShare * 100)})`}
+                  {`${resultsInWords(band)} · ${formatDecimal(band.expectedWins)} wins expected (${formatPercentage(expectedShare * 100)})`}
                 </span>
               </span>
             </li>

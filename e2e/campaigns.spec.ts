@@ -114,7 +114,7 @@ test("before any Season start, shows EA's Division and when tracking starts", as
   ).toBeVisible();
   await expect(
     panel(page).getByText(
-      "Campaign tracking starts at the beginning of next Season.",
+      "Campaign tracking starts at the beginning of next season.",
     ),
   ).toBeVisible();
   await expect(panel(page).getByRole("progressbar")).toHaveCount(0);
@@ -147,7 +147,7 @@ test("ignores EA's Division changing during the Playoffs", async ({
 
   await page.goto("/analysis");
   await expect(
-    panel(page).getByText(/^Playoffs: League Matches don't count/),
+    panel(page).getByText(/^Playoffs: league matches don't count/),
   ).toBeVisible();
   await expect(warning(page)).toHaveCount(0);
   await expect(panel(page).getByRole("progressbar")).toHaveAttribute(

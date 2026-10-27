@@ -16,7 +16,7 @@ export function ClubSnapshot({ club }: { club: ClubSnapshotSummary }) {
     <section aria-label="Season snapshot" className="mb-8">
       <SectionHeading
         title="Season snapshot"
-        subtitle="EA's club totals, as of the latest Poll. Not affected by the filters."
+        subtitle="EA's own figures for this season. The filters don't change these."
       />
       <StatGrid>
         <StatTile

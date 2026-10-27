@@ -41,13 +41,13 @@ export function ResultsSection({
     <section aria-label="Results" className="flex flex-col gap-4">
       <SectionHeading
         title="Results"
-        subtitle={`${formatCount(record.played, "Match", "Matches")}: ${record.wins} won, ${record.draws} drawn, ${record.losses} lost.`}
+        subtitle={`${formatCount(record.played, "match", "matches")}: ${record.wins} won, ${record.draws} drawn, ${record.losses} lost.`}
       />
       <ChartFrame
         title="Run of results"
         subtitle={
           strip.length < record.played
-            ? `Latest ${strip.length} of ${record.played} Matches, oldest first`
+            ? `Latest ${strip.length} of ${record.played} matches, oldest first`
             : "Oldest first"
         }
       >
@@ -92,7 +92,7 @@ export function RollingSections({
       <section aria-label="Goals" className="min-w-0">
         <SectionHeading
           title="Goals"
-          subtitle={`Goals per Match, averaged over the last ${ROLLING_WINDOW} Matches.`}
+          subtitle={`Scored and conceded per match, averaged over the ${ROLLING_WINDOW} matches up to each one.`}
         />
         <ChartFrame
           title="Rolling average"
@@ -106,7 +106,7 @@ export function RollingSections({
           }
         >
           <LineChart
-            label={`Goals per Match, ${ROLLING_WINDOW}-Match rolling average`}
+            label={`Goals per match, ${ROLLING_WINDOW}-match rolling average`}
             labels={labels}
             series={[
               {
@@ -127,11 +127,11 @@ export function RollingSections({
       <section aria-label="Trend" className="min-w-0">
         <SectionHeading
           title="Trend"
-          subtitle={`Win % over the last ${ROLLING_WIN_WINDOW} Matches at each Match.`}
+          subtitle={`Our win % over the ${ROLLING_WIN_WINDOW} matches up to each one, so you can see form rise and fall.`}
         />
-        <ChartFrame title={`Rolling ${ROLLING_WIN_WINDOW}-Match Win %`}>
+        <ChartFrame title={`Rolling ${ROLLING_WIN_WINDOW}-match win %`}>
           <LineChart
-            label={`Rolling ${ROLLING_WIN_WINDOW}-Match Win %`}
+            label={`Rolling ${ROLLING_WIN_WINDOW}-match win %`}
             labels={winLabels}
             series={[
               {

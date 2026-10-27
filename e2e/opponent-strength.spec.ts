@@ -99,7 +99,7 @@ test("rated Matches land in their strength group with its Win rate, and unrated 
   await expect(
     findings(page).filter({ hasText: "Opponent strength" }),
   ).toContainText(
-    "Against Stronger Opponents we win 20% (5) vs 83% against Weaker (6)",
+    "Against stronger opponents we win 20% (5) vs 83% against weaker (6)",
   );
 });
 
@@ -121,7 +121,7 @@ test("a group with fewer than 3 Matches is hidden and left out of the findings",
   await expect(strengthRow(page, "Weaker")).toHaveCount(0);
   await expect(
     section(page).getByText(
-      "Hidden with fewer than 3 Matches: Similar (2), Weaker (2).",
+      "Hidden with fewer than 3 matches: Similar (2), Weaker (2).",
     ),
   ).toBeVisible();
   await expect(

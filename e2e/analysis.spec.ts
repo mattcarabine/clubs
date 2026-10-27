@@ -89,9 +89,9 @@ test("with no Matches it says how many more are needed and shows no findings", a
   page,
 }) => {
   await page.goto("/analysis");
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
   await expect(
-    page.getByText("3 more Wins and 3 more draws or defeats", {
+    page.getByText("3 more wins and 3 more draws or defeats", {
       exact: false,
     }),
   ).toBeVisible();
@@ -112,7 +112,7 @@ test("with fewer than 3 draws or defeats it says how many more are needed", asyn
   ]);
 
   await page.goto("/analysis");
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
   await expect(page.getByText(": 1 more draw or defeat.")).toBeVisible();
   await expect(findings(page)).toHaveCount(0);
 });
@@ -134,9 +134,9 @@ test("the top finding names shots with both per-90 values and the counts", async
   await page.goto("/analysis");
   const top = findings(page).first();
   await expect(top).toContainText(
-    "In draws and defeats we take 3.0 fewer shots per 90 than in Wins (9.0 vs 12.0)",
+    "In draws and defeats we take 3.0 fewer shots per 90 than in wins (9.0 vs 12.0)",
   );
-  await expect(top).toContainText("3 Wins, 3 draws and defeats");
+  await expect(top).toContainText("3 wins, 3 draws and defeats");
   await expect(top).not.toContainText("Dropped Points");
   await expect(top).toContainText("Small sample");
 });
@@ -162,7 +162,7 @@ test("draws count as Dropped Points and DNF Matches count by their outcome", asy
   await triggerPoll();
   await page.reload();
   await expect(region(page, "Top findings")).toContainText(
-    "3 Wins and 3 draws and defeats",
+    "3 wins and 3 draws and defeats",
   );
 });
 
@@ -181,7 +181,7 @@ test("a DNF stopped at 45 minutes adds per-90 values, not raw totals", async ({
   await page.goto("/analysis");
   const shots = tableRow(
     page,
-    "Performance in Wins against draws and defeats",
+    "Performance in wins against draws and defeats",
     "Shots per 90",
   );
   await expect(shots.getByRole("cell").nth(0)).toHaveText("10.0");
@@ -203,9 +203,9 @@ test("findings from 10 Matches a side drop the Small sample mark", async ({
   await page.goto("/analysis");
   const top = findings(page).first();
   await expect(top).toContainText(
-    "fewer shots per 90 than in Wins (9.0 vs 12.0)",
+    "fewer shots per 90 than in wins (9.0 vs 12.0)",
   );
-  await expect(top).toContainText("10 Wins, 10 draws and defeats");
+  await expect(top).toContainText("10 wins, 10 draws and defeats");
   await expect(top).not.toContainText("Small sample");
 });
 
@@ -246,7 +246,7 @@ test("a Gap resting on fewer than 3 Matches with or without a Squad Member shows
   await expectWithWithout(page, BENCH.name, ["100%", "25%", "–"]);
   await expect(
     region(page, "Squad Members").getByText(
-      "a With gap needs 3 Matches each way",
+      "The gap needs 3 matches each way.",
     ),
   ).toBeVisible();
 });
@@ -334,7 +334,7 @@ test("Matches 30 minutes apart share a Session and 60 minutes apart start a new 
   ]);
 
   await page.goto("/analysis");
-  await expect(barList(page, "Win % by place in Session")).toHaveText([
+  await expect(barList(page, "Win % by place in session")).toHaveText([
     /^1st \(4\)\s*50%$/,
     /^2nd \(2\)\s*50%$/,
   ]);
@@ -399,22 +399,22 @@ test("each FilterBar dimension changes the results", async ({
   ]);
 
   await page.goto("/analysis");
-  await expect(summary()).toContainText("4 Wins and 5 draws and defeats");
+  await expect(summary()).toContainText("4 wins and 5 draws and defeats");
 
   await page.goto("/analysis?types=league");
-  await expect(summary()).toContainText("4 Wins and 4 draws and defeats");
+  await expect(summary()).toContainText("4 wins and 4 draws and defeats");
 
   await page.goto("/analysis?dnf=0&types=playoff");
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
 
   await page.goto("/analysis?dnf=0");
-  await expect(summary()).toContainText("4 Wins and 4 draws and defeats");
+  await expect(summary()).toContainText("4 wins and 4 draws and defeats");
 
   await page.goto("/analysis?range=30d");
-  await expect(summary()).toContainText("3 Wins and 5 draws and defeats");
+  await expect(summary()).toContainText("3 wins and 5 draws and defeats");
 
   await page.goto("/analysis?season=2");
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
 });
 
 test("the Position Group filter changes only the per-player section", async ({
@@ -490,7 +490,7 @@ test("the trend chart shows a rolling 10-Match Win %", async ({
   const trend = region(page, "Trend");
   await expect(trend.getByRole("slider")).toBeVisible();
   const cells = trend
-    .getByRole("table", { name: "Rolling 10-Match Win %" })
+    .getByRole("table", { name: "Rolling 10-match win %" })
     .getByRole("cell");
   await expect(cells).toHaveCount(13);
   await expect(cells.nth(9)).toHaveText("100%");
@@ -619,8 +619,8 @@ test.describe("After a result (CLUBS-26)", () => {
 
     await page.goto("/analysis");
     await expect(region(page, "After a result")).toBeVisible();
-    await expect(afterResultBars(page, "Any next Match")).toHaveText([
-      /^After a Win \(5\)\s*20%$/,
+    await expect(afterResultBars(page, "Any next match")).toHaveText([
+      /^After a win \(5\)\s*20%$/,
       /^After a draw or defeat \(4\)\s*75%$/,
     ]);
   });
@@ -645,15 +645,15 @@ test.describe("After a result (CLUBS-26)", () => {
 
     // With Playoffs, each loss is followed by a won Playoff.
     await page.goto("/analysis");
-    await expect(afterResultBars(page, "Any next Match")).toHaveText([
-      /^After a Win \(6\)\s*33%$/,
+    await expect(afterResultBars(page, "Any next match")).toHaveText([
+      /^After a win \(6\)\s*33%$/,
       /^After a draw or defeat \(4\)\s*100%$/,
     ]);
 
     // League only skips the Playoffs: W→L three times, L→W twice and L→L.
     await page.goto("/analysis?types=league");
-    await expect(afterResultBars(page, "Any next Match")).toHaveText([
-      /^After a Win \(3\)\s*0%$/,
+    await expect(afterResultBars(page, "Any next match")).toHaveText([
+      /^After a win \(3\)\s*0%$/,
       /^After a draw or defeat \(3\)\s*67%$/,
     ]);
   });
@@ -673,13 +673,13 @@ test.describe("After a result (CLUBS-26)", () => {
 
     await page.goto("/analysis");
     // Within Sessions: W→L four times, L→W three times.
-    await expect(afterResultBars(page, "Same Session")).toHaveText([
-      /^After a Win \(4\)\s*0%$/,
+    await expect(afterResultBars(page, "Same session")).toHaveText([
+      /^After a win \(4\)\s*0%$/,
       /^After a draw or defeat \(3\)\s*100%$/,
     ]);
     // Any next Match adds the pairs across Sessions: L→L, W→W and the L→W 2 hours on.
-    await expect(afterResultBars(page, "Any next Match")).toHaveText([
-      /^After a Win \(5\)\s*20%$/,
+    await expect(afterResultBars(page, "Any next match")).toHaveText([
+      /^After a win \(5\)\s*20%$/,
       /^After a draw or defeat \(5\)\s*80%$/,
     ]);
   });
@@ -695,16 +695,16 @@ test.describe("After a result (CLUBS-26)", () => {
     await page.goto("/analysis");
     const section = region(page, "After a result");
     await expect(section).toBeVisible();
-    await expect(afterResultBars(page, "Any next Match")).toHaveCount(0);
-    await expect(afterResultBars(page, "Same Session")).toHaveCount(0);
+    await expect(afterResultBars(page, "Any next match")).toHaveCount(0);
+    await expect(afterResultBars(page, "Same session")).toHaveCount(0);
     await expect(
       section.getByText(
-        "Needs at least 3 Matches after a Win and 3 after a draw or defeat (3 and 2 so far).",
+        "Needs at least 3 matches after a win and 3 after a draw or defeat (3 and 2 so far).",
       ),
     ).toBeVisible();
     await expect(
       section.getByText(
-        "Needs at least 3 Matches after a Win and 3 after a draw or defeat (0 and 0 so far).",
+        "Needs at least 3 matches after a win and 3 after a draw or defeat (0 and 0 so far).",
       ),
     ).toBeVisible();
     await expect(
@@ -722,12 +722,12 @@ test.describe("After a result (CLUBS-26)", () => {
     await page.goto("/analysis");
     const tilt = findings(page).filter({
       hasText:
-        "After a draw or defeat in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
+        "After a draw or defeat in the same session we win 20% (5 matches) vs 60% after a win (5)",
     });
     await expect(tilt).toHaveCount(1);
     await expect(tilt).toContainText("After a result");
     await expect(tilt).toContainText(
-      "5 Matches after a draw or defeat, 5 after a Win in the same Session",
+      "5 matches after a draw or defeat, 5 after a win in the same session",
     );
     await expect(tilt).toContainText("Small sample");
   });
@@ -743,7 +743,7 @@ test.describe("After a result (CLUBS-26)", () => {
       await record(fakeEa, triggerPoll, tiltSessions());
 
       await page.goto("/analysis");
-      await expect(afterResultBars(page, "Same Session")).toHaveCount(2);
+      await expect(afterResultBars(page, "Same session")).toHaveCount(2);
       const fits = await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
       );

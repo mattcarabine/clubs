@@ -47,13 +47,13 @@ test("the last 7 days compare with the 7 days before, and a shared link keeps it
   await expect(page).toHaveURL(/[?&]vs=prev(&|$)/);
 
   await expect(comparison(page)).toContainText(
-    /Last 7 days against 7 days before \(.+\): 3 Matches then\./,
+    /Last 7 days against 7 days before \(.+\): 3 matches then\./,
   );
   await expect(figure(page, "Win %")).toContainText("67%");
   await expect(figure(page, "Win %")).toContainText("was 33%");
   await expect(figure(page, "Win %")).toContainText("33 pts better");
   await expect(figure(page, "Goals conceded")).toContainText(
-    "1.33 per Match better",
+    "1.33 per match better",
   );
   await expect(
     comparison(page).getByRole("list", {
@@ -93,7 +93,7 @@ test("an earlier period with no Matches says so, with no changes", async ({
 
   await page.goto("/analysis?range=7d&vs=prev");
   await expect(
-    comparison(page).getByText(/^No Matches in 7 days before/),
+    comparison(page).getByText(/^No matches in 7 days before/),
   ).toBeVisible();
   await expect(comparison(page).getByText(/better|worse/)).toHaveCount(0);
 });
@@ -129,7 +129,7 @@ test("Season 2 offers Season 1 first, and never with a Campaign or All dates", a
   await control(page).getByRole("button", { name: "Season 1" }).click();
   await expect(page).toHaveURL(/[?&]vs=1(&|$)/);
   await expect(comparison(page)).toContainText(
-    "Season 2 against Season 1: 2 Matches then.",
+    "Season 2 against Season 1: 2 matches then.",
   );
   await expect(figure(page, "Win %")).toContainText("was 50%");
 

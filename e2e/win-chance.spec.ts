@@ -55,7 +55,7 @@ test("under 20 rated Matches the Elo estimate is used and labelled, with Wins ag
   ).toBeVisible();
   await expect(
     section(page).getByText(
-      "The Elo-style curve until there are 20 rated Matches (5 so far).",
+      "A rough estimate until we have 20 matches with both skill ratings (5 so far).",
     ),
   ).toBeVisible();
   await expect(
@@ -63,7 +63,7 @@ test("under 20 rated Matches the Elo estimate is used and labelled, with Wins ag
   ).toBeVisible();
   await expect(
     section(page).getByRole("region", { name: "Wins against expected" }),
-  ).toContainText("2 Wins vs 2.0 expected");
+  ).toContainText("2 wins vs 2.0 expected");
   // CLUBS-73: no Calibration list, since Results by rating gap shows the same.
   await expect(section(page).getByText("Calibration")).toHaveCount(0);
 
@@ -71,7 +71,7 @@ test("under 20 rated Matches the Elo estimate is used and labelled, with Wins ag
   await page.goto("/analysis");
   await expect(
     section(page).getByRole("region", { name: "Wins against expected" }),
-  ).toContainText("3 Wins vs 2.5 expected");
+  ).toContainText("3 wins vs 2.5 expected");
 
   await page.goto("/matches/30001");
   await expect(matchNote(page)).toContainText(
@@ -125,10 +125,10 @@ test("Results by rating gap shows each band's Wins, draws and defeats against th
     "+100 to +20022001.4",
   ]);
   await expect(
-    chart.getByText("1 won, 1 drawn · 0.6 Wins expected (30%)"),
+    chart.getByText("1 won, 1 drawn · 0.6 wins expected (30%)"),
   ).toBeVisible();
   await expect(
-    chart.getByText("2 won · 1.4 Wins expected (68%)"),
+    chart.getByText("2 won · 1.4 wins expected (68%)"),
   ).toBeVisible();
   // The outcome colours paint each band's bar, the Win share labelled where it fits.
   await expect(chart.getByText("2W", { exact: true })).toHaveClass(/bg-win/);
@@ -296,7 +296,7 @@ test("20 or more rated Matches fit a curve where a bigger gap gives a bigger cha
 
   await page.goto("/analysis");
   await expect(
-    section(page).getByText("Fitted to all 24 rated Competitive Matches."),
+    section(page).getByText("Based on our 24 matches with both skill ratings."),
   ).toBeVisible();
   await expect(
     section(page).getByText("Estimate", { exact: true }),

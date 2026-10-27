@@ -123,8 +123,8 @@ describe("outcomeSplit", () => {
     expect(top).toEqual({
       id: "ours-shots",
       factor: "Performance",
-      text: "In draws and defeats we take 3.0 fewer shots per 90 than in Wins (9.0 vs 12.0)",
-      counts: "3 Wins, 3 draws and defeats",
+      text: "In draws and defeats we take 3.0 fewer shots per 90 than in wins (9.0 vs 12.0)",
+      counts: "3 wins, 3 draws and defeats",
       smallSample: true,
     });
   });
@@ -214,7 +214,7 @@ describe("afterResult", () => {
     // W→L, L→W, W→L, L→L, L→W, W→W, W→L, L→W, W→L
     const anyNext = scope(afterResult(run("WLWLLWWLWL")), "any-next");
     expect(anyNext).toMatchObject({
-      label: "Any next Match",
+      label: "Any next match",
       afterWin: { played: 5, wins: 1, winPercentage: 20 },
       afterDropped: { played: 4, wins: 3, winPercentage: 75 },
       comparable: true,
@@ -259,13 +259,13 @@ describe("afterResult", () => {
     expect(sameSession).toEqual({
       id: "after-same-session",
       factor: "After a result",
-      text: "After a draw or defeat in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
+      text: "After a draw or defeat in the same session we win 20% (5 matches) vs 60% after a win (5)",
       counts:
-        "5 Matches after a draw or defeat, 5 after a Win in the same Session",
+        "5 matches after a draw or defeat, 5 after a win in the same session",
       smallSample: true,
     });
     expect(findings.find((f) => f.id === "after-any-next")?.text).toBe(
-      "After a draw or defeat we win 33% (6 Matches) vs 60% after a Win (5)",
+      "After a draw or defeat we win 33% (6 matches) vs 60% after a win (5)",
     );
   });
 
@@ -339,8 +339,8 @@ describe("byOpponentStrength", () => {
     );
     expect(findings.find((f) => f.id === "strength")).toMatchObject({
       factor: "Opponent strength",
-      text: "Against Stronger Opponents we win 20% (5) vs 83% against Weaker (6)",
-      counts: "5 Matches against Stronger Opponents, 6 against Weaker",
+      text: "Against stronger opponents we win 20% (5) vs 83% against weaker (6)",
+      counts: "5 matches against stronger opponents, 6 against weaker",
     });
   });
 
@@ -446,13 +446,13 @@ describe("byOpponentHumans", () => {
     );
     expect(findings.find((f) => f.id === "humans-1-3")).toMatchObject({
       factor: "Opponent humans",
-      text: "We win 100% of Matches against Opponents with 1–3 humans, against 20% otherwise",
-      counts: "5 Matches against 1–3 humans, 5 otherwise",
+      text: "We win 100% of matches against opponents with 1–3 humans, against 20% otherwise",
+      counts: "5 matches against 1–3 humans, 5 otherwise",
     });
     expect(
       findings.find((f) => f.id === "humans-against-ours-slightly-more"),
     ).toMatchObject({
-      text: "We win 20% of Matches against Opponents with 1–2 more humans than us, against 100% otherwise",
+      text: "We win 20% of matches against opponents with 1–2 more humans than us, against 100% otherwise",
     });
   });
 

@@ -75,7 +75,7 @@ async function starAppearances(page: Page) {
 /** The Analysis page's "Not enough Matches yet" text, which counts the filtered Wins and Dropped Points. */
 function analysisNeeds(page: Page, needed: string) {
   return page.getByText(
-    `The Outcome Split needs at least 3 Wins and 3 draws and defeats in these filters: ${needed}.`,
+    `To compare wins with draws and defeats we need at least 3 of each in these filters: ${needed}.`,
   );
 }
 
@@ -122,13 +122,13 @@ test("This Campaign and Last Campaign limit the Analysis page", async ({
   await seedCampaigns({ fakeEa, triggerPoll });
   await page.goto("/analysis");
   // All 7: 4 Wins and 3 Dropped Points, enough for the Outcome Split.
-  await expect(page.getByText("Not enough Matches yet")).toHaveCount(0);
+  await expect(page.getByText("Not enough matches yet")).toHaveCount(0);
 
   await campaignChip(page, "This Campaign").click();
   await expect.poll(() => searchParam(page, "campaign")).toBe("current");
   // L D: no Wins, 2 Dropped Points.
   await expect(
-    analysisNeeds(page, "3 more Wins and 1 more draw or defeat"),
+    analysisNeeds(page, "3 more wins and 1 more draw or defeat"),
   ).toBeVisible();
 
   await campaignChip(page, "Last Campaign").click();

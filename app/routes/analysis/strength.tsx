@@ -29,18 +29,18 @@ export function StrengthPanel({ byStrength }: { byStrength: ByStrength }) {
     <section aria-label="By Opponent strength" className="flex flex-col gap-3">
       <div>
         <h3 className="font-display font-extrabold text-2xl text-ink uppercase leading-none tracking-wide">
-          By Opponent strength
+          By opponent strength
         </h3>
         <p className="mt-1 text-ink-muted text-sm">
-          {`Stronger is ${STRENGTH_GAP} or more above our Skill Rating, Weaker ${STRENGTH_GAP} or more below, Similar within ${STRENGTH_GAP}.`}
+          {`Stronger opponents were rated ${STRENGTH_GAP}+ above us, weaker ${STRENGTH_GAP}+ below, similar in between.`}
         </p>
       </div>
       {note && <p className="text-ink-muted text-sm">{note}</p>}
       {groups.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-6">
-          <ChartFrame title="Win % by Opponent strength">
+          <ChartFrame title="Win % by opponent strength">
             <WinRateBarChart
-              label="Win % by Opponent strength"
+              label="Win % by opponent strength"
               buckets={groups.map((g) => winRateBucket(g.label, g))}
             />
           </ChartFrame>
@@ -56,14 +56,14 @@ export function StrengthPanel({ byStrength }: { byStrength: ByStrength }) {
   );
 }
 
-/** "Hidden with fewer than 3 Matches: Similar (2).", or null with nothing to say. */
+/** "Hidden with fewer than 3 matches: Similar (2).", or null with nothing to say. */
 function strengthNote({ groups, hidden }: ByStrength): string | null {
   const notes: string[] = [];
   const hiddenGroups = hiddenNote({ hidden });
   if (hiddenGroups) notes.push(hiddenGroups);
   if (groups.length === 0) {
     notes.push(
-      `Each group needs at least ${MIN_SPLIT_MATCHES} rated Matches to show.`,
+      `Each group needs at least ${MIN_SPLIT_MATCHES} rated matches to show.`,
     );
   }
   return notes.length > 0 ? notes.join(" ") : null;
