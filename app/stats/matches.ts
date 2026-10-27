@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, inArray, min } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
 import { appearances, clubs, matches, players } from "~/db/schema";
+import { crestUrl } from "~/ea/crest";
 import type { MatchKind, MatchResult } from "~/ea/parse";
 import type { MatchType, Outcome, PositionGroup } from "~/lib/domain";
 import { type CalendarDate, londonDateKey } from "~/lib/london-time";
@@ -23,6 +24,8 @@ export interface Club {
   clubId: string;
   /** EA's club name; falls back to the club ID when EA sent none. */
   name: string;
+  /** The club's crest image on EA's CDN, or null when EA sent none. */
+  crestUrl: string | null;
 }
 
 /** Both clubs' Skill Ratings at a Match; null when it was never rated. */
@@ -59,6 +62,7 @@ export const summaryColumns = {
   playedAt: matches.playedAt,
   opponentClubId: matches.opponentClubId,
   opponentName: clubs.name,
+  opponentCrestAssetId: clubs.crestAssetId,
   goalsFor: matches.goalsFor,
   goalsAgainst: matches.goalsAgainst,
   result: matches.result,
@@ -218,6 +222,7 @@ export interface SummaryRow {
   playedAt: Date;
   opponentClubId: string;
   opponentName: string | null;
+  opponentCrestAssetId: string | null;
   goalsFor: number;
   goalsAgainst: number;
   result: MatchResult;
@@ -234,6 +239,7 @@ export function toSummary(row: SummaryRow): MatchSummary {
     opponent: {
       clubId: row.opponentClubId,
       name: row.opponentName ?? row.opponentClubId,
+      crestUrl: crestUrl(row.opponentCrestAssetId),
     },
     goalsFor: row.goalsFor,
     goalsAgainst: row.goalsAgainst,

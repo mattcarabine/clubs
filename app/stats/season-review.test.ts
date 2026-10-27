@@ -37,7 +37,7 @@ function match(
     matchId: `m${id}`,
     matchType: "League",
     playedAt: new Date(`${at}:00+01:00`),
-    opponent: { clubId: "1", name: "Kebab Over6pack" },
+    opponent: { clubId: "1", name: "Kebab Over6pack", crestUrl: null },
     goalsFor,
     goalsAgainst,
     outcome,
@@ -255,8 +255,8 @@ describe("whenWePlay", () => {
 });
 
 describe("rivals", () => {
-  const sparrows = { clubId: "2", name: "Sparrows" };
-  const robins = { clubId: "3", name: "Robins" };
+  const sparrows = { clubId: "2", name: "Sparrows", crestUrl: null };
+  const robins = { clubId: "3", name: "Robins", crestUrl: null };
 
   it(`needs ${MIN_RIVAL_RESULTS} Dropped Points for a Nemesis and ${MIN_RIVAL_RESULTS} Wins for a favourite`, () => {
     const { nemesis, favourite } = rivals([

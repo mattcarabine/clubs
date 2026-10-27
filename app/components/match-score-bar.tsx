@@ -59,6 +59,7 @@ export function MatchScoreBar({
         away={{
           name: match.opponent.name,
           score: match.goalsAgainst,
+          crestUrl: match.opponent.crestUrl,
           detail: hasRatings && <SkillRating value={ratings.opponent} />,
         }}
         size={size}

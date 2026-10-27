@@ -46,6 +46,8 @@ export interface ParsedMatch {
 export interface ParsedClub {
   clubId: string;
   name: string | null;
+  /** EA's ID for the club's crest image, digits only (see `crestUrl`). */
+  crestAssetId: string | null;
 }
 
 export interface ParsedAppearance {
@@ -68,6 +70,14 @@ export interface ParsedAppearance {
   goalsConceded: number;
   cleanSheet: boolean;
   secondsPlayed: number;
+}
+
+/**
+ * A club's `crestAssetId`, kept only when it is all digits: it goes into an
+ * image URL, so anything else is dropped rather than trusted.
+ */
+export function toCrestAssetId(value: unknown): string | null {
+  return typeof value === "string" && /^\d{1,12}$/.test(value) ? value : null;
 }
 
 /** EA's `clubs[id].result` codes. Friendlies send 0. */
@@ -165,6 +175,7 @@ function parseMatch(
     clubs: Object.entries(clubs).map(([clubId, club]) => ({
       clubId,
       name: club?.details?.name ?? null,
+      crestAssetId: toCrestAssetId(club?.details?.customKit?.crestAssetId),
     })),
     appearances,
   };
