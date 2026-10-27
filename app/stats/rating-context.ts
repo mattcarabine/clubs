@@ -4,7 +4,7 @@
  * on the nights everyone does is riding it, one who rates above the rest of
  * the line-up is lifting it.
  *
- * - Vs team: a Squad Member's rating minus their teammates' average in the
+ * - Above team: a Squad Member's rating minus their teammates' average in the
  *   same Match, averaged over their Matches (the Squad table, Compare).
  * - Rating link: whether two Squad Members rise and fall together over their
  *   Shared Matches, straight up and with the rest of the line-up's night
@@ -71,7 +71,7 @@ function lineupAverage(
   );
 }
 
-export interface VsTeam {
+export interface AboveTeam {
   /** The Matches with a rated teammate, which the gap averages over. */
   matches: number;
   /** The average of rating minus the teammates' average; null with no such Match. */
@@ -83,10 +83,10 @@ export interface VsTeam {
  * the same Matches. `own` is the Appearances to count (e.g. after a Position
  * Group selection); `ratings` holds every teammate's.
  */
-export function vsTeam(
+export function aboveTeam(
   own: readonly RatedAppearance[],
   ratings: MatchRatings,
-): VsTeam {
+): AboveTeam {
   const gaps: number[] = [];
   for (const a of own) {
     const rating = countedRating(a);

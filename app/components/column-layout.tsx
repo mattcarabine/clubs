@@ -50,20 +50,26 @@ export function useColumnLayout<T>(
   storageKey: string,
   columns: readonly DataTableColumn<T>[],
 ): ColumnLayoutState {
-  const ids = useMemo(() => columns.slice(1).map((c) => c.id), [columns]);
-  const [layout, setLayout] = useState<ColumnLayout>(() =>
-    defaultColumnLayout(ids),
-  );
+  const defaults = useMemo(() => {
+    const movable = columns.slice(1);
+    return defaultColumnLayout(
+      movable.map((c) => c.id),
+      movable.filter((c) => c.defaultHidden).map((c) => c.id),
+    );
+  }, [columns]);
+  const [layout, setLayout] = useState<ColumnLayout>(defaults);
 
   useEffect(() => {
-    setLayout(parseColumnLayout(readStorage(storageKey), ids));
-  }, [storageKey, ids]);
+    setLayout(parseColumnLayout(readStorage(storageKey), defaults));
+  }, [storageKey, defaults]);
 
   const update = (next: ColumnLayout) => {
     setLayout(next);
     writeStorage(
       storageKey,
-      isDefaultColumnLayout(next, ids) ? null : serialiseColumnLayout(next),
+      isDefaultColumnLayout(next, defaults)
+        ? null
+        : serialiseColumnLayout(next),
     );
   };
 
@@ -72,11 +78,11 @@ export function useColumnLayout<T>(
     order: layout.order,
     visible: layout.order.filter((id) => !hidden.has(id)),
     hidden,
-    isDefault: isDefaultColumnLayout(layout, ids),
+    isDefault: isDefaultColumnLayout(layout, defaults),
     move: (id, target) =>
       update({ ...layout, order: moveColumn(layout.order, id, target) }),
     setHidden: (id, isHidden) => update(setColumnHidden(layout, id, isHidden)),
-    reset: () => update(defaultColumnLayout(ids)),
+    reset: () => update(defaults),
   };
 }
 

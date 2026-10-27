@@ -26,7 +26,7 @@ function squadTable(page: Page) {
 test.describe("on a 375px phone", () => {
   test.use({ viewport: PHONE });
 
-  test("the Squad table shows the name with G+A, Rating, Form and Played without scrolling", async ({
+  test("the Squad table shows the name with G+A, MOTM and Rating without scrolling", async ({
     page,
     triggerPoll,
   }) => {
@@ -34,7 +34,8 @@ test.describe("on a 375px phone", () => {
     await page.goto("/squad");
 
     const table = squadTable(page);
-    for (const header of ["Squad Member", "G+A", "Rating", "Form", "Played"]) {
+    // MOTM sits beside G+A (CLUBS-80); Form runs to the faded edge.
+    for (const header of ["Squad Member", "G+A", "MOTM", "Rating"]) {
       const cell = table.getByRole("columnheader", {
         name: header,
         exact: true,

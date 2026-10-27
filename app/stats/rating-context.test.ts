@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  aboveTeam,
   consistency,
   type LinkStrength,
   linkReading,
@@ -9,7 +10,6 @@ import {
   matchRatings,
   type RatedAppearance,
   ratingLink,
-  vsTeam,
 } from "./rating-context";
 
 function rated(
@@ -34,19 +34,22 @@ function lineup(matchId: string, ratings: Record<string, number>) {
   return Object.entries(ratings).map(([id, r]) => rated(matchId, id, r));
 }
 
-describe("vsTeam", () => {
+describe("aboveTeam", () => {
   it("averages rating minus the teammates' average in each Match", () => {
     const all = [
       ...lineup("m1", { a: 8, b: 6, c: 7 }), // a +1.5
       ...lineup("m2", { a: 6, b: 7 }), // a −1
     ];
     const own = all.filter((x) => x.playerId === "a");
-    expect(vsTeam(own, matchRatings(all))).toEqual({ matches: 2, gap: 0.25 });
+    expect(aboveTeam(own, matchRatings(all))).toEqual({
+      matches: 2,
+      gap: 0.25,
+    });
   });
 
   it("skips a Match with no rated teammate", () => {
     const all = [...lineup("m1", { a: 8 }), rated("m1", "b", null)];
-    expect(vsTeam(all.slice(0, 1), matchRatings(all))).toEqual({
+    expect(aboveTeam(all.slice(0, 1), matchRatings(all))).toEqual({
       matches: 0,
       gap: null,
     });
@@ -62,7 +65,7 @@ describe("vsTeam", () => {
       rated("m2", "b", 4, { dnf: true, outcome: "L" }),
     ];
     const own = all.filter((x) => x.playerId === "a");
-    expect(vsTeam(own, matchRatings(all))).toEqual({ matches: 1, gap: 0 });
+    expect(aboveTeam(own, matchRatings(all))).toEqual({ matches: 1, gap: 0 });
   });
 });
 

@@ -12,8 +12,15 @@ export type ColumnLayout = {
 /** Bump when the stored shape changes; older layouts are then ignored. */
 const VERSION = 1;
 
-export function defaultColumnLayout(ids: readonly string[]): ColumnLayout {
-  return { order: ids, hidden: [] };
+/**
+ * A table's own layout: its columns in their designed order, with the ones
+ * it hides until asked (CLUBS-80) already hidden.
+ */
+export function defaultColumnLayout(
+  ids: readonly string[],
+  hidden: readonly string[] = [],
+): ColumnLayout {
+  return { order: ids, hidden };
 }
 
 export function serialiseColumnLayout(layout: ColumnLayout): string {
@@ -21,26 +28,32 @@ export function serialiseColumnLayout(layout: ColumnLayout): string {
 }
 
 /**
- * Reads a stored layout against the table's columns `ids` (in their default
- * order). Unknown ids are dropped, and a column the stored layout has never
- * seen goes back in after the column that precedes it by default, so a new
- * column lands near where it was designed to be. Anything malformed gives
- * the default layout.
+ * Reads a stored layout against the table's `defaults`. Unknown ids are
+ * dropped, and a column the stored layout has never seen goes back in after
+ * the column that precedes it by default, so a new column lands near where
+ * it was designed to be, hidden if the table hides it by default. Anything
+ * malformed gives the defaults.
  */
 export function parseColumnLayout(
   raw: string | null,
-  ids: readonly string[],
+  defaults: ColumnLayout,
 ): ColumnLayout {
   const stored = readStored(raw);
-  if (!stored) return defaultColumnLayout(ids);
+  if (!stored) return defaults;
+  const ids = defaults.order;
   const known = new Set(ids);
   const order = [...new Set(stored.order)].filter((id) => known.has(id));
-  ids.forEach((id, i) => {
-    if (order.includes(id)) return;
+  const unseen = ids.filter((id) => !order.includes(id));
+  for (const id of unseen) {
+    const i = ids.indexOf(id);
     const before = i === 0 ? -1 : order.indexOf(ids[i - 1]);
     order.splice(before + 1, 0, id);
-  });
-  return { order, hidden: stored.hidden.filter((id) => known.has(id)) };
+  }
+  const hidden = [
+    ...stored.hidden.filter((id) => known.has(id)),
+    ...unseen.filter((id) => defaults.hidden.includes(id)),
+  ];
+  return { order, hidden: [...new Set(hidden)] };
 }
 
 function readStored(raw: string | null): ColumnLayout | null {
@@ -107,11 +120,16 @@ export function setColumnHidden(
 
 export function isDefaultColumnLayout(
   layout: ColumnLayout,
-  ids: readonly string[],
+  defaults: ColumnLayout,
 ): boolean {
   return (
-    layout.hidden.length === 0 &&
-    layout.order.length === ids.length &&
-    layout.order.every((id, i) => id === ids[i])
+    sameSet(layout.hidden, defaults.hidden) &&
+    layout.order.length === defaults.order.length &&
+    layout.order.every((id, i) => id === defaults.order[i])
   );
+}
+
+function sameSet(a: readonly string[], b: readonly string[]): boolean {
+  const set = new Set(a);
+  return set.size === new Set(b).size && b.every((id) => set.has(id));
 }

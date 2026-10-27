@@ -1,35 +1,42 @@
 import type { Page } from "@playwright/test";
 
 import { win } from "./support/match-builders.ts";
+import {
+  columnPicker,
+  columnsChip,
+  openColumnPicker,
+} from "./support/squad-columns.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-65: hide, show and reorder the Squad table's columns, remembered in
-// the browser.
+// the browser. CLUBS-80: the defaults lead with G+A and MOTM, and hide the
+// niche columns until asked.
 
 /** The Recorded table's default header row. */
 const DEFAULT_HEADERS = [
   "Squad Member",
   "G+A",
+  "MOTM",
   "Rating",
   "Form",
   "Played",
-  "Vs team",
+  "Above team",
   "G",
   "A",
-  "Mins",
   "G/90",
   "A/90",
   "G+A/90",
-  "Shots",
   "Pass %",
-  "Tkl %",
-  "MOTM",
-  "CS",
-  "Saves",
   "Red",
   "Red/90",
   "Recent",
 ];
+
+/** Hidden until the viewer shows them. */
+const HIDDEN_BY_DEFAULT = ["Mins", "Shots", "Tkl %", "CS", "Saves"];
+
+/** Where an earlier release kept the layout; CLUBS-80 ignores it. */
+const OLD_LAYOUT_KEY = "squad-columns:recorded";
 
 test.beforeEach(async ({ fakeEa, triggerPoll }) => {
   await fakeEa.setPayload("clubs/matches", [], "leagueMatch");
@@ -53,23 +60,6 @@ function header(page: Page, name: string) {
   return squadTable(page).getByRole("columnheader", { name, exact: true });
 }
 
-function columnsChip(page: Page) {
-  return page.getByRole("button", { name: /^Columns/ });
-}
-
-function picker(page: Page) {
-  return page.getByRole("dialog", { name: "Choose columns" });
-}
-
-/** Opens the Columns picker, retrying a click that lands before hydration. */
-async function openPicker(page: Page) {
-  await expect(async () => {
-    await columnsChip(page).click();
-    await expect(picker(page)).toBeVisible({ timeout: 1000 });
-  }).toPass();
-  return picker(page);
-}
-
 /** Right-clicks a header, retrying until the hydrated menu opens. */
 async function openHeaderMenu(page: Page, name: string) {
   const menu = page.getByRole("menu", { name: /column$/ });
@@ -80,18 +70,49 @@ async function openHeaderMenu(page: Page, name: string) {
   return menu;
 }
 
+test("a first visit shows the default columns, with the niche ones hidden", async ({
+  page,
+}) => {
+  await page.goto("/squad");
+  await expect.poll(() => headers(page)).toEqual(DEFAULT_HEADERS);
+  await expect(columnsChip(page)).toHaveText(/Columns · 5 hidden/);
+
+  const dialog = await openColumnPicker(page);
+  for (const name of ["Minutes played", "Shots", "Saves"]) {
+    await expect(
+      dialog.getByRole("checkbox", { name: `Show ${name}` }),
+    ).not.toBeChecked();
+  }
+  await expect(
+    dialog.getByRole("button", { name: "Reset columns" }),
+  ).toBeDisabled();
+});
+
+test("a layout saved before the new defaults is ignored", async ({ page }) => {
+  await page.addInitScript((key) => {
+    // CLUBS-65's format, with every column showing.
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({ v: 1, order: ["shots", "ga"], hidden: [] }),
+    );
+  }, OLD_LAYOUT_KEY);
+  await page.goto("/squad");
+  await expect(columnsChip(page)).toHaveText(/Columns · 5 hidden/);
+  await expect.poll(() => headers(page)).toEqual(DEFAULT_HEADERS);
+});
+
 test("hiding a column from its header menu lasts across a reload", async ({
   page,
 }) => {
   await page.goto("/squad");
   await expect.poll(() => headers(page)).toEqual(DEFAULT_HEADERS);
 
-  const menu = await openHeaderMenu(page, "Shots");
-  await expect(menu).toHaveAccessibleName("Shots column");
+  const menu = await openHeaderMenu(page, "Pass %");
+  await expect(menu).toHaveAccessibleName("Pass success column");
   await menu.getByRole("menuitem", { name: "Hide column" }).click();
 
-  await expect(header(page, "Shots")).toHaveCount(0);
-  await expect(columnsChip(page)).toHaveText(/Columns · 1 hidden/);
+  await expect(header(page, "Pass %")).toHaveCount(0);
+  await expect(columnsChip(page)).toHaveText(/Columns · 6 hidden/);
   // The header focus came from is gone, so focus lands on the table itself
   // rather than back at the top of the page.
   await expect(
@@ -99,23 +120,22 @@ test("hiding a column from its header menu lasts across a reload", async ({
   ).toBeFocused();
 
   await page.reload();
-  await expect(columnsChip(page)).toHaveText(/Columns · 1 hidden/);
-  await expect(header(page, "Shots")).toHaveCount(0);
+  await expect(columnsChip(page)).toHaveText(/Columns · 6 hidden/);
   await expect
     .poll(() => headers(page))
-    .toEqual(DEFAULT_HEADERS.filter((h) => h !== "Shots"));
+    .toEqual(DEFAULT_HEADERS.filter((h) => h !== "Pass %"));
 });
 
 test("the header menu moves a column past its neighbour", async ({ page }) => {
   await page.goto("/squad");
-  const menu = await openHeaderMenu(page, "Rating");
+  const menu = await openHeaderMenu(page, "MOTM");
   await menu.getByRole("menuitem", { name: "Move left" }).click();
   await expect
     .poll(async () => (await headers(page)).slice(0, 3))
-    .toEqual(["Squad Member", "Rating", "G+A"]);
+    .toEqual(["Squad Member", "MOTM", "G+A"]);
 
-  // Rating now leads the movable columns, so it can't go further left.
-  const again = await openHeaderMenu(page, "Rating");
+  // MOTM now leads the movable columns, so it can't go further left.
+  const again = await openHeaderMenu(page, "MOTM");
   await expect(
     again.getByRole("menuitem", { name: "Move left" }),
   ).toBeDisabled();
@@ -126,45 +146,49 @@ test("the header menu moves a column past its neighbour", async ({ page }) => {
 test("right-clicking another header moves the menu to it", async ({ page }) => {
   await page.goto("/squad");
   await openHeaderMenu(page, "Rating");
-  await header(page, "Shots").click({ button: "right" });
+  await header(page, "Pass %").click({ button: "right" });
   await expect(page.getByRole("menu")).toHaveCount(1);
-  await expect(page.getByRole("menu")).toHaveAccessibleName("Shots column");
+  await expect(page.getByRole("menu")).toHaveAccessibleName(
+    "Pass success column",
+  );
 });
 
-test("a hidden column comes back in its old place from the Columns picker", async ({
+test("a column hidden by default comes back in its place from the Columns picker", async ({
   page,
 }) => {
   await page.goto("/squad");
-  const menu = await openHeaderMenu(page, "Shots");
-  await menu.getByRole("menuitem", { name: "Hide column" }).click();
-  await expect(header(page, "Shots")).toHaveCount(0);
-
-  const dialog = await openPicker(page);
+  const dialog = await openColumnPicker(page);
   const shots = dialog.getByRole("checkbox", { name: "Show Shots" });
   await expect(shots).not.toBeChecked();
   await shots.check();
   await dialog.getByRole("button", { name: "Done" }).click();
   await expect(dialog).toBeHidden();
 
-  await expect.poll(() => headers(page)).toEqual(DEFAULT_HEADERS);
-  await expect(columnsChip(page)).toHaveText(/^Columns$/);
+  // Shots sits between G+A/90 and Pass %, as designed.
+  const withShots = [...DEFAULT_HEADERS];
+  withShots.splice(withShots.indexOf("Pass %"), 0, "Shots");
+  await expect.poll(() => headers(page)).toEqual(withShots);
+  await expect(columnsChip(page)).toHaveText(/Columns · 4 hidden/);
+
+  await page.reload();
+  await expect.poll(() => headers(page)).toEqual(withShots);
 });
 
 test("moving a column up in the picker reorders the table and lasts", async ({
   page,
 }) => {
   await page.goto("/squad");
-  const dialog = await openPicker(page);
-  const up = dialog.getByRole("button", { name: "Move Average rating up" });
+  const dialog = await openColumnPicker(page);
+  const up = dialog.getByRole("button", { name: "Move Man of the Match up" });
   await up.click();
   // Focus stays on the moved column's control, now at the top.
   await expect(up).toBeDisabled();
   await expect(
-    dialog.getByRole("button", { name: "Move Average rating down" }),
+    dialog.getByRole("button", { name: "Move Man of the Match down" }),
   ).toBeFocused();
   await page.keyboard.press("Escape");
 
-  const moved = ["Squad Member", "Rating", "G+A", "Form"];
+  const moved = ["Squad Member", "MOTM", "G+A", "Rating"];
   await expect
     .poll(async () => (await headers(page)).slice(0, 4))
     .toEqual(moved);
@@ -178,19 +202,26 @@ test("Reset columns restores the default columns and order", async ({
   page,
 }) => {
   await page.goto("/squad");
-  let dialog = await openPicker(page);
+  let dialog = await openColumnPicker(page);
   await expect(
     dialog.getByRole("button", { name: "Reset columns" }),
   ).toBeDisabled();
   await dialog.getByRole("button", { name: "Move Appearances up" }).click();
-  await dialog.getByRole("checkbox", { name: "Show Minutes played" }).uncheck();
+  await dialog.getByRole("checkbox", { name: "Show Shots" }).check();
+  await dialog
+    .getByRole("checkbox", { name: "Show Goals", exact: true })
+    .uncheck();
   await dialog.getByRole("button", { name: "Done" }).click();
-  await expect(columnsChip(page)).toHaveText(/1 hidden/);
+  await expect(columnsChip(page)).toHaveText(/5 hidden/);
+  await expect(header(page, "Shots")).toBeVisible();
 
-  dialog = await openPicker(page);
+  dialog = await openColumnPicker(page);
   await dialog.getByRole("button", { name: "Reset columns" }).click();
   await dialog.getByRole("button", { name: "Done" }).click();
   await expect.poll(() => headers(page)).toEqual(DEFAULT_HEADERS);
+  for (const hidden of HIDDEN_BY_DEFAULT) {
+    await expect(header(page, hidden)).toHaveCount(0);
+  }
 
   // Nothing is left stored, so a reload is the default too.
   await page.reload();
@@ -217,9 +248,9 @@ test.describe("on desktop", () => {
   }) => {
     await page.goto("/squad");
     // Wait for hydration once: a second drag would move Played back past G+A.
-    await openPicker(page);
+    await openColumnPicker(page);
     await page.keyboard.press("Escape");
-    await expect(picker(page)).toBeHidden();
+    await expect(columnPicker(page)).toBeHidden();
 
     await header(page, "Played").dragTo(header(page, "G+A"));
     await expect
@@ -248,10 +279,10 @@ test.describe("on a phone", () => {
     await page.goto("/squad");
     await expect(async () => {
       await columnsChip(page).tap();
-      await expect(picker(page)).toBeVisible({ timeout: 1000 });
+      await expect(columnPicker(page)).toBeVisible({ timeout: 1000 });
     }).toPass();
-    await picker(page).getByRole("checkbox", { name: "Show Form" }).tap();
-    await picker(page).getByRole("button", { name: "Done" }).tap();
+    await columnPicker(page).getByRole("checkbox", { name: "Show Form" }).tap();
+    await columnPicker(page).getByRole("button", { name: "Done" }).tap();
 
     await expect(header(page, "Form")).toHaveCount(0);
     const pageFits = await page.evaluate(

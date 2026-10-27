@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import { win, withLineup } from "./support/match-builders.ts";
+import { showSquadColumns } from "./support/squad-columns.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-23: the Position Group selection (?pos=) on the Squad table and a
@@ -154,6 +155,8 @@ test("the Squad table counts only Appearances in the selected Position Groups", 
   await recordMixedPositions(fakeEa, triggerPoll);
 
   await page.goto("/squad?pos=forward,midfielder");
+  // Saves is hidden until asked (CLUBS-80).
+  await showSquadColumns(page, ["Saves"]);
   await expect(positionChip(page, "Midfielder")).toHaveAttribute(
     "aria-pressed",
     "true",
