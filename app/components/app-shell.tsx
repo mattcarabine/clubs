@@ -12,7 +12,6 @@ export { crestUrl };
 export const NAV_ITEMS = [
   { to: "/", label: "Matches" },
   { to: "/squad", label: "Squad" },
-  { to: "/trends", label: "Trends" },
   { to: "/analysis", label: "Analysis" },
   { to: "/milestones", label: "Milestones" },
 ] as const;

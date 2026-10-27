@@ -97,7 +97,7 @@ test("the recap, Match reports and State of the club show as site copy, and no p
   await expectNoHorizontalScroll(page);
 
   // Every page load above, and a few more, sent nothing upstream.
-  for (const path of ["/", "/squad", "/trends", "/opponents"]) {
+  for (const path of ["/", "/squad", "/analysis", "/opponents"]) {
     await page.goto(path);
   }
   expect(await fakeAnthropic.requests()).toHaveLength(1);

@@ -228,7 +228,7 @@ test("the Position Group control is only on player pages", async ({
 }) => {
   await recordMixedPositions(fakeEa, triggerPoll);
 
-  for (const path of ["/matches", "/opponents", "/trends"]) {
+  for (const path of ["/", "/opponents"]) {
     await page.goto(path);
     await expect(filters(page)).toBeVisible();
     await expect(positionGroup(page)).toHaveCount(0);

@@ -98,7 +98,7 @@ test.describe("a reviewed Season", () => {
   test("no page, nav item or Season control links to a Season Review", async ({
     page,
   }) => {
-    for (const path of ["/", "/trends", "/matches", "/squad", "/analysis"]) {
+    for (const path of ["/", "/squad", "/analysis", "/milestones"]) {
       await page.goto(path);
       await expect(
         page.getByRole("navigation", { name: "Primary" }),

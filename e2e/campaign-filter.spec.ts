@@ -227,11 +227,10 @@ test("every stats page takes the Campaign filter", async ({
     "/squad?campaign=current",
     `/players/${STAR.id}?campaign=current`,
     "/analysis?campaign=current",
-    "/matches?campaign=current",
+    "/?campaign=current",
     "/opponents?campaign=current",
     `/opponents/${match.opponent_club_id}?campaign=current`,
     `/compare?players=${STAR.id}&campaign=current`,
-    "/trends?campaign=current",
   ];
   for (const path of pages) {
     const response = await page.goto(path);
