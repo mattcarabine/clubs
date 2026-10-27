@@ -10,7 +10,7 @@
  * "Estimate".
  */
 import type { Outcome } from "~/lib/domain";
-import { formatPercentage } from "~/lib/number-format";
+import { formatPercentage, formatSigned } from "~/lib/number-format";
 
 import type { MatchSkillRatings } from "./matches";
 import { ratingGap } from "./skill-rating";
@@ -47,13 +47,6 @@ const ELO_SLOPE = Math.LN10 / 400;
 export interface RatedResult {
   gap: number;
   outcome: Outcome;
-}
-
-/** A rated Match as the Win Chance chart draws it. */
-export interface WinChancePoint {
-  /** Our Skill Rating minus the Opponent's. */
-  gap: number;
-  won: boolean;
 }
 
 /** A logistic curve of Win Chance over the rating gap. */
@@ -221,6 +214,69 @@ export function calibration(
     bands.set(from, band);
   }
   return [...bands.values()].sort((a, b) => a.from - b.from);
+}
+
+/** How wide each rating gap band is, in Skill Rating points. */
+export const GAP_BAND = 100;
+
+/** Gaps beyond this either way share an open-ended band ("Under −300", "+300 and over"). */
+export const GAP_BAND_REACH = 300;
+
+/** The Matches at one band of rating gap: how each ended, and the Wins the curve expected. */
+export interface GapBand {
+  /** Inclusive lower bound, or null for the open band below `-GAP_BAND_REACH`. */
+  from: number | null;
+  /** Exclusive upper bound, or null for the open band from `GAP_BAND_REACH`. */
+  to: number | null;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  /** The sum of the Matches' Win Chances. */
+  expectedWins: number;
+}
+
+/** Every band with a Match in it, biggest underdog first. */
+export function gapBands(
+  model: WinChanceModel,
+  results: readonly RatedResult[],
+): GapBand[] {
+  const bands = new Map<number, GapBand>();
+  for (const r of results) {
+    const start = Math.min(
+      GAP_BAND_REACH,
+      Math.max(
+        -GAP_BAND_REACH - GAP_BAND,
+        Math.floor(r.gap / GAP_BAND) * GAP_BAND,
+      ),
+    );
+    const band = bands.get(start) ?? {
+      from: start < -GAP_BAND_REACH ? null : start,
+      to: start >= GAP_BAND_REACH ? null : start + GAP_BAND,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      expectedWins: 0,
+    };
+    band.played += 1;
+    if (r.outcome === "W") band.wins += 1;
+    else if (r.outcome === "D") band.draws += 1;
+    else band.losses += 1;
+    band.expectedWins += winChance(model, r.gap);
+    bands.set(start, band);
+  }
+  return [...bands.entries()].sort(([a], [b]) => a - b).map(([, band]) => band);
+}
+
+/** A band's gaps in words: "−100 to 0", "Under −300", "+300 and over". */
+export function gapBandLabel({
+  from,
+  to,
+}: Pick<GapBand, "from" | "to">): string {
+  if (from === null) return `Under ${formatSigned(to ?? 0)}`;
+  if (to === null) return `${formatSigned(from)} and over`;
+  return `${formatSigned(from)} to ${formatSigned(to)}`;
 }
 
 /** The rated Matches among these, as the curve reads them; unrated ones are left out. */
