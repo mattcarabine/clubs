@@ -246,7 +246,10 @@ function panelAlignment(hero: boolean, trailing: boolean): string {
 /** Our Club's own crest; an Opponent's crest from EA, when EA sent one. */
 function ClubMark({ side }: { side: ScoreBarSide }) {
   if (side.isOurClub) return <CrestMark />;
-  return side.crestUrl ? <ClubCrest src={side.crestUrl} /> : null;
+  // Keyed by URL, so a crest that failed never hides the next club's.
+  return side.crestUrl ? (
+    <ClubCrest key={side.crestUrl} src={side.crestUrl} />
+  ) : null;
 }
 
 /** The hero's broadcast stat strip: each figure with ours left and theirs right. */
