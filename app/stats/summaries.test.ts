@@ -98,6 +98,7 @@ describe("summariseAppearances", () => {
         tacklesMade: 2,
         tackleAttempts: 2,
         rating: 6,
+        redCards: 1,
       }),
     ]);
     expect(totals).toMatchObject({
@@ -116,6 +117,8 @@ describe("summariseAppearances", () => {
       assistsPer90: 0.5,
       goalContributionsPer90: 2,
       shotsPer90: 3,
+      redCards: 1,
+      redCardsPer90: 0.5,
     });
   });
 

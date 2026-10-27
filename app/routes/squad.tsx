@@ -422,6 +422,7 @@ const KEY: readonly [string, string][] = [
   ["Form", "Average rating over the last 5 Appearances"],
   ["MOTM", "Man of the Match"],
   ["CS", "Clean sheets as Goalkeeper or Defender"],
+  ["Red", "Red cards (EA does not report yellow cards)"],
   ["Recent", `Biggest change over the last ${RECENT_WINDOW} Appearances`],
 ];
 
@@ -432,6 +433,7 @@ const EA_KEY: readonly [string, string][] = [
   ["Tkl %", "Tackle success"],
   ["MOTM", "Man of the Match"],
   ["CS", "Clean sheets in goal for a Goalkeeper, else as a Defender"],
+  ["Red", "Red cards (EA does not report yellow cards)"],
 ];
 
 function ColumnKey({ entries }: { entries: readonly [string, string][] }) {
@@ -562,6 +564,8 @@ const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
   recordedStat("motm", "MOTM", (r) => r.manOfTheMatch),
   recordedStat("cs", "CS", (r) => r.cleanSheets),
   recordedStat("saves", "Saves", (r) => r.saves),
+  recordedStat("red", "Red", (r) => r.redCards),
+  recordedStat("red90", "Red/90", (r) => r.redCardsPer90, per90),
   {
     id: "recent",
     header: "Recent",
