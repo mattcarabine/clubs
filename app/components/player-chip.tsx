@@ -12,13 +12,12 @@ type PlayerChipProps = {
   /** Turns the chip into a link, e.g. to the Squad Member's page. */
   to?: string;
   /**
-   * On phones, shows just the name, without the box, initials or Position
-   * Group, so a pinned table column stays narrow and its stats stay in view.
+   * On phones, shows just the name, without the box or Position Group, so a pinned table column stays narrow and its stats stay in view.
    */
   dense?: boolean;
 };
 
-/** Compact Squad Member identity: initials block, name, position group and an optional stat. */
+/** Compact Squad Member identity: name, position group and an optional stat. EA has no player images, so there is no avatar. */
 export function PlayerChip({
   name,
   positionGroup,
@@ -30,12 +29,6 @@ export function PlayerChip({
   const onlyWide = dense ? "hidden sm:flex" : "flex";
   const body = (
     <>
-      <span
-        aria-hidden
-        className={`clip-slant-r ${onlyWide} h-full w-9 shrink-0 items-center justify-center pr-1 font-display font-extrabold text-base [--slant:0.35rem] ${former ? "bg-shale-700 text-ink-soft" : "bg-sound-700 text-ink"}`}
-      >
-        {initials(name)}
-      </span>
       <span className="min-w-0 truncate font-semibold">{name}</span>
       {positionGroup && (
         <abbr
@@ -54,12 +47,14 @@ export function PlayerChip({
     </>
   );
 
-  // Dense on phones: just the name, no box or end padding.
+  // Dense on phones: just the name, no box or padding.
   const boxBackground = dense ? "sm:bg-shale-800" : "bg-shale-800";
+  const boxStartPadding = dense ? "sm:pl-3" : "pl-3";
   const boxEndPadding = dense ? "sm:pr-3" : "pr-3";
   const className = [
     "inline-flex h-9 max-w-full min-w-0 items-center gap-2 text-sm",
     boxBackground,
+    boxStartPadding,
     former ? "text-ink-soft" : "text-ink",
     // A stat pads the end itself.
     stat != null ? "" : boxEndPadding,
@@ -72,14 +67,4 @@ export function PlayerChip({
   ) : (
     <span className={className}>{body}</span>
   );
-}
-
-/** "Kopite Kev" -> "KK", "TrentBoi_99" -> "TR": first letters of the first two wordy parts. */
-function initials(name: string): string {
-  const words = name.split(/[^\p{L}]+/u).filter(Boolean);
-  const letters =
-    words.length > 1
-      ? words[0][0] + words[1][0]
-      : (words[0] ?? name).slice(0, 2);
-  return letters.toUpperCase();
 }
