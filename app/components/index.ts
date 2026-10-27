@@ -44,6 +44,7 @@ export { EmptyState } from "./empty-state";
 export { FilterBar } from "./filter-bar";
 export { FormBadge } from "./form-badge";
 export { FormGuide } from "./form-guide";
+export { FormWatch } from "./form-watch";
 export { HeadToHeadBar, type HeadToHeadRecord } from "./head-to-head-bar";
 export { PageHeader, SectionHeading } from "./headings";
 export { LastUpdatedBadge } from "./last-updated-badge";

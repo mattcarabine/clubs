@@ -12,7 +12,13 @@ test.beforeEach(async ({ page }) => {
 test("app shell shows the crest lockup and primary nav", async ({ page }) => {
   await expect(page.getByRole("link", { name: "A Bloo Bloo" })).toBeVisible();
   const nav = page.getByRole("navigation", { name: "Primary" });
-  for (const label of ["Matchday", "Squad", "Matches", "Opponents", "Trends"]) {
+  for (const label of [
+    "Matches",
+    "Squad",
+    "Trends",
+    "Analysis",
+    "Milestones",
+  ]) {
     await expect(nav.getByRole("link", { name: label })).toBeAttached();
   }
   await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute(
@@ -116,7 +122,7 @@ test("every component section renders", async ({ page }) => {
     section("empty-state").getByText("No Matches yet"),
   ).toBeVisible();
   await expect(
-    section("loading").getByRole("status", { name: "Loading Matchday" }),
+    section("loading").getByRole("status", { name: "Loading Matches" }),
   ).toBeAttached();
 });
 

@@ -71,7 +71,7 @@ test("?types= ignores friendly", async ({ page, fakeEa, triggerPoll }) => {
   await triggerPoll();
 
   // Only friendly: as if there were no types at all.
-  let res = await page.goto("/matches?types=friendly");
+  let res = await page.goto("/?types=friendly");
   expect(res?.status()).toBe(200);
   await expect(page.getByText("2 Matches, newest first")).toBeVisible();
   await expect(matchTypeChip(page, "League")).toHaveAttribute(
@@ -84,7 +84,7 @@ test("?types= ignores friendly", async ({ page, fakeEa, triggerPoll }) => {
   );
 
   // League and friendly: League only.
-  res = await page.goto("/matches?types=league,friendly");
+  res = await page.goto("/?types=league,friendly");
   expect(res?.status()).toBe(200);
   await expect(page.getByText("1 Match, newest first")).toBeVisible();
   await expect(matchTypeChip(page, "League")).toHaveAttribute(
@@ -108,7 +108,7 @@ test("a Friendly recorded by a Poll appears on no page and in no count", async (
       { player: REGULAR, goals: 1 },
     ]),
   );
-  // The newest Match, so Matchday would lead with it if it were shown.
+  // The newest Match, so the home page would lead with it if it were shown.
   await fakeEa.addMatch(
     against(
       FRIENDLY_OPPONENT,
@@ -151,7 +151,7 @@ test("a Friendly recorded by a Poll appears on no page and in no count", async (
   }
 
   // Counts cover the League Match alone.
-  await page.goto("/matches");
+  await page.goto("/");
   await expect(page.getByText("1 Match, newest first")).toBeVisible();
   await page.goto("/trends");
   await expect(

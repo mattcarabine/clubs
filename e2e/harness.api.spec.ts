@@ -43,7 +43,7 @@ test("a Poll against the recorded league matches stores them and the pages rende
 
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Matchday" }),
+    page.getByRole("heading", { level: 1, name: "Matches" }),
   ).toBeVisible();
 });
 
@@ -131,7 +131,7 @@ test("an EA 403 is recorded as a failed Poll and nothing crashes", async ({
 
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Matchday" }),
+    page.getByRole("heading", { level: 1, name: "Matches" }),
   ).toBeVisible();
 
   // The next Poll recovers.

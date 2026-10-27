@@ -1,5 +1,5 @@
 /**
- * CLUBS-46: Matchday's D1 read budget. An open Matchday checks the Poll every
+ * CLUBS-46: the home page's D1 read budget. An open home page checks the Poll every
  * minute, and that check must stay a few rows however much data there is.
  * Rows read come from the test-only meter (`app/db/rows-read.ts`).
  */
@@ -11,7 +11,7 @@ import { expect, test } from "./support/test.ts";
 /** The builders' Opponent (from the recorded fixture). */
 const OPPONENT_ID = "356611";
 
-/** The check an open Matchday makes every minute (`POLL_STATE_PATH`). */
+/** The check an open home page makes every minute (`POLL_STATE_PATH`). */
 const POLL_STATE_PATH = "/api/poll-state";
 /** The per-check budget in `app/stats/README.md`. */
 const POLL_CHECK_ROWS = 5;
@@ -55,7 +55,7 @@ test("the refresh check reads a few rows, however many Polls and Matches there a
   expect(await rowsRead(request, POLL_STATE_PATH)).toBe(fresh);
 });
 
-test("a full Matchday load does not grow with the number of Polls", async ({
+test("a full home page load does not grow with the number of Polls", async ({
   request,
   triggerPoll,
 }) => {

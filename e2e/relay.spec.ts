@@ -6,7 +6,7 @@ import { OUR_CLUB_ID, win } from "./support/match-builders.ts";
 import { runTestRelay } from "./support/relay.ts";
 import { expect, test } from "./support/test.ts";
 
-test("with the Worker's EA fetch disabled, one relay run puts the new Match on Matchday", async ({
+test("with the Worker's EA fetch disabled, one relay run puts the new Match on the home page", async ({
   page,
   request,
   fakeEa,

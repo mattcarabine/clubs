@@ -915,7 +915,7 @@ export default function Styleguide() {
       </Section>
 
       <Section id="loading" title="Loading">
-        <LoadingState label="Loading Matchday" />
+        <LoadingState label="Loading Matches" />
         <div className="mt-4 grid max-w-sm gap-2">
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-4 w-1/2" />

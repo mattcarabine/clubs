@@ -11,9 +11,10 @@ import {
   win,
   withLineup,
 } from "./support/match-builders.ts";
+import { matchList } from "./support/match-list.ts";
 import { expect, test } from "./support/test.ts";
 
-// CLUBS-31: the hero ScoreBar (Matchday and the Match page) and the Top
+// CLUBS-31: the hero ScoreBar (the home page and the Match page) and the Top
 // performers strip.
 
 const CLUB_NAME = "A Bloo Bloo";
@@ -104,7 +105,7 @@ test("one tab cluster holds the Match Type, status and kick-off", async ({
       .getByRole("listitem"),
   ).toHaveText(["League", "They rage quit", MOMENT]);
 
-  // Matchday's lead Match (the rage quit, played last) uses the same cluster.
+  // The home page's lead Match (the rage quit, played last) uses the same cluster.
   await page.goto("/");
   await expect(
     page
@@ -329,9 +330,11 @@ test("compact rows keep the W/D/L block beside the score", async ({
     against(win({ matchId: "31070" }), "Northside Athletic"),
   );
   await triggerPoll();
-  await page.goto("/matches");
+  await page.goto("/");
 
-  const row = page.getByRole("link", { name: /Northside Athletic/ }).first();
+  const row = matchList(page)
+    .getByRole("link", { name: /Northside Athletic/ })
+    .first();
   const badge = await row.getByRole("img", { name: "Win" }).boundingBox();
   const ours = await panel(row, CLUB_NAME).boundingBox();
   const theirs = await panel(row, "Northside Athletic").boundingBox();

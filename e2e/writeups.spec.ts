@@ -74,7 +74,7 @@ test("the recap, Match reports and State of the club show as site copy, and no p
   await expectNoAiLabel(page);
   await expectNoHorizontalScroll(page);
 
-  await page.goto("/matches");
+  await page.goto("/");
   await expect(page.getByText("A split night at the office.")).toBeVisible();
   await expect(page.getByText("The loss stung.")).toHaveCount(0);
 

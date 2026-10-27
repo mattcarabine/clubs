@@ -1,5 +1,5 @@
 /**
- * Live site: production serves Matchday, private, with a recent Poll. Run
+ * Live site: production serves the home page (Matches), private, with a recent Poll. Run
  * with `pnpm test:live`; set LIVE_SITE_URL to check another deployment.
  */
 import { describe, expect, it } from "vitest";
@@ -12,13 +12,13 @@ const SITE_URL = process.env.LIVE_SITE_URL ?? "https://clubs.marabine.co.uk";
 const LAST_UPDATED = /Updated(?:<!-- -->)?\s*<time dateTime="([^"]+)"/;
 
 describe("live site", () => {
-  it("serves Matchday with a recent last-updated time", async () => {
+  it("serves the home page with a recent last-updated time", async () => {
     const response = await fetch(SITE_URL);
     expect(response.status).toBe(200);
     expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
 
     const html = await response.text();
-    expect(html).toContain("<title>A Bloo Bloo — Matchday</title>");
+    expect(html).toContain("<title>A Bloo Bloo — Matches</title>");
 
     const updated = html.match(LAST_UPDATED)?.[1];
     if (!updated) {

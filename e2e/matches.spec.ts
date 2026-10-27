@@ -9,16 +9,17 @@ import {
   recordedLeagueMatches,
   win,
 } from "./support/match-builders.ts";
+import { matchList } from "./support/match-list.ts";
 import { expect, test } from "./support/test.ts";
 
-// CLUBS-11: the Match list (/matches) and Match detail (/matches/:matchId).
+// CLUBS-11: the Match list (the home page, /) and Match detail (/matches/:matchId).
 
 const CLUB_NAME = "A Bloo Bloo";
 const MINUTE_MS = 60_000;
 
 /** The links to Match detail pages in the list, in page order. */
 function matchLinks(page: Page) {
-  return page.getByRole("main").locator('a[href^="/matches/"]');
+  return matchList(page).locator('a[href^="/matches/"]');
 }
 
 function lineup(page: Page, clubName: string) {
@@ -131,11 +132,11 @@ test.describe("Match detail", () => {
     await fakeEa.addMatch(weQuit);
     await triggerPoll();
 
-    await page.goto("/matches");
+    await page.goto("/");
     await expect(matchLinks(page)).toHaveCount(2);
     for (const label of ["They rage quit", "We rage quit"]) {
       await expect(
-        page.getByRole("main").getByText(label, { exact: true }),
+        matchList(page).getByText(label, { exact: true }),
       ).toHaveCount(1);
     }
     await expect(page.getByRole("main")).not.toContainText("DNF");
@@ -210,7 +211,7 @@ test.describe("Match list", () => {
     }
     await triggerPoll();
 
-    await page.goto("/matches");
+    await page.goto("/");
     await expect(page.getByText("21 Matches, newest first")).toBeVisible();
     await expect(matchLinks(page)).toHaveCount(20);
     await expect(matchLinks(page).first()).toHaveAttribute(
@@ -245,7 +246,7 @@ test.describe("Match list", () => {
     await fakeEa.addMatch(win({ matchType: "playoffMatch" }));
     await triggerPoll();
 
-    await page.goto("/matches");
+    await page.goto("/");
     await expect(matchLinks(page)).toHaveCount(2);
 
     await page
@@ -258,7 +259,7 @@ test.describe("Match list", () => {
   });
 
   test("says so when no Matches fit", async ({ page }) => {
-    await page.goto("/matches");
+    await page.goto("/");
     await expect(page.getByText("No Matches", { exact: true })).toBeVisible();
   });
 });
@@ -270,7 +271,7 @@ test("both pages fit a 375px phone without horizontal page scroll", async ({
   await triggerPoll();
   await page.setViewportSize({ width: 375, height: 800 });
 
-  await page.goto("/matches");
+  await page.goto("/");
   await expect(matchLinks(page).first()).toBeVisible();
   await expectNoHorizontalScroll(page);
 

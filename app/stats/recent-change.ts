@@ -12,8 +12,8 @@
  * Hot and Cold form (CLUBS-40) use the same split: the average rating over
  * the last `FORM_WINDOW` Appearances against every one before.
  *
- * Pure and client-safe, shared by the profile, the Squad table, Compare and
- * Matchday.
+ * Pure and client-safe, shared by the profile, the Squad table (and its
+ * Form watch) and Compare.
  */
 import type { FormStatus, Outcome } from "~/lib/domain";
 import {

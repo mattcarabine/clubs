@@ -91,11 +91,13 @@ test("Matches are dated as moments: weekday, day, month and 24-hour time", async
     .getByRole("region", { name: "Latest Match" })
     .locator("time");
   await expect(latest).toHaveText(moment);
-  const earlier = page
-    .getByRole("region", { name: "Before that" })
+  // Under a Session's header, which names the day, a Match shows only its time.
+  const listed = page
+    .getByRole("region", { name: /^Session, / })
+    .getByRole("listitem")
     .locator("time");
-  for (const time of await earlier.all()) {
-    await expect(time).toHaveText(moment);
+  for (const time of await listed.all()) {
+    await expect(time).toHaveText(/^\d{2}:\d{2}$/);
   }
   // Relative times are only for how old the data is.
   await expect(
