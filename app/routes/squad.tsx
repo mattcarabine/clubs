@@ -487,7 +487,7 @@ const KEY: readonly [string, string][] = [
 ];
 
 const EA_KEY: readonly [string, string][] = [
-  ["GP", MEANING.games],
+  ["Played", MEANING.games],
   ["G / A", "Goals / assists"],
   ["Shot %", MEANING.shotSuccess],
   ["Tkl %", "Tackle success"],
@@ -702,7 +702,7 @@ const COLUMNS = describeColumns<LeaderboardRow>(
       ...recordedStat("form", "Form", (r) => r.form),
       cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
     },
-    recordedStat("apps", "Apps", (r) => r.appearances),
+    recordedStat("apps", "Played", (r) => r.appearances),
     recordedStat(
       "aboveTeam",
       "Above team",
@@ -773,8 +773,8 @@ const EA_COLUMNS = describeColumns<EaMemberTotals>(
     nameColumn(),
     stat("ga", "G+A", season(goalContributions)),
     seasonStat("rating", "Rating", "averageRating", formatDecimal),
-    seasonStat("games", "GP", "gamesPlayed"),
     seasonStat("pass", "Pass %", "passSuccessRate", formatPercentage),
+    seasonStat("games", "Played", "gamesPlayed"),
     seasonStat("goals", "G", "goals"),
     seasonStat("assists", "A", "assists"),
     seasonStat("shot", "Shot %", "shotSuccessRate", formatPercentage),

@@ -68,7 +68,7 @@ const LEADERBOARD_COLUMNS: DataTableColumn<LeaderboardRow>[] = [
   { id: "name", header: "Squad Member", cell: (r) => r.name },
   {
     id: "apps",
-    header: "Apps",
+    header: "Played",
     align: "right",
     cell: (r) => r.appearances,
     sortValue: (r) => r.appearances,
