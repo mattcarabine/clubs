@@ -36,8 +36,13 @@ export interface MatchOptions {
   goalsAgainst?: number;
   matchType?: MatchType;
   matchId?: string;
-  /** Defaults to now, so the Match is newer than every recorded one. */
+  /**
+   * Defaults to now, so the Match is newer than every recorded one. A few
+   * seconds are added to keep each built Match's kick-off unique.
+   */
   playedAt?: Date;
+  /** The exact kick-off, to the second, in place of `playedAt`. */
+  kickOff?: Date;
 }
 
 type Score = Required<Pick<MatchOptions, "goalsFor" | "goalsAgainst">>;
@@ -129,8 +134,9 @@ function buildMatch(
 ): AddMatchBody {
   sequence += 1;
   const matchType = options.matchType ?? "leagueMatch";
-  const playedAt =
-    Math.floor((options.playedAt?.getTime() ?? Date.now()) / 1000) + sequence;
+  const playedAt = options.kickOff
+    ? Math.floor(options.kickOff.getTime() / 1000)
+    : Math.floor((options.playedAt?.getTime() ?? Date.now()) / 1000) + sequence;
 
   const match = structuredClone(recordedLeagueMatches()[0]);
   match.matchId =
