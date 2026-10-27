@@ -10,9 +10,9 @@ import { type CalibrationBand, MIN_FITTED_MATCHES } from "~/stats/win-chance";
 import type { WinChanceAnalysis } from "~/stats/win-chance-query";
 
 /**
- * "Win chance" (CLUBS-30): the curve of our Win Chance over the Skill Rating
- * gap, the filtered Matches' results by band of gap, Wins against the Wins it expected,
- * and how often we won at each band of Win Chance.
+ * "Win chance" (CLUBS-30): the filtered Matches' results by band of Skill
+ * Rating gap against the Wins expected (CLUBS-69), our Wins against the
+ * Wins the curve expected, and how often we won at each band of Win Chance.
  */
 export function WinChanceSection({
   winChance,
