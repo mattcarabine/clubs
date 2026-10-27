@@ -50,6 +50,7 @@ import {
   statsFilterFromRequest,
   type WithWithout,
   winRateBucket,
+  winRateGap,
 } from "~/stats";
 import { parseStatsFilter, writeStatsFilter } from "~/stats/filter";
 import type { PositionGroupSelection } from "~/stats/positions";
@@ -189,6 +190,9 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
             rowKey={(r) => r.playerId}
             rowHref={(r) => playerPath(r.playerId)}
           />
+          <p className="-mt-2 text-ink-muted text-xs">
+            {`A Gap needs at least ${MIN_SPLIT_MATCHES} Matches with and ${MIN_SPLIT_MATCHES} without.`}
+          </p>
           <ChartFrame title="By Squad Members playing">
             <WinRateBarChart
               label="Win % by Squad Members playing"
@@ -412,12 +416,6 @@ function splitColumns<T extends GroupSplit>(
       gap === null ? NO_VALUE : `${formatSigned(Math.round(gap))} pts`,
     ),
   ];
-}
-
-function winRateGap({ group, rest }: GroupSplit): number | null {
-  return group.winPercentage === null || rest.winPercentage === null
-    ? null
-    : group.winPercentage - rest.winPercentage;
 }
 
 /** The Squad Member's name, marking a Former Squad Member. */
