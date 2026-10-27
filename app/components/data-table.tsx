@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import { neighbour } from "~/lib/column-layout";
@@ -100,6 +100,7 @@ export function DataTable<T>({
   const [scrollerRef, edges] = useScrollFade<HTMLElement>();
   const rowLink = useRowLink();
   const [menu, setMenu] = useState<ColumnMenuAt | null>(null);
+  const opens = useRef(0);
   const { drag, start: startDrag } = useColumnDrag((id, target) =>
     layout?.move(id, target),
   );
@@ -151,7 +152,10 @@ export function DataTable<T>({
                       "data-column-drop": column.id,
                       onContextMenu: (event) => {
                         event.preventDefault();
-                        setMenu(columnMenuAt(column.id, event));
+                        // Read now: React clears the event before a state
+                        // updater would run.
+                        setMenu(columnMenuAt(column.id, event, opens.current));
+                        opens.current += 1;
                       },
                       onPointerDown: startDrag(column.id),
                     })}
@@ -231,7 +235,11 @@ export function DataTable<T>({
           at={menu}
           column={columns.find((c) => c.id === menu.id)}
           layout={layout}
-          onClose={() => setMenu(null)}
+          // Only this menu's own close clears it: a right-click on another
+          // header closes this one while opening that one.
+          onClose={() =>
+            setMenu((open) => (open?.opens === menu.opens ? null : open))
+          }
         />
       )}
     </div>

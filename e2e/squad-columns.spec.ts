@@ -91,6 +91,11 @@ test("hiding a column from its header menu lasts across a reload", async ({
 
   await expect(header(page, "Shots")).toHaveCount(0);
   await expect(columnsChip(page)).toHaveText(/Columns · 1 hidden/);
+  // The header focus came from is gone, so focus lands on the table itself
+  // rather than back at the top of the page.
+  await expect(
+    page.getByRole("region", { name: "Squad Members" }),
+  ).toBeFocused();
 
   await page.reload();
   await expect(columnsChip(page)).toHaveText(/Columns · 1 hidden/);
@@ -115,6 +120,14 @@ test("the header menu moves a column past its neighbour", async ({ page }) => {
   ).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(again).toBeHidden();
+});
+
+test("right-clicking another header moves the menu to it", async ({ page }) => {
+  await page.goto("/squad");
+  await openHeaderMenu(page, "Rating");
+  await header(page, "Shots").click({ button: "right" });
+  await expect(page.getByRole("menu")).toHaveCount(1);
+  await expect(page.getByRole("menu")).toHaveAccessibleName("Shots column");
 });
 
 test("a hidden column comes back in its old place from the Columns picker", async ({

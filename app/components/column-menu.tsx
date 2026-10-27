@@ -13,6 +13,10 @@ export type ColumnMenuAt = {
   x: number;
   y: number;
   trigger: HTMLElement;
+  /** Where focus goes when the trigger's column is hidden or moved away. */
+  fallback: HTMLElement | null;
+  /** Counts opens, so a second right-click replaces the menu rather than closing it. */
+  opens: number;
 };
 
 /**
@@ -22,14 +26,20 @@ export type ColumnMenuAt = {
 export function columnMenuAt(
   id: string,
   event: MouseEvent<HTMLElement>,
+  /** Counts up from the menu this one replaces, if any. */
+  opened: number,
 ): ColumnMenuAt {
   const header = event.currentTarget;
   const trigger = header.querySelector("button") ?? header;
+  // The table's scrolling region, which is focusable and outlives any column.
+  const fallback = header.closest("table")?.parentElement ?? null;
+  const opens = opened + 1;
+  const at = { id, trigger, fallback, opens };
   if (event.clientX !== 0 || event.clientY !== 0) {
-    return { id, x: event.clientX, y: event.clientY, trigger };
+    return { ...at, x: event.clientX, y: event.clientY };
   }
   const box = header.getBoundingClientRect();
-  return { id, x: box.left, y: box.bottom, trigger };
+  return { ...at, x: box.left, y: box.bottom };
 }
 
 export type ColumnMenuAction = {
@@ -64,7 +74,8 @@ export function ColumnMenu({
   useLayoutEffect(() => {
     const menu = ref.current;
     if (!menu) return;
-    menu.showPopover();
+    // A right-click on another header reopens this menu in its new place.
+    if (!menu.matches(":popover-open")) menu.showPopover();
     const left = Math.min(at.x, window.innerWidth - menu.offsetWidth - GUTTER);
     const top = Math.min(at.y, window.innerHeight - menu.offsetHeight - GUTTER);
     menu.style.left = `${Math.max(GUTTER, left)}px`;
@@ -100,7 +111,7 @@ export function ColumnMenu({
         // Back to the header, unless a click elsewhere already moved focus on.
         const active = document.activeElement;
         if (active === document.body || ref.current?.contains(active)) {
-          at.trigger.focus();
+          restoreFocus(at);
         }
         onClose();
       }}
@@ -123,6 +134,19 @@ export function ColumnMenu({
       ))}
     </div>
   );
+}
+
+/**
+ * Puts focus back on the header the menu came from. Hiding or moving a
+ * column takes that header away (or it was never focusable), so focus falls
+ * back to the table's own scrolling region rather than the top of the page.
+ */
+function restoreFocus({ trigger, fallback }: ColumnMenuAt) {
+  if (trigger.isConnected) {
+    trigger.focus();
+    if (document.activeElement === trigger) return;
+  }
+  fallback?.focus();
 }
 
 /** The menu's enabled items, in order. */
