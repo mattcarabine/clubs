@@ -1,6 +1,6 @@
 /**
- * The Trends page's Campaign section (CLUBS-41): the current Campaign panel,
- * the Division timeline and the Campaign history. `campaignsView` runs in the
+ * Analysis's Campaign pieces (CLUBS-41): the current Campaign panel at the
+ * top, and the Division timeline and Campaign history under "Over time". `campaignsView` runs in the
  * loader, so dates are formatted once, in London time, on the server.
  */
 import type { ReactNode } from "react";
@@ -155,8 +155,9 @@ function historyRow(campaign: Campaign, index: number): CampaignRow {
   };
 }
 
+/** The current Campaign. */
 export function CampaignSection({ view }: { view: CampaignsView }) {
-  const { division, progress, inPlayoffs, mismatch, timeline, history } = view;
+  const { division, progress, inPlayoffs, mismatch } = view;
   return (
     <section aria-label="Campaign" className="flex min-w-0 flex-col gap-4">
       <SectionHeading
@@ -189,6 +190,23 @@ export function CampaignSection({ view }: { view: CampaignsView }) {
           )}
         </CampaignPanel>
       )}
+    </section>
+  );
+}
+
+/** How the Division moved, and each Campaign's result. Renders nothing before either exists. */
+export function DivisionHistory({ view }: { view: CampaignsView }) {
+  const { timeline, history } = view;
+  if (timeline.length < 2 && history.length === 0) return null;
+  return (
+    <section
+      aria-label="Division history"
+      className="flex min-w-0 flex-col gap-4"
+    >
+      <SectionHeading
+        title="Division history"
+        subtitle="Each Season start, Promotion and Relegation, and how each Campaign ended."
+      />
       {timeline.length > 1 && (
         <ChartFrame
           title="Division timeline"

@@ -361,9 +361,8 @@ test("phones get one month and a sticky Apply; desktops two months", async ({
 
 const FILTER_PAGES = [
   "/squad",
-  "/matches",
+  "/",
   "/opponents",
-  "/trends",
   "/analysis",
   "/compare",
   "/test/stats",
