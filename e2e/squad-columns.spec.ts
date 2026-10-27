@@ -20,6 +20,7 @@ const DEFAULT_HEADERS = [
   "Rating",
   "Form",
   "Apps",
+  "Vs team",
   "G",
   "A",
   "G/90",
@@ -32,7 +33,7 @@ const DEFAULT_HEADERS = [
 ];
 
 /** Hidden until the viewer shows them. */
-const HIDDEN_BY_DEFAULT = ["Vs team", "Mins", "Shots", "Tkl %", "CS", "Saves"];
+const HIDDEN_BY_DEFAULT = ["Mins", "Shots", "Tkl %", "CS", "Saves"];
 
 /** Where an earlier release kept the layout; CLUBS-80 ignores it. */
 const OLD_LAYOUT_KEY = "squad-columns:recorded";
@@ -74,10 +75,10 @@ test("a first visit shows the default columns, with the niche ones hidden", asyn
 }) => {
   await page.goto("/squad");
   await expect.poll(() => headers(page)).toEqual(DEFAULT_HEADERS);
-  await expect(columnsChip(page)).toHaveText(/Columns · 6 hidden/);
+  await expect(columnsChip(page)).toHaveText(/Columns · 5 hidden/);
 
   const dialog = await openColumnPicker(page);
-  for (const name of ["Rating against teammates", "Minutes played", "Shots"]) {
+  for (const name of ["Minutes played", "Shots", "Saves"]) {
     await expect(
       dialog.getByRole("checkbox", { name: `Show ${name}` }),
     ).not.toBeChecked();
@@ -96,7 +97,7 @@ test("a layout saved before the new defaults is ignored", async ({ page }) => {
     );
   }, OLD_LAYOUT_KEY);
   await page.goto("/squad");
-  await expect(columnsChip(page)).toHaveText(/Columns · 6 hidden/);
+  await expect(columnsChip(page)).toHaveText(/Columns · 5 hidden/);
   await expect.poll(() => headers(page)).toEqual(DEFAULT_HEADERS);
 });
 
@@ -111,7 +112,7 @@ test("hiding a column from its header menu lasts across a reload", async ({
   await menu.getByRole("menuitem", { name: "Hide column" }).click();
 
   await expect(header(page, "Pass %")).toHaveCount(0);
-  await expect(columnsChip(page)).toHaveText(/Columns · 7 hidden/);
+  await expect(columnsChip(page)).toHaveText(/Columns · 6 hidden/);
   // The header focus came from is gone, so focus lands on the table itself
   // rather than back at the top of the page.
   await expect(
@@ -119,7 +120,7 @@ test("hiding a column from its header menu lasts across a reload", async ({
   ).toBeFocused();
 
   await page.reload();
-  await expect(columnsChip(page)).toHaveText(/Columns · 7 hidden/);
+  await expect(columnsChip(page)).toHaveText(/Columns · 6 hidden/);
   await expect
     .poll(() => headers(page))
     .toEqual(DEFAULT_HEADERS.filter((h) => h !== "Pass %"));
@@ -167,7 +168,7 @@ test("a column hidden by default comes back in its place from the Columns picker
   const withShots = [...DEFAULT_HEADERS];
   withShots.splice(withShots.indexOf("Pass %"), 0, "Shots");
   await expect.poll(() => headers(page)).toEqual(withShots);
-  await expect(columnsChip(page)).toHaveText(/Columns · 5 hidden/);
+  await expect(columnsChip(page)).toHaveText(/Columns · 4 hidden/);
 
   await page.reload();
   await expect.poll(() => headers(page)).toEqual(withShots);
@@ -211,7 +212,7 @@ test("Reset columns restores the default columns and order", async ({
     .getByRole("checkbox", { name: "Show Goals", exact: true })
     .uncheck();
   await dialog.getByRole("button", { name: "Done" }).click();
-  await expect(columnsChip(page)).toHaveText(/6 hidden/);
+  await expect(columnsChip(page)).toHaveText(/5 hidden/);
   await expect(header(page, "Shots")).toBeVisible();
 
   dialog = await openColumnPicker(page);

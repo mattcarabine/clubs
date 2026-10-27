@@ -4,11 +4,7 @@ import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import { dnf, type Lineup, win, withLineup } from "./support/match-builders.ts";
-import { showSquadColumns } from "./support/squad-columns.ts";
 import { expect, test } from "./support/test.ts";
-
-/** Vs team's name in the Squad table's Columns picker. */
-const VS_TEAM = "Rating against teammates";
 
 // CLUBS-66: ratings in the context of the team. Vs team on the Squad table
 // and Compare, and "Rise and fall together?" on Compare.
@@ -106,8 +102,6 @@ test("the Squad table rates each Squad Member against their teammates", async ({
 }) => {
   await recordTide(fakeEa, triggerPoll);
   await page.goto("/squad");
-  // Vs team is hidden until asked (CLUBS-80).
-  await showSquadColumns(page, [VS_TEAM]);
   await expect(await squadCell(page, ALPHA.name, "Vs team")).toHaveText("+0.6");
   await expect(await squadCell(page, BRAVO.name, "Vs team")).toHaveText("−0.3");
   await expect(await squadCell(page, CHARLIE.name, "Vs team")).toHaveText(
@@ -129,7 +123,6 @@ test("a Squad Member who never had a rated teammate shows a dash", async ({
 }) => {
   await record(fakeEa, triggerPoll, [{ lineup: [{ player: ALPHA }] }]);
   await page.goto("/squad");
-  await showSquadColumns(page, [VS_TEAM]);
   await expect(await squadCell(page, ALPHA.name, "Vs team")).toHaveText("–");
 });
 

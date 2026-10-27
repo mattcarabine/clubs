@@ -630,7 +630,7 @@ function hiddenByDefault<Row>(
 /**
  * The stats people compare lead (G+A, MOTM, rating, Form, Appearances), so a
  * phone shows them beside the name before the table scrolls. The niche ones
- * start hidden (CLUBS-80): Vs team, Mins, Shots, Tkl %, CS and Saves.
+ * start hidden (CLUBS-80): Mins, Shots, Tkl %, CS and Saves.
  */
 const COLUMNS = withLabels<LeaderboardRow>([
   nameColumn((r) => r.formIndicator),
@@ -642,9 +642,7 @@ const COLUMNS = withLabels<LeaderboardRow>([
     cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
   },
   recordedStat("apps", "Apps", (r) => r.appearances),
-  hiddenByDefault(
-    recordedStat("vsTeam", "Vs team", (r) => r.vsTeam, formatSignedDecimal),
-  ),
+  recordedStat("vsTeam", "Vs team", (r) => r.vsTeam, formatSignedDecimal),
   recordedStat("goals", "G", (r) => r.goals),
   recordedStat("assists", "A", (r) => r.assists),
   hiddenByDefault(
