@@ -155,7 +155,7 @@ test("the Outcome Split leaves our stats from a DNF we quit out of the per-90s, 
   await page.goto("/analysis");
   await expect(
     page.getByRole("region", { name: "Top findings", exact: true }),
-  ).toContainText("3 Wins and 4 draws and defeats");
+  ).toContainText("3 wins and 4 draws and defeats");
   await expect(analysisShots(page).nth(0)).toHaveText("10.0");
   await expect(analysisShots(page).nth(1)).toHaveText("4.0");
   await expect(outcomeSplitSection(page)).toContainText(
@@ -184,7 +184,7 @@ test("the Outcome Split leaves the Opponent's zeroed stats from a Match they qui
   await page.goto("/analysis");
   await expect(
     page.getByRole("region", { name: "Top findings", exact: true }),
-  ).toContainText("4 Wins and 3 draws and defeats");
+  ).toContainText("4 wins and 3 draws and defeats");
   await expect(analysisShots(page).nth(2)).toHaveText("6.0");
   await expect(analysisShots(page).nth(3)).toHaveText("9.0");
   await expect(outcomeSplitSection(page)).toContainText(

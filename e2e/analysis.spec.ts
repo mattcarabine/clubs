@@ -136,7 +136,7 @@ test("draws count as Dropped Points and DNF Matches count by their outcome", asy
   await triggerPoll();
   await page.reload();
   await expect(region(page, "Top findings")).toContainText(
-    "3 Wins and 3 draws and defeats",
+    "3 wins and 3 draws and defeats",
   );
 });
 
@@ -372,19 +372,19 @@ test("each FilterBar dimension changes the results", async ({
   ]);
 
   await page.goto("/analysis");
-  await expect(summary()).toContainText("4 Wins and 5 draws and defeats");
+  await expect(summary()).toContainText("4 wins and 5 draws and defeats");
 
   await page.goto("/analysis?types=league");
-  await expect(summary()).toContainText("4 Wins and 4 draws and defeats");
+  await expect(summary()).toContainText("4 wins and 4 draws and defeats");
 
   await page.goto("/analysis?dnf=0&types=playoff");
   await expect(page.getByText("Not enough matches yet")).toBeVisible();
 
   await page.goto("/analysis?dnf=0");
-  await expect(summary()).toContainText("4 Wins and 4 draws and defeats");
+  await expect(summary()).toContainText("4 wins and 4 draws and defeats");
 
   await page.goto("/analysis?range=30d");
-  await expect(summary()).toContainText("3 Wins and 5 draws and defeats");
+  await expect(summary()).toContainText("3 wins and 5 draws and defeats");
 
   await page.goto("/analysis?season=2");
   await expect(page.getByText("Not enough matches yet")).toBeVisible();

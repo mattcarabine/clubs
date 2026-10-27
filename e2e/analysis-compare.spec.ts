@@ -129,7 +129,7 @@ test("Season 2 offers Season 1 first, and never with a Campaign or All dates", a
   await control(page).getByRole("button", { name: "Season 1" }).click();
   await expect(page).toHaveURL(/[?&]vs=1(&|$)/);
   await expect(comparison(page)).toContainText(
-    "Season 2 against Season 1: 2 Matches then.",
+    "Season 2 against Season 1: 2 matches then.",
   );
   await expect(figure(page, "Win %")).toContainText("was 50%");
 
