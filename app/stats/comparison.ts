@@ -18,6 +18,14 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
+import {
+  type MatchRatings,
+  matchRatings,
+  type RatingLink,
+  ratingLink,
+  type VsTeam,
+  vsTeam,
+} from "./rating-context";
 import { type FormIndicator, formIndicator } from "./recent-change";
 import {
   listSquadMembers,
@@ -46,6 +54,7 @@ export function isSmallSample(matches: number): boolean {
  * Position Groups.
  */
 export interface ComparisonSideInput {
+  playerId: string;
   appearances: readonly SquadAppearance[];
   positionGroups: PositionGroupSelection;
 }
@@ -62,6 +71,8 @@ export interface ComparedTotals {
    * Position Groups, Shared or not: form is the Squad Member's own.
    */
   formIndicator: FormIndicator | null;
+  /** Rating against teammates in the same Matches (CLUBS-66), over this side's counted Appearances. */
+  vsTeam: VsTeam;
 }
 
 export interface ComparedSides {
@@ -69,6 +80,11 @@ export interface ComparedSides {
   sides: ComparedTotals[];
   /** Under "Played together" with two sides: Our Club's record in the Shared Matches. */
   shared: RecordSummary | null;
+  /**
+   * With two sides: whether they rate well and badly in the same Matches
+   * (CLUBS-66), over every Shared Match whatever the scope or Position Groups.
+   */
+  link: RatingLink | null;
 }
 
 /** The Matches both Squad Members made an Appearance in, whatever their positions. */
@@ -84,10 +100,13 @@ export function sharedMatchIds(
  * Each side's totals under the scope. "Played together" first narrows both
  * sides to the Shared Matches, then each side counts only its own Position
  * Groups within them; the shared record covers every Shared Match.
+ * `ratings` is every Squad Member's in the filtered Matches, for Vs team
+ * and the Rating link.
  */
 export function compareSides(
   inputs: readonly ComparisonSideInput[],
   scope: ComparisonScope,
+  ratings: MatchRatings,
 ): ComparedSides {
   const shared =
     scope === "together" && inputs.length === 2
@@ -112,10 +131,15 @@ export function compareSides(
             isCountedAppearance,
           ),
         ),
+        vsTeam: vsTeam(counted, ratings),
       };
     }),
     // A Squad Member appears once per Match, so A's Appearances are the Matches.
     shared: shared ? summariseRecord(inScope(inputs[0].appearances)) : null,
+    link:
+      inputs.length === 2
+        ? ratingLink(inputs[0].playerId, inputs[1].playerId, ratings)
+        : null,
   };
 }
 
@@ -144,25 +168,33 @@ export interface EaComparison extends ComparisonBase {
   sides: (EaSeasonTotals | null)[];
 }
 
-/** A Comparison from Recorded Appearances in the filtered Matches. Three queries at most, in parallel. */
+/**
+ * A Comparison from Recorded Appearances in the filtered Matches, in two
+ * parallel queries: every Squad Member's Appearances are read, since Vs team
+ * and the Rating link need the whole line-up.
+ */
 export async function getComparison(
   db: Db,
   filter: StatsFilter,
   params: ComparisonParams,
 ): Promise<RecordedComparison> {
-  const [members, ...appearances] = await Promise.all([
+  const [members, appearances] = await Promise.all([
     listSquadMembers(db),
-    ...params.players.map((playerId) =>
-      squadAppearances(db, filter, { playerId, includeQuitMatches: true }),
-    ),
+    params.players.length > 0
+      ? squadAppearances(db, filter, { includeQuitMatches: true })
+      : [],
   ]);
   const players = resolveComparisonPlayers(params.players, members);
-  const byPlayer = new Map(params.players.map((id, i) => [id, appearances[i]]));
-  const inputs = players.map((player, i) => ({
-    appearances: byPlayer.get(player.playerId) ?? [],
+  const inputs = players.map(({ playerId }, i) => ({
+    playerId,
+    appearances: appearances.filter((a) => a.playerId === playerId),
     positionGroups: params.positionGroups[COMPARISON_SIDES[i]],
   }));
-  return { members, players, ...compareSides(inputs, params.scope) };
+  return {
+    members,
+    players,
+    ...compareSides(inputs, params.scope, matchRatings(appearances)),
+  };
 }
 
 /** A Comparison of EA's season totals, which the filter and Position Groups cannot narrow. */
