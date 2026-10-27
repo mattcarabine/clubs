@@ -2,11 +2,10 @@ import {
   ChartFrame,
   DataTable,
   type DataTableColumn,
-  numberColumn,
   SectionHeading,
   WinRateBarChart,
 } from "~/components";
-import { formatCount, formatPercentage } from "~/lib/number-format";
+import { formatCount } from "~/lib/number-format";
 import {
   type ByStrength,
   MIN_SPLIT_MATCHES,
@@ -15,6 +14,8 @@ import {
   winRateBucket,
 } from "~/stats/outcome-split";
 import { STRENGTH_GAP } from "~/stats/skill-rating";
+
+import { hiddenNote, resultColumns } from "./result-groups";
 
 /**
  * "By Opponent strength" (CLUBS-29): Win % and the Outcome Split highlights
@@ -58,11 +59,8 @@ function strengthNote({ groups, hidden, unrated }: ByStrength): string {
       ? "Every Match here has both Skill Ratings."
       : `${formatCount(unrated, "Match", "Matches")} without Skill Ratings ${unrated === 1 ? "is" : "are"} left out.`,
   ];
-  if (hidden.length > 0) {
-    notes.push(
-      `Hidden with fewer than ${MIN_SPLIT_MATCHES} Matches: ${hidden.map((h) => `${h.label} (${h.played})`).join(", ")}.`,
-    );
-  }
+  const hiddenGroups = hiddenNote({ hidden });
+  if (hiddenGroups) notes.push(hiddenGroups);
   if (groups.length === 0) {
     notes.push(
       `Each group needs at least ${MIN_SPLIT_MATCHES} rated Matches to show.`,
@@ -72,12 +70,7 @@ function strengthNote({ groups, hidden, unrated }: ByStrength): string {
 }
 
 const STRENGTH_COLUMNS: DataTableColumn<StrengthGroup>[] = [
-  { id: "group", header: "Opponent", cell: (g) => g.label },
-  numberColumn("played", "P", (g) => g.played),
-  numberColumn("wins", "W", (g) => g.wins),
-  numberColumn("draws", "D", (g) => g.draws),
-  numberColumn("losses", "L", (g) => g.losses),
-  numberColumn("win", "Win %", (g) => g.winPercentage, formatPercentage),
+  ...resultColumns<StrengthGroup>("Opponent"),
   ...STRENGTH_HIGHLIGHTS.map(
     ({ id, label }): DataTableColumn<StrengthGroup> => ({
       id,
