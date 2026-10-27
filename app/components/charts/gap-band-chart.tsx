@@ -1,5 +1,9 @@
 import { OUTCOME_LABEL, type Outcome } from "~/lib/domain";
-import { formatCount, formatDecimal } from "~/lib/number-format";
+import {
+  formatCount,
+  formatDecimal,
+  formatPercentage,
+} from "~/lib/number-format";
 import { type GapBand, gapBandLabel } from "~/stats/win-chance";
 
 import { OUTCOME_FILL } from "../outcome-badge";
@@ -17,8 +21,9 @@ const MIN_LABELLED_SHARE = 0.12;
 /**
  * Results by rating gap (CLUBS-69): one row per band of Skill Rating gap, a
  * 100% bar of Wins, draws and defeats in the outcome colours with a marker
- * at the Win % the curve expected, and the counts in words below it. Every
- * figure is in the text, so no tooltip; a screen-reader table carries them.
+ * at the Win % the curve expected, and the counts in words below it. Hovering
+ * a bar shows the expected and actual Win % (CLUBS-73); the words carry the
+ * expected Win % too, for touch, and a screen-reader table carries them all.
  */
 export function GapBandChart({ bands, label }: GapBandChartProps) {
   return (
@@ -41,7 +46,7 @@ export function GapBandChart({ bands, label }: GapBandChartProps) {
                 </span>
               </span>
               <span className="flex min-w-0 flex-col gap-1.5 pt-0.5">
-                <span className="relative flex h-4 gap-0.5">
+                <span className="group/bar relative flex h-4 gap-0.5">
                   {outcomeCounts(band).map(([outcome, count]) =>
                     count > 0 ? (
                       <span
@@ -58,9 +63,10 @@ export function GapBandChart({ bands, label }: GapBandChartProps) {
                     className="-inset-y-1 absolute -translate-x-1/2"
                     left={`${expectedShare * 100}%`}
                   />
+                  <ExpectedTooltip band={band} expectedShare={expectedShare} />
                 </span>
                 <span className="text-ink-soft text-xs">
-                  {`${resultsInWords(band)} · ${formatDecimal(band.expectedWins)} Wins expected`}
+                  {`${resultsInWords(band)} · ${formatDecimal(band.expectedWins)} wins expected (${formatPercentage(expectedShare * 100)})`}
                 </span>
               </span>
             </li>
@@ -134,6 +140,47 @@ function ExpectedMarker({
       className={`w-1 border-shale-950 border-x bg-ink ${className}`}
       style={{ left }}
     />
+  );
+}
+
+/**
+ * The band's expected and actual Win % over its bar while the pointer is on
+ * it, styled like the LineChart's tooltip and kept on the bar's side of the
+ * marker so it never runs past the chart.
+ */
+function ExpectedTooltip({
+  band,
+  expectedShare,
+}: {
+  band: GapBand;
+  expectedShare: number;
+}) {
+  const at = expectedShare * 100;
+  return (
+    <span
+      className="pointer-events-none absolute bottom-full z-10 mb-2 hidden min-w-36 border-rave border-l-2 bg-shale-800 px-3 py-2 group-hover/bar:block"
+      style={at > 50 ? { right: `${100 - at}%` } : { left: `${at}%` }}
+    >
+      <span className="mb-1 block text-ink-muted text-xs">
+        {gapBandLabel(band)}
+      </span>
+      <span className="flex items-center gap-2 text-sm">
+        <span aria-hidden className="relative h-3 w-1">
+          <ExpectedMarker className="inset-y-0 absolute" left="0" />
+        </span>
+        <span className="font-semibold text-ink tabular">
+          {formatPercentage(at)}
+        </span>
+        <span className="text-ink-soft">Expected Win %</span>
+      </span>
+      <span className="flex items-center gap-2 text-sm">
+        <span aria-hidden className={`size-3 rounded-sm ${OUTCOME_FILL.W}`} />
+        <span className="font-semibold text-ink tabular">
+          {formatPercentage((band.wins / band.played) * 100)}
+        </span>
+        <span className="text-ink-soft">Win %</span>
+      </span>
+    </span>
   );
 }
 

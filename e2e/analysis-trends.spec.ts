@@ -200,7 +200,9 @@ test("with too few Matches for the Outcome Split, the Win % charts by kick-off a
   await expect(
     page.getByRole("list", { name: "Win % by kick-off time" }),
   ).toHaveCount(1);
-  await expect(page.getByRole("region", { name: "Personnel" })).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Squad Members", exact: true }),
+  ).toHaveCount(0);
 });
 
 test("Over time ignores the filters and says so", async ({

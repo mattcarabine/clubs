@@ -2,10 +2,8 @@ import {
   ChartFrame,
   DataTable,
   type DataTableColumn,
-  SectionHeading,
   WinRateBarChart,
 } from "~/components";
-import { formatCount } from "~/lib/number-format";
 import {
   type ByStrength,
   MIN_SPLIT_MATCHES,
@@ -21,22 +19,28 @@ import { hiddenNote, resultColumns } from "./result-groups";
  * "By Opponent strength" (CLUBS-29): Win % and the Outcome Split highlights
  * against Stronger, Similar and Weaker Opponents by Skill Rating at the time,
  * so a run of losses to Stronger Opponents reads as tough draws, not bad
- * nights.
+ * nights. Part of the Win chance section (CLUBS-73), which already says how
+ * many Matches have no Skill Ratings.
  */
-export function StrengthSection({ byStrength }: { byStrength: ByStrength }) {
+export function StrengthPanel({ byStrength }: { byStrength: ByStrength }) {
   const { groups } = byStrength;
+  const note = strengthNote(byStrength);
   return (
-    <section aria-label="By Opponent strength" className="flex flex-col gap-4">
-      <SectionHeading
-        title="By Opponent strength"
-        subtitle={`The Opponent's Skill Rating against ours at each Match: Stronger is ${STRENGTH_GAP} or more above ours, Weaker ${STRENGTH_GAP} or more below, Similar within ${STRENGTH_GAP}.`}
-      />
-      <p className="text-ink-muted text-sm">{strengthNote(byStrength)}</p>
+    <section aria-label="By Opponent strength" className="flex flex-col gap-3">
+      <div>
+        <h3 className="font-display font-extrabold text-2xl text-ink uppercase leading-none tracking-wide">
+          By opponent strength
+        </h3>
+        <p className="mt-1 text-ink-muted text-sm">
+          {`Stronger opponents were rated ${STRENGTH_GAP}+ above us, weaker ${STRENGTH_GAP}+ below, similar in between.`}
+        </p>
+      </div>
+      {note && <p className="text-ink-muted text-sm">{note}</p>}
       {groups.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-6">
-          <ChartFrame title="Win % by Opponent strength">
+          <ChartFrame title="Win % by opponent strength">
             <WinRateBarChart
-              label="Win % by Opponent strength"
+              label="Win % by opponent strength"
               buckets={groups.map((g) => winRateBucket(g.label, g))}
             />
           </ChartFrame>
@@ -52,21 +56,17 @@ export function StrengthSection({ byStrength }: { byStrength: ByStrength }) {
   );
 }
 
-/** "2 Matches without Skill Ratings are left out. Hidden with fewer than 3 Matches: Similar (2)." */
-function strengthNote({ groups, hidden, unrated }: ByStrength): string {
-  const notes = [
-    unrated === 0
-      ? "Every Match here has both Skill Ratings."
-      : `${formatCount(unrated, "Match", "Matches")} without Skill Ratings ${unrated === 1 ? "is" : "are"} left out.`,
-  ];
+/** "Hidden with fewer than 3 matches: Similar (2).", or null with nothing to say. */
+function strengthNote({ groups, hidden }: ByStrength): string | null {
+  const notes: string[] = [];
   const hiddenGroups = hiddenNote({ hidden });
   if (hiddenGroups) notes.push(hiddenGroups);
   if (groups.length === 0) {
     notes.push(
-      `Each group needs at least ${MIN_SPLIT_MATCHES} rated Matches to show.`,
+      `Each group needs at least ${MIN_SPLIT_MATCHES} rated matches to show.`,
     );
   }
-  return notes.join(" ");
+  return notes.length > 0 ? notes.join(" ") : null;
 }
 
 const STRENGTH_COLUMNS: DataTableColumn<StrengthGroup>[] = [

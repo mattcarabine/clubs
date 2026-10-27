@@ -194,44 +194,6 @@ export function winsAgainstExpected(
   };
 }
 
-/** How wide each calibration band is, in percentage points of Win Chance. */
-export const CALIBRATION_BAND = 10;
-
-/** The Matches given a Win Chance in one band, and how many we won. */
-export interface CalibrationBand {
-  /** Inclusive lower bound, 0 to 100. */
-  from: number;
-  /** Exclusive upper bound, except the top band, which includes 100. */
-  to: number;
-  played: number;
-  wins: number;
-}
-
-/** Every band with a Match in it, lowest chance first. */
-export function calibration(
-  model: WinChanceModel,
-  results: readonly RatedResult[],
-): CalibrationBand[] {
-  const bands = new Map<number, CalibrationBand>();
-  for (const r of results) {
-    const percent = winChance(model, r.gap) * 100;
-    const from = Math.min(
-      100 - CALIBRATION_BAND,
-      Math.floor(percent / CALIBRATION_BAND) * CALIBRATION_BAND,
-    );
-    const band = bands.get(from) ?? {
-      from,
-      to: from + CALIBRATION_BAND,
-      played: 0,
-      wins: 0,
-    };
-    band.played += 1;
-    if (r.outcome === "W") band.wins += 1;
-    bands.set(from, band);
-  }
-  return [...bands.values()].sort((a, b) => a.from - b.from);
-}
-
 /** How wide each rating gap band is, in Skill Rating points. */
 export const GAP_BAND = 100;
 

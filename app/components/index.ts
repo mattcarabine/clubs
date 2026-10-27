@@ -32,6 +32,7 @@ export { WinRateBarChart } from "./charts/win-rate-bar-chart";
 export { WinRateCompareChart } from "./charts/win-rate-compare-chart";
 export { Chip, ChipGroup, chipClassName } from "./chip";
 export { ClubLeaders } from "./club-leaders";
+export { ClubRecords } from "./club-records";
 export {
   type ColumnLayoutState,
   ColumnPicker,
