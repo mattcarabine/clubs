@@ -214,7 +214,7 @@ describe("afterResult", () => {
     // W→L, L→W, W→L, L→L, L→W, W→W, W→L, L→W, W→L
     const anyNext = scope(afterResult(run("WLWLLWWLWL")), "any-next");
     expect(anyNext).toMatchObject({
-      label: "Any next Match",
+      label: "Any next match",
       afterWin: { played: 5, wins: 1, winPercentage: 20 },
       afterDropped: { played: 4, wins: 3, winPercentage: 75 },
       comparable: true,
