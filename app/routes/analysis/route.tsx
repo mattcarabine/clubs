@@ -64,7 +64,6 @@ import {
   statsFilterFromRequest,
   summariseClubSnapshots,
   summariseRecord,
-  type WithWithout,
   winRateBucket,
   winRateGap,
 } from "~/stats";
@@ -224,13 +223,7 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
         {/* Win % by circumstance and Line-ups need only Matches, not a ready Outcome Split. */}
         {record.played > 0 && (
           <>
-            {/* A lone Circumstances column would leave half the row empty. */}
-            <div
-              className={`grid gap-10 lg:gap-x-6 ${split.ready ? "lg:grid-cols-2" : ""}`}
-            >
-              {split.ready && <PersonnelSection split={split} />}
-              <CircumstancesSection split={split} byWeekday={byWeekday} />
-            </div>
+            <CircumstancesSection split={split} byWeekday={byWeekday} />
             <LineupsSection lineups={lineups} />
           </>
         )}
@@ -302,41 +295,6 @@ function SplitHeadlines({ split }: { split: OutcomeSplitData }) {
   );
 }
 
-function PersonnelSection({ split }: { split: OutcomeSplitData }) {
-  return (
-    <section aria-label="Personnel" className="flex min-w-0 flex-col gap-4">
-      <SectionHeading
-        title="Personnel"
-        subtitle="Win % with and without each Squad Member, and by how many played."
-      />
-      <DataTable
-        caption="With and without"
-        columns={withWithoutColumns}
-        rows={split.withWithout}
-        rowKey={(r) => r.playerId}
-        rowHref={(r) => playerPath(r.playerId)}
-      />
-      <p className="-mt-2 text-ink-muted text-xs">
-        {`A Gap needs at least ${MIN_SPLIT_MATCHES} Matches with and ${MIN_SPLIT_MATCHES} without.`}
-      </p>
-      <ChartFrame title="By Squad Members playing">
-        <WinRateBarChart
-          label="Win % by Squad Members playing"
-          buckets={split.bySquadSize}
-        />
-      </ChartFrame>
-      {split.positionOutliers.length > 0 && (
-        <DataTable
-          caption="Position outliers"
-          columns={outlierColumns}
-          rows={split.positionOutliers}
-          rowKey={(r) => `${r.playerId}-${r.positionGroup}`}
-        />
-      )}
-    </section>
-  );
-}
-
 /** Win % by kick-off, day and place in Session: any Matches will do. */
 function CircumstancesSection({
   split,
@@ -351,24 +309,29 @@ function CircumstancesSection({
         title="Circumstances"
         subtitle="Win % by kick-off and day (London time) and place in a Session. Matches played in brackets."
       />
-      <ChartFrame title="By kick-off">
-        <WinRateBarChart
-          label="Win % by kick-off time"
-          buckets={split.byTimeOfDay}
-        />
-      </ChartFrame>
-      <ChartFrame title="By day">
-        <WinRateBarChart label="Win % by day of the week" buckets={byWeekday} />
-      </ChartFrame>
-      <ChartFrame
-        title="Place in Session"
-        subtitle="Matches with no more than 45 minutes between kick-offs"
-      >
-        <WinRateBarChart
-          label="Win % by place in Session"
-          buckets={split.bySessionPlace}
-        />
-      </ChartFrame>
+      <div className="grid gap-4 lg:grid-cols-3 lg:gap-x-6">
+        <ChartFrame title="By kick-off">
+          <WinRateBarChart
+            label="Win % by kick-off time"
+            buckets={split.byTimeOfDay}
+          />
+        </ChartFrame>
+        <ChartFrame title="By day">
+          <WinRateBarChart
+            label="Win % by day of the week"
+            buckets={byWeekday}
+          />
+        </ChartFrame>
+        <ChartFrame
+          title="Place in Session"
+          subtitle="Matches with no more than 45 minutes between kick-offs"
+        >
+          <WinRateBarChart
+            label="Win % by place in Session"
+            buckets={split.bySessionPlace}
+          />
+        </ChartFrame>
+      </div>
     </section>
   );
 }
@@ -389,7 +352,7 @@ function SplitDetails({
 
       <AfterResultSection splits={split.afterResult} />
 
-      <PlayerSection players={split.players} positionGroups={positionGroups} />
+      <PlayerSection split={split} positionGroups={positionGroups} />
     </>
   );
 }
@@ -438,10 +401,10 @@ function AfterResultSection({
 }
 
 function PlayerSection({
-  players,
+  split,
   positionGroups,
 }: {
-  players: readonly PlayerSplitRow[];
+  split: OutcomeSplitData;
   positionGroups: PositionGroupSelection;
 }) {
   const [, setSearchParams] = useSearchParams();
@@ -458,7 +421,7 @@ function PlayerSection({
     <section aria-label="Squad Members" className="flex flex-col gap-4">
       <SectionHeading
         title="Squad Members"
-        subtitle="Swing: our Win % when they rate above their own average minus when they rate below it, so a big Swing means results follow how they play. Floor: the rating they reach in 4 of 5 Matches, so a high Floor is consistently good; Spread: how far their ratings wander, so low is steady. Then each Squad Member in Wins (W) against draws and defeats (D/L), per 90 over their own minutes. The Position Group applies to this table only."
+        subtitle={`Swing: our Win % when they rate above their own average minus when they rate below it, so a big Swing means results follow how they play. Floor: the rating they reach in 4 of 5 Matches, so a high Floor is consistently good; Spread: how far their ratings wander, so low is steady. Win % with and without: every Match they played against every one they didn't, whatever the Position Group (a With gap needs ${MIN_SPLIT_MATCHES} Matches each way). Then each Squad Member in Wins (W) against draws and defeats (D/L), per 90 over their own minutes. The Position Group applies to this table only.`}
       />
       <div className="border-shale-700 border-t-2 bg-shale-900">
         <ScrollRail className="px-3 py-3 sm:px-4">
@@ -471,7 +434,7 @@ function PlayerSection({
       <DataTable
         caption="Squad Members in Wins against draws and defeats"
         columns={PLAYER_COLUMNS}
-        rows={players}
+        rows={split.players}
         rowKey={(r) => r.playerId}
         rowHref={(r) => playerPath(r.playerId)}
         initialSort={{ columnId: "swing", direction: "desc" }}
@@ -482,7 +445,36 @@ function PlayerSection({
           />
         }
       />
+      <SquadSizeSplits split={split} />
     </section>
+  );
+}
+
+/**
+ * Under the Squad Members table (CLUBS-78): Win % by how many Squad Members
+ * played, beside the position outliers when there are any.
+ */
+function SquadSizeSplits({ split }: { split: OutcomeSplitData }) {
+  const hasOutliers = split.positionOutliers.length > 0;
+  return (
+    <div
+      className={`grid gap-4 lg:gap-x-6 ${hasOutliers ? "lg:grid-cols-2" : ""}`}
+    >
+      <ChartFrame title="By Squad Members playing">
+        <WinRateBarChart
+          label="Win % by Squad Members playing"
+          buckets={split.bySquadSize}
+        />
+      </ChartFrame>
+      {hasOutliers && (
+        <DataTable
+          caption="Position outliers"
+          columns={outlierColumns}
+          rows={split.positionOutliers}
+          rowKey={(r) => `${r.playerId}-${r.positionGroup}`}
+        />
+      )}
+    </div>
   );
 }
 
@@ -560,11 +552,6 @@ function squadMemberColumn<
   };
 }
 
-const withWithoutColumns: DataTableColumn<WithWithout>[] = [
-  squadMemberColumn(),
-  ...splitColumns<WithWithout>("with", "without"),
-];
-
 const outlierColumns: DataTableColumn<PositionOutlier>[] = [
   {
     id: "name",
@@ -618,9 +605,32 @@ const SWING_COLUMNS: DataTableColumn<PlayerSplitRow>[] = [
   ),
 ];
 
+/** Our Win % in every Match they played against every one they didn't (CLUBS-78). */
+const WITH_WITHOUT_COLUMNS: DataTableColumn<PlayerSplitRow>[] = [
+  numberColumn(
+    "with-win",
+    "Win % with",
+    (r) => r.withWithout?.group.winPercentage ?? null,
+    formatPercentage,
+  ),
+  numberColumn(
+    "without-win",
+    "Win % without",
+    (r) => r.withWithout?.rest.winPercentage ?? null,
+    formatPercentage,
+  ),
+  numberColumn(
+    "with-gap",
+    "With gap",
+    (r) => (r.withWithout ? winRateGap(r.withWithout) : null),
+    formatPointsGap,
+  ),
+];
+
 const PLAYER_COLUMNS: DataTableColumn<PlayerSplitRow>[] = [
   squadMemberColumn(),
   ...SWING_COLUMNS,
+  ...WITH_WITHOUT_COLUMNS,
   ...PLAYER_SPLIT_STATS.flatMap((stat) =>
     (["wins", "dropped"] as const).map((side) =>
       numberColumn<PlayerSplitRow, number | null>(
