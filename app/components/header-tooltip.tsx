@@ -7,8 +7,8 @@ import {
   useState,
 } from "react";
 
-/** The header showing its tooltip, and where it sits on screen. */
-type Tip = { id: string; text: string; anchor: DOMRect };
+/** The header showing its tooltip. */
+type Tip = { id: string; text: string; anchor: HTMLElement };
 
 /** Handlers for a header with a description; spread them on its `th`. */
 type HeaderTooltipProps = {
@@ -61,11 +61,12 @@ export function useHeaderTooltip(): HeaderTooltipState {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const headerProps = (id: string, text: string): HeaderTooltipProps => {
-    const show = (header: HTMLElement) =>
-      setTip({ id, text, anchor: header.getBoundingClientRect() });
+    const show = (anchor: HTMLElement) => setTip({ id, text, anchor });
     return {
       onPointerEnter: (event: PointerEvent<HTMLElement>) => {
-        if (event.pointerType === "touch") return;
+        // Not on touch, nor while a button is held: a header dragged across
+        // others should not light up their tooltips.
+        if (event.pointerType === "touch" || event.buttons !== 0) return;
         const header = event.currentTarget;
         clearTimeout(timer.current);
         timer.current = setTimeout(() => show(header), HOVER_DELAY_MS);
@@ -90,12 +91,20 @@ export function HeaderTooltip({ tip }: { tip: Tip }) {
     const box = ref.current;
     if (!box) return;
     if (!box.matches(":popover-open")) box.showPopover();
-    const left = Math.min(
-      tip.anchor.left,
-      window.innerWidth - box.offsetWidth - GUTTER,
-    );
-    box.style.left = `${Math.max(GUTTER, left)}px`;
-    box.style.top = `${tip.anchor.bottom + 6}px`;
+    // Follows the header as the page or the table scrolls under a still mouse.
+    const place = () => {
+      const anchor = tip.anchor.getBoundingClientRect();
+      const left = Math.min(
+        anchor.left,
+        window.innerWidth - box.offsetWidth - GUTTER,
+      );
+      box.style.left = `${Math.max(GUTTER, left)}px`;
+      box.style.top = `${anchor.bottom + 6}px`;
+    };
+    place();
+    const options = { capture: true, passive: true };
+    window.addEventListener("scroll", place, options);
+    return () => window.removeEventListener("scroll", place, options);
   }, [tip]);
 
   return (

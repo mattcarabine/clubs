@@ -98,6 +98,58 @@ test.describe("on desktop", () => {
     await expect(tooltip(page)).toHaveCount(0);
   });
 
+  test("the tooltip stays under its header as the page scrolls", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 500 });
+    await page.goto("/squad");
+    const header = squadTable(page).getByRole("columnheader", {
+      name: "Above team",
+    });
+    await expect(async () => {
+      await page.mouse.move(0, 0);
+      await header.hover();
+      await expect(tooltip(page)).toBeVisible({ timeout: 1500 });
+    }).toPass();
+
+    const gap = async () => {
+      const tip = await tooltip(page).boundingBox();
+      const box = await header.boundingBox();
+      return Math.round((tip?.y ?? 0) - ((box?.y ?? 0) + (box?.height ?? 0)));
+    };
+    const before = await gap();
+    // A nudge, so the header is still under the mouse.
+    await page.evaluate(() => window.scrollBy(0, 10));
+    await expect.poll(gap).toBe(before);
+    await expect(tooltip(page)).toBeVisible();
+  });
+
+  test("dragging a header across others shows none of their tooltips", async ({
+    page,
+  }) => {
+    await page.goto("/squad");
+    const from = sortButton(page, "Rating");
+    const over = sortButton(page, "G+A");
+    // Prove hydration with one tooltip, then put it away.
+    await expect(async () => {
+      await page.mouse.move(0, 0);
+      await from.hover();
+      await expect(tooltip(page)).toBeVisible({ timeout: 1500 });
+    }).toPass();
+    await page.mouse.down();
+    await expect(tooltip(page)).toHaveCount(0);
+    const box = await over.boundingBox();
+    await page.mouse.move(
+      (box?.x ?? 0) + (box?.width ?? 0) / 2,
+      (box?.y ?? 0) + (box?.height ?? 0) / 2,
+      { steps: 5 },
+    );
+    // Rest on the drop target for longer than the hover delay.
+    await page.waitForTimeout(700);
+    await expect(tooltip(page)).toHaveCount(0);
+    await page.mouse.up();
+  });
+
   test("pressing a header to sort puts its tooltip away", async ({ page }) => {
     await page.goto("/squad");
     await expect(async () => {
