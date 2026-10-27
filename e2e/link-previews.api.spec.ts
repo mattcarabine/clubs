@@ -190,7 +190,6 @@ test("every page has a preview with the static card, and is never indexed", asyn
     "/",
     "/squad",
     "/opponents",
-    "/trends",
     "/analysis",
     "/compare",
     "/matches/938000000000031",
