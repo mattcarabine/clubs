@@ -30,7 +30,7 @@ export function HumansSection({ byHumans }: { byHumans: ByOpponentHumans }) {
     <section aria-label="By Opponent humans" className="flex flex-col gap-4">
       <SectionHeading
         title="By Opponent humans"
-        subtitle="How many humans played for the Opponent: EA lists no AI players. Matches played in brackets; quit rates are DNFs each side left, of the Matches played."
+        subtitle="How many humans played for the Opponent: EA lists no AI players. Matches played in brackets; quit rates are the share of Matches each side rage quit."
       />
       {note && <p className="text-ink-muted text-sm">{note}</p>}
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-6">
