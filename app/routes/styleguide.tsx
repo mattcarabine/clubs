@@ -6,6 +6,7 @@ import {
   ChartFrame,
   ChartLegend,
   ClubLeaders,
+  ColumnPicker,
   DataTable,
   type DataTableColumn,
   DateRangePicker,
@@ -41,6 +42,7 @@ import {
   Tag,
   Ticker,
   TopPerformersStrip,
+  useColumnLayout,
   WinRateCompareChart,
 } from "~/components";
 import { crestUrl } from "~/ea/crest";
@@ -348,6 +350,26 @@ const SQUAD_COLUMNS: DataTableColumn<SquadRow>[] = [
     align: "right",
   },
 ];
+
+/** A DataTable with a column layout: right-click or drag a header, or use Columns. */
+function CustomisableTable() {
+  const layout = useColumnLayout("styleguide-columns", SQUAD_COLUMNS);
+  return (
+    <>
+      <div className="mb-2 flex justify-end">
+        <ColumnPicker columns={SQUAD_COLUMNS} layout={layout} />
+      </div>
+      <DataTable
+        caption="Squad Members this Season"
+        columns={SQUAD_COLUMNS}
+        layout={layout}
+        rows={SQUAD}
+        rowKey={(r) => r.name}
+        initialSort={{ columnId: "goals", direction: "desc" }}
+      />
+    </>
+  );
+}
 
 const MATCH_LABELS = [
   "5 Oct",
@@ -852,13 +874,7 @@ export default function Styleguide() {
       </Section>
 
       <Section id="data-table" title="DataTable">
-        <DataTable
-          caption="Squad Members this Season"
-          columns={SQUAD_COLUMNS}
-          rows={SQUAD}
-          rowKey={(r) => r.name}
-          initialSort={{ columnId: "goals", direction: "desc" }}
-        />
+        <CustomisableTable />
       </Section>
 
       <Section id="charts" title="Charts">

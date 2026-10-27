@@ -1,9 +1,22 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { Link } from "react-router";
 
+import { neighbour } from "~/lib/column-layout";
 import { type SortDirection, type SortValue, sortBy } from "~/lib/sort";
 import { fadeAttributes, useScrollFade } from "~/lib/use-scroll-fade";
 
+import {
+  arrangeColumns,
+  type ColumnLayoutState,
+  columnName,
+} from "./column-layout";
+import {
+  type ColumnDrag,
+  ColumnMenu,
+  type ColumnMenuAt,
+  columnMenuAt,
+  useColumnDrag,
+} from "./column-menu";
 import {
   LINKED_ROW,
   LINKED_ROW_HEADER,
@@ -14,6 +27,8 @@ import {
 export type DataTableColumn<T> = {
   id: string;
   header: string;
+  /** The full name where `header` abbreviates it ("Goals" for "G"), for the column picker. */
+  label?: string;
   cell: (row: T) => ReactNode;
   /** Makes the column sortable. Return null for missing values; they sort last. */
   sortValue?: (row: T) => SortValue;
@@ -47,6 +62,13 @@ type DataTableProps<T> = {
   highlight?: (row: T) => boolean;
   /** Puts a tick box in each row header, e.g. to pick Squad Members to compare. */
   select?: RowSelection<T>;
+  /**
+   * The viewer's column choices from `useColumnLayout` (CLUBS-65): hides and
+   * orders every column after the pinned first, and lets a header be hidden
+   * or moved from its right-click menu or dragged to a new place. Mount a
+   * `ColumnPicker` with the same layout for touch and keyboards.
+   */
+  layout?: ColumnLayoutState;
 };
 
 export type RowSelection<T> = {
@@ -72,11 +94,19 @@ export function DataTable<T>({
   empty,
   highlight,
   select,
+  layout,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState(initialSort);
   const [scrollerRef, edges] = useScrollFade<HTMLElement>();
   const rowLink = useRowLink();
-  const sortColumn = columns.find((c) => c.id === sort?.columnId);
+  const [menu, setMenu] = useState<ColumnMenuAt | null>(null);
+  const opens = useRef(0);
+  const { drag, start: startDrag } = useColumnDrag((id, target) =>
+    layout?.move(id, target),
+  );
+  const shown = arrangeColumns(columns, layout);
+  // A hidden column no longer sorts the table.
+  const sortColumn = shown.find((c) => c.id === sort?.columnId);
   const sorted =
     sort && sortColumn?.sortValue
       ? sortBy(rows, sortColumn.sortValue, sort.direction)
@@ -109,14 +139,26 @@ export function DataTable<T>({
           <caption className="sr-only">{caption}</caption>
           <thead>
             <tr>
-              {columns.map((column, i) => {
+              {shown.map((column, i) => {
                 const direction =
                   sort?.columnId === column.id ? sort.direction : undefined;
+                const movable = layout !== undefined && i > 0;
                 return (
                   <th
                     key={column.id}
                     scope="col"
                     aria-sort={direction && ARIA_SORT[direction]}
+                    {...(movable && {
+                      "data-column-drop": column.id,
+                      onContextMenu: (event) => {
+                        event.preventDefault();
+                        // Read now: React clears the event before a state
+                        // updater would run.
+                        setMenu(columnMenuAt(column.id, event, opens.current));
+                        opens.current += 1;
+                      },
+                      onPointerDown: startDrag(column.id),
+                    })}
                     className={[
                       "border-shale-700 border-b bg-shale-800 px-2 py-2 font-display font-bold text-base text-ink-muted uppercase leading-tight tracking-wide first:pl-3 sm:px-3",
                       alignClass(column.align),
@@ -125,6 +167,8 @@ export function DataTable<T>({
                       i === 0
                         ? "sticky left-0 z-10 sm:whitespace-nowrap"
                         : "whitespace-nowrap",
+                      movable ? MOVABLE_HEADER : "",
+                      dragClass(drag, column.id, layout?.visible),
                     ].join(" ")}
                   >
                     {column.sortValue ? (
@@ -155,7 +199,7 @@ export function DataTable<T>({
                   onClick={rowLink(href)}
                   data-highlighted={highlighted || undefined}
                 >
-                  {columns.map((column, i) => {
+                  {shown.map((column, i) => {
                     const Cell = i === 0 ? "th" : "td";
                     const content = column.cell(row);
                     return (
@@ -186,8 +230,77 @@ export function DataTable<T>({
           </tbody>
         </table>
       </section>
+      {menu && layout && (
+        <HeaderMenu
+          at={menu}
+          column={columns.find((c) => c.id === menu.id)}
+          layout={layout}
+          // Only this menu's own close clears it: a right-click on another
+          // header closes this one while opening that one.
+          onClose={() =>
+            setMenu((open) => (open?.opens === menu.opens ? null : open))
+          }
+        />
+      )}
     </div>
   );
+}
+
+/** A movable header's right-click menu: hide it, or move it past a visible neighbour. */
+function HeaderMenu<T>({
+  at,
+  column,
+  layout,
+  onClose,
+}: {
+  at: ColumnMenuAt;
+  column: DataTableColumn<T> | undefined;
+  layout: ColumnLayoutState;
+  onClose: () => void;
+}) {
+  const left = neighbour(layout.visible, at.id, -1);
+  const right = neighbour(layout.visible, at.id, 1);
+  return (
+    <ColumnMenu
+      at={at}
+      label={`${column ? columnName(column) : at.id} column`}
+      onClose={onClose}
+      actions={[
+        { label: "Hide column", run: () => layout.setHidden(at.id, true) },
+        {
+          label: "Move left",
+          disabled: !left,
+          run: () => left && layout.move(at.id, left),
+        },
+        {
+          label: "Move right",
+          disabled: !right,
+          run: () => right && layout.move(at.id, right),
+        },
+      ]}
+    />
+  );
+}
+
+/** A header that can be dragged: a grab cursor for mice, and no text selection mid-drag. */
+const MOVABLE_HEADER =
+  "select-none pointer-fine:cursor-grab pointer-fine:[&_button]:cursor-grab";
+
+/**
+ * Mid-drag, the dragged header dims and the one under the pointer shows a
+ * rave edge on the side the column will land.
+ */
+function dragClass(
+  drag: ColumnDrag | null,
+  id: string,
+  visible: readonly string[] = [],
+): string {
+  if (!drag) return "";
+  if (drag.id === id) return "opacity-50";
+  if (drag.over !== id) return "";
+  return visible.indexOf(drag.id) < visible.indexOf(id)
+    ? "shadow-[inset_-3px_0_0_var(--color-rave)]"
+    : "shadow-[inset_3px_0_0_var(--color-rave)]";
 }
 
 /** The row header's content: the row's link, after its tick box when rows can be picked. */
