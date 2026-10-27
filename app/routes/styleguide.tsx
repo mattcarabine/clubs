@@ -300,26 +300,6 @@ const SQUAD: SquadRow[] = [
   },
 ];
 
-/** A DataTable with a column layout: right-click or drag a header, or use Columns. */
-function CustomisableTable() {
-  const layout = useColumnLayout("styleguide-columns", SQUAD_COLUMNS);
-  return (
-    <>
-      <div className="mb-2 flex justify-end">
-        <ColumnPicker columns={SQUAD_COLUMNS} layout={layout} />
-      </div>
-      <DataTable
-        caption="Squad Members this Season"
-        columns={SQUAD_COLUMNS}
-        layout={layout}
-        rows={SQUAD}
-        rowKey={(r) => r.name}
-        initialSort={{ columnId: "goals", direction: "desc" }}
-      />
-    </>
-  );
-}
-
 const SQUAD_COLUMNS: DataTableColumn<SquadRow>[] = [
   {
     id: "name",
@@ -369,6 +349,26 @@ const SQUAD_COLUMNS: DataTableColumn<SquadRow>[] = [
     align: "right",
   },
 ];
+
+/** A DataTable with a column layout: right-click or drag a header, or use Columns. */
+function CustomisableTable() {
+  const layout = useColumnLayout("styleguide-columns", SQUAD_COLUMNS);
+  return (
+    <>
+      <div className="mb-2 flex justify-end">
+        <ColumnPicker columns={SQUAD_COLUMNS} layout={layout} />
+      </div>
+      <DataTable
+        caption="Squad Members this Season"
+        columns={SQUAD_COLUMNS}
+        layout={layout}
+        rows={SQUAD}
+        rowKey={(r) => r.name}
+        initialSort={{ columnId: "goals", direction: "desc" }}
+      />
+    </>
+  );
+}
 
 const MATCH_LABELS = [
   "5 Oct",

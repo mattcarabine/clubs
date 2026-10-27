@@ -120,10 +120,7 @@ function triggerText(hiddenCount: number): string {
 
 type Direction = "up" | "down";
 type Move = { id: string; direction: Direction };
-const OPPOSITE = { up: "down", down: "up" } as const satisfies Record<
-  Direction,
-  Direction
->;
+const OPPOSITE: Record<Direction, Direction> = { up: "down", down: "up" };
 
 /**
  * The Columns chip and its popover: every movable column with a Shown tick

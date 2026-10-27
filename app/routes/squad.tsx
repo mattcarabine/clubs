@@ -266,7 +266,6 @@ function ComparePicker<Row extends SquadRow>({
   tools: ReactNode;
   children: (select: RowSelection<Row>) => ReactNode;
 }) {
-  const [searchParams] = useSearchParams();
   const [ticked, setTicked] = useState<readonly string[]>([]);
   // A filter change can drop a ticked Squad Member's row; they no longer count.
   const pickedRows = ticked.flatMap((id) =>
@@ -295,29 +294,45 @@ function ComparePicker<Row extends SquadRow>({
           className="min-w-0 flex-1 truncate text-ink-muted text-sm"
           aria-live="polite"
         >
-          {!comparable
-            ? null
-            : names.length === 0
-              ? "Tick two Squad Members to compare them"
-              : `${names.join(" vs ")}${full ? "" : " vs …"}`}
+          {comparable && tickedLabel(names, full)}
         </p>
         {tools}
-        {comparable &&
-          (full ? (
-            <Link
-              to={comparePath(searchParams, picked)}
-              className={`${chipClassName(true)} inline-flex items-center`}
-            >
-              Compare
-            </Link>
-          ) : (
-            <button type="button" disabled className={chipClassName(false)}>
-              Compare
-            </button>
-          ))}
+        {comparable && <CompareButton picked={picked} ready={full} />}
       </div>
       {children(select)}
     </>
+  );
+}
+
+/** Who is ticked so far, or what to do when nobody is. */
+function tickedLabel(names: readonly string[], full: boolean): string {
+  if (names.length === 0) return "Tick two Squad Members to compare them";
+  return full ? names.join(" vs ") : `${names.join(" vs ")} vs …`;
+}
+
+/** The Compare link, disabled until two Squad Members are ticked. */
+function CompareButton({
+  picked,
+  ready,
+}: {
+  picked: readonly string[];
+  ready: boolean;
+}) {
+  const [searchParams] = useSearchParams();
+  if (!ready) {
+    return (
+      <button type="button" disabled className={chipClassName(false)}>
+        Compare
+      </button>
+    );
+  }
+  return (
+    <Link
+      to={comparePath(searchParams, picked)}
+      className={`${chipClassName(true)} inline-flex items-center`}
+    >
+      Compare
+    </Link>
   );
 }
 
@@ -596,6 +611,7 @@ const COLUMN_LABELS: Readonly<Record<string, string>> = {
   "Win %": "Win rate",
 };
 
+/** Names each column from `COLUMN_LABELS`, keeping any label it sets itself. */
 function withLabels<Row>(
   columns: DataTableColumn<Row>[],
 ): DataTableColumn<Row>[] {
