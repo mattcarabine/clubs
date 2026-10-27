@@ -20,6 +20,7 @@ import {
   playerOutcomeSplit,
   positionOutliers,
   type SplitMatch,
+  swing,
   timeOfDay,
   usualComparison,
   winRateGap,
@@ -765,5 +766,66 @@ describe("playerOutcomeSplit", () => {
     expect(split.byPositionGroup.map((r) => r.positionGroup)).toEqual([
       "Midfielder",
     ]);
+  });
+});
+
+describe("swing (CLUBS-70)", () => {
+  const app = (
+    outcome: Outcome,
+    rating: number | null,
+    overrides: Partial<SquadAppearance> = {},
+  ) =>
+    ({
+      outcome,
+      rating,
+      dnf: false,
+      secondsPlayed: FULL,
+      ...overrides,
+    }) as SquadAppearance;
+  /** Rates 8 in four Wins and 6 in four defeats: results follow how they play. */
+  const decider = [
+    ...Array.from({ length: 4 }, () => app("W", 8)),
+    ...Array.from({ length: 4 }, () => app("L", 6)),
+  ];
+
+  it("is the Win % above their own average minus below it", () => {
+    const result = swing(decider);
+    expect(result.above).toEqual({ played: 4, wins: 4, winPercentage: 100 });
+    expect(result.below).toEqual({ played: 4, wins: 0, winPercentage: 0 });
+    expect(result.gap).toBe(100);
+    expect(result.smallSample).toBe(true);
+  });
+
+  it("is near zero for a rating that doesn't move the result", () => {
+    const padder = [
+      app("W", 8.5),
+      app("L", 8.5),
+      app("W", 8.5),
+      app("L", 8.5),
+      app("W", 7.5),
+      app("L", 7.5),
+      app("W", 7.5),
+      app("L", 7.5),
+    ];
+    expect(swing(padder).gap).toBe(0);
+  });
+
+  it("counts a rating at their average as above it", () => {
+    const result = swing([app("W", 7), app("W", 7), app("L", 7)]);
+    expect(result.above.played).toBe(3);
+    expect(result.below.played).toBe(0);
+    expect(result.gap).toBeNull();
+  });
+
+  it("needs 3 Matches each side, and leaves out uncounted or unrated ones", () => {
+    expect(swing(decider.slice(2)).gap).toBeNull();
+    const withGaps = [
+      ...decider,
+      // A dropout's 0 minutes and 3.0, a Match we quit, and no rating.
+      app("W", 3, { secondsPlayed: 0 }),
+      app("L", 3, { dnf: true }),
+      app("W", null),
+    ];
+    expect(swing(withGaps)).toEqual(swing(decider));
   });
 });

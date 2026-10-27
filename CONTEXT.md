@@ -34,6 +34,10 @@ _Avoid_: Odds, win probability, expected result
 How a Win Chance billed Our Club before kick-off: **Favourites** at 55% or more, **Underdogs** at 45% or less, and a **Toss-up** between.
 _Avoid_: Expected to win, odds-on
 
+**Upset**:
+A result against our Win Chance: an **Upset Win** from under 35%, or Dropped Points from over 65% (**Should have won**). It is a **big upset** from under 20% ("Big upset Win") or over 80% ("Should really have won").
+_Avoid_: Shock, surprise result
+
 **Squad Member**:
 Anyone who has made an Appearance for Our Club, identified by their stable EA player ID (persona names can change; IDs don't). Our Club has no guests.
 _Avoid_: Member, user, teammate, guest
@@ -131,6 +135,10 @@ _Avoid_: Promotion Series, finals
 **Outcome Split**:
 Our Club's stats averaged over Wins set beside the same averages over Dropped Points.
 
+**Swing**:
+Our Club's Win % in the Matches a Squad Member rated at or above their own average, minus the Win % in the Matches they rated below it, in points. A big Swing means results follow how they play; a small one beside a high rating means their rating doesn't move the result. EA rates winners higher, so most Swings are positive: compare Squad Members with each other. Needs 3 Matches each side, with "Small sample" under 10.
+_Avoid_: Impact, influence score, importance, clutch
+
 **Comparison**:
 Two Squad Members' stats side by side, shown in the app as "Compare to…".
 _Avoid_: Head-to-head (reserved for Our Club vs an Opponent), versus, matchup
@@ -138,6 +146,14 @@ _Avoid_: Head-to-head (reserved for Our Club vs an Opponent), versus, matchup
 **Shared Match**:
 A Match in which both Squad Members in a Comparison made an Appearance; shown in the app as "Played together".
 _Avoid_: Partnership, joint match, common game
+
+**Vs team**:
+A Squad Member's rating minus the average rating of their teammates (Our Club's other counted Appearances) in the same Match, averaged over their Matches. Above 0, they outperform the team around them; near 0, they rise and fall with it. A Match with no other rated teammate gives no figure.
+_Avoid_: Relative rating, plus-minus, outperformance score
+
+**Rating link**:
+Whether two Squad Members rate well and badly in the same Matches: the correlation of their ratings over their Shared Matches (from −1 to +1), shown on Compare as "Rise and fall together?". "Beyond the team" repeats it with the rest of the line-up's average held fixed (a partial correlation), so two who only ride the team's tide read weaker there. Needs 8 rated Shared Matches for a verdict, with "Small sample" under 15.
+_Avoid_: Correlation of form (Form is the last 5 ratings), chemistry, partnership
 
 ### Write-ups
 

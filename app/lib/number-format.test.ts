@@ -5,7 +5,9 @@ import {
   formatDecimal,
   formatOptional,
   formatPercentage,
+  formatPointsGap,
   formatSigned,
+  formatSignedDecimal,
   formatThousands,
   NO_VALUE,
 } from "./number-format";
@@ -76,5 +78,26 @@ describe("formatPercentage", () => {
 
   it("shows a dash when there is no value", () => {
     expect(formatPercentage(null)).toBe(NO_VALUE);
+  });
+});
+
+describe("formatPointsGap", () => {
+  it("rounds a gap to signed whole points", () => {
+    expect(formatPointsGap(12.4)).toBe("+12 pts");
+    expect(formatPointsGap(-40)).toBe("−40 pts");
+    expect(formatPointsGap(null)).toBe(NO_VALUE);
+  });
+});
+
+describe("formatSignedDecimal", () => {
+  it("signs a figure to fixed places with a true minus", () => {
+    expect(formatSignedDecimal(0.64)).toBe("+0.6");
+    expect(formatSignedDecimal(-0.26)).toBe("−0.3");
+    expect(formatSignedDecimal(0.123, 2)).toBe("+0.12");
+  });
+
+  it("leaves a figure that rounds to zero unsigned", () => {
+    expect(formatSignedDecimal(0)).toBe("0.0");
+    expect(formatSignedDecimal(-0.04)).toBe("0.0");
   });
 });

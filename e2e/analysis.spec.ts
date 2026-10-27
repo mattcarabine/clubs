@@ -406,8 +406,8 @@ test("the Position Group filter changes only the per-player section", async ({
       "Squad Members in Wins against draws and defeats",
       STAR.name,
     );
-  await expect(star().getByRole("cell").nth(0)).toHaveText("3"); // Apps W
-  await expect(star().getByRole("cell").nth(1)).toHaveText("3"); // Apps DP
+  await expect(star().getByRole("cell").nth(3)).toHaveText("3"); // Apps W, after the 3 Swing columns
+  await expect(star().getByRole("cell").nth(4)).toHaveText("3"); // Apps DP
 
   const picker = region(page, "Squad Members").getByRole("group", {
     name: "Position Group",
@@ -421,8 +421,8 @@ test("the Position Group filter changes only the per-player section", async ({
       .toBe("forward");
   }).toPass();
 
-  await expect(star().getByRole("cell").nth(0)).toHaveText("2");
-  await expect(star().getByRole("cell").nth(1)).toHaveText("1");
+  await expect(star().getByRole("cell").nth(3)).toHaveText("2");
+  await expect(star().getByRole("cell").nth(4)).toHaveText("1");
   // Rock only kept goal, so drops out of the table.
   await expect(
     tableRow(

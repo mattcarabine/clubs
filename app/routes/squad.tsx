@@ -15,6 +15,7 @@ import { Link, useSearchParams } from "react-router";
 import {
   ChangeArrow,
   Chip,
+  ColumnPicker,
   chipClassName,
   DataTable,
   type DataTableColumn,
@@ -25,6 +26,7 @@ import {
   PageHeader,
   PlayerChip,
   type RowSelection,
+  useColumnLayout,
 } from "~/components";
 import { getDb } from "~/db/client";
 import type { PositionGroup } from "~/lib/domain";
@@ -33,6 +35,7 @@ import {
   formatCount,
   formatDecimal,
   formatPercentage,
+  formatSignedDecimal,
   formatThousands,
   NO_VALUE,
 } from "~/lib/number-format";
@@ -63,6 +66,15 @@ import type { Route } from "./+types/squad";
 
 /** `?former=1` includes Former Squad Members; absent means the current squad. */
 const FORMER_PARAM = "former";
+
+/**
+ * Where each source's column choices are kept in the browser (CLUBS-65).
+ * Recorded and EA totals have different columns, so each has its own.
+ */
+const COLUMN_LAYOUT_KEYS = {
+  recorded: "squad-columns:recorded",
+  ea: "squad-columns:ea",
+} as const;
 
 export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
@@ -113,6 +125,7 @@ export default function Squad({ loaderData }: Route.ComponentProps) {
 
 function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
   const watch = formWatch(rows);
+  const layout = useColumnLayout(COLUMN_LAYOUT_KEYS.recorded, COLUMNS);
   return (
     <>
       <PageHeader
@@ -122,11 +135,15 @@ function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
       />
       <FilterBar filter={filter} source="recorded" positions />
       {rows.length > 0 && <Leaders leaders={LEADERS} rows={rows} />}
-      <ComparePicker rows={rows}>
+      <ComparePicker
+        rows={rows}
+        tools={<ColumnPicker columns={COLUMNS} layout={layout} />}
+      >
         {(select) => (
           <DataTable
             caption="Squad Members"
             select={select}
+            layout={layout}
             columns={COLUMNS}
             rows={rows}
             rowKey={(r) => r.playerId}
@@ -153,6 +170,7 @@ function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
 
 function EaSquad({ filter, includeFormer, rows }: SquadData<"ea">) {
   const takenAt = rows.find((r) => r.season)?.season?.takenAt;
+  const layout = useColumnLayout(COLUMN_LAYOUT_KEYS.ea, EA_COLUMNS);
   return (
     <>
       <PageHeader
@@ -166,11 +184,15 @@ function EaSquad({ filter, includeFormer, rows }: SquadData<"ea">) {
       />
       <FilterBar filter={filter} source="ea" positions />
       {rows.length > 0 && <Leaders leaders={EA_LEADERS} rows={rows} />}
-      <ComparePicker rows={rows}>
+      <ComparePicker
+        rows={rows}
+        tools={<ColumnPicker columns={EA_COLUMNS} layout={layout} />}
+      >
         {(select) => (
           <DataTable
             caption="Squad Members"
             select={select}
+            layout={layout}
             columns={EA_COLUMNS}
             rows={rows}
             rowKey={(r) => r.playerId}
@@ -232,16 +254,18 @@ function SquadToggle({ includeFormer }: { includeFormer: boolean }) {
 /**
  * Tick two Squad Members, then Compare (CLUBS-20): the bar above the table
  * and the tick boxes it hands the table. Once two are ticked the rest are
- * disabled; Compare carries the filter and source over.
+ * disabled; Compare carries the filter and source over. `tools` (the
+ * Columns picker) sit beside Compare whenever there are rows.
  */
 function ComparePicker<Row extends SquadRow>({
   rows,
+  tools,
   children,
 }: {
   rows: readonly Row[];
+  tools: ReactNode;
   children: (select: RowSelection<Row>) => ReactNode;
 }) {
-  const [searchParams] = useSearchParams();
   const [ticked, setTicked] = useState<readonly string[]>([]);
   // A filter change can drop a ticked Squad Member's row; they no longer count.
   const pickedRows = ticked.flatMap((id) =>
@@ -261,33 +285,54 @@ function ComparePicker<Row extends SquadRow>({
       ),
     label: (row) => `Compare ${row.name}`,
   };
-  if (rows.length < COMPARISON_SIDES.length) return children(select);
+  if (rows.length === 0) return children(select);
+  const comparable = rows.length >= COMPARISON_SIDES.length;
   return (
     <>
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="mb-2 flex items-center gap-3">
         <p
-          className="min-w-0 truncate text-ink-muted text-sm"
+          className="min-w-0 flex-1 truncate text-ink-muted text-sm"
           aria-live="polite"
         >
-          {names.length === 0
-            ? "Tick two Squad Members to compare them"
-            : `${names.join(" vs ")}${full ? "" : " vs …"}`}
+          {comparable && tickedLabel(names, full)}
         </p>
-        {full ? (
-          <Link
-            to={comparePath(searchParams, picked)}
-            className={`${chipClassName(true)} inline-flex items-center`}
-          >
-            Compare
-          </Link>
-        ) : (
-          <button type="button" disabled className={chipClassName(false)}>
-            Compare
-          </button>
-        )}
+        {tools}
+        {comparable && <CompareButton picked={picked} ready={full} />}
       </div>
       {children(select)}
     </>
+  );
+}
+
+/** Who is ticked so far, or what to do when nobody is. */
+function tickedLabel(names: readonly string[], full: boolean): string {
+  if (names.length === 0) return "Tick two Squad Members to compare them";
+  return full ? names.join(" vs ") : `${names.join(" vs ")} vs …`;
+}
+
+/** The Compare link, disabled until two Squad Members are ticked. */
+function CompareButton({
+  picked,
+  ready,
+}: {
+  picked: readonly string[];
+  ready: boolean;
+}) {
+  const [searchParams] = useSearchParams();
+  if (!ready) {
+    return (
+      <button type="button" disabled className={chipClassName(false)}>
+        Compare
+      </button>
+    );
+  }
+  return (
+    <Link
+      to={comparePath(searchParams, picked)}
+      className={`${chipClassName(true)} inline-flex items-center`}
+    >
+      Compare
+    </Link>
   );
 }
 
@@ -420,6 +465,10 @@ const KEY: readonly [string, string][] = [
   ["/90", "Per 90 minutes played"],
   ["Tkl %", "Tackle success"],
   ["Form", "Average rating over the last 5 Appearances"],
+  [
+    "Vs team",
+    "Rating against teammates' average in the same Matches: above 0 lifts the team",
+  ],
   ["MOTM", "Man of the Match"],
   ["CS", "Clean sheets as Goalkeeper or Defender"],
   ["Red", "Red cards (EA does not report yellow cards)"],
@@ -539,11 +588,42 @@ function recordedStat(
   );
 }
 
+/** Full names for the abbreviated headers, shown in the Columns picker. */
+const COLUMN_LABELS: Readonly<Record<string, string>> = {
+  "G+A": "Goal contributions",
+  Rating: "Average rating",
+  Apps: "Appearances",
+  "Vs team": "Rating against teammates",
+  G: "Goals",
+  A: "Assists",
+  Mins: "Minutes played",
+  "G/90": "Goals per 90",
+  "A/90": "Assists per 90",
+  "G+A/90": "Goal contributions per 90",
+  "Pass %": "Pass success",
+  "Tkl %": "Tackle success",
+  MOTM: "Man of the Match",
+  CS: "Clean sheets",
+  Red: "Red cards",
+  "Red/90": "Red cards per 90",
+  Recent: "Biggest recent change",
+  GP: "Games played",
+  "Shot %": "Shot success",
+  "Win %": "Win rate",
+};
+
+/** Names each column from `COLUMN_LABELS`, keeping any label it sets itself. */
+function withLabels<Row>(
+  columns: DataTableColumn<Row>[],
+): DataTableColumn<Row>[] {
+  return columns.map((c) => ({ label: COLUMN_LABELS[c.header], ...c }));
+}
+
 /**
  * The stats people compare lead (G+A, rating, Form, Appearances), so a phone
  * shows them beside the name before the table scrolls.
  */
-const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
+const COLUMNS = withLabels<LeaderboardRow>([
   nameColumn((r) => r.formIndicator),
   recordedStat("ga", "G+A", (r) => r.goalContributions),
   recordedStat("rating", "Rating", (r) => r.averageRating, formatDecimal),
@@ -552,6 +632,7 @@ const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
     cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
   },
   recordedStat("apps", "Apps", (r) => r.appearances),
+  recordedStat("vsTeam", "Vs team", (r) => r.vsTeam, formatSignedDecimal),
   recordedStat("goals", "G", (r) => r.goals),
   recordedStat("assists", "A", (r) => r.assists),
   recordedStat("mins", "Mins", (r) => r.minutes, formatThousands),
@@ -572,7 +653,7 @@ const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
     cell: (r) => <RecentChangeCell change={r.recentChange} />,
     sortValue: (r) => recentChangeRank(r.recentChange),
   },
-];
+]);
 
 /** Sorts improving first, then no change, then dropping off. */
 function recentChangeRank(change: RecentChange | null): number {
@@ -601,7 +682,7 @@ function RecentChangeCell({ change }: { change: RecentChange | null }) {
  * EA's season totals, led like the Recorded table: G+A and rating, then
  * games played and pass success, so a phone shows them before it scrolls.
  */
-const EA_COLUMNS: DataTableColumn<EaMemberTotals>[] = [
+const EA_COLUMNS = withLabels<EaMemberTotals>([
   nameColumn(),
   stat("ga", "G+A", season(goalContributions)),
   seasonStat("rating", "Rating", "averageRating", formatDecimal),
@@ -617,7 +698,7 @@ const EA_COLUMNS: DataTableColumn<EaMemberTotals>[] = [
   seasonStat("motm", "MOTM", "manOfTheMatch"),
   stat("cs", "CS", season(eaCleanSheets)),
   seasonStat("red", "Red", "redCards"),
-];
+]);
 
 function goalContributions(s: EaSeasonTotals): number | null {
   return s.goals === null || s.assists === null ? null : s.goals + s.assists;

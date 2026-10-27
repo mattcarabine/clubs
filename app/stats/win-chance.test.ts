@@ -107,14 +107,30 @@ describe("fitLogistic", () => {
 });
 
 describe("expectation", () => {
-  it("flags a Win under 35% as an upset", () => {
-    expect(expectation(0.34, "W")).toBe("upset-win");
+  it("flags a Win under 35% as an upset, and under 20% as a big one", () => {
+    expect(expectation(0.34, "W")).toEqual({ kind: "upset-win", big: false });
+    expect(expectation(0.2, "W")).toEqual({ kind: "upset-win", big: false });
+    expect(expectation(0.19, "W")).toEqual({ kind: "upset-win", big: true });
     expect(expectation(0.35, "W")).toBeNull();
   });
 
-  it("flags a draw or loss over 65% as one we should have won", () => {
-    expect(expectation(0.66, "L")).toBe("should-have-won");
-    expect(expectation(0.66, "D")).toBe("should-have-won");
+  it("flags a draw or loss over 65% as one we should have won, and over 80% as a big one", () => {
+    expect(expectation(0.66, "L")).toEqual({
+      kind: "should-have-won",
+      big: false,
+    });
+    expect(expectation(0.66, "D")).toEqual({
+      kind: "should-have-won",
+      big: false,
+    });
+    expect(expectation(0.8, "L")).toEqual({
+      kind: "should-have-won",
+      big: false,
+    });
+    expect(expectation(0.81, "D")).toEqual({
+      kind: "should-have-won",
+      big: true,
+    });
     expect(expectation(0.65, "L")).toBeNull();
     expect(expectation(0.2, "L")).toBeNull();
   });
@@ -240,7 +256,7 @@ describe("matchWinChance", () => {
     ).toEqual({
       chance: eloWinChance(-300),
       source: "estimate",
-      expectation: "upset-win",
+      expectation: { kind: "upset-win", big: true },
     });
   });
 

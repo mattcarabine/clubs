@@ -10,6 +10,11 @@ export function formatSigned(n: number): string {
   return "0";
 }
 
+/** A Win-rate gap in whole percentage points, "+12 pts", or a dash for null. */
+export function formatPointsGap(gap: number | null): string {
+  return gap === null ? NO_VALUE : `${formatSigned(Math.round(gap))} pts`;
+}
+
 /** A 0 to 100 percentage rounded to a whole number, "67%", or a dash for null. */
 export function formatPercentage(value: number | null): string {
   return value === null ? NO_VALUE : `${Math.round(value)}%`;
@@ -21,6 +26,13 @@ export function formatPercentage(value: number | null): string {
  */
 export function formatDecimal(value: number | null, digits = 1): string {
   return value === null ? NO_VALUE : value.toFixed(digits);
+}
+
+/** A signed figure to fixed places: "+0.6", "−0.3" (a true minus sign) or "0.0". */
+export function formatSignedDecimal(value: number, digits = 1): string {
+  const text = Math.abs(value).toFixed(digits);
+  if (Number(text) === 0) return text;
+  return `${value > 0 ? "+" : "−"}${text}`;
 }
 
 /** A count as is, or a dash for a value EA did not send. */

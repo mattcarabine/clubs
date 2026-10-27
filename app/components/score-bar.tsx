@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import { OUTCOME_LABEL, type Outcome } from "~/lib/domain";
-import { monogram } from "~/lib/monogram";
+import { ClubCrest } from "./club-crest";
 import { CrestMark } from "./crest-mark";
 import { OUTCOME_FILL, OutcomeBadge } from "./outcome-badge";
 
@@ -9,6 +9,8 @@ export type ScoreBarSide = {
   score: number;
   /** Paints this side in club blue, with the crest on the hero. Set it on Our Club. */
   isOurClub?: boolean;
+  /** An Opponent's crest image, shown on the hero. Without one, the name stands alone. */
+  crestUrl?: string | null;
   /** A small line under the name on the hero, e.g. the club's Skill Rating. */
   detail?: ReactNode;
 };
@@ -241,17 +243,13 @@ function panelAlignment(hero: boolean, trailing: boolean): string {
     : "items-center justify-end text-right";
 }
 
-/** The crest for Our Club; a slanted two-letter monogram for an Opponent. */
+/** Our Club's own crest; an Opponent's crest from EA, when EA sent one. */
 function ClubMark({ side }: { side: ScoreBarSide }) {
   if (side.isOurClub) return <CrestMark />;
-  return (
-    <span
-      data-testid="club-monogram"
-      className="clip-slant flex h-10 w-12 shrink-0 items-center justify-center bg-shale-700 text-ink text-xl [--slant:0.5rem]"
-    >
-      {monogram(side.name)}
-    </span>
-  );
+  // Keyed by URL, so a crest that failed never hides the next club's.
+  return side.crestUrl ? (
+    <ClubCrest key={side.crestUrl} src={side.crestUrl} />
+  ) : null;
 }
 
 /** The hero's broadcast stat strip: each figure with ours left and theirs right. */

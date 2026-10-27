@@ -29,7 +29,13 @@ export interface EaMatchClub {
   winnerByDnf?: string;
   /** "1" League, "3" Playoff, "5" Friendly. */
   matchType?: string;
-  details?: { name?: string; clubId?: number; [field: string]: unknown };
+  details?: {
+    name?: string;
+    clubId?: number;
+    /** The club's kit and crest; `crestAssetId` names its crest image. */
+    customKit?: { crestAssetId?: string; [field: string]: unknown };
+    [field: string]: unknown;
+  };
   [field: string]: unknown;
 }
 

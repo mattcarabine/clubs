@@ -6,6 +6,7 @@ import {
   ChartFrame,
   ChartLegend,
   ClubLeaders,
+  ColumnPicker,
   DataTable,
   type DataTableColumn,
   DateRangePicker,
@@ -43,8 +44,10 @@ import {
   Tag,
   Ticker,
   TopPerformersStrip,
+  useColumnLayout,
   WinRateCompareChart,
 } from "~/components";
+import { crestUrl } from "~/ea/crest";
 import {
   type MatchType,
   type Outcome,
@@ -144,7 +147,7 @@ const MILESTONE_MATCH: MilestoneEntry["match"] = {
   matchId: "sg-milestone",
   matchType: "League",
   playedAt: minutesAgo(40),
-  opponent: { clubId: "1", name: "Northside Athletic" },
+  opponent: { clubId: "1", name: "Northside Athletic", crestUrl: null },
   goalsFor: 6,
   goalsAgainst: 1,
   outcome: "W",
@@ -399,6 +402,26 @@ const SQUAD_COLUMNS: DataTableColumn<SquadRow>[] = [
   },
 ];
 
+/** A DataTable with a column layout: right-click or drag a header, or use Columns. */
+function CustomisableTable() {
+  const layout = useColumnLayout("styleguide-columns", SQUAD_COLUMNS);
+  return (
+    <>
+      <div className="mb-2 flex justify-end">
+        <ColumnPicker columns={SQUAD_COLUMNS} layout={layout} />
+      </div>
+      <DataTable
+        caption="Squad Members this Season"
+        columns={SQUAD_COLUMNS}
+        layout={layout}
+        rows={SQUAD}
+        rowKey={(r) => r.name}
+        initialSort={{ columnId: "goals", direction: "desc" }}
+      />
+    </>
+  );
+}
+
 const MATCH_LABELS = [
   "5 Oct",
   "6 Oct",
@@ -556,6 +579,7 @@ export default function Styleguide() {
             away={{
               name: "Northside Athletic",
               score: 1,
+              crestUrl: crestUrl("99060111"),
               detail: "Skill rating 1418",
             }}
             stats={[
@@ -901,13 +925,7 @@ export default function Styleguide() {
       </Section>
 
       <Section id="data-table" title="DataTable">
-        <DataTable
-          caption="Squad Members this Season"
-          columns={SQUAD_COLUMNS}
-          rows={SQUAD}
-          rowKey={(r) => r.name}
-          initialSort={{ columnId: "goals", direction: "desc" }}
-        />
+        <CustomisableTable />
       </Section>
 
       <Section id="charts" title="Charts">

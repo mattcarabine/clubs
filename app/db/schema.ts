@@ -73,6 +73,8 @@ export const rawPayloads = sqliteTable(
 export const clubs = sqliteTable("clubs", {
   clubId: text().primaryKey(),
   name: text(),
+  /** EA's ID for the club's crest image, the latest seen (see `crestUrl`). */
+  crestAssetId: text(),
 });
 
 /**

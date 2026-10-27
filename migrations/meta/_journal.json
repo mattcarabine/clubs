@@ -78,6 +78,20 @@
       "when": 1793065555823,
       "tag": "0010_rewrite_season_1_review",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1793105408398,
+      "tag": "0011_club_crests",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1793105414473,
+      "tag": "0012_backfill_club_crests",
+      "breakpoints": true
     }
   ]
 }
