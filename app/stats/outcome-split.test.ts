@@ -63,6 +63,7 @@ function match(
     matchId: `m${sequence}`,
     playedAt: playedAt ?? new Date(Date.UTC(2026, 9, 1, 19, sequence)),
     outcome,
+    dnf: false,
     secondsPlayed,
     ours: totals(ours),
     opponent: totals(opponent),
@@ -353,13 +354,21 @@ describe("byOpponentHumans", () => {
     ]);
   });
 
-  it("compares the Opponent's humans with our Squad Members playing", () => {
-    expect(humansAgainstOurs({ opponentHumans: 3, squadSize: 4 })).toBe(
-      "fewer",
-    );
-    expect(humansAgainstOurs({ opponentHumans: 4, squadSize: 4 })).toBe("same");
-    expect(humansAgainstOurs({ opponentHumans: 6, squadSize: 4 })).toBe("more");
-    expect(humansAgainstOurs({ opponentHumans: 0, squadSize: 4 })).toBeNull();
+  it("compares the Opponent's humans with ours: much at 3 or more apart", () => {
+    expect(
+      [1, 2, 3, 5, 6, 7, 11, 0].map((opponentHumans) =>
+        humansAgainstOurs({ opponentHumans, squadSize: 5 }),
+      ),
+    ).toEqual([
+      "much-fewer",
+      "much-fewer",
+      "slightly-fewer",
+      "same",
+      "slightly-more",
+      "slightly-more",
+      "much-more",
+      null,
+    ]);
   });
 
   it("groups Matches by exact count, band and against ours, with W/D/L", () => {
@@ -388,9 +397,9 @@ describe("byOpponentHumans", () => {
       ["4-6", 8],
     ]);
     expect(againstOurs.groups.map((g) => [g.id, g.winPercentage])).toEqual([
-      ["fewer", 100],
+      ["slightly-fewer", 100],
       ["same", 40],
-      ["more", 0],
+      ["slightly-more", 0],
     ]);
     expect(unknown).toBe(0);
   });
@@ -418,9 +427,26 @@ describe("byOpponentHumans", () => {
       counts: "5 Matches against 1–3 humans, 5 otherwise",
     });
     expect(
-      findings.find((f) => f.id === "humans-against-ours-more"),
+      findings.find((f) => f.id === "humans-against-ours-slightly-more"),
     ).toMatchObject({
-      text: "We win 20% of Matches against Opponents with more humans than us, against 100% otherwise",
+      text: "We win 20% of Matches against Opponents with 1–2 more humans than us, against 100% otherwise",
+    });
+  });
+
+  it("counts the DNFs each side quit in every group", () => {
+    const [group] = byOpponentHumans([
+      match("L", { opponentHumans: 8, squadSize: 4, dnf: true }),
+      match("L", { opponentHumans: 8, squadSize: 4, dnf: true }),
+      match("W", { opponentHumans: 8, squadSize: 4, dnf: true }),
+      match("L", { opponentHumans: 8, squadSize: 4 }),
+    ]).againstOurs.groups;
+    expect(group).toMatchObject({
+      id: "much-more",
+      played: 4,
+      weQuit: 2,
+      weQuitPercentage: 50,
+      theyQuit: 1,
+      theyQuitPercentage: 25,
     });
   });
 });

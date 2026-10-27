@@ -1,23 +1,27 @@
 import {
   ChartFrame,
   DataTable,
+  type DataTableColumn,
+  numberColumn,
   SectionHeading,
   WinRateBarChart,
 } from "~/components";
-import { formatCount } from "~/lib/number-format";
+import { formatCount, formatPercentage } from "~/lib/number-format";
 import {
   type ByOpponentHumans,
   type GroupedResults,
+  type HumansGroup,
   MIN_SPLIT_MATCHES,
-  type ResultGroup,
+  MUCH_HUMANS_GAP,
   winRateBucket,
 } from "~/stats/outcome-split";
 
 import { hiddenNote, resultColumns } from "./result-groups";
 
 /**
- * "By Opponent humans" (CLUBS-49): Win % against Opponents fielding each
- * number of human players, in bands, and against our own numbers.
+ * "By Opponent humans" (CLUBS-49): Win % and how often either side quit
+ * against Opponents fielding each number of human players, against our own
+ * numbers, and in bands.
  */
 export function HumansSection({ byHumans }: { byHumans: ByOpponentHumans }) {
   const { exact, bands, againstOurs } = byHumans;
@@ -26,38 +30,31 @@ export function HumansSection({ byHumans }: { byHumans: ByOpponentHumans }) {
     <section aria-label="By Opponent humans" className="flex flex-col gap-4">
       <SectionHeading
         title="By Opponent humans"
-        subtitle="How many humans played for the Opponent: EA lists no AI players. Matches played in brackets."
+        subtitle="How many humans played for the Opponent: EA lists no AI players. Matches played in brackets; quit rates are DNFs each side left, of the Matches played."
       />
       {note && <p className="text-ink-muted text-sm">{note}</p>}
-      {(exact.groups.length > 0 ||
-        bands.groups.length > 0 ||
-        againstOurs.groups.length > 0) && (
-        <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-6">
-          <div className="flex min-w-0 flex-col gap-4">
-            <HumansChart
-              title="Win % by Opponent humans"
-              results={exact}
-              showHidden={false}
-            />
-            {exact.groups.length > 0 && (
-              <DataTable
-                caption="Results by Opponent humans"
-                columns={HUMANS_COLUMNS}
-                rows={exact.groups}
-                rowKey={(g) => g.id}
-              />
-            )}
-          </div>
-          <div className="flex min-w-0 flex-col gap-4">
-            <HumansChart
-              title="Against our numbers"
-              subtitle="The Opponent's humans against our Squad Members playing"
-              results={againstOurs}
-            />
-            <HumansChart title="Win % by band" results={bands} />
-          </div>
-        </div>
-      )}
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-6">
+        <HumansPanel
+          title="Win % by Opponent humans"
+          caption="Results by Opponent humans"
+          header="Opponent humans"
+          results={exact}
+          showHidden={false}
+        />
+        <HumansPanel
+          title="Win % against our numbers"
+          subtitle={`The Opponent's humans against our Squad Members playing: much is ${MUCH_HUMANS_GAP} or more apart`}
+          caption="Results against our numbers"
+          header="Opponent had"
+          results={againstOurs}
+        />
+        <HumansPanel
+          title="Win % by band"
+          caption="Results by band of Opponent humans"
+          header="Opponent humans"
+          results={bands}
+        />
+      </div>
     </section>
   );
 }
@@ -80,29 +77,68 @@ function humansNote({ exact, unknown }: ByOpponentHumans): string {
   return notes.join(" ");
 }
 
-function HumansChart({
+/** One grouping's Win % chart over its table; nothing when no group has enough Matches. */
+function HumansPanel({
   title,
   subtitle,
+  caption,
+  header,
   results,
   showHidden = true,
 }: {
   title: string;
   subtitle?: string;
-  results: GroupedResults<ResultGroup>;
-  /** Whether to name the hidden groups under the chart; the section note already names the exact counts'. */
+  caption: string;
+  /** The table's first column header. */
+  header: string;
+  results: GroupedResults<HumansGroup>;
+  /** Whether to name the hidden groups; the section note already names the exact counts'. */
   showHidden?: boolean;
 }) {
   if (results.groups.length === 0) return null;
   const note = showHidden ? hiddenNote(results) : null;
   return (
-    <ChartFrame title={title} subtitle={subtitle}>
-      <WinRateBarChart
-        label={title}
-        buckets={results.groups.map((g) => winRateBucket(g.label, g))}
+    <div className="flex min-w-0 flex-col gap-4">
+      <ChartFrame title={title} subtitle={subtitle}>
+        <WinRateBarChart
+          label={title}
+          buckets={results.groups.map((g) => winRateBucket(g.label, g))}
+        />
+        {note && <p className="mt-3 text-ink-muted text-sm">{note}</p>}
+      </ChartFrame>
+      <DataTable
+        caption={caption}
+        columns={humansColumns(header)}
+        rows={results.groups}
+        rowKey={(g) => g.id}
       />
-      {note && <p className="mt-3 text-ink-muted text-sm">{note}</p>}
-    </ChartFrame>
+    </div>
   );
 }
 
-const HUMANS_COLUMNS = resultColumns<ResultGroup>("Opponent humans");
+/** P/W/D/L and Win %, then how often each side quit. */
+function humansColumns(header: string): DataTableColumn<HumansGroup>[] {
+  return [
+    ...resultColumns<HumansGroup>(header),
+    quitColumn("we-quit", "We quit", (g) => [g.weQuitPercentage, g.weQuit]),
+    quitColumn("they-quit", "They quit", (g) => [
+      g.theyQuitPercentage,
+      g.theyQuit,
+    ]),
+  ];
+}
+
+/** A quit rate with its count, "50% (2)", sorted by the rate. */
+function quitColumn(
+  id: string,
+  header: string,
+  quits: (g: HumansGroup) => [percentage: number, count: number],
+): DataTableColumn<HumansGroup> {
+  return {
+    ...numberColumn(id, header, (g) => quits(g)[0]),
+    cell: (g) => {
+      const [percentage, count] = quits(g);
+      return `${formatPercentage(percentage)} (${count})`;
+    },
+  };
+}

@@ -21,6 +21,7 @@ import {
 import { capitalise } from "~/lib/text";
 import { isFormerSquadMember } from "~/roster";
 
+import { quitBy } from "./counted";
 import {
   effectSize,
   per90,
@@ -84,6 +85,8 @@ export interface SplitMatch {
   matchId: string;
   playedAt: Date;
   outcome: Outcome;
+  /** Whether the Match ended early because one side quit. */
+  dnf: boolean;
   /** How long the Match ran: the longest Appearance in it, on either side. */
   secondsPlayed: number;
   /** Null when a club's stats are not counted, e.g. ours in a DNF we quit (`counted.ts`). */
@@ -669,23 +672,46 @@ export function humanBand(humans: number): HumanBand | null {
   );
 }
 
-/** The Opponent's humans against our Squad Members playing. */
+/** A gap of this many humans or more, either way, is "much" fewer or more; under it, "slightly". */
+export const MUCH_HUMANS_GAP = 3;
+
+/** The Opponent's humans against our Squad Members playing, fewest first. */
 export const HUMANS_AGAINST_OURS = [
-  { id: "fewer", label: "Fewer than us", phrase: "fewer humans than us" },
-  { id: "same", label: "Same as us", phrase: "as many humans as us" },
-  { id: "more", label: "More than us", phrase: "more humans than us" },
+  {
+    id: "much-fewer",
+    label: "Much fewer",
+    phrase: `at least ${MUCH_HUMANS_GAP} fewer humans than us`,
+  },
+  {
+    id: "slightly-fewer",
+    label: "Slightly fewer",
+    phrase: `1–${MUCH_HUMANS_GAP - 1} fewer humans than us`,
+  },
+  { id: "same", label: "Same", phrase: "as many humans as us" },
+  {
+    id: "slightly-more",
+    label: "Slightly more",
+    phrase: `1–${MUCH_HUMANS_GAP - 1} more humans than us`,
+  },
+  {
+    id: "much-more",
+    label: "Much more",
+    phrase: `at least ${MUCH_HUMANS_GAP} more humans than us`,
+  },
 ] as const;
 
 export type HumansAgainstOurs = (typeof HUMANS_AGAINST_OURS)[number]["id"];
 
-/** Whether the Opponent had fewer, as many or more humans than us, or null when either side is unknown. */
+/** How the Opponent's humans compared with ours, or null when either side is unknown. */
 export function humansAgainstOurs({
   opponentHumans,
   squadSize,
 }: Pick<SplitMatch, "opponentHumans" | "squadSize">): HumansAgainstOurs | null {
   if (opponentHumans === 0 || squadSize === 0) return null;
-  if (opponentHumans === squadSize) return "same";
-  return opponentHumans < squadSize ? "fewer" : "more";
+  const gap = opponentHumans - squadSize;
+  if (gap === 0) return "same";
+  const size = Math.abs(gap) >= MUCH_HUMANS_GAP ? "much" : "slightly";
+  return `${size}-${gap < 0 ? "fewer" : "more"}`;
 }
 
 /** "4 humans": the label of an exact count. */
@@ -693,13 +719,25 @@ export function humansLabel(humans: number): string {
   return formatCount(humans, "human", "humans");
 }
 
+/** Our record against one number of Opponent humans, with how often either side quit. */
+export interface HumansGroup<Id extends string = string>
+  extends ResultGroup<Id> {
+  /** DNFs we quit (DNF losses). */
+  weQuit: number;
+  /** 0 to 100 of the group's Matches. */
+  weQuitPercentage: number;
+  /** DNFs the Opponent quit (DNF Wins). */
+  theyQuit: number;
+  theyQuitPercentage: number;
+}
+
 export interface ByOpponentHumans {
   /** By the exact count, fewest first. */
-  exact: GroupedResults<ResultGroup>;
+  exact: GroupedResults<HumansGroup>;
   /** By `HUMAN_BANDS`. */
-  bands: GroupedResults<ResultGroup<HumanBand>>;
+  bands: GroupedResults<HumansGroup<HumanBand>>;
   /** By `HUMANS_AGAINST_OURS`. */
-  againstOurs: GroupedResults<ResultGroup<HumansAgainstOurs>>;
+  againstOurs: GroupedResults<HumansGroup<HumansAgainstOurs>>;
   /** Matches left out because EA listed none of the Opponent's players. */
   unknown: number;
 }
@@ -713,27 +751,44 @@ export function byOpponentHumans(
     .sort((a, b) => a - b)
     .map((n) => ({ id: String(n), label: humansLabel(n) }));
   return {
-    exact: withoutMatches(
+    exact: withQuits(
       groupResults(known, counts, (m) => String(m.opponentHumans)),
     ),
-    bands: withoutMatches(
+    bands: withQuits(
       groupResults(known, HUMAN_BANDS, (m) => humanBand(m.opponentHumans)),
     ),
-    againstOurs: withoutMatches(
+    againstOurs: withQuits(
       groupResults(known, HUMANS_AGAINST_OURS, humansAgainstOurs),
     ),
     unknown: matches.length - known.length,
   };
 }
 
-function withoutMatches<G extends { matches: unknown }>({
+/** Each group's DNFs by the side that quit, in place of its Matches. */
+function withQuits<Id extends string>({
   groups,
   hidden,
-}: GroupedResults<G>): GroupedResults<Omit<G, "matches">> {
-  return { groups: groups.map(({ matches: _, ...group }) => group), hidden };
+}: GroupedResults<ResultGroup<Id> & { matches: SplitMatch[] }>): GroupedResults<
+  HumansGroup<Id>
+> {
+  return {
+    groups: groups.map(({ matches, ...group }) => {
+      const quits = matches.map(quitBy);
+      const weQuit = quits.filter((q) => q === "us").length;
+      const theyQuit = quits.filter((q) => q === "opponent").length;
+      return {
+        ...group,
+        weQuit,
+        weQuitPercentage: percentage(weQuit, group.played) ?? 0,
+        theyQuit,
+        theyQuitPercentage: percentage(theyQuit, group.played) ?? 0,
+      };
+    }),
+    hidden,
+  };
 }
 
-/** Each band, and fewer, as many or more than us, against the rest of the Matches with the Opponent's humans known. */
+/** Each band, and each gap against our numbers, against the rest of the Matches with the Opponent's humans known. */
 function humanFindings(matches: readonly SplitMatch[]): RankedFinding[] {
   const known = matches.filter((m) => m.opponentHumans > 0);
   return [

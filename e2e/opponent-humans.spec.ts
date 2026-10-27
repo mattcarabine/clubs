@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import {
+  dnf,
   loss,
   win,
   withLineup,
@@ -35,14 +36,19 @@ function against(
   wins: number,
   options: { matchType?: "playoffMatch" } = {},
 ): AddMatchBody[] {
-  return Array.from({ length: count }, (_, i) => {
-    day -= 1;
-    const build = i < wins ? win : loss;
-    return withOpponentHumans(
-      withLineup(build({ ...daysAgo(day), ...options }), OUR_FOUR),
-      humans,
-    );
-  });
+  return Array.from({ length: count }, (_, i) =>
+    withHumans(humans, (i < wins ? win : loss)({ ...nextDay(), ...options })),
+  );
+}
+
+/** A built Match with our four and `humans` Opponent humans. */
+function withHumans(humans: number, body: AddMatchBody): AddMatchBody {
+  return withOpponentHumans(withLineup(body, OUR_FOUR), humans);
+}
+
+function nextDay() {
+  day -= 1;
+  return daysAgo(day);
 }
 
 function section(page: Page) {
@@ -110,17 +116,16 @@ test("Matches land under their exact count, band and our numbers, and small coun
     "4–6 humans (7)",
   );
 
-  // Against our 4: fewer (the 2s), the same (the 4s), more (the 6s and the 7).
-  await expect(bars(page, "Against our numbers")).toHaveCount(3);
-  await expect(bars(page, "Against our numbers").nth(0)).toContainText(
-    "Fewer than us (3)",
-  );
-  await expect(bars(page, "Against our numbers").nth(1)).toContainText(
-    "Same as us (4)",
-  );
-  await expect(bars(page, "Against our numbers").nth(2)).toContainText(
-    "More than us (4)",
-  );
+  // Against our 4: slightly fewer (the 2s), the same (the 4s), slightly
+  // more (the 6s); the 7 is 3 more, much more, with too few to show.
+  const ours = bars(page, "Win % against our numbers");
+  await expect(ours).toHaveCount(3);
+  await expect(ours.nth(0)).toContainText("Slightly fewer (3)");
+  await expect(ours.nth(1)).toContainText("Same (4)");
+  await expect(ours.nth(2)).toContainText("Slightly more (3)");
+  await expect(
+    section(page).getByText("Hidden with fewer than 3 Matches: Much more (1)."),
+  ).toBeVisible();
 
   await expect(
     page
@@ -129,6 +134,40 @@ test("Matches land under their exact count, band and our numbers, and small coun
       .filter({ hasText: "Opponent humans" })
       .first(),
   ).toBeVisible();
+});
+
+test("each group shows how often we and the Opponent quit", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await record(fakeEa, triggerPoll, [
+    ...against(3, 2, 3),
+    // Against 8 (much more than our 4): we quit 2 of 4 and they quit 1.
+    withHumans(8, dnf({ ourWin: false, ...nextDay() })),
+    withHumans(8, dnf({ ourWin: false, ...nextDay() })),
+    withHumans(8, dnf({ ourWin: true, ...nextDay() })),
+    ...against(1, 8, 0),
+  ]);
+
+  await page.goto("/analysis");
+  const muchMore = section(page)
+    .getByRole("table", { name: "Results against our numbers" })
+    .locator("tbody tr")
+    .filter({ has: page.getByRole("rowheader", { name: "Much more" }) });
+  await expect(muchMore.locator("td")).toContainText([
+    "4",
+    "1",
+    "0",
+    "3",
+    "25%",
+    "50% (2)",
+    "25% (1)",
+  ]);
+  await expect(humansRow(page, "2 humans").locator("td")).toContainText([
+    "0% (0)",
+    "0% (0)",
+  ]);
 });
 
 test("the FilterBar applies to the section", async ({

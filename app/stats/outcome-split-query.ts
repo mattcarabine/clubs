@@ -119,6 +119,7 @@ async function splitData(
       matchId: m.matchId,
       playedAt: m.playedAt,
       outcome: m.outcome,
+      dnf: m.dnf,
       ...performanceOf(sides),
       squadSize: sides?.squadSize ?? 0,
       opponentHumans: sides?.opponentHumans ?? 0,

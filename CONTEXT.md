@@ -15,7 +15,7 @@ Any club Our Club has played a Match against.
 _Avoid_: Rival, enemy, other team
 
 **Opponent humans**:
-How many human players the Opponent fielded in a Match: its Appearances with minutes, since EA lists only humans and leaves AI fill-ins out. The Analysis page groups Matches by the exact count, in bands (1–3, 4–6, 7–9, 10–11), and against our own Squad Members playing (fewer, same, more).
+How many human players the Opponent fielded in a Match: its Appearances with minutes, since EA lists only humans and leaves AI fill-ins out. The Analysis page groups Matches by the exact count, in bands (1–3, 4–6, 7–9, 10–11), and against our own Squad Members playing (much fewer, slightly fewer, same, slightly more, much more, where much is 3 or more apart), each with how often either side quit.
 _Avoid_: Real players, opponent size, lobby size
 
 **Skill Rating**:
