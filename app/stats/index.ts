@@ -26,6 +26,8 @@ export * from "./milestones-query";
 export * from "./opponents";
 export * from "./outcome-split";
 export * from "./outcome-split-query";
+export * from "./period-compare";
+export * from "./period-compare-query";
 export * from "./player";
 export * from "./player-profile";
 export * from "./positions";

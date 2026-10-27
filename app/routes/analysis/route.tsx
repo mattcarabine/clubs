@@ -44,6 +44,7 @@ import {
   type GroupSplit,
   getCampaignProgress,
   getOutcomeSplit,
+  getPeriodComparison,
   getWinChanceAnalysis,
   lineupRecords,
   listMatches,
@@ -53,6 +54,7 @@ import {
   type PlayerSplitRow,
   POSITION_OUTLIER_GAP,
   type PositionOutlier,
+  parseCompareRequest,
   resolveStatsFilter,
   resultsTimeline,
   skillRatingHistory,
@@ -72,6 +74,7 @@ import type { PositionGroupSelection } from "~/stats/positions";
 import type { Route } from "./+types/route";
 import { CampaignSection, campaignsView } from "./campaigns";
 import { ClubSnapshot } from "./club-snapshot";
+import { CompareControl, ComparisonSection } from "./compare";
 import { FindingList } from "./findings";
 import { HumansSection } from "./humans";
 import { LineupsSection } from "./lineups";
@@ -114,8 +117,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     console.warn("Campaign tracking may be off", campaign.mismatch);
   }
   const skillRating = skillRatingHistory(snapshots);
+  const comparison = await getPeriodComparison(
+    db,
+    filter,
+    matches,
+    parseCompareRequest(new URL(request.url).searchParams),
+    new Date(),
+  );
   return {
     filter,
+    comparison,
     club: summariseClubSnapshots(snapshots),
     campaigns: campaignsView(campaign),
     record: summariseRecord(matches),
@@ -146,6 +157,7 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
     timelineLabels,
     byWeekday,
     lineups,
+    comparison,
     skillRating,
     split,
     winChance,
@@ -177,7 +189,14 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
         </section>
       )}
       <FilterBar filter={filter} />
+      {comparison.options && (
+        <CompareControl
+          options={comparison.options}
+          active={comparison.active}
+        />
+      )}
       <div className="flex flex-col gap-10">
+        {comparison.view && <ComparisonSection comparison={comparison.view} />}
         {record.played > 0 && (
           <>
             <ResultsSection
