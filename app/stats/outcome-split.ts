@@ -1448,16 +1448,24 @@ export interface PlayerSplitRow extends PlayerOutcomeSplit {
   swing: Swing;
   /** Their Floor and Spread in the same Appearances (CLUBS-74). */
   consistency: Consistency;
+  /**
+   * Our record in every Match they played against every one they didn't,
+   * whatever the Position Group (CLUBS-78), or null when they have none.
+   */
+  withWithout: GroupSplit | null;
 }
 
 /**
  * Every Squad Member with an Appearance in the selected Position Groups,
- * most Appearances first.
+ * most Appearances first, each with their record with and without them
+ * (`withAndWithout`, from the Outcome Split).
  */
 export function playerSplits(
   appearances: readonly SquadAppearance[],
   positionGroups: PositionGroupSelection,
+  withWithout: readonly WithWithout[],
 ): PlayerSplitRow[] {
+  const withWithoutByPlayer = new Map(withWithout.map((w) => [w.playerId, w]));
   return [...groupBy(appearances, (a) => a.playerId).entries()]
     .map(([playerId, apps]) => ({
       playerId,
@@ -1465,6 +1473,7 @@ export function playerSplits(
       former: isFormerSquadMember(playerId),
       ...playerOutcomeSplit(apps, positionGroups),
       ...playerRatingProfile(filterByPositionGroups(apps, positionGroups)),
+      withWithout: withWithoutByPlayer.get(playerId) ?? null,
     }))
     .filter((row) => totalAppearances(row) > 0)
     .sort(
