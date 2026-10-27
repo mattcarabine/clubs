@@ -6,10 +6,13 @@ import {
   type AfterResultScope,
   type AfterResultSplit,
   afterResult,
+  byOpponentHumans,
   byOpponentStrength,
   type ClubMatchTotals,
   dayType,
   droppedPointsReasons,
+  humanBand,
+  humansAgainstOurs,
   matchAngle,
   outcomeSplit,
   POSITION_OUTLIER_GAP,
@@ -64,6 +67,7 @@ function match(
     ours: totals(ours),
     opponent: totals(opponent),
     squadSize: 4,
+    opponentHumans: 4,
     // Each Match its own Session unless a test says otherwise.
     session: sequence,
     sessionPlace: 1,
@@ -322,6 +326,102 @@ describe("byOpponentStrength", () => {
       [],
     );
     expect(findings.map((f) => f.id)).not.toContain("strength");
+  });
+});
+
+describe("byOpponentHumans", () => {
+  /** `n` Matches against `humans` Opponent humans with `squad` of ours, the first `wins` of them Wins. */
+  const against = (n: number, humans: number, wins: number, squad = 4) =>
+    Array.from({ length: n }, (_, i) =>
+      match(i < wins ? "W" : "L", {
+        opponentHumans: humans,
+        squadSize: squad,
+      }),
+    );
+
+  it("bands the Opponent's humans up to a full side", () => {
+    expect([0, 1, 3, 4, 6, 7, 9, 10, 11].map(humanBand)).toEqual([
+      null,
+      "1-3",
+      "1-3",
+      "4-6",
+      "4-6",
+      "7-9",
+      "7-9",
+      "10-11",
+      "10-11",
+    ]);
+  });
+
+  it("compares the Opponent's humans with our Squad Members playing", () => {
+    expect(humansAgainstOurs({ opponentHumans: 3, squadSize: 4 })).toBe(
+      "fewer",
+    );
+    expect(humansAgainstOurs({ opponentHumans: 4, squadSize: 4 })).toBe("same");
+    expect(humansAgainstOurs({ opponentHumans: 6, squadSize: 4 })).toBe("more");
+    expect(humansAgainstOurs({ opponentHumans: 0, squadSize: 4 })).toBeNull();
+  });
+
+  it("groups Matches by exact count, band and against ours, with W/D/L", () => {
+    const { exact, bands, againstOurs, unknown } = byOpponentHumans([
+      ...against(3, 2, 3),
+      ...against(4, 4, 2),
+      match("D", { opponentHumans: 4, squadSize: 4 }),
+      ...against(3, 6, 0),
+    ]);
+    expect(
+      exact.groups.map(({ id, label, played, wins, draws, losses }) => ({
+        id,
+        label,
+        played,
+        wins,
+        draws,
+        losses,
+      })),
+    ).toEqual([
+      { id: "2", label: "2 humans", played: 3, wins: 3, draws: 0, losses: 0 },
+      { id: "4", label: "4 humans", played: 5, wins: 2, draws: 1, losses: 2 },
+      { id: "6", label: "6 humans", played: 3, wins: 0, draws: 0, losses: 3 },
+    ]);
+    expect(bands.groups.map((g) => [g.id, g.played])).toEqual([
+      ["1-3", 3],
+      ["4-6", 8],
+    ]);
+    expect(againstOurs.groups.map((g) => [g.id, g.winPercentage])).toEqual([
+      ["fewer", 100],
+      ["same", 40],
+      ["more", 0],
+    ]);
+    expect(unknown).toBe(0);
+  });
+
+  it("hides groups under 3 Matches and leaves out Matches with no Opponent players", () => {
+    const { exact, bands, unknown } = byOpponentHumans([
+      ...against(3, 4, 1),
+      ...against(1, 7, 1),
+      ...against(2, 0, 2),
+    ]);
+    expect(exact.groups.map((g) => g.id)).toEqual(["4"]);
+    expect(exact.hidden).toEqual([{ label: "7 humans", played: 1 }]);
+    expect(bands.hidden).toEqual([{ label: "7–9 humans", played: 1 }]);
+    expect(unknown).toBe(2);
+  });
+
+  it("joins the findings when a band's Win rate stands apart", () => {
+    const { findings } = outcomeSplit(
+      [...against(5, 2, 5), ...against(5, 5, 1)],
+      [],
+    );
+    expect(findings.find((f) => f.id === "humans-1-3")).toMatchObject({
+      factor: "Opponent humans",
+      text: "We win 100% of Matches against Opponents with 1–3 humans, against 20% otherwise",
+      counts: "5 Matches against 1–3 humans, 5 otherwise",
+    });
+    expect(
+      findings.find((f) => f.id === "humans-against-ours-more"),
+    ).toMatchObject({
+      text: "We win 20% of Matches against Opponents with more humans than us, against 100% otherwise",
+    });
   });
 });
 

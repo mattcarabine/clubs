@@ -56,6 +56,7 @@ import type { PositionGroupSelection } from "~/stats/positions";
 
 import type { Route } from "./+types/route";
 import { FindingList } from "./findings";
+import { HumansSection } from "./humans";
 import { StrengthSection } from "./strength";
 import { WinChanceSection } from "./win-chance";
 
@@ -63,7 +64,7 @@ export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
     title: "A Bloo Bloo — Analysis",
     description:
-      "Wins against Dropped Points, results after a win or a loss, and results by Opponent strength.",
+      "Wins against Dropped Points, results after a win or a loss, and results by Opponent strength and humans.",
     path: location.pathname,
   });
 }
@@ -237,6 +238,8 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
       </div>
 
       <StrengthSection byStrength={split.byStrength} />
+
+      <HumansSection byHumans={split.byHumans} />
 
       <AfterResultSection splits={split.afterResult} />
 

@@ -91,6 +91,8 @@ export interface SplitMatch {
   opponent: ClubMatchTotals | null;
   /** How many Squad Members played. */
   squadSize: number;
+  /** How many humans played for the Opponent (EA lists no AI players), or 0 when EA listed none. */
+  opponentHumans: number;
   /** Which Session it was in: equal for Matches in the same Session. */
   session: number;
   /** 1 for the first Match in its Session. */
@@ -305,6 +307,56 @@ function buckets<T extends { outcome: Outcome }>(
       ? [winRateBucket(label, winRecord(group.map((m) => m.outcome)))]
       : [];
   });
+}
+
+/** Our full record over one group of Matches. */
+export interface ResultGroup<Id extends string = string> extends WinRecord {
+  id: Id;
+  label: string;
+  draws: number;
+  losses: number;
+}
+
+/** Groups with enough Matches to show, and the ones hidden for having too few. */
+export interface GroupedResults<G> {
+  /** The groups with at least `MIN_SPLIT_MATCHES`, in the factor's order. */
+  groups: G[];
+  /** Groups with too few Matches to show, and how many they have. */
+  hidden: { label: string; played: number }[];
+}
+
+/**
+ * Matches sorted into groups in the given order; Matches `groupOf` gives no
+ * group are left out, and groups under `MIN_SPLIT_MATCHES` are hidden. Each
+ * group keeps its Matches for any further roll-up.
+ */
+function groupResults<T extends { outcome: Outcome }, Id extends string>(
+  matches: readonly T[],
+  order: readonly { id: Id; label: string }[],
+  groupOf: (match: T) => Id | null,
+): GroupedResults<ResultGroup<Id> & { matches: T[] }> {
+  const byGroup = groupBy(matches, groupOf);
+  const result: GroupedResults<ResultGroup<Id> & { matches: T[] }> = {
+    groups: [],
+    hidden: [],
+  };
+  for (const { id, label } of order) {
+    const group = byGroup.get(id) ?? [];
+    if (group.length >= MIN_SPLIT_MATCHES) {
+      const outcomes = group.map((m) => m.outcome);
+      result.groups.push({
+        id,
+        label,
+        ...winRecord(outcomes),
+        draws: outcomes.filter((o) => o === "D").length,
+        losses: outcomes.filter((o) => o === "L").length,
+        matches: group,
+      });
+    } else if (group.length > 0) {
+      result.hidden.push({ label, played: group.length });
+    }
+  }
+  return result;
 }
 
 /** London kick-off time bands. */
@@ -526,20 +578,12 @@ export const STRENGTH_HIGHLIGHTS = [
 export type StrengthHighlightId = (typeof STRENGTH_HIGHLIGHTS)[number]["id"];
 
 /** Our record against one strength of Opponent, with its Outcome Split highlights. */
-export interface StrengthGroup extends WinRecord {
-  id: OpponentStrength;
-  label: string;
-  draws: number;
-  losses: number;
+export interface StrengthGroup extends ResultGroup<OpponentStrength> {
   /** Formatted averages over the group's Matches, by highlight. */
   highlights: Record<StrengthHighlightId, string>;
 }
 
-export interface ByStrength {
-  /** The groups with at least `MIN_SPLIT_MATCHES`, Stronger first. */
-  groups: StrengthGroup[];
-  /** Rated groups with too few Matches to show, and how many they have. */
-  hidden: { label: string; played: number }[];
+export interface ByStrength extends GroupedResults<StrengthGroup> {
   /** Matches left out because either club's Skill Rating is missing. */
   unrated: number;
 }
@@ -547,44 +591,28 @@ export interface ByStrength {
 /** Our rated Matches grouped by the Opponent's strength; groups under `MIN_SPLIT_MATCHES` are hidden. */
 export function byOpponentStrength(matches: readonly SplitMatch[]): ByStrength {
   const rated = matches.filter((m) => m.ratingGap !== null);
-  const byGroup = groupBy(rated, (m) => opponentStrength(m.ratingGap) ?? "");
-  const groups: StrengthGroup[] = [];
-  const hidden: ByStrength["hidden"] = [];
-  for (const { id, label } of OPPONENT_STRENGTHS) {
-    const group = byGroup.get(id) ?? [];
-    if (group.length >= MIN_SPLIT_MATCHES) {
-      groups.push(strengthGroup(id, label, group));
-    } else if (group.length > 0) {
-      hidden.push({ label, played: group.length });
-    }
-  }
+  const { groups, hidden } = groupResults(rated, OPPONENT_STRENGTHS, (m) =>
+    opponentStrength(m.ratingGap),
+  );
   return {
-    groups,
+    groups: groups.map(({ matches, ...group }) => ({
+      ...group,
+      highlights: strengthHighlights(matches),
+    })),
     hidden,
     unrated: matches.length - rated.length,
   };
 }
 
-function strengthGroup(
-  id: OpponentStrength,
-  label: string,
+function strengthHighlights(
   matches: readonly SplitMatch[],
-): StrengthGroup {
-  const outcomes = matches.map((m) => m.outcome);
-  const highlights = Object.fromEntries(
+): Record<StrengthHighlightId, string> {
+  return Object.fromEntries(
     STRENGTH_HIGHLIGHTS.map(({ id, club, metric }) => [
       id,
       clubAverage(metricById(metric), club, matches),
     ]),
   ) as Record<StrengthHighlightId, string>;
-  return {
-    id,
-    label,
-    ...winRecord(outcomes),
-    draws: outcomes.filter((o) => o === "D").length,
-    losses: outcomes.filter((o) => o === "L").length,
-    highlights,
-  };
 }
 
 function metricById(id: string): PerformanceMetric {
@@ -622,6 +650,121 @@ function strengthFinding({ groups }: ByStrength): RankedFinding | null {
 }
 
 // ---------------------------------------------------------------------------
+// Opponent humans (CLUBS-49): how many people were we up against?
+
+/** The Opponent's humans in bands, up to a full side of 11. */
+export const HUMAN_BANDS = [
+  { id: "1-3", label: "1–3 humans", from: 1, to: 3 },
+  { id: "4-6", label: "4–6 humans", from: 4, to: 6 },
+  { id: "7-9", label: "7–9 humans", from: 7, to: 9 },
+  { id: "10-11", label: "10–11 humans", from: 10, to: 11 },
+] as const;
+
+export type HumanBand = (typeof HUMAN_BANDS)[number]["id"];
+
+/** The band an Opponent's humans fall in, or null with none recorded. */
+export function humanBand(humans: number): HumanBand | null {
+  return (
+    HUMAN_BANDS.find((b) => humans >= b.from && humans <= b.to)?.id ?? null
+  );
+}
+
+/** The Opponent's humans against our Squad Members playing. */
+export const HUMANS_AGAINST_OURS = [
+  { id: "fewer", label: "Fewer than us", phrase: "fewer humans than us" },
+  { id: "same", label: "Same as us", phrase: "as many humans as us" },
+  { id: "more", label: "More than us", phrase: "more humans than us" },
+] as const;
+
+export type HumansAgainstOurs = (typeof HUMANS_AGAINST_OURS)[number]["id"];
+
+/** Whether the Opponent had fewer, as many or more humans than us, or null when either side is unknown. */
+export function humansAgainstOurs({
+  opponentHumans,
+  squadSize,
+}: Pick<SplitMatch, "opponentHumans" | "squadSize">): HumansAgainstOurs | null {
+  if (opponentHumans === 0 || squadSize === 0) return null;
+  if (opponentHumans === squadSize) return "same";
+  return opponentHumans < squadSize ? "fewer" : "more";
+}
+
+/** "4 humans": the label of an exact count. */
+export function humansLabel(humans: number): string {
+  return formatCount(humans, "human", "humans");
+}
+
+export interface ByOpponentHumans {
+  /** By the exact count, fewest first. */
+  exact: GroupedResults<ResultGroup>;
+  /** By `HUMAN_BANDS`. */
+  bands: GroupedResults<ResultGroup<HumanBand>>;
+  /** By `HUMANS_AGAINST_OURS`. */
+  againstOurs: GroupedResults<ResultGroup<HumansAgainstOurs>>;
+  /** Matches left out because EA listed none of the Opponent's players. */
+  unknown: number;
+}
+
+/** Our Matches grouped by the Opponent's humans; groups under `MIN_SPLIT_MATCHES` are hidden. */
+export function byOpponentHumans(
+  matches: readonly SplitMatch[],
+): ByOpponentHumans {
+  const known = matches.filter((m) => m.opponentHumans > 0);
+  const counts = [...new Set(known.map((m) => m.opponentHumans))]
+    .sort((a, b) => a - b)
+    .map((n) => ({ id: String(n), label: humansLabel(n) }));
+  return {
+    exact: withoutMatches(
+      groupResults(known, counts, (m) => String(m.opponentHumans)),
+    ),
+    bands: withoutMatches(
+      groupResults(known, HUMAN_BANDS, (m) => humanBand(m.opponentHumans)),
+    ),
+    againstOurs: withoutMatches(
+      groupResults(known, HUMANS_AGAINST_OURS, humansAgainstOurs),
+    ),
+    unknown: matches.length - known.length,
+  };
+}
+
+function withoutMatches<G extends { matches: unknown }>({
+  groups,
+  hidden,
+}: GroupedResults<G>): GroupedResults<Omit<G, "matches">> {
+  return { groups: groups.map(({ matches: _, ...group }) => group), hidden };
+}
+
+/** Each band, and fewer, as many or more than us, against the rest of the Matches with the Opponent's humans known. */
+function humanFindings(matches: readonly SplitMatch[]): RankedFinding[] {
+  const known = matches.filter((m) => m.opponentHumans > 0);
+  return [
+    ...bucketFindings(
+      "Opponent humans",
+      "humans",
+      known,
+      HUMAN_BANDS,
+      (m) => humanBand(m.opponentHumans) ?? "",
+      ({ label }) => ({
+        group: `against Opponents with ${label}`,
+        rest: "otherwise",
+        counts: [`against ${label}`, "otherwise"],
+      }),
+    ),
+    ...bucketFindings(
+      "Opponent humans",
+      "humans-against-ours",
+      known,
+      HUMANS_AGAINST_OURS,
+      (m) => humansAgainstOurs(m) ?? "",
+      ({ phrase }) => ({
+        group: `against Opponents with ${phrase}`,
+        rest: "otherwise",
+        counts: [`against ${phrase}`, "otherwise"],
+      }),
+    ),
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Findings
 
 export type Factor =
@@ -629,7 +772,8 @@ export type Factor =
   | "Personnel"
   | "Circumstances"
   | "After a result"
-  | "Opponent strength";
+  | "Opponent strength"
+  | "Opponent humans";
 
 /** One plain-English difference between Wins and Dropped Points. */
 export interface Finding {
@@ -706,13 +850,13 @@ function splitFinding(
 }
 
 /** Each bucket against the rest; a two-bucket factor gives one finding, not its mirror. */
-function bucketFindings(
+function bucketFindings<B extends BucketOption>(
   factor: Factor,
   idPrefix: string,
   matches: readonly SplitMatch[],
-  order: readonly BucketOption[],
+  order: readonly B[],
   bucketOf: (m: SplitMatch) => string,
-  words: (bucket: BucketOption) => SplitWords,
+  words: (bucket: B) => SplitWords,
 ): RankedFinding[] {
   const options = order.length === 2 ? order.slice(1) : order;
   return withoutNulls(
@@ -750,6 +894,8 @@ export interface OutcomeSplit {
   afterResult: AfterResultSplit[];
   /** Rated Matches by the Opponent's strength (CLUBS-29). */
   byStrength: ByStrength;
+  /** Matches by the Opponent's humans (CLUBS-49). */
+  byHumans: ByOpponentHumans;
   /** Win % over the last `ROLLING_WIN_WINDOW` Matches at each Match, oldest first. */
   rollingWinPercentage: number[];
 }
@@ -868,6 +1014,7 @@ export function outcomeSplit(
         ),
         ...withoutNulls(afterResultSplits.map(afterResultFinding)),
         ...withoutNulls([strengthFinding(strength)]),
+        ...humanFindings(matches),
       ]
     : [];
 
@@ -894,6 +1041,7 @@ export function outcomeSplit(
     ),
     afterResult: afterResultSplits,
     byStrength: strength,
+    byHumans: byOpponentHumans(matches),
     rollingWinPercentage: rollingWinPercentage(outcomes),
   };
 }

@@ -213,6 +213,29 @@ export function withLineup(body: AddMatchBody, lineup: Lineup): AddMatchBody {
   return body;
 }
 
+/**
+ * Gives the Opponent exactly `humans` players, each a copy of a recorded one
+ * with its own ID. EA lists only human players, so this is how many humans
+ * the Opponent fielded.
+ */
+export function withOpponentHumans(
+  body: AddMatchBody,
+  humans: number,
+): AddMatchBody {
+  const opponentId = Object.keys(body.match.players).find(
+    (id) => id !== OUR_CLUB_ID,
+  );
+  if (!opponentId) throw new Error("Built Match has no Opponent players");
+  const template = Object.values(body.match.players[opponentId])[0];
+  body.match.players[opponentId] = Object.fromEntries(
+    Array.from({ length: humans }, (_, i) => [
+      String(910_000_000 + i),
+      { ...template, playername: `Opponent Human ${i + 1}` },
+    ]),
+  );
+  return body;
+}
+
 /** Every Appearance on both sides lasts `minutes`: how long the Match ran (45 for a DNF at half time). */
 export function lasting(body: AddMatchBody, minutes: number): AddMatchBody {
   for (const side of Object.values(body.match.players)) {
