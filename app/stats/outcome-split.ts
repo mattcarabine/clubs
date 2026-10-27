@@ -657,6 +657,11 @@ function gap({ group, rest }: GroupSplit): number {
   return (group.winPercentage ?? 0) - (rest.winPercentage ?? 0);
 }
 
+/** Group Win % minus the rest's, in points, or null until both sides have `MIN_SPLIT_MATCHES`. */
+export function winRateGap(split: GroupSplit): number | null {
+  return isComparable(split) ? gap(split) : null;
+}
+
 function isSmall(a: number, b: number): boolean {
   return Math.min(a, b) < SMALL_SAMPLE_MATCHES;
 }
