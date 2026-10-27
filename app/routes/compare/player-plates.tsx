@@ -9,8 +9,14 @@ import { useSearchParams } from "react-router";
 import {
   EA_POSITIONS_DISABLED,
   FormBadge,
+  PlayerChip,
+  Popover,
+  PopoverCaret,
+  PopoverTab,
   PositionGroupPicker,
+  popoverTriggerProps,
   ScrollRail,
+  usePopover,
 } from "~/components";
 import {
   COMPARISON_SIDES,
@@ -111,7 +117,7 @@ export function PlayerPlates({
 }
 
 const PLATE: Record<ComparisonSide, string> = {
-  A: "clip-slant-r bg-sound-900 pr-7 pl-3 text-ink",
+  A: "clip-slant-r bg-sound-900 pr-7 pl-3 text-left text-ink",
   B: "clip-slant-l bg-rave pr-3 pl-7 text-right text-shale-950",
 };
 
@@ -126,7 +132,10 @@ type SwitcherProps = {
   onChange: (playerId: string) => void;
 };
 
-/** A side's plate: the Squad Member's name as a dropdown of the Squad. */
+/**
+ * A side's plate: the Squad Member's name, which opens a list of the Squad
+ * (a popover under it, or a bottom sheet on phones). A pick applies at once.
+ */
 function Switcher({
   side,
   members,
@@ -135,36 +144,69 @@ function Switcher({
   other,
   onChange,
 }: SwitcherProps) {
+  const popover = usePopover("[data-autofocus]");
+  const current = members.find((m) => m.playerId === value);
+  // Focus lands on the current pick, or else the first that can be picked.
+  const autofocus =
+    value ?? members.find((m) => m.playerId !== other)?.playerId;
+
   return (
-    <label
-      className={`relative flex min-w-0 flex-col justify-center py-2 [--slant:0.9rem] ${PLATE[side]}`}
-    >
-      <span className="text-xs opacity-80">
-        {side === "A" ? "Squad Member" : "Compare to"}
-      </span>
-      <select
-        aria-label={SWITCHER_LABEL[side]}
-        value={value ?? ""}
+    <>
+      <button
+        {...popoverTriggerProps(popover)}
         disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-        className={`w-full min-w-0 cursor-pointer truncate bg-transparent font-display font-extrabold text-2xl uppercase italic leading-tight tracking-wide focus-visible:outline-2 focus-visible:outline-current disabled:cursor-not-allowed sm:text-4xl ${side === "B" ? "text-right [text-align-last:right]" : ""}`}
+        aria-label={`${SWITCHER_LABEL[side]}: ${current?.name ?? "none picked"}`}
+        className={`relative flex min-w-0 cursor-pointer flex-col justify-center py-2 [--slant:0.9rem] focus-visible:-outline-offset-4 focus-visible:outline-2 focus-visible:outline-current disabled:cursor-not-allowed disabled:opacity-60 ${PLATE[side]}`}
       >
-        {value === undefined && (
-          <option value="" disabled>
-            {side === "A" ? "Pick a Squad Member" : "Compare to…"}
-          </option>
-        )}
-        {members.map((m) => (
-          <option
-            key={m.playerId}
-            value={m.playerId}
-            disabled={m.playerId === other}
-            className="bg-shale-800 text-ink not-italic"
-          >
-            {m.former ? `${m.name} (former)` : m.name}
-          </option>
-        ))}
-      </select>
-    </label>
+        <span className="text-xs opacity-80">
+          {side === "A" ? "Squad Member" : "Compare to"}
+        </span>
+        <span
+          className={`flex min-w-0 items-center gap-2 ${side === "B" ? "justify-end" : ""}`}
+        >
+          <span className="min-w-0 truncate font-display font-extrabold text-2xl uppercase italic leading-tight tracking-wide sm:text-4xl">
+            {current?.name ??
+              (side === "A" ? "Pick a Squad Member" : "Compare to…")}
+          </span>
+          <PopoverCaret className="h-1.5 w-2.5 shrink-0 sm:h-2 sm:w-3" />
+        </span>
+      </button>
+      <Popover
+        popover={popover}
+        label={`Choose the ${side === "A" ? "first" : "second"} Squad Member`}
+      >
+        <div className="pb-3 sm:w-80">
+          <PopoverTab>Squad</PopoverTab>
+          <ul className="flex flex-col gap-1 px-3 sm:px-4">
+            {members.map((m) => {
+              const picked = m.playerId === value;
+              const taken = m.playerId === other;
+              return (
+                <li key={m.playerId}>
+                  <button
+                    type="button"
+                    disabled={taken}
+                    aria-current={picked || undefined}
+                    data-autofocus={m.playerId === autofocus || undefined}
+                    onClick={() => {
+                      popover.close();
+                      if (!picked) onChange(m.playerId);
+                    }}
+                    className={`flex w-full min-w-0 items-center border-l-4 bg-shale-800 text-left focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-60 ${picked ? "border-rave" : "border-transparent enabled:hover:border-rave"}`}
+                  >
+                    <PlayerChip name={m.name} former={m.former} />
+                    {(picked || taken) && (
+                      <span className="ml-auto shrink-0 pr-3 pl-2 text-ink-muted text-xs">
+                        {picked ? "Showing" : "Already picked"}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </Popover>
+    </>
   );
 }
