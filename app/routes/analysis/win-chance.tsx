@@ -6,18 +6,24 @@ import {
   SectionHeading,
 } from "~/components";
 import { formatCount, formatDecimal } from "~/lib/number-format";
-import { type CalibrationBand, MIN_FITTED_MATCHES } from "~/stats/win-chance";
+import type { ByStrength } from "~/stats/outcome-split";
+import { MIN_FITTED_MATCHES } from "~/stats/win-chance";
 import type { WinChanceAnalysis } from "~/stats/win-chance-query";
 
+import { StrengthPanel } from "./strength";
+
 /**
- * "Win chance" (CLUBS-30): the filtered Matches' results by band of Skill
- * Rating gap against the Wins expected (CLUBS-69), our Wins against the
- * Wins the curve expected, and how often we won at each band of Win Chance.
+ * "Win chance" (CLUBS-30): our Wins against the Wins the curve expected, then
+ * the filtered Matches' results by band of Skill Rating gap against the Wins
+ * expected (CLUBS-69), and by Opponent strength (CLUBS-29) once the Outcome
+ * Split is ready (CLUBS-73).
  */
 export function WinChanceSection({
   winChance,
+  byStrength,
 }: {
   winChance: WinChanceAnalysis;
+  byStrength?: ByStrength;
 }) {
   const { model, bands, unrated, vsExpected } = winChance;
   return (
@@ -50,7 +56,28 @@ export function WinChanceSection({
           No rated Matches in these filters yet.
         </p>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-6">
+        <>
+          <section
+            aria-label="Wins against expected"
+            className="flex flex-col gap-2 border-rave border-t-2 bg-sound-900 p-4 lg:flex-row lg:items-center lg:gap-8 lg:p-6"
+          >
+            <p className="shrink-0 font-display font-extrabold text-4xl text-ink uppercase italic leading-none tabular lg:text-5xl">
+              {`${formatCount(vsExpected.wins, "Win", "Wins")} vs ${formatDecimal(vsExpected.expected)} expected`}
+            </p>
+            <div className="flex flex-col gap-2 text-sm">
+              <p className="text-ink-soft">
+                {`Over ${formatCount(vsExpected.played, "rated Match", "rated Matches")} in these filters: ${verdict(vsExpected.wins, vsExpected.expected)}`}
+              </p>
+              {model.source === "fitted" &&
+                vsExpected.played === model.matches && (
+                  <p className="text-ink-muted">
+                    Over every Match it was fitted to, the curve expects as many
+                    Wins as we got. Narrow the dates to see whether we are
+                    beating it.
+                  </p>
+                )}
+            </div>
+          </section>
           <ChartFrame
             title="Results by rating gap"
             subtitle="Our Skill Rating minus the Opponent's: below 0 they were rated higher. Green past the marker means we won more than expected."
@@ -58,29 +85,8 @@ export function WinChanceSection({
           >
             <GapBandChart label="Results by Skill Rating gap" bands={bands} />
           </ChartFrame>
-          <div className="flex min-w-0 flex-col gap-4">
-            <section
-              aria-label="Wins against expected"
-              className="border-rave border-t-2 bg-sound-900 p-4"
-            >
-              <p className="font-display font-extrabold text-4xl text-ink uppercase italic leading-none tabular">
-                {`${formatCount(vsExpected.wins, "Win", "Wins")} vs ${formatDecimal(vsExpected.expected)} expected`}
-              </p>
-              <p className="mt-2 text-ink-soft text-sm">
-                {`Over ${formatCount(vsExpected.played, "rated Match", "rated Matches")} in these filters: ${verdict(vsExpected.wins, vsExpected.expected)}`}
-              </p>
-              {model.source === "fitted" &&
-                vsExpected.played === model.matches && (
-                  <p className="mt-2 text-ink-muted text-sm">
-                    Over every Match it was fitted to, the curve expects as many
-                    Wins as we got. Narrow the dates to see whether we are
-                    beating it.
-                  </p>
-                )}
-            </section>
-            <CalibrationList bands={winChance.calibration} />
-          </div>
-        </div>
+          {byStrength && <StrengthPanel byStrength={byStrength} />}
+        </>
       )}
     </section>
   );
@@ -91,21 +97,4 @@ function verdict(wins: number, expected: number): string {
   const gap = wins - expected;
   if (Math.abs(gap) < 0.5) return "in line with our rating.";
   return gap > 0 ? "beating our rating." : "below our rating.";
-}
-
-function CalibrationList({ bands }: { bands: CalibrationBand[] }) {
-  return (
-    <div className="border-shale-700 border-t-2 bg-shale-900 p-4">
-      <h3 className="mb-2 font-display font-bold text-ink-muted text-lg uppercase tracking-wide">
-        Calibration
-      </h3>
-      <ul aria-label="Calibration" className="flex flex-col gap-1 text-sm">
-        {bands.map((band) => (
-          <li key={band.from} className="text-ink-soft">
-            {`Matches we were given ${band.from}–${band.to}%: won ${band.wins} of ${band.played}`}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
 }

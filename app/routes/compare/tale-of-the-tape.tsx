@@ -1,7 +1,9 @@
 /**
  * The broadcast tale of the tape: each stat's label in the middle, Squad
  * Member A's figure on the left in blue and B's on the right in green, each
- * over a bar of their share, with the leader picked out.
+ * over a bar of their share. The leader's figure sits on a slanted chip in
+ * their side's colour, the way FotMob and Sofascore fill the better figure
+ * (CLUBS-79).
  */
 import { NO_VALUE } from "~/lib/number-format";
 
@@ -117,13 +119,19 @@ type TapeCellProps = {
   share: number | null;
 };
 
+/** A leading figure's chip: A in club blue, B in rave, as their column headers. */
+const LEAD_FILL: Record<Side, string> = {
+  0: "bg-sound-700 text-ink",
+  1: "bg-rave text-shale-950",
+};
+
 /** A figure's share of both, 0 to 100; nothing for a missing or non-positive one. */
 function barShare(value: number | null, total: number): number {
   if (value === null || value <= 0 || total <= 0) return 0;
   return (value / total) * 100;
 }
 
-/** One side's figure, pointing at the label when it leads, over its share bar. */
+/** One side's figure, on a chip in their colour when it leads, over its share bar. */
 function TapeCell({ side, text, leads, smallSample, share }: TapeCellProps) {
   const left = side === 0;
   return (
@@ -132,17 +140,15 @@ function TapeCell({ side, text, leads, smallSample, share }: TapeCellProps) {
       className={`px-3 py-2.5 ${left ? "text-right" : "text-left"}`}
     >
       <span
-        className={`inline-flex items-baseline gap-1.5 font-display text-2xl leading-none sm:text-3xl ${left ? "flex-row-reverse" : ""} ${leads ? "font-extrabold text-ink" : "font-bold text-ink-soft"}`}
+        className={`inline-flex items-baseline gap-1.5 font-display text-2xl leading-none sm:text-3xl ${left ? "flex-row-reverse" : ""}`}
       >
-        <span data-figure>{text}</span>
-        {leads && (
-          <>
-            <span aria-hidden className="text-rave text-xs">
-              {left ? "▶" : "◀"}
-            </span>
-            <span className="sr-only">(leads)</span>
-          </>
-        )}
+        <span
+          data-figure
+          className={`px-2 py-0.5 [--slant:0.4rem] ${leads ? `clip-slant font-extrabold ${LEAD_FILL[side]}` : "font-bold text-ink-soft"}`}
+        >
+          {text}
+        </span>
+        {leads && <span className="sr-only">(leads)</span>}
         {smallSample && (
           <span className="font-sans text-ink-muted text-sm">
             *<span className="sr-only">small sample</span>

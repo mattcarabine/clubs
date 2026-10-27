@@ -54,7 +54,7 @@ export async function getOutcomeSplit(
   const { summaries, squad, split } = await splitData(db, filter);
   return {
     ...split,
-    players: playerSplits(squad, positionGroups),
+    players: playerSplits(squad, positionGroups, split.withWithout),
     playedAt: summaries.map((m) => m.playedAt),
   };
 }

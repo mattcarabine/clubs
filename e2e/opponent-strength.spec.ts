@@ -78,9 +78,18 @@ test("rated Matches land in their strength group with its Win rate, and unrated 
     "1",
     "83%",
   ]);
+  // CLUBS-73: part of the Win chance section, which counts the unrated Matches.
   await expect(
-    section(page).getByText("2 Matches without Skill Ratings are left out."),
+    page
+      .getByRole("region", { name: "Win chance", exact: true })
+      .getByRole("region", { name: "By Opponent strength", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "By Opponent strength" }),
+  ).toHaveJSProperty("tagName", "H3");
+  await expect(
+    page.getByText("2 Matches without Skill Ratings are left out."),
+  ).toHaveCount(1);
   await expect(
     section(page)
       .getByRole("list", { name: "Win % by Opponent strength" })
@@ -112,7 +121,7 @@ test("a group with fewer than 3 Matches is hidden and left out of the findings",
   await expect(strengthRow(page, "Weaker")).toHaveCount(0);
   await expect(
     section(page).getByText(
-      "1 Match without Skill Ratings is left out. Hidden with fewer than 3 Matches: Similar (2), Weaker (2).",
+      "Hidden with fewer than 3 Matches: Similar (2), Weaker (2).",
     ),
   ).toBeVisible();
   await expect(

@@ -150,6 +150,17 @@ test("both columns show each Squad Member's totals, with each row's leader picke
   );
   await expect(tapeCell(table, "Goals", 1)).toContainText("(leads)");
   await expect(tapeCell(table, "Goals", 0)).not.toHaveAttribute("data-leader");
+  // The leader's figure is filled in their side's colour, the other plain,
+  // with no arrows (CLUBS-79).
+  const fill = (stat: string, side: 0 | 1) =>
+    tapeCell(table, stat, side)
+      .locator("[data-figure]")
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(await fill("Appearances", 0)).toBe("rgb(31, 90, 166)"); // sound-700
+  expect(await fill("Goals", 1)).toBe("rgb(122, 201, 67)"); // rave
+  expect(await fill("Appearances", 1)).toBe("rgba(0, 0, 0, 0)");
+  expect(await fill("Goals", 0)).toBe("rgba(0, 0, 0, 0)");
+  await expect(table).not.toContainText(/[▶◀]/);
 
   // Bravo's two Appearances are a small sample.
   await expect(tapeCell(table, "Goals", 1)).toContainText("small sample");

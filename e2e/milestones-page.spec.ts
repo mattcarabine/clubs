@@ -312,7 +312,7 @@ test("Streaks have their own type, and carry the since-records-began tag", async
 test.describe("on a 375px phone", () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
-  test("the leaders scroll inside their row, the filters stay on the first screen and the page never scrolls sideways", async ({
+  test("the leaders scroll inside their row, the club records start on the first screen and the page never scrolls sideways", async ({
     page,
     fakeEa,
     triggerPoll,
@@ -323,8 +323,13 @@ test.describe("on a 375px phone", () => {
     await expect(
       page.getByRole("region", { name: "Club leaders" }).getByRole("listitem"),
     ).not.toHaveCount(0);
+    // CLUBS-77 put the club records on top, which pushed the filters below
+    // the first screen; the records, compact on phones, now start there.
     await expect(
-      page.getByRole("navigation", { name: "Milestone type" }),
+      page
+        .getByRole("region", { name: "Club records" })
+        .getByRole("listitem")
+        .first(),
     ).toBeInViewport();
     await expectNoHorizontalScroll(page);
   });
