@@ -118,7 +118,7 @@ test("clicking the latest Match opens its Match page", async ({
   ).toBeVisible();
 });
 
-test("flags a DNF on the latest Match", async ({
+test("flags a rage quit on the latest Match", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -128,8 +128,12 @@ test("flags a DNF on the latest Match", async ({
   await page.goto("/");
 
   await expect(
-    latestMatch(page).getByText("DNF", { exact: true }),
+    latestMatch(page).getByText("They rage quit", { exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("main")).toContainText(
+    /conceded, \d+ rage quits?/,
+  );
+  await expect(page.getByRole("main")).not.toContainText("DNF");
 });
 
 test("picks up a new result after 60s without a reload", async ({

@@ -52,7 +52,7 @@ type FilterBarProps = {
 };
 
 /**
- * The global stats filter: Match Types, DNF, date range, Season and
+ * The global stats filter: Match Types, rage quits, date range, Season and
  * Campaign. The Season picker lists the Seasons from the root loader, and
  * shows once there are two to choose between; the Campaign chips show once a
  * Campaign is tracked. Every change rewrites the URL, so the page's
@@ -157,14 +157,14 @@ export function FilterBar(props: FilterBarProps) {
           })}
         </ChipGroup>
 
-        <ChipGroup label="DNF">
+        <ChipGroup label="Rage quits">
           <Chip
             pressed={filter.includeDnf}
             onClick={() =>
               updateFilter((f) => ({ ...f, includeDnf: !f.includeDnf }))
             }
           >
-            Include DNF
+            Include rage quits
           </Chip>
         </ChipGroup>
 
