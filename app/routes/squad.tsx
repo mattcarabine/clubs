@@ -72,7 +72,8 @@ const FORMER_PARAM = "former";
  * Recorded and EA totals have different columns, so each has its own.
  */
 const COLUMN_LAYOUT_KEYS = {
-  recorded: "squad-columns:recorded",
+  // v2: CLUBS-80 changed the defaults, so earlier layouts start again from them.
+  recorded: "squad-columns:recorded:v2",
   ea: "squad-columns:ea",
 } as const;
 
@@ -619,13 +620,22 @@ function withLabels<Row>(
   return columns.map((c) => ({ label: COLUMN_LABELS[c.header], ...c }));
 }
 
+/** Starts hidden; the Columns picker brings it back. */
+function hiddenByDefault<Row>(
+  column: DataTableColumn<Row>,
+): DataTableColumn<Row> {
+  return { ...column, defaultHidden: true };
+}
+
 /**
- * The stats people compare lead (G+A, rating, Form, Appearances), so a phone
- * shows them beside the name before the table scrolls.
+ * The stats people compare lead (G+A, MOTM, rating, Form, Appearances), so a
+ * phone shows them beside the name before the table scrolls. The niche ones
+ * start hidden (CLUBS-80): Mins, Shots, Tkl %, CS and Saves.
  */
 const COLUMNS = withLabels<LeaderboardRow>([
   nameColumn((r) => r.formIndicator),
   recordedStat("ga", "G+A", (r) => r.goalContributions),
+  recordedStat("motm", "MOTM", (r) => r.manOfTheMatch),
   recordedStat("rating", "Rating", (r) => r.averageRating, formatDecimal),
   {
     ...recordedStat("form", "Form", (r) => r.form),
@@ -635,16 +645,24 @@ const COLUMNS = withLabels<LeaderboardRow>([
   recordedStat("vsTeam", "Vs team", (r) => r.vsTeam, formatSignedDecimal),
   recordedStat("goals", "G", (r) => r.goals),
   recordedStat("assists", "A", (r) => r.assists),
-  recordedStat("mins", "Mins", (r) => r.minutes, formatThousands),
+  hiddenByDefault(
+    recordedStat("mins", "Mins", (r) => r.minutes, formatThousands),
+  ),
   recordedStat("goals90", "G/90", (r) => r.goalsPer90, per90),
   recordedStat("assists90", "A/90", (r) => r.assistsPer90, per90),
   recordedStat("ga90", "G+A/90", (r) => r.goalContributionsPer90, per90),
-  recordedStat("shots", "Shots", (r) => r.shots),
+  hiddenByDefault(recordedStat("shots", "Shots", (r) => r.shots)),
   recordedStat("pass", "Pass %", (r) => r.passPercentage, formatPercentage),
-  recordedStat("tackle", "Tkl %", (r) => r.tacklePercentage, formatPercentage),
-  recordedStat("motm", "MOTM", (r) => r.manOfTheMatch),
-  recordedStat("cs", "CS", (r) => r.cleanSheets),
-  recordedStat("saves", "Saves", (r) => r.saves),
+  hiddenByDefault(
+    recordedStat(
+      "tackle",
+      "Tkl %",
+      (r) => r.tacklePercentage,
+      formatPercentage,
+    ),
+  ),
+  hiddenByDefault(recordedStat("cs", "CS", (r) => r.cleanSheets)),
+  hiddenByDefault(recordedStat("saves", "Saves", (r) => r.saves)),
   recordedStat("red", "Red", (r) => r.redCards),
   recordedStat("red90", "Red/90", (r) => r.redCardsPer90, per90),
   {
