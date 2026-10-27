@@ -11,6 +11,7 @@ import {
   FormBadge,
   PlayerChip,
   Popover,
+  PopoverCaret,
   PopoverTab,
   PositionGroupPicker,
   popoverTriggerProps,
@@ -143,9 +144,9 @@ function Switcher({
   other,
   onChange,
 }: SwitcherProps) {
-  // The current pick, or else the first that can be picked.
   const popover = usePopover("[data-autofocus]");
   const current = members.find((m) => m.playerId === value);
+  // Focus lands on the current pick, or else the first that can be picked.
   const autofocus =
     value ?? members.find((m) => m.playerId !== other)?.playerId;
 
@@ -167,13 +168,7 @@ function Switcher({
             {current?.name ??
               (side === "A" ? "Pick a Squad Member" : "Compare to…")}
           </span>
-          <svg
-            aria-hidden
-            viewBox="0 0 10 6"
-            className="h-1.5 w-2.5 shrink-0 sm:h-2 sm:w-3"
-          >
-            <path d="M0 0h10L5 6z" fill="currentColor" />
-          </svg>
+          <PopoverCaret className="h-1.5 w-2.5 shrink-0 sm:h-2 sm:w-3" />
         </span>
       </button>
       <Popover

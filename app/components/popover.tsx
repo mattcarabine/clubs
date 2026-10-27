@@ -112,6 +112,15 @@ export function Popover({ popover, label, children }: PopoverProps) {
   );
 }
 
+/** The downward triangle on a trigger that opens a popover. */
+export function PopoverCaret({ className }: { className: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 10 6" className={className}>
+      <path d="M0 0h10L5 6z" fill="currentColor" />
+    </svg>
+  );
+}
+
 /** A popover's green slanted strip label ("Dates", "Squad"), flush with its edge. */
 export function PopoverTab({ children }: { children: ReactNode }) {
   return (

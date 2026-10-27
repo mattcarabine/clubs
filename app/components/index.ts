@@ -59,6 +59,7 @@ export { PERFORMER_COLUMNS } from "./performer-columns";
 export { PlayerChip } from "./player-chip";
 export {
   Popover,
+  PopoverCaret,
   type PopoverState,
   PopoverTab,
   popoverTriggerProps,

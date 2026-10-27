@@ -21,6 +21,7 @@ import {
 import { chipClassName } from "./chip";
 import {
   Popover,
+  PopoverCaret,
   PopoverTab,
   popoverTriggerProps,
   usePopover,
@@ -63,13 +64,7 @@ export function DateRangePicker({
         className={chipClassName(value.kind !== "all")}
       >
         {dateRangeLabel(value)}
-        <svg
-          aria-hidden
-          viewBox="0 0 10 6"
-          className="mb-0.5 ml-1.5 inline-block h-1.5 w-2.5"
-        >
-          <path d="M0 0h10L5 6z" fill="currentColor" />
-        </svg>
+        <PopoverCaret className="mb-0.5 ml-1.5 inline-block h-1.5 w-2.5" />
       </button>
       <Popover popover={popover} label="Choose dates">
         <PickerPanel
