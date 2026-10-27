@@ -1,0 +1,1 @@
+ALTER TABLE `clubs` ADD `crest_asset_id` text;

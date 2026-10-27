@@ -80,7 +80,11 @@ test("polling the recorded league Matches twice stores each Match once, with App
   ]);
 
   const clubs = await db.rows<{ club_id: string; name: string }>("clubs");
-  expect(clubs).toContainEqual({ club_id: OUR_CLUB_ID, name: "A Bloo Bloo" });
+  expect(clubs).toContainEqual({
+    club_id: OUR_CLUB_ID,
+    name: "A Bloo Bloo",
+    crest_asset_id: "99160118",
+  });
   expect(clubs).toHaveLength(11);
 });
 

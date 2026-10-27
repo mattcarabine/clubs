@@ -39,6 +39,19 @@ function against(body: AddMatchBody, name: string): AddMatchBody {
   return body;
 }
 
+/** Sets the Opponent's `crestAssetId`, or removes it. */
+function withCrest(
+  body: AddMatchBody,
+  crestAssetId: string | undefined,
+): AddMatchBody {
+  const club = body.match.clubs[opponentId(body)];
+  club.details = {
+    ...club.details,
+    customKit: { ...club.details?.customKit, crestAssetId },
+  };
+  return body;
+}
+
 function hero(page: Page): Locator {
   return page.getByRole("region", { name: "Score" });
 }
@@ -172,22 +185,76 @@ test("the stat strip is hidden when EA sent no Opponent Appearances", async ({
   await expect(page.getByRole("region", { name: "Key stats" })).toHaveCount(0);
 });
 
-test("our panel carries the crest, the Opponent's its monogram", async ({
+// CLUBS-72: real crests, never placeholder letters.
+test("our panel carries our own crest, the Opponent's its crest from EA", async ({
   page,
   fakeEa,
   triggerPoll,
+  eaCrests,
 }) => {
-  await fakeEa.addMatch(against(loss({ matchId: "31030" }), "Kebab Over6pack"));
+  await fakeEa.addMatch(
+    withCrest(
+      against(loss({ matchId: "31030" }), "Kebab Over6pack"),
+      "99161008",
+    ),
+  );
   await triggerPoll();
 
   await page.goto("/matches/31030");
   const score = hero(page);
   await expect(
-    panel(score, CLUB_NAME).locator('img[src*="crest"]'),
+    panel(score, CLUB_NAME).locator('img[src*="crest-mark"]'),
   ).toBeVisible();
-  await expect(
-    panel(score, "Kebab Over6pack").getByTestId("club-monogram"),
-  ).toHaveText("KO");
+  const crest = panel(score, "Kebab Over6pack").getByTestId("club-crest");
+  await expect(crest).toBeVisible();
+  await expect(crest).toHaveAttribute("src", /l99161008\.png$/);
+  // Our Club never uses EA's crest, only the one we have.
+  expect(eaCrests.requests()).toEqual([
+    expect.stringMatching(/l99161008\.png$/),
+  ]);
+});
+
+test("an Opponent whose crest fails to load shows its name alone", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+  eaCrests,
+}) => {
+  eaCrests.fail();
+  await fakeEa.addMatch(
+    withCrest(
+      against(loss({ matchId: "31031" }), "Kebab Over6pack"),
+      "99161008",
+    ),
+  );
+  await triggerPoll();
+
+  await page.goto("/matches/31031");
+  const opponent = panel(hero(page), "Kebab Over6pack");
+  await expect(opponent).toContainText("Kebab Over6pack");
+  await expect(opponent.getByTestId("club-crest")).toHaveCount(0);
+  await expect(opponent.locator("img")).toHaveCount(0);
+});
+
+test("an Opponent EA sent no crest for shows its name alone", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+  eaCrests,
+}) => {
+  await fakeEa.addMatch(
+    withCrest(
+      against(loss({ matchId: "31032" }), "Kebab Over6pack"),
+      undefined,
+    ),
+  );
+  await triggerPoll();
+
+  await page.goto("/matches/31032");
+  const opponent = panel(hero(page), "Kebab Over6pack");
+  await expect(opponent).toContainText("Kebab Over6pack");
+  await expect(opponent.locator("img")).toHaveCount(0);
+  expect(eaCrests.requests()).toEqual([]);
 });
 
 test("one top performer gets a short, still strip centred under the hero, with no slash markers", async ({

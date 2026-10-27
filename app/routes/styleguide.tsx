@@ -45,6 +45,7 @@ import {
   useColumnLayout,
   WinRateCompareChart,
 } from "~/components";
+import { crestUrl } from "~/ea/crest";
 import {
   type MatchType,
   type Outcome,
@@ -95,7 +96,7 @@ const MILESTONE_MATCH: MilestoneEntry["match"] = {
   matchId: "sg-milestone",
   matchType: "League",
   playedAt: minutesAgo(40),
-  opponent: { clubId: "1", name: "Northside Athletic" },
+  opponent: { clubId: "1", name: "Northside Athletic", crestUrl: null },
   goalsFor: 6,
   goalsAgainst: 1,
   outcome: "W",
@@ -527,6 +528,7 @@ export default function Styleguide() {
             away={{
               name: "Northside Athletic",
               score: 1,
+              crestUrl: crestUrl("99060111"),
               detail: "Skill rating 1418",
             }}
             stats={[
