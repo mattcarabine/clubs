@@ -19,7 +19,7 @@ import {
 import { hiddenNote, resultColumns } from "./result-groups";
 
 /**
- * "By Opponent humans" (CLUBS-49): Win % and how often either side quit
+ * "By Opponent humans" (CLUBS-49): Win % and how often either side rage quit
  * against Opponents fielding each number of human players, against our own
  * numbers, and in bands.
  */
@@ -30,7 +30,7 @@ export function HumansSection({ byHumans }: { byHumans: ByOpponentHumans }) {
     <section aria-label="By Opponent humans" className="flex flex-col gap-4">
       <SectionHeading
         title="By Opponent humans"
-        subtitle="How many humans played for the Opponent: EA lists no AI players. Matches played in brackets; quit rates are the share of Matches each side rage quit."
+        subtitle="How many humans played for the Opponent: EA lists no AI players. Matches played in brackets; rage quit rates are the share of Matches each side rage quit."
       />
       {note && <p className="text-ink-muted text-sm">{note}</p>}
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-6">
@@ -116,19 +116,22 @@ function HumansPanel({
   );
 }
 
-/** P/W/D/L and Win %, then how often each side quit. */
+/** P/W/D/L and Win %, then how often each side rage quit. */
 function humansColumns(header: string): DataTableColumn<HumansGroup>[] {
   return [
     ...resultColumns<HumansGroup>(header),
-    quitColumn("we-quit", "We quit", (g) => [g.weQuitPercentage, g.weQuit]),
-    quitColumn("they-quit", "They quit", (g) => [
+    quitColumn("we-quit", "We rage quit", (g) => [
+      g.weQuitPercentage,
+      g.weQuit,
+    ]),
+    quitColumn("they-quit", "They rage quit", (g) => [
       g.theyQuitPercentage,
       g.theyQuit,
     ]),
   ];
 }
 
-/** A quit rate with its count, "50% (2)", sorted by the rate. */
+/** A rage quit rate with its count, "50% (2)", sorted by the rate. */
 function quitColumn(
   id: string,
   header: string,
