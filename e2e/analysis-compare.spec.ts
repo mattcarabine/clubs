@@ -60,6 +60,13 @@ test("the last 7 days compare with the 7 days before, and a shared link keeps it
       name: "Win % by day of the week, compared",
     }),
   ).toBeVisible();
+  // Each bar names its period in words, not only by colour.
+  await expect(
+    comparison(page)
+      .getByRole("list", { name: "Win % by day of the week, compared" })
+      .getByText(/^Now \d+%/)
+      .first(),
+  ).toBeVisible();
   // Every bucket here rests on a handful of Matches.
   await expect(
     comparison(page).getByText("Small sample").first(),
@@ -91,7 +98,7 @@ test("an earlier period with no Matches says so, with no changes", async ({
   await expect(comparison(page).getByText(/better|worse/)).toHaveCount(0);
 });
 
-test("Season 2 compares with Season 1 by default, and never with a Campaign or All dates", async ({
+test("Season 2 offers Season 1 first, and never with a Campaign or All dates", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -114,6 +121,11 @@ test("Season 2 compares with Season 1 by default, and never with a Campaign or A
   await triggerPoll();
 
   await page.goto("/analysis?season=2");
+  // The Season before is the first choice after "Nothing".
+  await expect(control(page).getByRole("button")).toHaveText([
+    "Nothing",
+    "Season 1",
+  ]);
   await control(page).getByRole("button", { name: "Season 1" }).click();
   await expect(page).toHaveURL(/[?&]vs=1(&|$)/);
   await expect(comparison(page)).toContainText(

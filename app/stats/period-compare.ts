@@ -58,10 +58,8 @@ export type CompareOptions =
   | {
       kind: "season";
       season: number;
-      /** The other recorded Seasons, oldest first. */
+      /** The other recorded Seasons: the one before first (the default), then the rest oldest first. */
       others: number[];
-      /** The Season before, or the nearest other one. */
-      fallback: number;
     };
 
 /**
@@ -109,12 +107,11 @@ export function compareOptions(
   if (season === undefined) return null;
   const others = seasons.filter((n) => n !== season);
   if (others.length === 0) return null;
-  const earlier = others.filter((n) => n < season);
+  const before = others.filter((n) => n < season).at(-1) ?? others[0];
   return {
     kind: "season",
     season,
-    others,
-    fallback: earlier.at(-1) ?? others[0],
+    others: [before, ...others.filter((n) => n !== before)],
   };
 }
 

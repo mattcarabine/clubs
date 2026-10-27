@@ -101,12 +101,17 @@ describe("compareOptions", () => {
     expect(compareOptions(filter({ season: 3 }), [1, 2, 3], TODAY)).toEqual({
       kind: "season",
       season: 3,
-      others: [1, 2],
-      fallback: 2,
+      others: [2, 1],
     });
     expect(compareOptions(filter({ season: 1 }), [1, 2], TODAY)).toMatchObject({
-      fallback: 2,
+      others: [2],
     });
+    expect(
+      compareOptions(filter({ season: 2 }), [1, 2, 3, 4], TODAY),
+    ).toMatchObject({ others: [1, 3, 4] });
+    expect(
+      compareOptions(filter({ season: 4 }), [1, 2, 3, 4], TODAY),
+    ).toMatchObject({ others: [3, 1, 2] });
   });
 
   it("never compares a Campaign, All dates, or a lone Season", () => {

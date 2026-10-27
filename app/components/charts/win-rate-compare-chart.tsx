@@ -13,6 +13,9 @@ type WinRateCompareChartProps = {
   sides: { current: string; previous: string };
 };
 
+/** Short visible names for each bar, so the pair never relies on colour alone. */
+const SIDE_CUE = { current: "Now", previous: "Before" };
+
 /** This period first, in series-1; the earlier one in series-2, as the legend keys them. */
 const SIDE_COLOR = { current: SERIES_COLORS[0], previous: SERIES_COLORS[1] };
 
@@ -41,11 +44,13 @@ export function WinRateCompareChart({
           <span className="grid gap-1">
             <Bar
               side={sides.current}
+              cue={SIDE_CUE.current}
               bucket={b.current}
               color={SIDE_COLOR.current}
             />
             <Bar
               side={sides.previous}
+              cue={SIDE_CUE.previous}
               bucket={b.previous}
               color={SIDE_COLOR.previous}
             />
@@ -58,26 +63,29 @@ export function WinRateCompareChart({
 
 function Bar({
   side,
+  cue,
   bucket,
   color,
 }: {
   side: string;
+  /** "Now" or "Before", shown; `side` names the period for screen readers. */
+  cue: string;
   bucket: SplitBucket | null;
   color: string;
 }) {
   const value = bucket?.winPercentage ?? 0;
   return (
     // The right padding reserves room for the value at the longest bar's tip.
-    <span className="flex items-center pr-24">
-      <span className="sr-only">{side}: </span>
+    <span className="flex items-center pr-28">
+      <span className="sr-only">{side}, </span>
       <span
         className="h-3 shrink-0 rounded-r"
         style={{ width: `${bucket ? value : 0}%`, background: color }}
       />
-      <span className="-mr-24 shrink-0 pl-2 text-ink text-xs tabular">
+      <span className="-mr-28 shrink-0 pl-2 text-ink text-xs tabular">
         {bucket
-          ? `${formatPercentage(value)} (${bucket.played})`
-          : "Not played"}
+          ? `${cue} ${formatPercentage(value)} (${bucket.played})`
+          : `${cue}: not played`}
       </span>
     </span>
   );
