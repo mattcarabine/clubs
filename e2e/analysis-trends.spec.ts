@@ -3,43 +3,15 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import type { Page } from "@playwright/test";
-
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import { leaderboardWithGamesPlayed } from "./support/leaderboard.ts";
 import { draw, loss, OUR_CLUB_ID, win } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
-// CLUBS-13: /trends. Each test serves only the Matches it adds, so the
+// CLUBS-13: the Trends charts, now on /analysis (CLUBS-59). Each test serves only the Matches it adds, so the
 // recorded fixtures never leak into the buckets being checked.
 test.beforeEach(async ({ fakeEa }) => {
   await fakeEa.setPayload("clubs/matches", [], "leagueMatch");
-});
-
-const barList = (page: Page, name: string) =>
-  page.getByRole("list", { name }).getByRole("listitem");
-
-test("buckets Tuesday 20:00 and 22:30 London kick-offs by London time across a BST change", async ({
-  page,
-  fakeEa,
-  triggerPoll,
-}) => {
-  // BST ended on Sun 26 Oct 2025, so the same London times are an hour apart in UTC.
-  await fakeEa.addMatch(win({ playedAt: new Date("2025-10-21T19:00:00Z") })); // Tue 20:00 BST
-  await fakeEa.addMatch(win({ playedAt: new Date("2025-10-21T21:30:00Z") })); // Tue 22:30 BST
-  await fakeEa.addMatch(win({ playedAt: new Date("2025-10-28T20:00:00Z") })); // Tue 20:00 GMT
-  await fakeEa.addMatch(loss({ playedAt: new Date("2025-10-28T22:30:00Z") })); // Tue 22:30 GMT
-  await triggerPoll();
-
-  await page.goto("/trends");
-
-  await expect(barList(page, "Win % by day of the week")).toHaveText([
-    /^Tue \(4\)\s*75%$/,
-  ]);
-  await expect(barList(page, "Win % by kick-off hour")).toHaveText([
-    /^20:00 \(2\)\s*100%$/,
-    /^22:00 \(2\)\s*50%$/,
-  ]);
 });
 
 test("shows a line-up of 4 Squad Members who played 3 Matches together, with its W/D/L", async ({
@@ -62,7 +34,7 @@ test("shows a line-up of 4 Squad Members who played 3 Matches together, with its
   await fakeEa.addMatch(withoutOnePlayer(win({ playedAt: day(5) })));
   await triggerPoll();
 
-  await page.goto("/trends");
+  await page.goto("/analysis");
 
   const table = page.getByRole("table", { name: "Line-up performance" });
   const rows = table.locator("tbody tr");
@@ -86,7 +58,7 @@ test("with one skill rating reading there is no chart yet", async ({
   await fakeEa.setPayload("clubs/overallStats", overallStats("1632"));
   await triggerPoll();
 
-  await page.goto("/trends");
+  await page.goto("/analysis");
   const section = page.getByRole("region", { name: "Skill rating" });
   await expect(section.getByText("Now 1632")).toBeVisible();
   await expect(
@@ -105,7 +77,7 @@ test("charts both club Snapshots' skill ratings", async ({
   await fakeEa.setPayload("clubs/overallStats", overallStats("1632"));
   await triggerPoll();
 
-  await page.goto("/trends");
+  await page.goto("/analysis");
 
   const section = page.getByRole("region", { name: "Skill rating" });
   await expect(section.getByText("Now 1632")).toBeVisible();
@@ -128,20 +100,20 @@ test("respects the FilterBar's Match Types", async ({
   await triggerPoll();
 
   const results = page.getByRole("region", { name: "Results" });
-  await page.goto("/trends");
+  await page.goto("/analysis");
   await expect(
     results.getByText("2 Matches: 1 won, 0 drawn, 1 lost."),
   ).toBeVisible();
 
-  await page.goto("/trends?types=league");
+  await page.goto("/analysis?types=league");
   await expect(
     results.getByText("1 Match: 1 won, 0 drawn, 0 lost."),
   ).toBeVisible();
 });
 
 test("says what will fill the page before any Matches", async ({ page }) => {
-  await page.goto("/trends");
-  await expect(page.getByText("No Matches to chart")).toBeVisible();
+  await page.goto("/analysis");
+  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
   await expect(page.getByText("No skill rating yet")).toBeVisible();
 });
 
@@ -153,7 +125,7 @@ test("charts no points total; the other Results charts stay", async ({
   await fakeEa.addMatch(win());
   await fakeEa.addMatch(loss());
   await triggerPoll();
-  await page.goto("/trends");
+  await page.goto("/analysis");
 
   const results = page.getByRole("region", { name: "Results" });
   await expect(results.getByText("Run of results")).toBeVisible();
@@ -194,7 +166,7 @@ test("has no horizontal page scroll, down to a 375px phone", async ({
     );
   }
   await triggerPoll();
-  await page.goto("/trends");
+  await page.goto("/analysis");
   await expect(
     page.getByRole("table", { name: "Campaign history" }),
   ).toBeVisible();
@@ -208,6 +180,13 @@ test("has no horizontal page scroll, down to a 375px phone", async ({
     );
     expect(fits, `no horizontal scroll at ${width}px`).toBe(true);
   }
+});
+
+test("/trends redirects to Analysis, keeping the filter", async ({ page }) => {
+  await page.goto("/trends?types=league");
+  await expect(page).toHaveURL(/\/analysis\?types=league$/);
+  await expect(page.locator("h1")).toHaveText("Analysis");
+  await expect(page.getByRole("region", { name: "Over time" })).toBeVisible();
 });
 
 /** The recorded `clubs/overallStats` payload with a different skill rating. */

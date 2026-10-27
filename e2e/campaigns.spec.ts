@@ -32,7 +32,7 @@ test("shows the current Campaign, history and timeline after a Promotion", async
   // Division 4: then a Win and a loss.
   await play({ fakeEa, triggerPoll }, [win, win, draw, win, win, loss], 5);
 
-  await page.goto("/trends");
+  await page.goto("/analysis");
 
   await expect(
     panel(page).getByRole("heading", { name: "Division 4" }),
@@ -80,7 +80,7 @@ test("shows a Promotion Series in progress", async ({
   await startSeason({ fakeEa, triggerPoll });
   await play({ fakeEa, triggerPoll }, [win, win, draw, loss], 6);
 
-  await page.goto("/trends");
+  await page.goto("/analysis");
 
   await expect(
     panel(page).getByRole("heading", { name: "Division 5" }),
@@ -107,7 +107,7 @@ test("before any Season start, shows EA's Division and when tracking starts", as
 }) => {
   // The recorded leaderboard says Division 2 (currentDivision 3).
   await triggerPoll();
-  await page.goto("/trends");
+  await page.goto("/analysis");
 
   await expect(
     panel(page).getByRole("heading", { name: "Division 2" }),
@@ -131,7 +131,7 @@ test("warns when EA's Division disagrees outside the Playoffs", async ({
   await startSeason({ fakeEa, triggerPoll });
   await play({ fakeEa, triggerPoll }, [win], 3);
 
-  await page.goto("/trends");
+  await page.goto("/analysis");
   await expect(warning(page)).toContainText(
     "we make it Division 5, EA says Division 2",
   );
@@ -145,7 +145,7 @@ test("ignores EA's Division changing during the Playoffs", async ({
   await startSeason({ fakeEa, triggerPoll });
   await play({ fakeEa, triggerPoll }, [win, playoff], 3);
 
-  await page.goto("/trends");
+  await page.goto("/analysis");
   await expect(
     panel(page).getByText(/^Playoffs: League Matches don't count/),
   ).toBeVisible();

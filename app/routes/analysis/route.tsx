@@ -1,9 +1,13 @@
 /**
- * Analysis (CLUBS-25): the Outcome Split. What changes between Wins and
- * Dropped Points ("draws and defeats" in copy), from performance, personnel
- * and circumstances, led by the five biggest differences in plain English. Every number comes from
- * `getOutcomeSplit`; the global FilterBar applies to all of it, and the
- * Position Group selection only to the per-player table.
+ * Analysis (CLUBS-25), with Trends merged in (CLUBS-59, ADR 0008). Above the
+ * FilterBar, what ignores it: EA's Season snapshot, the current Campaign and
+ * the State of the club. Then, over the filtered Matches, results and how they
+ * moved (the record, goal difference, rolling goals and Win %), and the
+ * Outcome Split: what changes between Wins and Dropped Points ("draws and defeats" in copy), from
+ * performance, personnel and circumstances, led by the five biggest
+ * differences in plain English. Last, "Over time": the Skill Rating and
+ * Division history, unfiltered. The Position Group selection applies only to
+ * the per-player table.
  */
 import { env } from "cloudflare:workers";
 import { useSearchParams } from "react-router";
@@ -16,7 +20,6 @@ import {
   type DataTableColumn,
   EmptyState,
   FilterBar,
-  LineChart,
   numberColumn,
   PageHeader,
   PositionGroupPicker,
@@ -39,18 +42,25 @@ import {
   clubSnapshots,
   formatDroppedCount,
   type GroupSplit,
+  getCampaignProgress,
   getOutcomeSplit,
   getWinChanceAnalysis,
+  lineupRecords,
+  listMatches,
   MIN_SPLIT_MATCHES,
   type PerformanceRow,
   PLAYER_SPLIT_STATS,
   type PlayerSplitRow,
   POSITION_OUTLIER_GAP,
   type PositionOutlier,
-  ROLLING_WIN_WINDOW,
   resolveStatsFilter,
+  resultsTimeline,
+  skillRatingHistory,
+  splitByWeekday,
+  squadAppearances,
   statsFilterFromRequest,
   summariseClubSnapshots,
+  summariseRecord,
   type WithWithout,
   winRateBucket,
   winRateGap,
@@ -60,9 +70,13 @@ import { parseStatsFilter, writeStatsFilter } from "~/stats/filter";
 import type { PositionGroupSelection } from "~/stats/positions";
 
 import type { Route } from "./+types/route";
+import { CampaignSection, campaignsView } from "./campaigns";
 import { ClubSnapshot } from "./club-snapshot";
 import { FindingList } from "./findings";
 import { HumansSection } from "./humans";
+import { LineupsSection } from "./lineups";
+import { OverTimeSection } from "./over-time";
+import { ResultsSection, RollingSections } from "./results";
 import { StrengthSection } from "./strength";
 import { WinChanceSection } from "./win-chance";
 
@@ -70,7 +84,7 @@ export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
     title: "A Bloo Bloo — Analysis",
     description:
-      "Wins against draws and defeats, results after a win or a loss, and results by Opponent strength and humans.",
+      "Results and form over time, Wins against draws and defeats, results after a win or a loss, and by Opponent strength and humans.",
     path: location.pathname,
   });
 }
@@ -78,16 +92,41 @@ export function meta({ location }: Route.MetaArgs) {
 export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
-  const [{ playedAt, ...split }, winChance, stateOfTheClub, snapshots] =
-    await Promise.all([
-      getOutcomeSplit(db, filter, { positionGroups: filter.positionGroups }),
-      getWinChanceAnalysis(db, filter),
-      latestWriteup(db, "club", CLUB_SUBJECT),
-      clubSnapshots(db),
-    ]);
+  const [
+    { playedAt, ...split },
+    winChance,
+    stateOfTheClub,
+    snapshots,
+    matches,
+    appearances,
+    campaign,
+  ] = await Promise.all([
+    getOutcomeSplit(db, filter, { positionGroups: filter.positionGroups }),
+    getWinChanceAnalysis(db, filter),
+    latestWriteup(db, "club", CLUB_SUBJECT),
+    clubSnapshots(db),
+    listMatches(db, filter, { order: "oldest" }),
+    // Line-up records count results, so they keep the DNFs we quit.
+    squadAppearances(db, filter, { includeQuitMatches: true }),
+    getCampaignProgress(db),
+  ]);
+  if (campaign.mismatch) {
+    console.warn("Campaign tracking may be off", campaign.mismatch);
+  }
+  const skillRating = skillRatingHistory(snapshots);
   return {
     filter,
     club: summariseClubSnapshots(snapshots),
+    campaigns: campaignsView(campaign),
+    record: summariseRecord(matches),
+    timeline: resultsTimeline(matches),
+    timelineLabels: matches.map((m) => formatLondonShortDate(m.playedAt)),
+    byWeekday: splitByWeekday(matches),
+    lineups: lineupRecords(appearances),
+    skillRating: {
+      labels: skillRating.map((p) => formatLondonShortDate(p.takenAt)),
+      values: skillRating.map((p) => p.skillRating),
+    },
     split,
     winChance,
     stateOfTheClub,
@@ -98,15 +137,31 @@ export async function loader({ request }: Route.LoaderArgs) {
 type AnalysisData = Route.ComponentProps["loaderData"];
 
 export default function Analysis({ loaderData }: Route.ComponentProps) {
-  const { filter, club, split, winChance, stateOfTheClub } = loaderData;
+  const {
+    filter,
+    club,
+    campaigns,
+    record,
+    timeline,
+    timelineLabels,
+    lineups,
+    skillRating,
+    split,
+    winChance,
+    stateOfTheClub,
+    matchLabels,
+  } = loaderData;
   return (
     <>
       <PageHeader
         title="Analysis"
-        subtitle="What changes between Wins and draws or defeats."
+        subtitle="How our results move over time, and what changes between Wins and draws or defeats."
       />
-      {/* EA's totals and the State of the club ignore the filter, so they sit above the FilterBar. */}
+      {/* EA's totals, the Campaign and the State of the club ignore the filter, so they sit above the FilterBar. */}
       {club && <ClubSnapshot club={club} />}
+      <div className="mb-8">
+        <CampaignSection view={campaigns} />
+      </div>
       {stateOfTheClub && (
         <section aria-label="State of the club" className="mb-8">
           <SectionHeading
@@ -121,16 +176,34 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
         </section>
       )}
       <FilterBar filter={filter} />
-      {split.ready ? (
-        <OutcomeSplitSections {...loaderData} />
-      ) : (
-        <EmptyState
-          title="Not enough Matches yet"
-          description={notEnoughMatches(split.record)}
-        />
-      )}
-      <div className="mt-10">
+      <div className="flex flex-col gap-10">
+        {record.played > 0 && (
+          <>
+            <ResultsSection
+              record={record}
+              timeline={timeline}
+              labels={timelineLabels}
+            />
+            <RollingSections
+              timeline={timeline}
+              labels={timelineLabels}
+              winLabels={matchLabels}
+              rollingWinPercentage={split.rollingWinPercentage}
+            />
+          </>
+        )}
+        {split.ready ? (
+          <OutcomeSplitSections {...loaderData} />
+        ) : (
+          <EmptyState
+            title="Not enough Matches yet"
+            description={notEnoughMatches(split.record)}
+          />
+        )}
+        {/* Line-ups need only Matches, not a ready Outcome Split. */}
+        {record.played > 0 && <LineupsSection lineups={lineups} />}
         <WinChanceSection winChance={winChance} />
+        <OverTimeSection skillRating={skillRating} campaigns={campaigns} />
       </div>
     </>
   );
@@ -156,7 +229,7 @@ function notEnoughMatches(record: { wins: number; dropped: number }): string {
   return `The Outcome Split needs at least ${MIN_SPLIT_MATCHES} Wins and ${formatDroppedCount(MIN_SPLIT_MATCHES)} in these filters: ${needed.join(" and ")}.`;
 }
 
-function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
+function OutcomeSplitSections({ split, byWeekday, filter }: AnalysisData) {
   const { record } = split;
   return (
     <div className="flex flex-col gap-10">
@@ -226,7 +299,7 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
         >
           <SectionHeading
             title="Circumstances"
-            subtitle="Win % by kick-off (London time) and place in a Session. Matches played in brackets."
+            subtitle="Win % by kick-off and day (London time) and place in a Session. Matches played in brackets."
           />
           <ChartFrame title="By kick-off">
             <WinRateBarChart
@@ -234,10 +307,10 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
               buckets={split.byTimeOfDay}
             />
           </ChartFrame>
-          <ChartFrame title="Weekday or weekend">
+          <ChartFrame title="By day">
             <WinRateBarChart
-              label="Win % on weekdays and weekends"
-              buckets={split.byDayType}
+              label="Win % by day of the week"
+              buckets={byWeekday}
             />
           </ChartFrame>
           <ChartFrame
@@ -262,29 +335,6 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
         players={split.players}
         positionGroups={filter.positionGroups}
       />
-
-      <section aria-label="Trend">
-        <SectionHeading
-          title="Trend"
-          subtitle={`Win % over the last ${ROLLING_WIN_WINDOW} Matches at each Match.`}
-        />
-        <ChartFrame title={`Rolling ${ROLLING_WIN_WINDOW}-Match Win %`}>
-          <LineChart
-            label={`Rolling ${ROLLING_WIN_WINDOW}-Match Win %`}
-            labels={matchLabels}
-            series={[
-              {
-                id: "win",
-                label: "Win %",
-                values: split.rollingWinPercentage,
-              },
-            ]}
-            formatValue={formatPercentage}
-            formatTick={(v) => `${v}%`}
-            reference={{ value: 50, label: "50%" }}
-          />
-        </ChartFrame>
-      </section>
     </div>
   );
 }

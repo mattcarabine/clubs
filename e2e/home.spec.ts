@@ -241,7 +241,7 @@ test("the old Matches and Sessions addresses redirect home, keeping the filter",
   }
 });
 
-test("the nav has no Matchday or Opponents, but Opponent pages still load by URL", async ({
+test("the nav is the four tabs of ADR 0008, and Opponent pages still load by URL", async ({
   page,
   triggerPoll,
 }) => {
@@ -251,7 +251,6 @@ test("the nav has no Matchday or Opponents, but Opponent pages still load by URL
   await expect(nav.getByRole("link")).toHaveText([
     "Matches",
     "Squad",
-    "Trends",
     "Analysis",
     "Milestones",
   ]);
