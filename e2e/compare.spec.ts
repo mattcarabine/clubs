@@ -13,6 +13,8 @@ import { expect, test } from "./support/test.ts";
 const ALPHA = { id: "900000021", name: "Alpha Mid" };
 const BRAVO = { id: "900000022", name: "Bravo Striker" };
 const CHARLIE = { id: "900000023", name: "Charlie Spare" };
+/** Marked former by the test env's TEST_ROSTER (wrangler.jsonc). */
+const FORMER = { id: "900000099", name: "Zed Former" };
 
 type FakeEa = { addMatch(body: AddMatchBody): Promise<void> };
 
@@ -67,6 +69,25 @@ async function expectFigures(
     tapeCell(table, label, 1).locator("[data-figure]"),
     `${label} B`,
   ).toHaveText(b);
+}
+
+/** A side's plate, the button that opens its Squad picker. */
+function plate(page: Page, side: "First" | "Second") {
+  return page.getByRole("button", { name: `${side} Squad Member:` });
+}
+
+function picker(page: Page, side: "first" | "second") {
+  return page.getByRole("dialog", { name: `Choose the ${side} Squad Member` });
+}
+
+/** Opens a side's picker, retrying a click that lands before hydration. */
+async function openPicker(page: Page, side: "First" | "Second") {
+  const dialog = picker(page, side === "First" ? "first" : "second");
+  await expect(async () => {
+    await plate(page, side).click();
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  return dialog;
 }
 
 function filters(page: Page) {
@@ -301,23 +322,25 @@ test('"Compare to…" on a profile opens Compare with a picker for the second Sq
   await page.getByRole("link", { name: "Compare to…" }).click();
   await expect(page).toHaveURL(new RegExp(`/compare\\?players=${ALPHA.id}$`));
 
-  await expect(
-    page.getByRole("combobox", { name: "First Squad Member" }),
-  ).toHaveValue(ALPHA.id);
-  const second = page.getByRole("combobox", { name: "Second Squad Member" });
-  await expect(second).toHaveValue("");
-  await expect(second.locator("option:checked")).toHaveText("Compare to…");
+  await expect(plate(page, "First")).toHaveAccessibleName(
+    `First Squad Member: ${ALPHA.name}`,
+  );
+  await expect(plate(page, "Second")).toHaveAccessibleName(
+    "Second Squad Member: none picked",
+  );
+  await expect(plate(page, "Second")).toContainText("Compare to…");
   await expectFigures(headline(page), "Appearances", ["1", "–"]);
 
   // Picking the second Squad Member completes the Comparison.
-  await expect(async () => {
-    await second.selectOption(BRAVO.id);
-    await expect
-      .poll(() => new URL(page.url()).searchParams.get("players"), {
-        timeout: 1000,
-      })
-      .toBe(`${ALPHA.id},${BRAVO.id}`);
-  }).toPass();
+  const dialog = await openPicker(page, "Second");
+  await dialog.getByRole("button", { name: BRAVO.name }).click();
+  await expect(dialog).toBeHidden();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("players"))
+    .toBe(`${ALPHA.id},${BRAVO.id}`);
+  await expect(plate(page, "Second")).toHaveAccessibleName(
+    `Second Squad Member: ${BRAVO.name}`,
+  );
   await expectFigures(headline(page), "Appearances", ["1", "1"]);
 });
 
@@ -335,12 +358,12 @@ test("a repeated or unknown ID shows the first Squad Member and a picker, not an
   ]) {
     await page.goto(`/compare?players=${players}`);
     await expect(page.locator("h1")).toHaveText("Compare");
-    await expect(
-      page.getByRole("combobox", { name: "First Squad Member" }),
-    ).toHaveValue(ALPHA.id);
-    await expect(
-      page.getByRole("combobox", { name: "Second Squad Member" }),
-    ).toHaveValue("");
+    await expect(plate(page, "First")).toHaveAccessibleName(
+      `First Squad Member: ${ALPHA.name}`,
+    );
+    await expect(plate(page, "Second")).toHaveAccessibleName(
+      "Second Squad Member: none picked",
+    );
     await expectFigures(headline(page), "Appearances", ["1", "–"]);
     // The URL drops the ID that could not be shown.
     expect(new URL(page.url()).searchParams.get("players")).toBe(ALPHA.id);
@@ -358,15 +381,69 @@ test("an unknown first ID moves the second Squad Member to A with their Position
   ]);
 
   await page.goto(`/compare?players=999999999,${BRAVO.id}&posB=forward`);
-  await expect(
-    page.getByRole("combobox", { name: "First Squad Member" }),
-  ).toHaveValue(BRAVO.id);
+  await expect(plate(page, "First")).toHaveAccessibleName(
+    `First Squad Member: ${BRAVO.name}`,
+  );
   await expectFigures(headline(page), "Appearances", ["1", "–"]);
   await expect(
     page
       .getByRole("group", { name: `${BRAVO.name}: Position Group` })
       .getByRole("button", { name: "Forward" }),
   ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a plate's picker lists the whole Squad, marks the current pick and keeps out the other side's", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await recordMatches(fakeEa, triggerPoll, [
+    [{ player: ALPHA }, { player: BRAVO }, { player: FORMER }],
+  ]);
+
+  await page.goto(`/compare?players=${ALPHA.id},${BRAVO.id}`);
+  const dialog = await openPicker(page, "First");
+  await expect(dialog.getByRole("button")).toHaveText([
+    /Alpha Mid.*Showing/,
+    /Bravo Striker.*Already picked/,
+    /Zed Former.*Former/,
+  ]);
+  const current = dialog.getByRole("button", { name: ALPHA.name });
+  await expect(current).toHaveAttribute("aria-current", "true");
+  await expect(current).toBeFocused();
+  await expect(dialog.getByRole("button", { name: BRAVO.name })).toBeDisabled();
+
+  // Esc changes nothing and returns focus to the plate.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(plate(page, "First")).toBeFocused();
+  expect(new URL(page.url()).searchParams.get("players")).toBe(
+    `${ALPHA.id},${BRAVO.id}`,
+  );
+
+  // Picking the Former Squad Member swaps A.
+  await (await openPicker(page, "First"))
+    .getByRole("button", { name: FORMER.name })
+    .click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("players"))
+    .toBe(`${FORMER.id},${BRAVO.id}`);
+  await expect(headline(page).getByRole("columnheader").first()).toHaveText(
+    FORMER.name,
+  );
+});
+
+test("the second plate waits for the first Squad Member", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await recordMatches(fakeEa, triggerPoll, [[{ player: ALPHA }]]);
+  await page.goto("/compare");
+  await expect(plate(page, "First")).toHaveAccessibleName(
+    "First Squad Member: none picked",
+  );
+  await expect(plate(page, "Second")).toBeDisabled();
 });
 
 test("changing the FilterBar changes both columns", async ({
@@ -465,4 +542,16 @@ test("Compare fits a 375px phone", async ({ page, fakeEa, triggerPoll }) => {
     );
     expect(fits, query).toBe(true);
   }
+
+  // The picker is a bottom sheet across the phone.
+  await page.goto(`/compare?players=${ALPHA.id},${BRAVO.id}`);
+  const dialog = await openPicker(page, "Second");
+  const box = await dialog.boundingBox();
+  expect(box?.width).toBe(375);
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeCloseTo(800, 0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });
