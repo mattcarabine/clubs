@@ -41,6 +41,7 @@ import {
   Tag,
   Ticker,
   TopPerformersStrip,
+  WinRateCompareChart,
 } from "~/components";
 import {
   type MatchType,
@@ -869,6 +870,53 @@ export default function Styleguide() {
               label="Goals for and against by Match"
               labels={MATCH_LABELS}
               series={GOAL_SERIES}
+            />
+          </ChartFrame>
+          <ChartFrame
+            title="Win % by day, compared"
+            subtitle="Last 7 days against the 7 days before"
+            legend={
+              <ChartLegend
+                mark="box"
+                entries={[
+                  { id: "current", label: "Last 7 days" },
+                  { id: "previous", label: "7 days before" },
+                ]}
+              />
+            }
+          >
+            <WinRateCompareChart
+              label="Win % by day of the week, compared"
+              sides={{ current: "Last 7 days", previous: "7 days before" }}
+              buckets={[
+                {
+                  label: "Tue",
+                  current: {
+                    label: "Tue",
+                    played: 12,
+                    wins: 8,
+                    winPercentage: 67,
+                  },
+                  previous: {
+                    label: "Tue",
+                    played: 10,
+                    wins: 4,
+                    winPercentage: 40,
+                  },
+                  smallSample: false,
+                },
+                {
+                  label: "Sat",
+                  current: {
+                    label: "Sat",
+                    played: 3,
+                    wins: 1,
+                    winPercentage: 33,
+                  },
+                  previous: null,
+                  smallSample: true,
+                },
+              ]}
             />
           </ChartFrame>
           <ChartFrame title="Top scorers" subtitle="This Season">
