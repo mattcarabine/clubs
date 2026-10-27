@@ -40,7 +40,7 @@ async function expectRecord(
   await expect(tile(page, "W-D-L")).toHaveText(record.wdl);
   await expect(tile(page, "Goals")).toHaveText(record.goals);
   await expect(tile(page, "Points")).toHaveText(record.points);
-  await expect(tile(page, "DNF")).toHaveText(record.dnf);
+  await expect(tile(page, "Rage quits")).toHaveText(record.dnf);
 }
 
 function filterButton(page: Page, name: string) {
@@ -79,10 +79,10 @@ test("toggling filters updates the URL and the totals", async ({
 
   await page.goto("/test/stats");
 
-  // Defaults: Competitive Matches, DNF included, all dates.
+  // Defaults: Competitive Matches, rage quits included, all dates.
   await expectPressed(page, "League", true);
   await expectPressed(page, "Playoff", true);
-  await expectPressed(page, "Include DNF", true);
+  await expectPressed(page, "Include rage quits", true);
   await expect(dateTrigger(page)).toHaveText("All dates");
   const everything = {
     played: "6",
@@ -92,11 +92,11 @@ test("toggling filters updates the URL and the totals", async ({
     dnf: "1",
   };
   await expectRecord(page, everything);
-  // The DNF Match is counted and flagged.
+  // The rage quit is counted and flagged.
   await expect(
     page
       .getByRole("region", { name: "Matches" })
-      .getByText("DNF", { exact: true }),
+      .getByText("They rage quit", { exact: true }),
   ).toHaveCount(1);
 
   await filterButton(page, "Playoff").click();
@@ -109,7 +109,7 @@ test("toggling filters updates the URL and the totals", async ({
     dnf: "1",
   });
 
-  await filterButton(page, "Include DNF").click();
+  await filterButton(page, "Include rage quits").click();
   await expect.poll(() => searchParam(page, "dnf")).toBe("0");
   await expectRecord(page, {
     played: "4",
@@ -131,7 +131,7 @@ test("toggling filters updates the URL and the totals", async ({
 
   // Back to the defaults: the filter leaves the URL entirely.
   await filterButton(page, "Playoff").click();
-  await filterButton(page, "Include DNF").click();
+  await filterButton(page, "Include rage quits").click();
   await choosePreset(page, "All dates");
   await expect.poll(() => new URL(page.url()).search).toBe("");
   await expectRecord(page, everything);
@@ -153,7 +153,7 @@ test("a filtered URL restores the filter on load", async ({
 
   await expectPressed(page, "Playoff", true);
   await expectPressed(page, "League", false);
-  await expectPressed(page, "Include DNF", false);
+  await expectPressed(page, "Include rage quits", false);
   await expectRecord(page, {
     played: "1",
     wdl: "0-1-0",

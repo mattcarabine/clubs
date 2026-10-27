@@ -373,7 +373,8 @@ function Form({ matches }: { matches: MatchSummary[] }) {
         </dl>
         <p className="text-ink-soft text-sm">
           {record.goalsFor} scored, {record.goalsAgainst} conceded
-          {record.dnf > 0 && `, ${formatCount(record.dnf, "DNF", "DNFs")}`}
+          {record.dnf > 0 &&
+            `, ${formatCount(record.dnf, "rage quit", "rage quits")}`}
         </p>
       </div>
     </section>

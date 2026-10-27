@@ -4,6 +4,7 @@ import {
   isCountedAppearance,
   isPlayedAppearance,
   quitBy,
+  rageQuitLabel,
   weQuit,
 } from "./counted";
 
@@ -18,6 +19,21 @@ describe("quitBy", () => {
   it("is null for a Match played to the end", () => {
     expect(quitBy({ dnf: false, outcome: "L" })).toBeNull();
     expect(weQuit({ dnf: false, outcome: "L" })).toBe(false);
+  });
+});
+
+describe("rageQuitLabel", () => {
+  it("names who rage quit", () => {
+    expect(rageQuitLabel({ dnf: true, outcome: "L" })).toBe("We rage quit");
+    expect(rageQuitLabel({ dnf: true, outcome: "W" })).toBe("They rage quit");
+  });
+
+  it("says only that someone rage quit when EA left it level", () => {
+    expect(rageQuitLabel({ dnf: true, outcome: "D" })).toBe("Rage quit");
+  });
+
+  it("is null for a Match played to the end", () => {
+    expect(rageQuitLabel({ dnf: false, outcome: "W" })).toBeNull();
   });
 });
 

@@ -37,7 +37,13 @@ test("every component section renders", async ({ page }) => {
       .first(),
   ).toBeVisible();
   // CLUBS-31: a hero for every result, and strips of 1 and 6 performers.
-  for (const result of ["Win", "Draw", "Loss", "DNF win", "DNF loss"]) {
+  for (const result of [
+    "Win",
+    "Draw",
+    "Loss",
+    "We rage quit",
+    "They rage quit",
+  ]) {
     await expect(
       section("score-bar").getByText(result, { exact: true }).first(),
     ).toBeVisible();

@@ -65,7 +65,7 @@ test("a loss with far fewer shots than the Wins leads with shots and both values
   // Page filters never change the baseline.
   await page.goto(`/matches/${LOSS_ID}?types=playoff`);
   await expect(panel(page)).toContainText(
-    "Against the average of 3 Wins: Competitive Matches, all time, DNFs included.",
+    "Against the average of 3 Wins: Competitive Matches, all time, rage quits included.",
   );
   await expect(deviations(page).first()).toContainText(
     "10.0 fewer shots per 90 than in a typical Win (2.0 vs 12.0)",
