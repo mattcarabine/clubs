@@ -6,18 +6,24 @@ import {
   SectionHeading,
 } from "~/components";
 import { formatCount, formatDecimal } from "~/lib/number-format";
+import type { ByStrength } from "~/stats/outcome-split";
 import { MIN_FITTED_MATCHES } from "~/stats/win-chance";
 import type { WinChanceAnalysis } from "~/stats/win-chance-query";
+
+import { StrengthPanel } from "./strength";
 
 /**
  * "Win chance" (CLUBS-30): our Wins against the Wins the curve expected, then
  * the filtered Matches' results by band of Skill Rating gap against the Wins
- * expected (CLUBS-69).
+ * expected (CLUBS-69), and by Opponent strength (CLUBS-29) once the Outcome
+ * Split is ready (CLUBS-73).
  */
 export function WinChanceSection({
   winChance,
+  byStrength,
 }: {
   winChance: WinChanceAnalysis;
+  byStrength?: ByStrength;
 }) {
   const { model, bands, unrated, vsExpected } = winChance;
   return (
@@ -79,6 +85,7 @@ export function WinChanceSection({
           >
             <GapBandChart label="Results by Skill Rating gap" bands={bands} />
           </ChartFrame>
+          {byStrength && <StrengthPanel byStrength={byStrength} />}
         </>
       )}
     </section>

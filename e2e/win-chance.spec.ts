@@ -105,7 +105,9 @@ test("Results by rating gap shows each band's Wins, draws and defeats against th
   ]);
 
   await page.goto("/analysis");
-  const chart = section(page).getByRole("figure");
+  const chart = section(page)
+    .getByRole("figure")
+    .filter({ hasText: "Results by rating gap" });
   await expect(chart).toContainText("Results by rating gap");
   for (const key of ["Win", "Draw", "Loss", "Expected Win %"]) {
     await expect(chart.getByText(key, { exact: true })).toBeVisible();
