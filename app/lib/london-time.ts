@@ -85,6 +85,14 @@ export function addCalendarDays(
   return utcCalendarDate(utcMidnight(date) + days * DAY_MS);
 }
 
+/** Days from `from` to `to`: 0 for the same day, negative when `to` is earlier. */
+export function calendarDaysBetween(
+  from: CalendarDate,
+  to: CalendarDate,
+): number {
+  return Math.round((utcMidnight(to) - utcMidnight(from)) / DAY_MS);
+}
+
 /**
  * The moment a London calendar day begins: 00:00 GMT in winter, 23:00 UTC
  * the evening before in BST. The clocks change at 01:00 UTC, never near

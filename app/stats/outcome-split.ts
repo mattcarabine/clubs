@@ -386,6 +386,13 @@ export function timeOfDay(playedAt: Date): (typeof TIME_OF_DAY)[number]["id"] {
   return "late";
 }
 
+/** Win % by kick-off time of day (London), earliest first, skipping empty times. */
+export function splitByTimeOfDay<
+  T extends { outcome: Outcome; playedAt: Date },
+>(matches: readonly T[]): SplitBucket[] {
+  return buckets(matches, TIME_OF_DAY, (m) => timeOfDay(m.playedAt));
+}
+
 export const DAY_TYPES = [
   { id: "weekday", label: "Weekday" },
   { id: "weekend", label: "Weekend" },
@@ -1108,7 +1115,7 @@ export function outcomeSplit(
     withWithout: withWithoutRows,
     bySquadSize: buckets(matches, sizes, squadSizeOf),
     positionOutliers: outliers,
-    byTimeOfDay: buckets(matches, TIME_OF_DAY, (m) => timeOfDay(m.playedAt)),
+    byTimeOfDay: splitByTimeOfDay(matches),
     byDayType: buckets(matches, DAY_TYPES, (m) => dayType(m.playedAt)),
     bySessionPlace: buckets(matches, SESSION_PLACES, (m) =>
       sessionPlaceBucket(m.sessionPlace),
