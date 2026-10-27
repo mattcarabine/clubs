@@ -74,7 +74,9 @@ export default defineConfig({
       // local D1, polling this run's fake EA upstream, writing through its
       // fake Anthropic upstream with a dummy key and posting to its fake Discord.
       // A dummy RELAY_TOKEN opens the home relay's routes (docs/adr/0007).
-      command: `pnpm e2e:server --port ${APP_PORT}`,
+      // An explicit IPv4 host: "localhost" can bind only ::1 (as in CI's
+      // container), which Node's fetch in the relay specs never tries.
+      command: `pnpm e2e:server --host 127.0.0.1 --port ${APP_PORT}`,
       env: {
         EA_BASE_URL: FAKE_EA_BASE_URL,
         ANTHROPIC_BASE_URL: FAKE_ANTHROPIC_URL,

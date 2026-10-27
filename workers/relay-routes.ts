@@ -33,10 +33,9 @@ export async function handleRelayRoute(
   const route = relayRoute(request);
   if (!route || !env.RELAY_TOKEN) return null;
   if (!(await authorised(request, env.RELAY_TOKEN))) {
-    return new Response("Unauthorised", {
-      status: 401,
-      headers: { "WWW-Authenticate": "Bearer" },
-    });
+    // No WWW-Authenticate: undici's fetch (vite preview's proxy to workerd)
+    // sometimes fails on a 401 that carries one.
+    return new Response("Unauthorised", { status: 401 });
   }
   return route(request, env);
 }
