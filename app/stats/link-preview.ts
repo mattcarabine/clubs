@@ -13,6 +13,7 @@ import { joinPreviewFacts, type PagePreview } from "~/lib/page-meta";
 import { firstSentence } from "~/lib/text";
 
 import type { Award } from "./awards";
+import { type QuitInput, rageQuitLabel } from "./counted";
 import type { MatchDetail } from "./matches";
 import { type PerformerTotals, sessionTopPerformer } from "./sessions";
 import type { PlayerTotals, RecordSummary } from "./summaries";
@@ -21,6 +22,12 @@ import {
   type PerformerInput,
   topPerformers,
 } from "./top-performers";
+
+/** "(they rage quit)" after a result, for a Match one side quit; else null. */
+export function rageQuitAside(match: QuitInput): string | null {
+  const label = rageQuitLabel(match);
+  return label && `(${label.toLowerCase()})`;
+}
 
 /** "A Bloo Bloo 3–7 Kebab Over6pack": Our Club first, as on the ScoreBar. */
 export function scoreLine(
@@ -68,9 +75,9 @@ export function matchPreview(
       headline,
       match.matchType,
       formatLondonDateTime(match.playedAt),
-      match.dnf
-        ? `${OUTCOME_LABEL[match.outcome]} (DNF)`
-        : OUTCOME_LABEL[match.outcome],
+      [OUTCOME_LABEL[match.outcome], rageQuitAside(match)]
+        .filter(Boolean)
+        .join(" "),
       top &&
         `Top performer: ${top.name}, ${formatPerformerStat(top, top.rating)}`,
       writeUp && firstSentence(writeUp),

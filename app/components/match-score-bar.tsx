@@ -3,7 +3,7 @@ import { formatOptional, formatPercentage } from "~/lib/number-format";
 import type { MatchSkillRatings, MatchSummary } from "~/stats/matches";
 import type { MatchSides } from "~/stats/summaries";
 
-import { DnfBadge } from "./dnf-badge";
+import { RageQuitBadge } from "./rage-quit-badge";
 import { ScoreBar, type ScoreBarStat } from "./score-bar";
 
 type MatchScoreBarProps = {
@@ -24,8 +24,8 @@ type MatchScoreBarProps = {
 
 /**
  * A ScoreBar for one Match from Our Club's side. The hero groups Match Type,
- * "Full time" or DNF and the kick-off into one tab cluster; compact rows show
- * the Match Type, a DNF badge and the kick-off.
+ * "Full time" or who rage quit and the kick-off into one tab cluster; compact
+ * rows show the Match Type, a rage quit badge and the kick-off.
  */
 export function MatchScoreBar({
   clubName,
@@ -37,7 +37,7 @@ export function MatchScoreBar({
 }: MatchScoreBarProps) {
   const hero = size === "hero";
   let status: ReactNode = null;
-  if (match.dnf) status = <DnfBadge />;
+  if (match.dnf) status = <RageQuitBadge dnf outcome={match.outcome} />;
   else if (hero) status = "Full time";
   const ratings = hero ? skillRatings : undefined;
   const hasRatings =
@@ -65,7 +65,6 @@ export function MatchScoreBar({
         label={match.matchType}
         meta={[status, when]}
         outcome={match.outcome}
-        dnf={match.dnf}
         stats={hero && sides ? keyStats(sides) : undefined}
       />
     </>

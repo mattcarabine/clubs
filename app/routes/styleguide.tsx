@@ -8,7 +8,6 @@ import {
   DataTable,
   type DataTableColumn,
   DateRangePicker,
-  DnfBadge,
   EmptyState,
   FormBadge,
   FormGuide,
@@ -22,6 +21,7 @@ import {
   OutcomeBadge,
   PageHeader,
   PlayerChip,
+  RageQuitBadge,
   ScoreBar,
   SectionHeading,
   SessionHeader,
@@ -126,7 +126,7 @@ const SAMPLE_MILESTONES: MilestoneCardData[] = [
   },
 ];
 
-/** A hero for each result, including both DNF outcomes, as /styleguide shows them. */
+/** A hero for each result, including both rage quits, as /styleguide shows them. */
 const HERO_STATES: {
   name: string;
   matchType: MatchType;
@@ -474,11 +474,14 @@ export default function Styleguide() {
               size="hero"
               label={state.matchType}
               meta={[
-                state.dnf ? <DnfBadge key="dnf" /> : "Full time",
+                state.dnf ? (
+                  <RageQuitBadge key="quit" dnf outcome={state.outcome} />
+                ) : (
+                  "Full time"
+                ),
                 "Sat 17 Oct, 22:49",
               ]}
               outcome={state.outcome}
-              dnf={state.dnf}
               home={{
                 name: "A Bloo Bloo",
                 score: state.score[0],
@@ -490,7 +493,10 @@ export default function Styleguide() {
           <div className="grid gap-3 lg:grid-cols-2">
             <ScoreBar
               label="Playoff"
-              meta={[<DnfBadge key="dnf" />, "Wed 14 Oct, 22:17"]}
+              meta={[
+                <RageQuitBadge key="quit" dnf outcome="L" />,
+                "Wed 14 Oct, 22:17",
+              ]}
               outcome="L"
               home={{ name: "A Bloo Bloo", score: 0, isOurClub: true }}
               away={{ name: "Real Gravesend Rovers Football Club", score: 3 }}
@@ -543,7 +549,7 @@ export default function Styleguide() {
             {
               id: "4",
               headline: "L 0–3",
-              detail: "vs Real Gravesend Rovers (DNF)",
+              detail: "vs Real Gravesend Rovers (we rage quit)",
             },
             { id: "5", headline: "Unbeaten", detail: "in 6 League Matches" },
           ]}
