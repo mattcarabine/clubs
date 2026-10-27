@@ -9,7 +9,7 @@ import {
 function member(
   name: string,
   career: Partial<NonNullable<LeaderCandidate["career"]>> | null = {},
-  perfectRatings = 0,
+  recorded: Partial<NonNullable<LeaderCandidate["recorded"]>> = {},
 ): LeaderCandidate {
   return {
     playerId: name,
@@ -22,7 +22,14 @@ function member(
       averageRating: 7,
       ...career,
     },
-    perfectRatings,
+    recorded: {
+      perfectRatings: 0,
+      tackles: 0,
+      passes: 0,
+      shots: 0,
+      redCards: 0,
+      ...recorded,
+    },
   };
 }
 
@@ -75,7 +82,7 @@ describe("clubLeaders", () => {
 
   it("leaves off anyone with nothing in a stat, and drops a board nobody is on", () => {
     const boards = clubLeaders([
-      member("Scorer", { goals: 3 }, 1),
+      member("Scorer", { goals: 3 }, { perfectRatings: 1 }),
       member("Blank", null),
     ]);
     expect(boards.map((b) => b.stat)).toEqual([
@@ -87,6 +94,22 @@ describe("clubLeaders", () => {
     expect(boards.find((b) => b.stat === "perfect-ratings")?.leaders).toEqual([
       { playerId: "Scorer", name: "Scorer", value: 1, figure: "1" },
     ]);
+  });
+
+  it("puts graft and discipline in their own group, from recorded Appearances", () => {
+    const boards = clubLeaders([
+      member("Hardman", null, { tackles: 40, redCards: 2 }),
+      member("Playmaker", null, { passes: 300, shots: 12, tackles: 10 }),
+    ]);
+    expect(boards.map((b) => [b.stat, b.group])).toEqual([
+      ["tackles", "graft"],
+      ["passes", "graft"],
+      ["shots", "graft"],
+      ["red-cards", "graft"],
+    ]);
+    expect(
+      boards.find((b) => b.stat === "red-cards")?.leaders.map((l) => l.name),
+    ).toEqual(["Hardman"]);
   });
 
   it("returns no boards without candidates", () => {

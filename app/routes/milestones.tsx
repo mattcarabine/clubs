@@ -1,8 +1,9 @@
 /**
  * Milestones (`/milestones`, CLUBS-36, redesigned in CLUBS-51): the club
- * leaders up top, then the latest landmarks, feats and club records, newest
- * first, grouped by Session and then by Match, so each Match's score strip
- * shows once with its Milestones under it. Filter by kind with `?type=` and
+ * leaders up top (the honours, then graft and discipline), then the latest
+ * landmarks, feats and club records, newest first, grouped by Session and
+ * then by Match, so each Match's score strip shows once with its Milestones
+ * under it. Filter by kind with `?type=` and
  * to Our Club or one Squad Member with `?who=`; the two combine. Milestones
  * ignore the stats filter, like EA's totals, so there is no FilterBar.
  */
@@ -92,8 +93,13 @@ export default function Milestones({ loaderData }: Route.ComponentProps) {
         subtitle={`Who leads the club, then the landmarks, standout performances and club records, newest first: the latest ${MILESTONE_PAGE_SIZE} at most`}
       />
       <ClubLeaders
-        boards={leaders}
+        boards={leaders.filter((b) => b.group === "honours")}
         subtitle="EA's career totals; Perfect ratings since tracking began"
+      />
+      <ClubLeaders
+        title="Graft and discipline"
+        boards={leaders.filter((b) => b.group === "graft")}
+        subtitle="Recorded Matches since tracking began"
       />
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:gap-8">
         <FilterLinks

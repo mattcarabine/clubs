@@ -107,7 +107,8 @@ test("the club leaders name the leader and the next two in each stat, linking to
     "Kabeeble",
   );
   await expect(
-    board("Goals").getByRole("list", { name: "Next in Goals" }),
+    // Hidden on phones, where the boards show only the leader.
+    board("Goals").locator('ol[aria-label="Next in Goals"]'),
   ).toHaveText(/^2\s*Loltown95\s*86$/);
   await expect(board("Assists").getByRole("link").first()).toContainText(
     "Loltown95",
@@ -132,6 +133,51 @@ test("the club leaders name the leader and the next two in each stat, linking to
   await expectNoHorizontalScroll(page);
 });
 
+test("graft and discipline lead with tackles, passes, shots and red cards from recorded Matches", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const graft = (
+    tackles: number,
+    passes: number,
+    shots: number,
+    reds: number,
+  ) => ({
+    tacklesmade: String(tackles),
+    passesmade: String(passes),
+    shots: String(shots),
+    redcards: String(reds),
+  });
+  await serveMatch(fakeEa, "937200000000001", 60, [
+    { player: KAB, stats: graft(2, 30, 6, 1) },
+    { player: LOL, stats: graft(9, 50, 1, 0) },
+  ]);
+  await serveMatch(fakeEa, "937200000000002", 30, [
+    { player: KAB, stats: graft(1, 20, 5, 1) },
+    { player: LOL, stats: graft(8, 45, 2, 0) },
+  ]);
+  await triggerPoll();
+
+  await page.goto("/milestones");
+  const section = page.getByRole("region", { name: "Graft and discipline" });
+  const board = (label: string) =>
+    section
+      .getByRole("listitem")
+      .filter({ has: page.getByRole("heading", { name: label, exact: true }) });
+  await expect(board("Tackles")).toHaveText(
+    /^Tackles\s*17\s*Loltown95\s*2\s*Kabeeble\s*3$/,
+  );
+  await expect(board("Passes")).toHaveText(
+    /^Passes\s*95\s*Loltown95\s*2\s*Kabeeble\s*50$/,
+  );
+  await expect(board("Shots")).toHaveText(
+    /^Shots\s*11\s*Kabeeble\s*2\s*Loltown95\s*3$/,
+  );
+  // Nobody with no red cards is on that board.
+  await expect(board("Red cards")).toHaveText(/^Red cards\s*2\s*Kabeeble$/);
+});
+
 test("with nothing recorded, there are no leaders and the empty state says what will fill the page", async ({
   page,
 }) => {
@@ -139,6 +185,9 @@ test("with nothing recorded, there are no leaders and the empty state says what 
   await expect(page.getByRole("region", { name: "Club leaders" })).toHaveCount(
     0,
   );
+  await expect(
+    page.getByRole("region", { name: "Graft and discipline" }),
+  ).toHaveCount(0);
   await expect(page.getByRole("main")).toContainText("No Milestones yet");
 });
 

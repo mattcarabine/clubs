@@ -132,6 +132,7 @@ const SAMPLE_MILESTONES: MilestoneCardData[] = [
 const SAMPLE_LEADERS: LeaderBoard[] = [
   {
     stat: "goals",
+    group: "honours",
     label: "Goals",
     leaders: [
       { playerId: "sg-1", name: "Kopite Kev", value: 98, figure: "98" },
@@ -141,6 +142,7 @@ const SAMPLE_LEADERS: LeaderBoard[] = [
   },
   {
     stat: "average-rating",
+    group: "honours",
     label: "Average rating",
     leaders: [
       { playerId: "sg-2", name: "Wingback Wes", value: 7.9, figure: "7.9" },
@@ -149,6 +151,7 @@ const SAMPLE_LEADERS: LeaderBoard[] = [
   },
   {
     stat: "perfect-ratings",
+    group: "honours",
     label: "Perfect ratings",
     leaders: [{ playerId: "sg-1", name: "Kopite Kev", value: 2, figure: "2" }],
   },
