@@ -33,7 +33,7 @@ function groupColumn(
 const STAT_COLUMNS: DataTableColumn<PositionGroupSplit>[] = [
   {
     id: "apps",
-    header: "Apps",
+    header: "Played",
     align: "right",
     cell: (r) => r.appearances,
     sortValue: (r) => r.appearances,

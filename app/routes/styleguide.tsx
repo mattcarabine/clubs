@@ -367,7 +367,7 @@ const SQUAD_COLUMNS: DataTableColumn<SquadRow>[] = [
   },
   {
     id: "apps",
-    header: "Apps",
+    header: "Played",
     cell: (r) => r.apps,
     sortValue: (r) => r.apps,
     align: "right",

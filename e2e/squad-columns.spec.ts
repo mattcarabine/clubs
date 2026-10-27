@@ -12,7 +12,7 @@ const DEFAULT_HEADERS = [
   "G+A",
   "Rating",
   "Form",
-  "Apps",
+  "Played",
   "Vs team",
   "G",
   "A",
@@ -204,7 +204,7 @@ test("EA totals keep their own column layout", async ({ page }) => {
   await expect(header(page, "Rating")).toHaveCount(0);
 
   await page.goto("/squad?source=ea");
-  await expect(header(page, "GP")).toBeVisible();
+  await expect(header(page, "Played")).toBeVisible();
   await expect(header(page, "Rating")).toBeVisible();
   await expect(columnsChip(page)).toHaveText(/^Columns$/);
 });
@@ -216,17 +216,17 @@ test.describe("on desktop", () => {
     page,
   }) => {
     await page.goto("/squad");
-    // Wait for hydration once: a second drag would move Apps back past G+A.
+    // Wait for hydration once: a second drag would move Played back past G+A.
     await openPicker(page);
     await page.keyboard.press("Escape");
     await expect(picker(page)).toBeHidden();
 
-    await header(page, "Apps").dragTo(header(page, "G+A"));
+    await header(page, "Played").dragTo(header(page, "G+A"));
     await expect
       .poll(async () => (await headers(page)).slice(0, 3))
-      .toEqual(["Squad Member", "Apps", "G+A"]);
+      .toEqual(["Squad Member", "Played", "G+A"]);
     // The drop did not also sort by the dragged column.
-    await expect(header(page, "Apps")).not.toHaveAttribute(
+    await expect(header(page, "Played")).not.toHaveAttribute(
       "aria-sort",
       "ascending",
     );
@@ -234,7 +234,7 @@ test.describe("on desktop", () => {
     await page.reload();
     await expect
       .poll(async () => (await headers(page)).slice(0, 3))
-      .toEqual(["Squad Member", "Apps", "G+A"]);
+      .toEqual(["Squad Member", "Played", "G+A"]);
   });
 });
 

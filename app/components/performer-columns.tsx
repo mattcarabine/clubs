@@ -23,7 +23,7 @@ export const PERFORMER_COLUMNS: DataTableColumn<LeaderboardRow>[] = [
     sortValue: (p) => p.name,
     firstSort: "asc",
   },
-  numberColumn("appearances", "Apps", (p) => p.appearances),
+  numberColumn("appearances", "Played", (p) => p.appearances),
   numberColumn("goals", "G", (p) => p.goals),
   numberColumn("assists", "A", (p) => p.assists),
   numberColumn("goalContributions", "G+A", (p) => p.goalContributions),

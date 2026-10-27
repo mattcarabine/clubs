@@ -1486,7 +1486,7 @@ export const PLAYER_SPLIT_STATS: readonly PlayerSplitStat[] = [
   {
     id: "apps",
     label: "Appearances",
-    short: "Apps",
+    short: "Played",
     value: (t) => t.appearances,
     format: (v) => String(v ?? 0),
   },

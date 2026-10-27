@@ -476,7 +476,7 @@ const KEY: readonly [string, string][] = [
 ];
 
 const EA_KEY: readonly [string, string][] = [
-  ["GP", "Games played this Season, as EA counts them"],
+  ["Played", "Games played this Season, as EA counts them"],
   ["G / A", "Goals / assists"],
   ["Shot %", "Shot success, as EA rates it"],
   ["Tkl %", "Tackle success"],
@@ -591,8 +591,8 @@ function recordedStat(
 /** Full names for the abbreviated headers, shown in the Columns picker. */
 const COLUMN_LABELS: Readonly<Record<string, string>> = {
   "G+A": "Goal contributions",
+  Played: "Appearances",
   Rating: "Average rating",
-  Apps: "Appearances",
   "Vs team": "Rating against teammates",
   G: "Goals",
   A: "Assists",
@@ -607,7 +607,6 @@ const COLUMN_LABELS: Readonly<Record<string, string>> = {
   Red: "Red cards",
   "Red/90": "Red cards per 90",
   Recent: "Biggest recent change",
-  GP: "Games played",
   "Shot %": "Shot success",
   "Win %": "Win rate",
 };
@@ -631,7 +630,7 @@ const COLUMNS = withLabels<LeaderboardRow>([
     ...recordedStat("form", "Form", (r) => r.form),
     cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
   },
-  recordedStat("apps", "Apps", (r) => r.appearances),
+  recordedStat("apps", "Played", (r) => r.appearances),
   recordedStat("vsTeam", "Vs team", (r) => r.vsTeam, formatSignedDecimal),
   recordedStat("goals", "G", (r) => r.goals),
   recordedStat("assists", "A", (r) => r.assists),
@@ -686,7 +685,7 @@ const EA_COLUMNS = withLabels<EaMemberTotals>([
   nameColumn(),
   stat("ga", "G+A", season(goalContributions)),
   seasonStat("rating", "Rating", "averageRating", formatDecimal),
-  seasonStat("games", "GP", "gamesPlayed"),
+  seasonStat("games", "Played", "gamesPlayed"),
   seasonStat("pass", "Pass %", "passSuccessRate", formatPercentage),
   seasonStat("goals", "G", "goals"),
   seasonStat("assists", "A", "assists"),

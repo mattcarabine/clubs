@@ -160,7 +160,7 @@ export function DataTable<T>({
                       onPointerDown: startDrag(column.id),
                     })}
                     className={[
-                      "border-shale-700 border-b bg-shale-800 px-2 py-2 font-display font-bold text-base text-ink-muted uppercase leading-tight tracking-wide first:pl-3 sm:px-3",
+                      "border-shale-700 border-b bg-shale-800 px-1.5 py-2 font-display font-bold text-base text-ink-muted uppercase leading-tight tracking-wide first:pl-3 sm:px-3",
                       alignClass(column.align),
                       // The pinned header may wrap on phones, so a long label
                       // ("Squad Member") never widens the pinned column.
@@ -207,7 +207,7 @@ export function DataTable<T>({
                         key={column.id}
                         scope={i === 0 ? "row" : undefined}
                         className={[
-                          "whitespace-nowrap border-shale-700 border-b px-2 py-2.5 group-last:border-b-0 group-hover:bg-shale-800 first:pl-3 sm:px-3",
+                          "whitespace-nowrap border-shale-700 border-b px-1.5 py-2.5 group-last:border-b-0 group-hover:bg-shale-800 first:pl-3 sm:px-3",
                           alignClass(column.align),
                           i === 0
                             ? `${rowHeaderClass(highlighted)} ${href ? LINKED_ROW_HEADER : ""}`

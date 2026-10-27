@@ -162,10 +162,10 @@ test("the Squad table counts only Appearances in the selected Position Groups", 
     "aria-pressed",
     "true",
   );
-  await expect(await squadCell(page, MIXER.name, "Apps")).toHaveText("5");
+  await expect(await squadCell(page, MIXER.name, "Played")).toHaveText("5");
   await expect(await squadCell(page, MIXER.name, "G")).toHaveText("7");
   // Keeper never played there: still listed, but every figure is "–".
-  for (const header of ["Apps", "G", "Rating", "Form", "Saves"]) {
+  for (const header of ["Played", "G", "Rating", "Form", "Saves"]) {
     await expect(await squadCell(page, KEEPER.name, header)).toHaveText("–");
   }
   await expect(
@@ -173,7 +173,7 @@ test("the Squad table counts only Appearances in the selected Position Groups", 
   ).toBeVisible();
 
   await choose(page, "Midfielder", "forward");
-  await expect(await squadCell(page, MIXER.name, "Apps")).toHaveText("2");
+  await expect(await squadCell(page, MIXER.name, "Played")).toHaveText("2");
   await expect(await squadCell(page, MIXER.name, "G")).toHaveText("4");
 });
 
@@ -190,8 +190,8 @@ test("with no Position Group selected the Squad table is unfiltered", async ({
       "aria-pressed",
       "true",
     );
-    await expect(await squadCell(page, MIXER.name, "Apps")).toHaveText("5");
-    await expect(await squadCell(page, KEEPER.name, "Apps")).toHaveText("5");
+    await expect(await squadCell(page, MIXER.name, "Played")).toHaveText("5");
+    await expect(await squadCell(page, KEEPER.name, "Played")).toHaveText("5");
   }
 });
 
