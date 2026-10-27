@@ -136,7 +136,7 @@ test("Matches land under their exact count, band and our numbers, and small coun
   ).toBeVisible();
 });
 
-test("each group shows how often we and the Opponent quit", async ({
+test("each group shows how often we and the Opponent rage quit", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -151,8 +151,17 @@ test("each group shows how often we and the Opponent quit", async ({
   ]);
 
   await page.goto("/analysis");
-  const muchMore = section(page)
-    .getByRole("table", { name: "Results against our numbers" })
+  const againstOurs = section(page).getByRole("table", {
+    name: "Results against our numbers",
+  });
+  await expect(
+    againstOurs.getByRole("columnheader", { name: "We rage quit" }),
+  ).toBeVisible();
+  await expect(
+    againstOurs.getByRole("columnheader", { name: "They rage quit" }),
+  ).toBeVisible();
+  await expect(section(page)).not.toContainText(/\bDNF\b|We quit|They quit/);
+  const muchMore = againstOurs
     .locator("tbody tr")
     .filter({ has: page.getByRole("rowheader", { name: "Much more" }) });
   await expect(muchMore.locator("td")).toContainText([
