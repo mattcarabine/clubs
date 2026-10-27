@@ -637,9 +637,9 @@ function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
         scope="row"
         className={`sticky left-0 z-10 whitespace-nowrap border-shale-700 border-b bg-shale-900 px-3 py-2.5 text-left font-semibold text-ink shadow-[1px_0_0_var(--color-shale-700)] group-hover:bg-shale-800 ${href ? LINKED_ROW_HEADER : ""}`}
       >
-        {/* On phones a rage quit or red card tag goes under the name, so it never widens the pinned column. */}
+        {/* On phones a quitter's tag goes under the name, so it never widens the pinned column. */}
         <span
-          className={`flex gap-2 ${quit || sentOff ? "flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2" : "items-center"}`}
+          className={`flex gap-2 ${quit ? "flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2" : "items-center"}`}
         >
           {href ? (
             <Link to={href} className={ROW_HEADER_LINK}>
@@ -648,12 +648,8 @@ function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
           ) : (
             <span>{a.name}</span>
           )}
-          {(a.manOfTheMatch || sentOff) && (
-            <span className="flex items-center gap-2">
-              {a.manOfTheMatch && <MotmMarker />}
-              {sentOff && <RedCardMarker />}
-            </span>
-          )}
+          {a.manOfTheMatch && <MotmMarker />}
+          {sentOff && <RedCardIcon />}
           {quit && <Tag tone="warning">Rage quit</Tag>}
         </span>
       </th>
@@ -680,10 +676,14 @@ function MotmMarker() {
   );
 }
 
-function RedCardMarker() {
+/** A small upright red card, tilted as if shown by the referee; named for screen readers. */
+function RedCardIcon() {
   return (
-    <span className="clip-slant bg-loss px-2 py-0.5 font-display font-extrabold text-shale-950 text-xs uppercase leading-none [--slant:0.25rem]">
-      Red card
-    </span>
+    <span
+      role="img"
+      aria-label="Red card"
+      title="Sent off"
+      className="inline-block h-4 w-3 shrink-0 rotate-6 rounded-[2px] bg-loss"
+    />
   );
 }
