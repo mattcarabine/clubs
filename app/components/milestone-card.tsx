@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
 import { playerPath, sessionPath } from "~/lib/paths";
+import { isSinceRecordsBegan } from "~/stats/milestones";
 import type { MilestoneEntry } from "~/stats/milestones-query";
 
 import { LondonTime } from "./london-time";
@@ -39,7 +40,8 @@ type MilestoneCardProps = {
  * One Milestone: its figure as a scoreboard numeral, a badge for its kind,
  * the headline and the comment, then the Match it came in as a compact
  * score strip. Our Club's Milestones have a club-blue rule, badge and figure
- * panel; a Squad Member's are rave green. Records say "Since records began".
+ * panel; a Squad Member's are rave green. Streaks and records say "Since
+ * records began".
  */
 export function MilestoneCard({
   clubName,
@@ -146,7 +148,7 @@ function MilestoneBody({
           >
             {isClub ? `Club ${milestone.badge}` : milestone.badge}
           </span>
-          {milestone.category === "record" && (
+          {isSinceRecordsBegan(milestone.category) && (
             <Tag tone="warning">Since records began</Tag>
           )}
         </div>

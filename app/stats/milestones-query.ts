@@ -170,7 +170,7 @@ export interface MilestoneEntry extends MilestoneFigures {
 export interface MilestoneQuery {
   /** Our Club's Milestones, or one Squad Member's; everyone's when absent. */
   who?: "club" | { playerId: string };
-  /** Only landmarks, feats or records (CLUBS-51); every kind when absent. */
+  /** Only landmarks, feats, streaks or records (CLUBS-51); every kind when absent. */
   category?: MilestoneCategory;
   /** Only these Matches' (at most 90, for D1's bound-parameter cap), e.g. a Session's. */
   matchIds?: readonly string[];

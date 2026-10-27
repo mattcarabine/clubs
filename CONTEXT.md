@@ -174,8 +174,12 @@ The sign-off on advice aimed at one Squad Member, such as their Coaching notes.
 _Avoid_: Coach, manager, AI coach
 
 **Milestone**:
-A notable achievement by Our Club or a Squad Member, reached in a specific Match: a landmark in EA's career totals (a 50th goal, a 100th Win) or in the recorded Appearances (a 5th Perfect rating), a one-Match feat (a hat-trick, a Perfect rating) or a club record. Records and recorded counts cover only recorded Matches, so they are "since records began". There are no Goalkeeper Milestones: the AI keeps goal.
+A notable achievement by Our Club or a Squad Member, reached in a specific Match: a landmark in EA's career totals (a 50th goal, a 100th Win) or in the recorded Appearances (a 5th Perfect rating), a one-Match feat (a hat-trick, a Perfect rating), a Streak or a club record (biggest Win, biggest defeat). Streaks, records and recorded counts cover only recorded Matches, so they are "since records began". A Rage Quit sets no scoreline record, since EA awards or cuts short its score, but counts by its result in a Streak. There are no Goalkeeper Milestones: the AI keeps goal.
 _Avoid_: Achievement, award, badge
+
+**Streak**:
+A run longer than any before it since records began, as a Milestone on the Match that broke the old best: Our Club's Matches in a row won, unbeaten or without a Win, or a Squad Member's counted Appearances in a row with a goal, an assist or Man of the Match. A Squad Member's run skips Appearances that aren't counted and Matches they missed.
+_Avoid_: Run (in UI copy), sequence
 
 **Perfect rating**:
 A Match rating of 10.0, EA's highest. It is the only rating that makes a Milestone.

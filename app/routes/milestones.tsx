@@ -1,7 +1,7 @@
 /**
  * Milestones (`/milestones`, CLUBS-36, redesigned in CLUBS-51): the club
  * leaders up top (the honours, then graft and discipline), then the latest
- * landmarks, feats and club records, newest first, grouped by Session and
+ * landmarks, feats, streaks and records, newest first, grouped by Session and
  * then by Match, so each Match's score strip shows once with its Milestones
  * under it. Filter by kind with `?type=` and
  * to Our Club or one Squad Member with `?who=`; the two combine. Milestones
@@ -42,6 +42,7 @@ const CLUB = "club";
 const TYPES: readonly { type: MilestoneCategory; label: string }[] = [
   { type: "landmark", label: "Landmarks" },
   { type: "feat", label: "Feats" },
+  { type: "streak", label: "Streaks" },
   { type: "record", label: "Records" },
 ];
 
@@ -49,7 +50,7 @@ export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
     title: "A Bloo Bloo — Milestones",
     description:
-      "The club's leaders, then landmarks, standout performances and club records, Session by Session.",
+      "The club's leaders, then landmarks, standout performances, streaks and club records, Session by Session.",
     path: location.pathname,
   });
 }

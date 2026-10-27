@@ -463,6 +463,136 @@ describe("club records", () => {
   });
 });
 
+describe("CLUBS-63 club streaks and biggest defeat", () => {
+  /** Matches a day apart (a Session each), as `m0`, `m1`, ... */
+  function daily(
+    results: [Outcome, number, number, boolean?][],
+  ): DetectionMatch[] {
+    return results.map(([outcome, gf, ga, dnf = false], i) => ({
+      ...match(0, outcome, gf, ga),
+      matchId: `m${i}`,
+      playedAt: new Date(T0 + i * DAY),
+      dnf,
+    }));
+  }
+  /**
+   * Five Matches before records count: a 1-goal defeat, best Win and
+   * unbeaten runs of 2, ending on a draw (winless in 1).
+   */
+  const OPENING: [Outcome, number, number][] = [
+    ["W", 2, 1],
+    ["W", 2, 1],
+    ["L", 1, 2],
+    ["W", 2, 1],
+    ["D", 1, 1],
+  ];
+  const found = (rest: [Outcome, number, number, boolean?][]) =>
+    detectMilestones(input({ matches: daily([...OPENING, ...rest]) })).map(
+      (m) => [m.kind, m.value, m.threshold, m.matchId],
+    );
+
+  it("finds a record winless run and a record defeat", () => {
+    expect(
+      found([
+        ["L", 0, 3],
+        ["D", 0, 0],
+      ]),
+    ).toEqual([
+      ["record-defeat-margin", 3, 1, "m5"],
+      ["record-winless-run", 2, 1, "m5"],
+    ]);
+  });
+
+  it("counts a Rage Quit by its result in a run", () => {
+    // We quit (a loss) extends the winless run; they quit (a Win) ends it
+    // and starts a Win run.
+    expect(
+      found([
+        ["L", 0, 3, true],
+        ["W", 3, 0, true],
+        ["W", 2, 1],
+        ["W", 2, 1],
+      ]),
+    ).toEqual([
+      ["record-winless-run", 2, 1, "m5"],
+      ["record-unbeaten-run", 3, 2, "m8"],
+      ["record-win-run", 3, 2, "m8"],
+    ]);
+  });
+
+  it("sets no scoreline record from a Rage Quit", () => {
+    const scorelines = (rest: [Outcome, number, number, boolean?][]) =>
+      found(rest).filter(([kind]) => !String(kind).endsWith("-run"));
+    expect(scorelines([["W", 7, 0, true]])).toEqual([]);
+    expect(scorelines([["L", 0, 5, true]])).toEqual([]);
+  });
+});
+
+describe("CLUBS-63 Squad Member streaks", () => {
+  const streaks = (
+    matches: DetectionMatch[],
+    appearances: DetectionAppearance[],
+  ) =>
+    detectMilestones(input({ matches, appearances }))
+      .filter((m) => m.subject === "player")
+      .map((m) => [m.kind, m.playerId, m.value, m.threshold, m.matchId]);
+
+  it("fires once a run reaches its minimum, and again only past their own best", () => {
+    const matches = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => match(i));
+    const scored = [0, 1, 2, 4, 5, 6, 7];
+    const appearances = matches.map((m, i) =>
+      appearance(m.matchId, KAB, { goals: scored.includes(i) ? 1 : 0 }),
+    );
+    expect(streaks(matches, appearances)).toEqual([
+      ["scoring-run", KAB, 3, 0, "m2"],
+      ["scoring-run", KAB, 4, 3, "m7"],
+    ]);
+  });
+
+  it("skips Appearances that aren't counted and Matches they missed", () => {
+    const matches = [
+      match(0),
+      match(1),
+      { ...match(2, "L", 0, 3), dnf: true },
+      match(3),
+      match(4),
+    ];
+    const appearances = [
+      appearance("m0", KAB, { assists: 1 }),
+      // m1: missed. m2: we quit. m3: 0 minutes.
+      appearance("m2", KAB, { assists: 0 }),
+      appearance("m3", KAB, { assists: 0, secondsPlayed: 0 }),
+      appearance("m4", KAB, { assists: 1 }),
+      appearance("m0", LOL, { manOfTheMatch: true }),
+      appearance("m1", LOL, { manOfTheMatch: true }),
+    ];
+    expect(streaks(matches, appearances)).toEqual([
+      ["motm-run", LOL, 2, 0, "m1"],
+    ]);
+    appearances.push(appearance("m5", KAB, { assists: 1 }));
+    expect(
+      streaks([...matches, match(5)], appearances).map((s) => s.slice(0, 3)),
+    ).toEqual([
+      ["motm-run", LOL, 2],
+      ["assist-run", KAB, 3],
+    ]);
+  });
+
+  it("reads a streak as a run, since records began", () => {
+    const figures = { value: 4, threshold: 3, positionGroup: null };
+    expect(milestoneHeadline("scoring-run", "Kabeeble", figures)).toBe(
+      "Kabeeble — Scored in 4 in a row",
+    );
+    expect(milestoneHeadline("motm-run", "Kabeeble", figures)).toBe(
+      "Kabeeble — Man of the Match 4 in a row",
+    );
+    expect(MILESTONE_KINDS["scoring-run"].sentence("Kabeeble", figures)).toBe(
+      "Kabeeble scored in 4 Matches in a row, their best run since records began.",
+    );
+    expect(MILESTONE_KINDS["record-defeat-margin"].figure(figures)).toBe("−4");
+  });
+});
+
 describe("detection", () => {
   it("gives the same Milestones every run", () => {
     const data = input({
