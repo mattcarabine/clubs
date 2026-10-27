@@ -75,7 +75,7 @@ async function starAppearances(page: Page) {
 /** The Analysis page's "Not enough Matches yet" text, which counts the filtered Wins and Dropped Points. */
 function analysisNeeds(page: Page, needed: string) {
   return page.getByText(
-    `The Outcome Split needs at least 3 Wins and 3 Dropped Points in these filters: ${needed}.`,
+    `The Outcome Split needs at least 3 Wins and 3 draws and defeats in these filters: ${needed}.`,
   );
 }
 
@@ -128,15 +128,13 @@ test("This Campaign and Last Campaign limit the Analysis page", async ({
   await expect.poll(() => searchParam(page, "campaign")).toBe("current");
   // L D: no Wins, 2 Dropped Points.
   await expect(
-    analysisNeeds(page, "3 more Wins and 1 more Match with Dropped Points"),
+    analysisNeeds(page, "3 more Wins and 1 more draw or defeat"),
   ).toBeVisible();
 
   await campaignChip(page, "Last Campaign").click();
   await expect.poll(() => searchParam(page, "campaign")).toBe("previous");
   // W W D W: 3 Wins and 1 Dropped Points.
-  await expect(
-    analysisNeeds(page, "2 more Matches with Dropped Points"),
-  ).toBeVisible();
+  await expect(analysisNeeds(page, "2 more draws or defeats")).toBeVisible();
 });
 
 test("?campaign= deep links select a Campaign, and an unknown one falls back to all", async ({

@@ -4,10 +4,12 @@
  *
  * - A player who drops out of a Match is recorded with 0 seconds played and
  *   a 3.0 rating. That Appearance is never counted, anywhere.
- * - In a Match we rage quit (a DNF loss), EA keeps almost nothing for our
- *   side: most Squad Members show 0 shots and 0/0 passes. Our Appearances
- *   in it are left out of every stat, comparison, baseline, per-90 and best
- *   or worst. The Match itself still counts in records and form.
+ * - In a Match one side rage quit, EA keeps almost nothing for the side
+ *   that quit: most of its players show 0 shots and 0/0 passes. Our
+ *   Appearances in a Match we quit are left out of every stat, comparison,
+ *   baseline, per-90 and best or worst, and so are the Opponent's club
+ *   totals in a Match they quit (CLUBS-56). The Match itself still counts
+ *   in records and form.
  *
  * Every Rage Quit (EA's DNF) has a side that quit: a DNF loss means we quit,
  * a DNF Win means the Opponent did.
@@ -53,6 +55,11 @@ export function weQuit(match: QuitInput): boolean {
   return quitBy(match) === "us";
 }
 
+/** Whether one side's stats in a Match count: not when that side rage quit. */
+export function countsStatsOf(side: QuitBy, match: QuitInput): boolean {
+  return quitBy(match) !== side;
+}
+
 /** Whether an Appearance has any minutes: a dropped-out player's has none. */
 export function isPlayedAppearance(a: { secondsPlayed: number }): boolean {
   return a.secondsPlayed > 0;
@@ -65,5 +72,5 @@ export function isPlayedAppearance(a: { secondsPlayed: number }): boolean {
 export function isCountedAppearance(
   a: { secondsPlayed: number } & QuitInput,
 ): boolean {
-  return isPlayedAppearance(a) && !weQuit(a);
+  return isPlayedAppearance(a) && countsStatsOf("us", a);
 }

@@ -65,14 +65,14 @@ test("with no Matches it says how many more are needed and shows no findings", a
   await page.goto("/analysis");
   await expect(page.getByText("Not enough Matches yet")).toBeVisible();
   await expect(
-    page.getByText("3 more Wins and 3 more Matches with Dropped Points", {
+    page.getByText("3 more Wins and 3 more draws or defeats", {
       exact: false,
     }),
   ).toBeVisible();
   await expect(region(page, "Top findings")).toHaveCount(0);
 });
 
-test("with fewer than 3 Dropped Points it says how many more are needed", async ({
+test("with fewer than 3 draws or defeats it says how many more are needed", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -87,9 +87,7 @@ test("with fewer than 3 Dropped Points it says how many more are needed", async 
 
   await page.goto("/analysis");
   await expect(page.getByText("Not enough Matches yet")).toBeVisible();
-  await expect(
-    page.getByText(": 1 more Match with Dropped Points."),
-  ).toBeVisible();
+  await expect(page.getByText(": 1 more draw or defeat.")).toBeVisible();
   await expect(findings(page)).toHaveCount(0);
 });
 
@@ -110,9 +108,10 @@ test("the top finding names shots with both per-90 values and the counts", async
   await page.goto("/analysis");
   const top = findings(page).first();
   await expect(top).toContainText(
-    "In Dropped Points we take 3.0 fewer shots per 90 (9.0 vs 12.0)",
+    "In draws and defeats we take 3.0 fewer shots per 90 than in Wins (9.0 vs 12.0)",
   );
-  await expect(top).toContainText("3 Wins, 3 Dropped Points");
+  await expect(top).toContainText("3 Wins, 3 draws and defeats");
+  await expect(top).not.toContainText("Dropped Points");
   await expect(top).toContainText("Small sample");
 });
 
@@ -131,15 +130,13 @@ test("draws count as Dropped Points and DNF Matches count by their outcome", asy
 
   // 3 Wins (one a DNF) and 2 Dropped Points (a draw and a DNF loss).
   await page.goto("/analysis");
-  await expect(
-    page.getByText(": 1 more Match with Dropped Points."),
-  ).toBeVisible();
+  await expect(page.getByText(": 1 more draw or defeat.")).toBeVisible();
 
   await fakeEa.addMatch(draw(daysAgo(1)));
   await triggerPoll();
   await page.reload();
   await expect(region(page, "Top findings")).toContainText(
-    "3 Wins and 3 Dropped Points",
+    "3 Wins and 3 draws and defeats",
   );
 });
 
@@ -158,7 +155,7 @@ test("a DNF stopped at 45 minutes adds per-90 values, not raw totals", async ({
   await page.goto("/analysis");
   const shots = tableRow(
     page,
-    "Performance in Wins and Dropped Points",
+    "Performance in Wins against draws and defeats",
     "Shots per 90",
   );
   await expect(shots.getByRole("cell").nth(0)).toHaveText("10.0");
@@ -179,8 +176,10 @@ test("findings from 10 Matches a side drop the Small sample mark", async ({
 
   await page.goto("/analysis");
   const top = findings(page).first();
-  await expect(top).toContainText("fewer shots per 90 (9.0 vs 12.0)");
-  await expect(top).toContainText("10 Wins, 10 Dropped Points");
+  await expect(top).toContainText(
+    "fewer shots per 90 than in Wins (9.0 vs 12.0)",
+  );
+  await expect(top).toContainText("10 Wins, 10 draws and defeats");
   await expect(top).not.toContainText("Small sample");
 });
 
@@ -371,19 +370,19 @@ test("each FilterBar dimension changes the results", async ({
   ]);
 
   await page.goto("/analysis");
-  await expect(summary()).toContainText("4 Wins and 5 Dropped Points");
+  await expect(summary()).toContainText("4 Wins and 5 draws and defeats");
 
   await page.goto("/analysis?types=league");
-  await expect(summary()).toContainText("4 Wins and 4 Dropped Points");
+  await expect(summary()).toContainText("4 Wins and 4 draws and defeats");
 
   await page.goto("/analysis?dnf=0&types=playoff");
   await expect(page.getByText("Not enough Matches yet")).toBeVisible();
 
   await page.goto("/analysis?dnf=0");
-  await expect(summary()).toContainText("4 Wins and 4 Dropped Points");
+  await expect(summary()).toContainText("4 Wins and 4 draws and defeats");
 
   await page.goto("/analysis?range=30d");
-  await expect(summary()).toContainText("3 Wins and 5 Dropped Points");
+  await expect(summary()).toContainText("3 Wins and 5 draws and defeats");
 
   await page.goto("/analysis?season=2");
   await expect(page.getByText("Not enough Matches yet")).toBeVisible();
@@ -400,7 +399,11 @@ test("the Position Group filter changes only the per-player section", async ({
   const outcomeSplit = region(page, "Outcome Split");
   const before = await outcomeSplit.textContent();
   const star = () =>
-    tableRow(page, "Squad Members in Wins and Dropped Points", STAR.name);
+    tableRow(
+      page,
+      "Squad Members in Wins against draws and defeats",
+      STAR.name,
+    );
   await expect(star().getByRole("cell").nth(0)).toHaveText("3"); // Apps W
   await expect(star().getByRole("cell").nth(1)).toHaveText("3"); // Apps DP
 
@@ -420,7 +423,11 @@ test("the Position Group filter changes only the per-player section", async ({
   await expect(star().getByRole("cell").nth(1)).toHaveText("1");
   // Rock only kept goal, so drops out of the table.
   await expect(
-    tableRow(page, "Squad Members in Wins and Dropped Points", ROCK.name),
+    tableRow(
+      page,
+      "Squad Members in Wins against draws and defeats",
+      ROCK.name,
+    ),
   ).toHaveCount(0);
   // Everything else is unchanged.
   expect(await outcomeSplit.textContent()).toBe(before);
@@ -575,7 +582,7 @@ test.describe("After a result (CLUBS-26)", () => {
     await expect(region(page, "After a result")).toBeVisible();
     await expect(afterResultBars(page, "Any next Match")).toHaveText([
       /^After a Win \(5\)\s*20%$/,
-      /^After Dropped Points \(4\)\s*75%$/,
+      /^After a draw or defeat \(4\)\s*75%$/,
     ]);
   });
 
@@ -601,14 +608,14 @@ test.describe("After a result (CLUBS-26)", () => {
     await page.goto("/analysis");
     await expect(afterResultBars(page, "Any next Match")).toHaveText([
       /^After a Win \(6\)\s*33%$/,
-      /^After Dropped Points \(4\)\s*100%$/,
+      /^After a draw or defeat \(4\)\s*100%$/,
     ]);
 
     // League only skips the Playoffs: W→L three times, L→W twice and L→L.
     await page.goto("/analysis?types=league");
     await expect(afterResultBars(page, "Any next Match")).toHaveText([
       /^After a Win \(3\)\s*0%$/,
-      /^After Dropped Points \(3\)\s*67%$/,
+      /^After a draw or defeat \(3\)\s*67%$/,
     ]);
   });
 
@@ -629,12 +636,12 @@ test.describe("After a result (CLUBS-26)", () => {
     // Within Sessions: W→L four times, L→W three times.
     await expect(afterResultBars(page, "Same Session")).toHaveText([
       /^After a Win \(4\)\s*0%$/,
-      /^After Dropped Points \(3\)\s*100%$/,
+      /^After a draw or defeat \(3\)\s*100%$/,
     ]);
     // Any next Match adds the pairs across Sessions: L→L, W→W and the L→W 2 hours on.
     await expect(afterResultBars(page, "Any next Match")).toHaveText([
       /^After a Win \(5\)\s*20%$/,
-      /^After Dropped Points \(5\)\s*80%$/,
+      /^After a draw or defeat \(5\)\s*80%$/,
     ]);
   });
 
@@ -653,16 +660,16 @@ test.describe("After a result (CLUBS-26)", () => {
     await expect(afterResultBars(page, "Same Session")).toHaveCount(0);
     await expect(
       section.getByText(
-        "Needs at least 3 Matches after a Win and 3 after Dropped Points (3 and 2 so far).",
+        "Needs at least 3 Matches after a Win and 3 after a draw or defeat (3 and 2 so far).",
       ),
     ).toBeVisible();
     await expect(
       section.getByText(
-        "Needs at least 3 Matches after a Win and 3 after Dropped Points (0 and 0 so far).",
+        "Needs at least 3 Matches after a Win and 3 after a draw or defeat (0 and 0 so far).",
       ),
     ).toBeVisible();
     await expect(
-      findings(page).filter({ hasText: "After Dropped Points" }),
+      findings(page).filter({ hasText: "After a draw or defeat" }),
     ).toHaveCount(0);
   });
 
@@ -676,12 +683,12 @@ test.describe("After a result (CLUBS-26)", () => {
     await page.goto("/analysis");
     const tilt = findings(page).filter({
       hasText:
-        "After Dropped Points in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
+        "After a draw or defeat in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
     });
     await expect(tilt).toHaveCount(1);
     await expect(tilt).toContainText("After a result");
     await expect(tilt).toContainText(
-      "5 Matches after Dropped Points, 5 after a Win in the same Session",
+      "5 Matches after a draw or defeat, 5 after a Win in the same Session",
     );
     await expect(tilt).toContainText("Small sample");
   });
