@@ -133,7 +133,7 @@ test("a Squad Member with one Appearance is listed by default", async ({
 
   await page.goto("/squad");
   await expect(memberRow(page, ALPHA.name)).toBeVisible();
-  await expect(await memberCell(page, ALPHA.name, "Apps")).toHaveText("1");
+  await expect(await memberCell(page, ALPHA.name, "Played")).toHaveText("1");
   await expect(page.getByText("1 Squad Member", { exact: true })).toBeVisible();
 });
 
@@ -196,7 +196,7 @@ test("Playoff Appearances count only when Playoffs are included", async ({
   await triggerPoll();
   await page.goto("/squad");
 
-  await expect(await memberCell(page, ALPHA.name, "Apps")).toHaveText("4");
+  await expect(await memberCell(page, ALPHA.name, "Played")).toHaveText("4");
   await expect(await memberCell(page, ALPHA.name, "G")).toHaveText("7");
 
   await page
@@ -206,7 +206,7 @@ test("Playoff Appearances count only when Playoffs are included", async ({
   await expect
     .poll(() => new URL(page.url()).searchParams.get("types"))
     .toBe("league");
-  await expect(await memberCell(page, ALPHA.name, "Apps")).toHaveText("3");
+  await expect(await memberCell(page, ALPHA.name, "Played")).toHaveText("3");
   await expect(await memberCell(page, ALPHA.name, "G")).toHaveText("3");
 });
 

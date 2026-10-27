@@ -117,7 +117,7 @@ const POSITION_COLUMNS: DataTableColumn<PositionGroupWinRecord>[] = [
     header: "Position Group",
     cell: (r) => r.positionGroup ?? "Unknown",
   },
-  numberColumn("played", "Apps", (r) => r.played),
+  numberColumn("played", "Played", (r) => r.played),
   numberColumn("wins", "Wins", (r) => r.wins),
   numberColumn("win", "Win %", (r) => r.winPercentage, formatPercentage),
 ];

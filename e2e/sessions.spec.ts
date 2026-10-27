@@ -228,7 +228,7 @@ test("the Session page shows its Matches in order, a leaderboard and its record"
   const table = page.getByRole("table", { name: "Session leaderboard" });
   // Header plus one row each: Kabeeble played twice and scored twice, Trevor once.
   await expect(table.getByRole("row")).toHaveCount(3);
-  // Cells after the name: Apps, G, A, G+A, Rating, MOTM.
+  // Cells after the name: Played, G, A, G+A, Rating, MOTM.
   const cells = (name: string) =>
     table.getByRole("row", { name: new RegExp(`^${name}`) }).getByRole("cell");
   await expect(cells(KAB.name).nth(0)).toHaveText("2");

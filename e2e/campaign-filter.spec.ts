@@ -62,8 +62,8 @@ function searchParam(page: Page, name: string) {
 async function starAppearances(page: Page) {
   const table = page.getByRole("table", { name: "Squad Members" });
   const headers = await table.getByRole("columnheader").allTextContents();
-  const index = headers.findIndex((h) => h.trim() === "Apps");
-  expect(index, "Apps column").toBeGreaterThan(0);
+  const index = headers.findIndex((h) => h.trim() === "Played");
+  expect(index, "Played column").toBeGreaterThan(0);
   // The first column is the row header, so data cells start one along.
   return table
     .locator("tbody tr")

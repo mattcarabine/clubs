@@ -74,9 +74,9 @@ test("the Squad table counts neither a 0-minute Appearance nor a DNF we quit", a
   await record(fakeEa, triggerPoll, alphaMatches());
 
   await page.goto("/squad");
-  await expect(await squadCell(page, ALPHA.name, "Apps")).toHaveText("2");
+  await expect(await squadCell(page, ALPHA.name, "Played")).toHaveText("2");
   await expect(await squadCell(page, ALPHA.name, "Rating")).toHaveText("8.0");
-  await expect(await squadCell(page, BRAVO.name, "Apps")).toHaveText("3");
+  await expect(await squadCell(page, BRAVO.name, "Played")).toHaveText("3");
 });
 
 test("the profile plots only counted Appearances", async ({
