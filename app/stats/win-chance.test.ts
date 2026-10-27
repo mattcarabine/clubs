@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Outcome } from "~/lib/domain";
 
 import {
+  billing,
   calibration,
   eloWinChance,
   expectation,
@@ -114,6 +115,20 @@ describe("expectation", () => {
     expect(expectation(0.66, "D")).toBe("should-have-won");
     expect(expectation(0.65, "L")).toBeNull();
     expect(expectation(0.2, "L")).toBeNull();
+  });
+});
+
+describe("billing", () => {
+  it("bills us Favourites from 55% and Underdogs to 45%, a toss-up between", () => {
+    expect(billing(0.55)).toBe("favourites");
+    expect(billing(0.9)).toBe("favourites");
+    expect(billing(0.546)).toBe("favourites");
+    expect(billing(0.544)).toBe("toss-up");
+    expect(billing(0.5)).toBe("toss-up");
+    expect(billing(0.457)).toBe("toss-up");
+    expect(billing(0.452)).toBe("underdogs");
+    expect(billing(0.45)).toBe("underdogs");
+    expect(billing(0.1)).toBe("underdogs");
   });
 });
 

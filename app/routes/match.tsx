@@ -55,6 +55,8 @@ import { isPlayedAppearance } from "~/stats/counted";
 import { matchPreview } from "~/stats/link-preview";
 import { groupBy } from "~/stats/summaries";
 import {
+  type Billing,
+  billing,
   formatWinChance,
   SHOULD_HAVE_WON_CHANCE,
   UPSET_WIN_CHANCE,
@@ -257,27 +259,62 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   );
 }
 
-/** Our Win Chance before kick-off, and a flag when the result went against it. */
+/** Each Billing's tag and the colours of its figure and top rule. */
+const BILLING_STYLE: Record<
+  Billing,
+  { label: string; text: string; rule: string; tag: string }
+> = {
+  favourites: {
+    label: "Favourites",
+    text: "text-win",
+    rule: "border-win",
+    tag: "bg-win",
+  },
+  "toss-up": {
+    label: "Toss-up",
+    text: "text-draw",
+    rule: "border-draw",
+    tag: "bg-draw",
+  },
+  underdogs: {
+    label: "Underdogs",
+    text: "text-loss",
+    rule: "border-loss",
+    tag: "bg-loss",
+  },
+};
+
+const NOTE_TAG =
+  "clip-slant px-2 py-0.5 font-display font-bold text-shale-950 text-xs uppercase tracking-wide [--slant:0.2rem]";
+
+/**
+ * Our Win Chance before kick-off, coloured and named by its Billing, and a
+ * flag when the result went against it.
+ */
 function WinChanceNote({ winChance }: { winChance: MatchWinChance }) {
   const { chance, source, expectation } = winChance;
+  const style = BILLING_STYLE[billing(chance)];
   return (
     <aside
       aria-label="Win chance"
-      className="mt-4 flex flex-col gap-2 border-shale-700 border-t-2 bg-shale-900 px-4 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4"
+      className={`mt-4 flex flex-col gap-2 border-t-2 bg-shale-900 px-4 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 ${style.rule}`}
     >
       <p className="flex flex-wrap items-center gap-2 text-ink-soft">
         <span>
           Win chance before kick-off:{" "}
-          <strong className="font-display font-extrabold text-ink text-xl tabular">
+          <strong
+            className={`font-display font-extrabold text-xl tabular ${style.text}`}
+          >
             {formatWinChance(chance)}
           </strong>
         </span>
+        <span className={`${NOTE_TAG} ${style.tag}`}>{style.label}</span>
         {source === "estimate" && <EstimateTag />}
       </p>
       {expectation && (
         <p className="flex flex-wrap items-center gap-2 text-ink-soft">
           <span
-            className={`clip-slant px-2 py-0.5 font-display font-bold text-shale-950 text-xs uppercase tracking-wide [--slant:0.2rem] ${expectation === "upset-win" ? "bg-win" : "bg-loss"}`}
+            className={`${NOTE_TAG} ${expectation === "upset-win" ? "bg-win" : "bg-loss"}`}
           >
             {expectation === "upset-win" ? "Upset Win" : "Should have won"}
           </span>
@@ -637,9 +674,9 @@ function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
         scope="row"
         className={`sticky left-0 z-10 whitespace-nowrap border-shale-700 border-b bg-shale-900 px-3 py-2.5 text-left font-semibold text-ink shadow-[1px_0_0_var(--color-shale-700)] group-hover:bg-shale-800 ${href ? LINKED_ROW_HEADER : ""}`}
       >
-        {/* On phones a rage quit or red card tag goes under the name, so it never widens the pinned column. */}
+        {/* On phones a quitter's tag goes under the name, so it never widens the pinned column. */}
         <span
-          className={`flex gap-2 ${quit || sentOff ? "flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2" : "items-center"}`}
+          className={`flex gap-2 ${quit ? "flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2" : "items-center"}`}
         >
           {href ? (
             <Link to={href} className={ROW_HEADER_LINK}>
@@ -648,12 +685,8 @@ function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
           ) : (
             <span>{a.name}</span>
           )}
-          {(a.manOfTheMatch || sentOff) && (
-            <span className="flex items-center gap-2">
-              {a.manOfTheMatch && <MotmMarker />}
-              {sentOff && <RedCardMarker />}
-            </span>
-          )}
+          {a.manOfTheMatch && <MotmMarker />}
+          {sentOff && <RedCardIcon />}
           {quit && <Tag tone="warning">Rage quit</Tag>}
         </span>
       </th>
@@ -680,10 +713,14 @@ function MotmMarker() {
   );
 }
 
-function RedCardMarker() {
+/** A small upright red card, tilted as if shown by the referee; named for screen readers. */
+function RedCardIcon() {
   return (
-    <span className="clip-slant bg-loss px-2 py-0.5 font-display font-extrabold text-shale-950 text-xs uppercase leading-none [--slant:0.25rem]">
-      Red card
-    </span>
+    <span
+      role="img"
+      aria-label="Red card"
+      title="Sent off"
+      className="inline-block h-4 w-3 shrink-0 rotate-6 rounded-[2px] bg-loss"
+    />
   );
 }

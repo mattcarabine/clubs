@@ -30,6 +30,10 @@ _Avoid_: Opposition strength, enemy rating
 Our Club's chance of a Win before kick-off, from the gap between our Skill Rating and the Opponent Rating. Fitted to our rated Competitive Matches (draws count as Dropped Points) once there are 20 of them; before that it is an Elo-style estimate, shown as "Estimate".
 _Avoid_: Odds, win probability, expected result
 
+**Billing**:
+How a Win Chance billed Our Club before kick-off: **Favourites** at 55% or more, **Underdogs** at 45% or less, and a **Toss-up** between.
+_Avoid_: Expected to win, odds-on
+
 **Squad Member**:
 Anyone who has made an Appearance for Our Club, identified by their stable EA player ID (persona names can change; IDs don't). Our Club has no guests.
 _Avoid_: Member, user, teammate, guest
