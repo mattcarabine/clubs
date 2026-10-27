@@ -10,6 +10,22 @@ import {
 /** The header showing its tooltip, and where it sits on screen. */
 type Tip = { id: string; text: string; anchor: DOMRect };
 
+/** Handlers for a header with a description; spread them on its `th`. */
+type HeaderTooltipProps = {
+  onPointerEnter: (event: PointerEvent<HTMLElement>) => void;
+  onPointerLeave: () => void;
+  onFocus: (event: FocusEvent<HTMLElement>) => void;
+  onBlur: () => void;
+};
+
+/** A table's header tooltip: the one showing (if any) and its controls. */
+export type HeaderTooltipState = {
+  tip: Tip | null;
+  /** Puts the tooltip away, and cancels one waiting to show. */
+  hide: () => void;
+  headerProps: (id: string, text: string) => HeaderTooltipProps;
+};
+
 /** How long a mouse rests on a header before its tooltip shows. */
 const HOVER_DELAY_MS = 400;
 
@@ -23,7 +39,7 @@ const GUTTER = 8;
  * hover, so it never shows there; screen readers get the same words as the
  * header's description, so the tooltip itself is hidden from them.
  */
-export function useHeaderTooltip() {
+export function useHeaderTooltip(): HeaderTooltipState {
   const [tip, setTip] = useState<Tip | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -44,8 +60,7 @@ export function useHeaderTooltip() {
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  /** Handlers for a header with a description; spread them on its `th`. */
-  const headerProps = (id: string, text: string) => {
+  const headerProps = (id: string, text: string): HeaderTooltipProps => {
     const show = (header: HTMLElement) =>
       setTip({ id, text, anchor: header.getBoundingClientRect() });
     return {
