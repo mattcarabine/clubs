@@ -1,10 +1,4 @@
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 
 import {
   type CalendarDate,
@@ -25,6 +19,12 @@ import {
 } from "~/stats/filter";
 
 import { chipClassName } from "./chip";
+import {
+  Popover,
+  PopoverTab,
+  popoverTriggerProps,
+  usePopover,
+} from "./popover";
 import {
   type CalendarSelection,
   orderedRange,
@@ -54,37 +54,12 @@ export function DateRangePicker({
   firstMatchDate,
   onApply,
 }: DateRangePickerProps) {
-  const [open, setOpen] = useState(false);
-  // Counts opens, so each one shows the dialog and mounts a fresh draft.
-  const [opens, setOpens] = useState(0);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const dialogId = useId();
-
-  useLayoutEffect(() => {
-    const dialog = dialogRef.current;
-    const trigger = triggerRef.current;
-    if (opens === 0 || !dialog || !trigger || dialog.open) return;
-    dialog.showModal();
-    placeBelow(dialog, trigger);
-    dialog.querySelector<HTMLElement>("input:checked")?.focus();
-  }, [opens]);
-
-  // Closing for any reason (Apply, Cancel, Esc, a click outside) ends in `onClose`.
-  const close = () => dialogRef.current?.close();
+  const popover = usePopover("input:checked");
 
   return (
     <>
       <button
-        ref={triggerRef}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={dialogId}
-        onClick={() => {
-          setOpen(true);
-          setOpens((n) => n + 1);
-        }}
+        {...popoverTriggerProps(popover)}
         className={chipClassName(value.kind !== "all")}
       >
         {dateRangeLabel(value)}
@@ -96,40 +71,18 @@ export function DateRangePicker({
           <path d="M0 0h10L5 6z" fill="currentColor" />
         </svg>
       </button>
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the click only catches the backdrop; keyboards close with Esc, built into the dialog. */}
-      <dialog
-        ref={dialogRef}
-        id={dialogId}
-        aria-label="Choose dates"
-        onClose={() => {
-          // The close event comes a task after Esc: by then the chip may have reopened it.
-          if (dialogRef.current?.open) return;
-          setOpen(false);
-          triggerRef.current?.focus();
-        }}
-        // The backdrop belongs to the dialog element itself.
-        onClick={(event) => event.target === event.currentTarget && close()}
-        className={[
-          "m-0 max-w-none border-shale-600 border-t-2 bg-shale-900 p-0 text-ink backdrop:bg-shale-950/80",
-          // Phones: a bottom sheet that scrolls inside itself.
-          "fixed inset-x-0 top-auto bottom-0 max-h-[90dvh] w-full overflow-y-auto overscroll-contain",
-          // From sm: a popover under the chip, placed by `placeBelow`.
-          "sm:absolute sm:right-auto sm:bottom-auto sm:max-h-none sm:w-max sm:overflow-visible",
-        ].join(" ")}
-      >
-        {open && (
-          <PickerPanel
-            key={opens}
-            value={value}
-            firstMatchDate={firstMatchDate}
-            onApply={(range) => {
-              close();
-              onApply(range);
-            }}
-            onCancel={close}
-          />
-        )}
-      </dialog>
+      <Popover popover={popover} label="Choose dates">
+        <PickerPanel
+          key={popover.opens}
+          value={value}
+          firstMatchDate={firstMatchDate}
+          onApply={(range) => {
+            popover.close();
+            onApply(range);
+          }}
+          onCancel={popover.close}
+        />
+      </Popover>
     </>
   );
 }
@@ -209,13 +162,7 @@ function PickerPanel({
     <div className="sm:flex">
       <fieldset className="border-shale-700 sm:w-44 sm:shrink-0 sm:border-r">
         <legend className="sr-only">Range</legend>
-        {/* The broadcast strip label, flush with the panel's edge. */}
-        <span
-          aria-hidden
-          className="clip-slant-r mb-3 flex h-8 w-max items-center bg-rave pr-5 pl-3 font-display font-extrabold text-base text-shale-950 uppercase tracking-wide [--slant:0.6rem] sm:mt-4 sm:pl-4"
-        >
-          Dates
-        </span>
+        <PopoverTab>Dates</PopoverTab>
         <div className="flex gap-1 overflow-x-auto px-3 pb-3 [scrollbar-width:none] sm:flex-col sm:overflow-visible sm:px-4 sm:pb-4">
           {PRESET_OPTIONS.map((option) => (
             <label key={option} className="shrink-0">
@@ -328,27 +275,6 @@ function describeDraft(draft: Draft, range: CalendarRange | null): string {
         ? `From ${formatCalendarRange(draft.from, draft.from)}: pick the last day`
         : "Pick the first day";
   }
-}
-
-/**
- * From `sm` up, puts the popover under the trigger, kept 16px inside the
- * viewport. It sits in the top layer, so these are page coordinates and it
- * scrolls with the chip. On phones the classes make it a bottom sheet.
- */
-function placeBelow(dialog: HTMLDialogElement, trigger: HTMLElement) {
-  if (!window.matchMedia("(min-width: 640px)").matches) {
-    dialog.style.removeProperty("top");
-    dialog.style.removeProperty("left");
-    return;
-  }
-  const box = trigger.getBoundingClientRect();
-  const gutter = 16;
-  const left = Math.max(
-    gutter,
-    Math.min(box.left, window.innerWidth - dialog.offsetWidth - gutter),
-  );
-  dialog.style.top = `${box.bottom + window.scrollY + 8}px`;
-  dialog.style.left = `${left + window.scrollX}px`;
 }
 
 /** Whether a media query matches; false on the server. */
