@@ -182,6 +182,60 @@ test("has no horizontal page scroll, down to a 375px phone", async ({
   }
 });
 
+test("with too few Matches for the Outcome Split, the Win % charts by kick-off and day still show", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.addMatch(win({ playedAt: new Date("2025-10-21T19:00:00Z") })); // Tue 20:00 BST
+  await fakeEa.addMatch(loss({ playedAt: new Date("2025-10-28T22:30:00Z") })); // Tue 22:30 GMT
+  await triggerPoll();
+  await page.goto("/analysis");
+
+  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  const circumstances = page.getByRole("region", { name: "Circumstances" });
+  await expect(
+    circumstances.getByRole("list", { name: "Win % by day of the week" }),
+  ).toHaveText(/Tue \(2\)\s*50%/);
+  await expect(
+    page.getByRole("list", { name: "Win % by kick-off time" }),
+  ).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "Personnel" })).toHaveCount(0);
+});
+
+test("Over time ignores the filters and says so", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.setPayload("clubs/overallStats", overallStats("1600"));
+  await fakeEa.addMatch(win());
+  await triggerPoll();
+  await fakeEa.setPayload("clubs/overallStats", overallStats("1632"));
+  await triggerPoll();
+
+  for (const path of ["/analysis", "/analysis?range=7d&types=playoff"]) {
+    await page.goto(path);
+    const overTime = page.getByRole("region", { name: "Over time" });
+    await expect(overTime).toContainText("Not affected by the filters");
+    await expect(
+      overTime
+        .getByRole("table", { name: "Skill rating over time" })
+        .getByRole("cell"),
+    ).toHaveText(["1600", "1632"]);
+  }
+});
+
+test("/trends answers 301 to /analysis with its query string", async ({
+  request,
+}) => {
+  const res = await request.get("/trends?types=league&range=30d", {
+    maxRedirects: 0,
+  });
+  expect(res.status()).toBe(301);
+  expect(res.headers().location).toBe("/analysis?types=league&range=30d");
+});
+
 test("/trends redirects to Analysis, keeping the filter", async ({ page }) => {
   await page.goto("/trends?types=league");
   await expect(page).toHaveURL(/\/analysis\?types=league$/);

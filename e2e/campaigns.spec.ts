@@ -4,7 +4,7 @@ import { play, startSeason } from "./support/campaigns.ts";
 import { draw, loss, win } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
-// CLUBS-41: the Trends page's Campaign section. Campaigns are rebuilt from
+// CLUBS-41: Analysis's Campaign section (Trends' until CLUBS-59). Campaigns are rebuilt from
 // League Matches played after a detected Season start (Division 5, 0 points).
 
 test.beforeEach(async ({ fakeEa }) => {

@@ -144,6 +144,7 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
     record,
     timeline,
     timelineLabels,
+    byWeekday,
     lineups,
     skillRating,
     split,
@@ -193,15 +194,29 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
           </>
         )}
         {split.ready ? (
-          <OutcomeSplitSections {...loaderData} />
+          <SplitHeadlines split={split} />
         ) : (
           <EmptyState
             title="Not enough Matches yet"
             description={notEnoughMatches(split.record)}
           />
         )}
-        {/* Line-ups need only Matches, not a ready Outcome Split. */}
-        {record.played > 0 && <LineupsSection lineups={lineups} />}
+        {/* Win % by circumstance and Line-ups need only Matches, not a ready Outcome Split. */}
+        {record.played > 0 && (
+          <>
+            {/* A lone Circumstances column would leave half the row empty. */}
+            <div
+              className={`grid gap-10 lg:gap-x-6 ${split.ready ? "lg:grid-cols-2" : ""}`}
+            >
+              {split.ready && <PersonnelSection split={split} />}
+              <CircumstancesSection split={split} byWeekday={byWeekday} />
+            </div>
+            <LineupsSection lineups={lineups} />
+          </>
+        )}
+        {split.ready && (
+          <SplitDetails split={split} positionGroups={filter.positionGroups} />
+        )}
         <WinChanceSection winChance={winChance} />
         <OverTimeSection skillRating={skillRating} campaigns={campaigns} />
       </div>
@@ -229,10 +244,13 @@ function notEnoughMatches(record: { wins: number; dropped: number }): string {
   return `The Outcome Split needs at least ${MIN_SPLIT_MATCHES} Wins and ${formatDroppedCount(MIN_SPLIT_MATCHES)} in these filters: ${needed.join(" and ")}.`;
 }
 
-function OutcomeSplitSections({ split, byWeekday, filter }: AnalysisData) {
+type OutcomeSplitData = AnalysisData["split"];
+
+/** The ranked findings and the Wins against draws and defeats table. */
+function SplitHeadlines({ split }: { split: OutcomeSplitData }) {
   const { record } = split;
   return (
-    <div className="flex flex-col gap-10">
+    <>
       <section aria-label="Top findings">
         <SectionHeading
           title="Top findings"
@@ -260,82 +278,99 @@ function OutcomeSplitSections({ split, byWeekday, filter }: AnalysisData) {
           rowKey={(r) => r.id}
         />
       </section>
+    </>
+  );
+}
 
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-x-6">
-        <section aria-label="Personnel" className="flex min-w-0 flex-col gap-4">
-          <SectionHeading
-            title="Personnel"
-            subtitle="Win % with and without each Squad Member, and by how many played."
-          />
-          <DataTable
-            caption="With and without"
-            columns={withWithoutColumns}
-            rows={split.withWithout}
-            rowKey={(r) => r.playerId}
-            rowHref={(r) => playerPath(r.playerId)}
-          />
-          <p className="-mt-2 text-ink-muted text-xs">
-            {`A Gap needs at least ${MIN_SPLIT_MATCHES} Matches with and ${MIN_SPLIT_MATCHES} without.`}
-          </p>
-          <ChartFrame title="By Squad Members playing">
-            <WinRateBarChart
-              label="Win % by Squad Members playing"
-              buckets={split.bySquadSize}
-            />
-          </ChartFrame>
-          {split.positionOutliers.length > 0 && (
-            <DataTable
-              caption="Position outliers"
-              columns={outlierColumns}
-              rows={split.positionOutliers}
-              rowKey={(r) => `${r.playerId}-${r.positionGroup}`}
-            />
-          )}
-        </section>
+function PersonnelSection({ split }: { split: OutcomeSplitData }) {
+  return (
+    <section aria-label="Personnel" className="flex min-w-0 flex-col gap-4">
+      <SectionHeading
+        title="Personnel"
+        subtitle="Win % with and without each Squad Member, and by how many played."
+      />
+      <DataTable
+        caption="With and without"
+        columns={withWithoutColumns}
+        rows={split.withWithout}
+        rowKey={(r) => r.playerId}
+        rowHref={(r) => playerPath(r.playerId)}
+      />
+      <p className="-mt-2 text-ink-muted text-xs">
+        {`A Gap needs at least ${MIN_SPLIT_MATCHES} Matches with and ${MIN_SPLIT_MATCHES} without.`}
+      </p>
+      <ChartFrame title="By Squad Members playing">
+        <WinRateBarChart
+          label="Win % by Squad Members playing"
+          buckets={split.bySquadSize}
+        />
+      </ChartFrame>
+      {split.positionOutliers.length > 0 && (
+        <DataTable
+          caption="Position outliers"
+          columns={outlierColumns}
+          rows={split.positionOutliers}
+          rowKey={(r) => `${r.playerId}-${r.positionGroup}`}
+        />
+      )}
+    </section>
+  );
+}
 
-        <section
-          aria-label="Circumstances"
-          className="flex min-w-0 flex-col gap-4"
-        >
-          <SectionHeading
-            title="Circumstances"
-            subtitle="Win % by kick-off and day (London time) and place in a Session. Matches played in brackets."
-          />
-          <ChartFrame title="By kick-off">
-            <WinRateBarChart
-              label="Win % by kick-off time"
-              buckets={split.byTimeOfDay}
-            />
-          </ChartFrame>
-          <ChartFrame title="By day">
-            <WinRateBarChart
-              label="Win % by day of the week"
-              buckets={byWeekday}
-            />
-          </ChartFrame>
-          <ChartFrame
-            title="Place in Session"
-            subtitle="Matches with no more than 45 minutes between kick-offs"
-          >
-            <WinRateBarChart
-              label="Win % by place in Session"
-              buckets={split.bySessionPlace}
-            />
-          </ChartFrame>
-        </section>
-      </div>
+/** Win % by kick-off, day and place in Session: any Matches will do. */
+function CircumstancesSection({
+  split,
+  byWeekday,
+}: {
+  split: OutcomeSplitData;
+  byWeekday: AnalysisData["byWeekday"];
+}) {
+  return (
+    <section aria-label="Circumstances" className="flex min-w-0 flex-col gap-4">
+      <SectionHeading
+        title="Circumstances"
+        subtitle="Win % by kick-off and day (London time) and place in a Session. Matches played in brackets."
+      />
+      <ChartFrame title="By kick-off">
+        <WinRateBarChart
+          label="Win % by kick-off time"
+          buckets={split.byTimeOfDay}
+        />
+      </ChartFrame>
+      <ChartFrame title="By day">
+        <WinRateBarChart label="Win % by day of the week" buckets={byWeekday} />
+      </ChartFrame>
+      <ChartFrame
+        title="Place in Session"
+        subtitle="Matches with no more than 45 minutes between kick-offs"
+      >
+        <WinRateBarChart
+          label="Win % by place in Session"
+          buckets={split.bySessionPlace}
+        />
+      </ChartFrame>
+    </section>
+  );
+}
 
+/** By Opponent, after a result, and per Squad Member. */
+function SplitDetails({
+  split,
+  positionGroups,
+}: {
+  split: OutcomeSplitData;
+  positionGroups: PositionGroupSelection;
+}) {
+  return (
+    <>
       <StrengthSection byStrength={split.byStrength} />
 
       <HumansSection byHumans={split.byHumans} />
 
       <AfterResultSection splits={split.afterResult} />
 
-      <PlayerSection
-        players={split.players}
-        positionGroups={filter.positionGroups}
-      />
-    </div>
+      <PlayerSection players={split.players} positionGroups={positionGroups} />
+    </>
   );
 }
 
