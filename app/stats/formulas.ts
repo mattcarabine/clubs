@@ -262,6 +262,32 @@ export function correlation(
 }
 
 /**
+ * The population standard deviation of some values: how far they wander
+ * from their mean. Null with none.
+ */
+export function standardDeviation(values: readonly number[]): number | null {
+  const mean = average(values);
+  if (mean === null) return null;
+  return Math.sqrt(average(values.map((v) => (v - mean) ** 2)) ?? 0);
+}
+
+/**
+ * The value `p` (0 to 1) of the way up the sorted values, interpolating
+ * between neighbours: 0.2 is the level beaten 4 times in 5. Null with none.
+ */
+export function percentile(
+  values: readonly number[],
+  p: number,
+): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const at = (sorted.length - 1) * p;
+  const below = Math.floor(at);
+  const above = Math.ceil(at);
+  return sorted[below] + (sorted[above] - sorted[below]) * (at - below);
+}
+
+/**
  * The correlation of `x` and `y` with `z` held fixed (a partial
  * correlation): how far they still move together once what each shares
  * with `z` is taken out. When `z` never varies it holds nothing back, so
