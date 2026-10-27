@@ -1,7 +1,7 @@
 /**
- * Milestones (`/milestones`, CLUBS-36, redesigned in CLUBS-51): the club
- * leaders up top (the honours, then graft and discipline), then the latest
- * landmarks, feats, streaks and records, newest first, grouped by Session and
+ * Milestones (`/milestones`, CLUBS-36, redesigned in CLUBS-51): the club's
+ * records up top (CLUBS-77), then its leaders (the honours, then graft and
+ * discipline), then the latest landmarks, feats, streaks and records, newest first, grouped by Session and
  * then by Match, so each Match's score strip shows once with its Milestones
  * under it. Filter by kind with `?type=` and
  * to Our Club or one Squad Member with `?who=`; the two combine. Milestones
@@ -12,6 +12,7 @@ import { Link } from "react-router";
 
 import {
   ClubLeaders,
+  ClubRecords,
   chipClassName,
   EmptyState,
   LondonTime,
@@ -25,6 +26,7 @@ import { pageMeta } from "~/lib/page-meta";
 import { sessionPath } from "~/lib/paths";
 import {
   getClubLeaders,
+  getClubRecords,
   listMilestonePlayers,
   listMilestones,
   MILESTONE_PAGE_SIZE,
@@ -50,7 +52,7 @@ export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
     title: "A Bloo Bloo — Milestones",
     description:
-      "The club's leaders, then landmarks, standout performances, streaks and club records, Session by Session.",
+      "The club's records and leaders, then landmarks, standout performances, streaks and club records, Session by Session.",
     path: location.pathname,
   });
 }
@@ -60,9 +62,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
   const who = params.get("who");
   const type = TYPES.find((t) => t.type === params.get("type"))?.type;
-  const [players, leaders] = await Promise.all([
+  const [players, leaders, records] = await Promise.all([
     listMilestonePlayers(db),
     getClubLeaders(db),
+    getClubRecords(db),
   ]);
   let query: MilestoneQuery["who"];
   if (who === CLUB) query = CLUB;
@@ -76,6 +79,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     clubName: env.EA_CLUB_NAME,
     leaders,
+    records,
     players,
     selected: { who: query === undefined ? null : who, type: type ?? null },
     milestones,
@@ -83,7 +87,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Milestones({ loaderData }: Route.ComponentProps) {
-  const { clubName, leaders, players, selected, milestones } = loaderData;
+  const { clubName, leaders, records, players, selected, milestones } =
+    loaderData;
   const filtered = selected.who !== null || selected.type !== null;
   const href = (change: Partial<typeof selected>) =>
     filterHref({ ...selected, ...change });
@@ -91,7 +96,11 @@ export default function Milestones({ loaderData }: Route.ComponentProps) {
     <>
       <PageHeader
         title="Milestones"
-        subtitle={`Who leads the club, then the landmarks, standout performances and club records, newest first: the latest ${MILESTONE_PAGE_SIZE} at most`}
+        subtitle={`The club's records and who leads it, then landmarks, standout performances and new records, newest first: the latest ${MILESTONE_PAGE_SIZE} at most`}
+      />
+      <ClubRecords
+        records={records}
+        subtitle="Our best and worst since records began"
       />
       <ClubLeaders
         boards={leaders.filter((b) => b.group === "honours")}
