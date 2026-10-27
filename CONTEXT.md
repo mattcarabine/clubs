@@ -57,7 +57,7 @@ A League or Playoff Match; the default scope for all stats.
 _Avoid_: Ranked match, real match
 
 **Appearance**:
-One player's participation in one Match, with that player's stats for it. An Appearance with no minutes (EA's record of a player who dropped out, rated 3.0) is never counted.
+One player's participation in one Match, with that player's stats for it. An Appearance with no minutes (EA's record of a player who rage quit, rated 3.0 with every stat zeroed) is never counted, and the Match page tags it "Rage quit" with no stats.
 _Avoid_: Cap, game played, player-match
 
 **Position Group**:
