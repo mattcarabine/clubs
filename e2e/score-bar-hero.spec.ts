@@ -100,7 +100,8 @@ test("one tab cluster holds the Match Type, status and kick-off", async ({
   fakeEa,
   triggerPoll,
 }) => {
-  await fakeEa.addMatch(loss({ matchId: "31010", matchType: "playoffMatch" }));
+  // A Win, since the fixture ratings make a loss a Should have won (CLUBS-71).
+  await fakeEa.addMatch(win({ matchId: "31010", matchType: "playoffMatch" }));
   await fakeEa.addMatch(dnf({ matchId: "31011" }));
   await triggerPoll();
 

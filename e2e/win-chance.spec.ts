@@ -93,41 +93,76 @@ test("under 20 rated Matches the Elo estimate is used and labelled, with Wins ag
   await expect(matchNote(page)).toHaveCount(0);
 });
 
-test("an upset Win and a should-have-won loss are flagged on their Match pages", async ({
+test("Upsets either way are flagged in the score strip and the note, big ones with a banner", async ({
   page,
   fakeEa,
   triggerPoll,
 }) => {
+  // Elo: 30%, 15%, 70%, 85% and 85%.
   await recordRated(fakeEa, triggerPoll, [
-    { gap: -300, build: win({ matchId: "30101" }) },
-    { gap: 300, build: loss({ matchId: "30102" }) },
-    { gap: 300, build: win({ matchId: "30103" }) },
+    { gap: -150, build: win({ matchId: "30101" }) },
+    { gap: -300, build: win({ matchId: "30102" }) },
+    { gap: 150, build: draw({ matchId: "30103" }) },
+    { gap: 300, build: loss({ matchId: "30104" }) },
+    { gap: 300, build: win({ matchId: "30105" }) },
   ]);
 
-  await page.goto("/matches/30101");
-  await expect(matchNote(page)).toContainText(
-    "Win chance before kick-off: 15%",
-  );
-  await expect(matchNote(page)).toContainText("Upset Win");
-  await expect(matchNote(page)).toContainText(
-    "A Win from a Win Chance under 35%.",
-  );
+  const cases = [
+    {
+      id: "30101",
+      chance: "30%",
+      label: "Upset Win",
+      reason: "A Win from a Win Chance under 35%.",
+      big: false,
+    },
+    {
+      id: "30102",
+      chance: "15%",
+      label: "Big upset Win",
+      reason: "A Win from a Win Chance under 20%.",
+      big: true,
+    },
+    {
+      id: "30103",
+      chance: "70%",
+      label: "Should have won",
+      reason: "Dropped Points from a Win Chance over 65%.",
+      big: false,
+    },
+    {
+      id: "30104",
+      chance: "85%",
+      label: "Should really have won",
+      reason: "Dropped Points from a Win Chance over 80%.",
+      big: true,
+    },
+  ];
+  for (const { id, chance, label, reason, big } of cases) {
+    await page.goto(`/matches/${id}`);
+    await expect(
+      page.getByRole("list", { name: "Match details" }),
+    ).toContainText(label);
+    await expect(
+      page.getByRole("list", { name: "Match details" }),
+    ).not.toContainText("Full time");
+    const note = matchNote(page);
+    await expect(note).toContainText(`Win chance before kick-off: ${chance}`);
+    await expect(note.getByText(label, { exact: true })).toHaveCount(1);
+    await expect(note).toContainText(reason);
+    // A big Upset's label is the banner, a full-width strip across the note.
+    const labelBox = await note.getByText(label, { exact: true }).boundingBox();
+    const noteBox = await note.boundingBox();
+    expect(labelBox && noteBox && labelBox.width === noteBox.width, id).toBe(
+      big,
+    );
+  }
 
-  await page.goto("/matches/30102");
-  await expect(matchNote(page)).toContainText(
-    "Win chance before kick-off: 85%",
+  await page.goto("/matches/30105");
+  await expect(page.getByRole("list", { name: "Match details" })).toContainText(
+    "Full time",
   );
-  await expect(matchNote(page)).toContainText("Should have won");
-  await expect(matchNote(page)).toContainText(
-    "Dropped Points from a Win Chance over 65%.",
-  );
-
-  await page.goto("/matches/30103");
-  await expect(matchNote(page)).toContainText(
-    "Win chance before kick-off: 85%",
-  );
-  await expect(matchNote(page)).not.toContainText("Upset Win");
-  await expect(matchNote(page)).not.toContainText("Should have won");
+  await expect(matchNote(page)).not.toContainText("Upset");
+  await expect(matchNote(page)).not.toContainText("Should");
 });
 
 test("the Match page bills us Favourites, a Toss-up or Underdogs, in words and colour", async ({
