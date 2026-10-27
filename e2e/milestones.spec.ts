@@ -73,7 +73,8 @@ test("the Milestones page lists them newest first by Session, links to each Matc
   triggerPoll,
 }) => {
   // An older Session of six Wins, the last with a Kabeeble hat-trick; then a
-  // 6-0 tonight with a 9.5 for Loltown95: a record Win and most goals.
+  // 6-0 tonight with a 10.0 for Loltown95: a Perfect rating, a record Win
+  // and most goals.
   const older: string[] = [];
   for (let i = 0; i < 6; i++) {
     older.push(
@@ -90,7 +91,7 @@ test("the Milestones page lists them newest first by Session, links to each Matc
     fakeEa,
     "936700000000009",
     20,
-    [{ player: KAB }, { player: LOL, rating: 9.5 }],
+    [{ player: KAB }, { player: LOL, rating: 10 }],
     { goalsFor: 6, goalsAgainst: 0 },
   );
   await triggerPoll();
@@ -103,7 +104,7 @@ test("the Milestones page lists them newest first by Session, links to each Matc
   await expect(sessions).toHaveCount(2);
   const [newest, oldest] = [sessions.nth(0), sessions.nth(1)];
   await expect(newest.getByRole("article")).toHaveText([
-    /Loltown95 — Personal best rating of 9\.5/,
+    /Loltown95 — Perfect rating/,
     /A Bloo Bloo — Record Win, by 6 goals/,
     /A Bloo Bloo — Record 6 goals in a Match/,
   ]);

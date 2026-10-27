@@ -14,6 +14,7 @@ import {
   isNotNull,
   lt,
   max,
+  notInArray,
   type SQL,
 } from "drizzle-orm";
 
@@ -38,17 +39,22 @@ import {
 } from "./matches";
 import {
   type DetectionInput,
-  isMilestoneKind,
   MILESTONE_KINDS,
   type MilestoneCategory,
   type MilestoneFigures,
   type MilestoneKind,
   type MilestoneSubject,
   milestoneHeadline,
+  RETIRED_MILESTONE_KINDS,
   type TotalsPoint,
 } from "./milestones";
 import { isOurAppearance, isShownMatch } from "./scope";
 import { sessionIdsByMatch } from "./sessions";
+
+/** Rows of a retired kind (CLUBS-52) are never shown. */
+const isDetectedKind = notInArray(milestones.kind, [
+  ...RETIRED_MILESTONE_KINDS,
+]);
 
 const CAREER_SOURCE = "members/career/stats";
 const CLUB_SOURCE = "clubs/overallStats";
@@ -192,7 +198,7 @@ export async function listMilestones(
     limit = MILESTONE_PAGE_SIZE,
   }: MilestoneQuery = {},
 ): Promise<MilestoneEntry[]> {
-  const conditions: SQL[] = [isShownMatch];
+  const conditions: SQL[] = [isShownMatch, isDetectedKind];
   if (who === "club") conditions.push(eq(milestones.subject, "club"));
   else if (who) conditions.push(eq(milestones.playerId, who.playerId));
   if (matchIds) conditions.push(inArray(milestones.matchId, [...matchIds]));
@@ -227,15 +233,14 @@ export async function listMilestones(
       .limit(Math.min(limit, MILESTONE_PAGE_SIZE)),
     listKickoffs(db),
   ]);
-  const known = rows.filter((row) => isMilestoneKind(row.kind));
   const comments = await latestWriteups(
     db,
     "milestone",
-    known.map((row) => String(row.id)),
+    rows.map((row) => String(row.id)),
   );
   const sessionOf = sessionIdsByMatch(kickoffs);
 
-  return known.map((row) => {
+  return rows.map((row) => {
     const kind = row.kind as MilestoneKind;
     const definition = MILESTONE_KINDS[kind];
     const name = row.playerId
@@ -278,6 +283,7 @@ export async function listMilestoneBatches(db: Db): Promise<MilestoneBatch[]> {
   return db
     .select({ batchKey: milestones.batchKey, size: count() })
     .from(milestones)
+    .where(isDetectedKind)
     .groupBy(milestones.batchKey)
     .orderBy(desc(max(milestones.id)));
 }
@@ -298,7 +304,7 @@ export async function listMilestonePlayers(db: Db): Promise<MilestonePlayer[]> {
     })
     .from(milestones)
     .innerJoin(players, eq(players.playerId, milestones.playerId))
-    .where(isNotNull(milestones.playerId));
+    .where(and(isNotNull(milestones.playerId), isDetectedKind));
   return rows
     .map(({ playerId, personaName }) => ({
       playerId,
