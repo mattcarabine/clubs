@@ -5,6 +5,7 @@
  */
 import type { Outcome, PositionGroup } from "~/lib/domain";
 
+import { isPlayedAppearance } from "./counted";
 import {
   average,
   form,
@@ -163,13 +164,14 @@ export interface MatchSides {
   theirs: PlayerTotals;
 }
 
-/** Splits a Match's Appearances by club and totals each side. */
+/** Splits a Match's Appearances by club and totals each side, leaving out any with no minutes (`counted.ts`). */
 export function summariseMatchSides(
   appearances: readonly (AppearanceStats & { isOurClub: boolean })[],
 ): MatchSides {
+  const played = appearances.filter(isPlayedAppearance);
   return {
-    ours: summariseAppearances(appearances.filter((a) => a.isOurClub)),
-    theirs: summariseAppearances(appearances.filter((a) => !a.isOurClub)),
+    ours: summariseAppearances(played.filter((a) => a.isOurClub)),
+    theirs: summariseAppearances(played.filter((a) => !a.isOurClub)),
   };
 }
 

@@ -21,6 +21,7 @@ import {
   ROW_HEADER_LINK,
   RouteError,
   SectionHeading,
+  Tag,
   useRowLink,
 } from "~/components";
 import { getDb } from "~/db/client";
@@ -46,6 +47,7 @@ import {
   sessionOfMatch,
   summariseMatchSides,
 } from "~/stats";
+import { isPlayedAppearance } from "~/stats/counted";
 // meta() builds the preview and the component groups line-ups, so import the
 // pure helpers directly to keep the query modules out of the client bundle.
 import { matchPreview } from "~/stats/link-preview";
@@ -225,7 +227,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
         <section aria-label="Line-ups" className="min-w-0 lg:col-span-2">
           <SectionHeading
             title="Line-ups"
-            subtitle="Each club's Appearances by Position Group, best rated first."
+            subtitle="Each club's Appearances by Position Group, best rated first. EA zeroes the stats of a player who rage quit."
           />
           <div className="flex flex-col gap-6">
             <Lineup name={clubName} appearances={ours} isOurClub />
@@ -601,6 +603,8 @@ function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
   const rowLink = useRowLink();
   // Our Squad Members' rows link to their profiles; Opponents' players have none.
   const href = a.isOurClub ? playerPath(a.playerId) : undefined;
+  // EA keeps nothing but zeroes for a player who rage quit, so show none.
+  const quit = !isPlayedAppearance(a);
   const cell =
     "whitespace-nowrap border-shale-700 border-b px-2.5 py-2.5 text-right group-hover:bg-shale-800";
   return (
@@ -609,7 +613,10 @@ function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
         scope="row"
         className={`sticky left-0 z-10 whitespace-nowrap border-shale-700 border-b bg-shale-900 px-3 py-2.5 text-left font-semibold text-ink shadow-[1px_0_0_var(--color-shale-700)] group-hover:bg-shale-800 ${href ? LINKED_ROW_HEADER : ""}`}
       >
-        <span className="flex items-center gap-2">
+        {/* On phones a quitter's tag goes under the name, so it never widens the pinned column. */}
+        <span
+          className={`flex gap-2 ${quit ? "flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2" : "items-center"}`}
+        >
           {href ? (
             <Link to={href} className={ROW_HEADER_LINK}>
               {a.name}
@@ -618,6 +625,7 @@ function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
             <span>{a.name}</span>
           )}
           {a.manOfTheMatch && <MotmMarker />}
+          {quit && <Tag tone="warning">Rage quit</Tag>}
         </span>
       </th>
       {STAT_COLUMNS.map((c) => (
@@ -625,7 +633,7 @@ function LineupRow({ appearance: a }: { appearance: MatchAppearance }) {
           key={c.abbr}
           className={`${cell} ${c.emphasis ? "font-display font-extrabold text-ink text-lg" : "text-ink-soft"}`}
         >
-          {c.cell(a)}
+          {quit ? NO_VALUE : c.cell(a)}
         </td>
       ))}
     </tr>
