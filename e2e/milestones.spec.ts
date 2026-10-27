@@ -5,12 +5,11 @@ import type { Page } from "@playwright/test";
 import { KAB, LOL, serveMatch } from "./support/milestones.ts";
 import { expect, test } from "./support/test.ts";
 
-// CLUBS-36: the Milestones tab, and Milestones on the Match page, the
-// profile and Matchday.
+// CLUBS-36: Milestone comments, and Milestones on the Match page, the
+// profile and Matchday. The Milestones page itself is milestones-page.spec.ts.
 
 /** Anything that would label the copy as machine-written. */
 const AI_LABEL = /claude|anthropic|\bAI\b|written by|generated/i;
-const DAY_MINUTES = 24 * 60;
 
 test.beforeEach(async ({ fakeEa }) => {
   // Only the Matches each test adds.
@@ -66,86 +65,6 @@ async function milestoneId(page: Page): Promise<string> {
   const [row] = (await res.json()) as { id: number }[];
   return String(row.id);
 }
-
-test("the Milestones page lists them newest first by Session, links to each Match and Session, and filters by Club or Squad Member", async ({
-  page,
-  fakeEa,
-  triggerPoll,
-}) => {
-  // An older Session of six Wins, the last with a Kabeeble hat-trick; then a
-  // 6-0 tonight with a 9.5 for Loltown95: a record Win and most goals.
-  const older: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    older.push(
-      await serveMatch(
-        fakeEa,
-        `93670000000000${i}`,
-        2 * DAY_MINUTES - i * 20,
-        [{ player: KAB, goals: i === 5 ? 3 : 0 }, { player: LOL }],
-        { goalsFor: 2, goalsAgainst: 1 },
-      ),
-    );
-  }
-  const tonight = await serveMatch(
-    fakeEa,
-    "936700000000009",
-    20,
-    [{ player: KAB }, { player: LOL, rating: 9.5 }],
-    { goalsFor: 6, goalsAgainst: 0 },
-  );
-  await triggerPoll();
-
-  await page.goto("/milestones");
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Milestones" }),
-  ).toBeVisible();
-  const sessions = page.getByRole("main").getByRole("region");
-  await expect(sessions).toHaveCount(2);
-  const [newest, oldest] = [sessions.nth(0), sessions.nth(1)];
-  await expect(newest.getByRole("article")).toHaveText([
-    /Loltown95 — Personal best rating of 9\.5/,
-    /A Bloo Bloo — Record Win, by 6 goals/,
-    /A Bloo Bloo — Record 6 goals in a Match/,
-  ]);
-  await expect(
-    card(page, "A Bloo Bloo — Record Win, by 6 goals"),
-  ).toContainText("Since records began");
-  await expect(oldest.getByRole("article")).toHaveText([
-    /Kabeeble — Hat-trick/,
-    /A Bloo Bloo — Record 6 Wins in a Session/,
-  ]);
-
-  const hatTrick = card(page, "Kabeeble — Hat-trick");
-  await expect(
-    hatTrick.getByRole("link", { name: /^Match v / }),
-  ).toHaveAttribute("href", `/matches/${older[5]}`);
-  await expect(hatTrick.getByRole("link", { name: "Session" })).toHaveAttribute(
-    "href",
-    `/sessions/${older[0]}`,
-  );
-  await expect(
-    newest.getByRole("link", { name: "Session details" }),
-  ).toHaveAttribute("href", `/sessions/${tonight}`);
-
-  const filter = page.getByRole("navigation", { name: "Whose Milestones" });
-  await filter.getByRole("link", { name: "Club" }).click();
-  await expect(page).toHaveURL(/who=club/);
-  await expect(page.getByRole("main").getByRole("article")).toHaveText([
-    /Record Win, by 6 goals/,
-    /Record 6 goals in a Match/,
-    /Record 6 Wins in a Session/,
-  ]);
-
-  await filter.getByRole("link", { name: "Kabeeble" }).click();
-  await expect(page).toHaveURL(new RegExp(`who=${KAB.id}`));
-  await expect(page.getByRole("main").getByRole("article")).toHaveText([
-    /Kabeeble — Hat-trick/,
-  ]);
-
-  await filter.getByRole("link", { name: "All" }).click();
-  await expect(page.getByRole("main").getByRole("article")).toHaveCount(5);
-  await expectNoHorizontalScroll(page);
-});
 
 test("the Match page, the profile and Matchday show the relevant Milestones", async ({
   page,

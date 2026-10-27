@@ -164,7 +164,7 @@ function milestoneInput(
     type: definition.category,
     sinceRecordsBegan:
       definition.category === "record" ||
-      m.kind === "personal-best-rating" ||
+      m.kind === "perfect-ratings" ||
       m.kind === "first-goal-in-position",
     value: m.value,
     ...(m.threshold !== null &&

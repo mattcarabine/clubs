@@ -276,9 +276,9 @@ describe("feats", () => {
     ]);
   });
 
-  it("finds a 9.0 rating, or a personal best once there is a history to beat", () => {
+  it("finds only Perfect ratings: no 9.x rating or personal best is a feat (CLUBS-52)", () => {
     const matches = [0, 1, 2, 3, 4, 5, 6].map((i) => match(i * 10));
-    const ratings = [8.1, 9.0, 7.0, 7.2, 6.8, 9.4, 9.1];
+    const ratings = [8.1, 9.0, 7.0, 7.2, 6.8, 9.4, 10];
     const found = detectMilestones(
       input({
         matches,
@@ -287,10 +287,45 @@ describe("feats", () => {
         ),
       }),
     );
-    expect(found.map((m) => [m.kind, m.value, m.threshold])).toEqual([
-      ["rating", 9.0, null],
-      ["personal-best-rating", 9.4, 9.0],
-      ["rating", 9.1, null],
+    expect(found.map((m) => [m.kind, m.value, m.matchId])).toEqual([
+      ["perfect-rating", 10, "m60"],
+    ]);
+  });
+
+  it("counts Perfect ratings: the 3rd, 5th, 10th, 25th, then every 25th", () => {
+    const matches = Array.from({ length: 50 }, (_, i) => match(i * 10));
+    const found = detectMilestones(
+      input({
+        matches,
+        appearances: matches.map((m) =>
+          appearance(m.matchId, KAB, { rating: 10 }),
+        ),
+      }),
+    ).filter((m) => m.kind === "perfect-ratings");
+    expect(found.map((m) => [m.value, m.matchId, m.dedupeKey])).toEqual([
+      [3, "m20", `player:${KAB}:perfect-ratings:3`],
+      [5, "m40", `player:${KAB}:perfect-ratings:5`],
+      [10, "m90", `player:${KAB}:perfect-ratings:10`],
+      [25, "m240", `player:${KAB}:perfect-ratings:25`],
+      [50, "m490", `player:${KAB}:perfect-ratings:50`],
+    ]);
+  });
+
+  it("counts each Squad Member's Perfect ratings apart, skipping uncounted Appearances", () => {
+    const matches = [0, 1, 2, 3].map((i) => match(i * 10));
+    const found = detectMilestones(
+      input({
+        matches,
+        appearances: [
+          ...matches.map((m) => appearance(m.matchId, KAB, { rating: 10 })),
+          appearance("m0", LOL, { rating: 10 }),
+          appearance("m10", LOL, { rating: 10, secondsPlayed: 0 }),
+          appearance("m20", LOL, { rating: 10 }),
+        ],
+      }),
+    ).filter((m) => m.kind === "perfect-ratings");
+    expect(found.map((m) => [m.playerId, m.value, m.matchId])).toEqual([
+      [KAB, 3, "m20"],
     ]);
   });
 
@@ -320,7 +355,7 @@ describe("feats", () => {
         matches: [match(0), quit, won],
         appearances: [
           appearance("m0", KAB, { rating: 3, secondsPlayed: 0, goals: 3 }),
-          appearance("m10", KAB, { goals: 3, rating: 9.5 }),
+          appearance("m10", KAB, { goals: 3, rating: 10 }),
           appearance("m20", KAB, { goals: 3 }),
         ],
       }),
@@ -455,6 +490,20 @@ describe("headlines and sentences", () => {
         positionGroup: "forward",
       }),
     ).toBe("Kabeeble — First goal as a Forward");
+  });
+
+  it("frames a 10.0 as a Perfect rating, and counts them", () => {
+    const perfect = { value: 10, threshold: null, positionGroup: null };
+    expect(milestoneHeadline("perfect-rating", "Loltown95", perfect)).toBe(
+      "Loltown95 — Perfect rating",
+    );
+    expect(MILESTONE_KINDS["perfect-rating"].figure(perfect)).toBe("10.0");
+    expect(
+      milestoneHeadline("perfect-ratings", "Loltown95", {
+        ...figures,
+        value: 5,
+      }),
+    ).toBe("Loltown95 — 5th Perfect rating");
   });
 
   it("labels records as since records began", () => {

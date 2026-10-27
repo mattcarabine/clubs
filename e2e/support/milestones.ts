@@ -3,7 +3,7 @@
  * EA career totals, and the rows detection leaves in D1.
  */
 import type { APIRequestContext } from "@playwright/test";
-
+import type { EaPlayerStats } from "../../app/ea/types.ts";
 import type { fakeEa as FakeEa } from "./fake-ea.ts";
 import { type MatchOptions, win, withLineup } from "./match-builders.ts";
 import { membersPayload } from "./members.ts";
@@ -20,6 +20,8 @@ export interface LineupEntry {
   assists?: number;
   rating?: number;
   motm?: boolean;
+  /** Any other EA fields, as EA sends them: `{ redcards: "1" }`. */
+  stats?: EaPlayerStats;
 }
 
 /**
@@ -41,12 +43,14 @@ export async function serveMatch(
         playedAt: new Date(Date.now() - minutesAgo * MINUTE_MS),
         ...options,
       }),
-      lineup.map(({ player, goals = 0, assists = 0, rating = 7, motm }) => ({
-        player,
-        goals,
-        rating,
-        stats: { assists: String(assists), mom: motm ? "1" : "0" },
-      })),
+      lineup.map(
+        ({ player, goals = 0, assists = 0, rating = 7, motm, stats }) => ({
+          player,
+          goals,
+          rating,
+          stats: { assists: String(assists), mom: motm ? "1" : "0", ...stats },
+        }),
+      ),
     ),
   );
   return matchId;
@@ -71,12 +75,30 @@ export async function serveCareerTotals(
   );
 }
 
-/** Deletes every Milestone and its comments, as before the release. */
+/**
+ * Deletes every Milestone and its comments, as before the release; or, given
+ * a kind, only that kind's Milestones, as before the kind was added.
+ */
 export async function forgetMilestones(
   request: APIRequestContext,
+  kind?: string,
 ): Promise<void> {
-  const res = await request.post("/__test/milestones/forget");
+  const res = await request.post("/__test/milestones/forget", {
+    params: kind ? { kind } : undefined,
+  });
   if (!res.ok()) throw new Error(`forget failed: ${res.status()}`);
+}
+
+/** Stores kind `from`'s Milestones as kind `to`, e.g. one no longer detected. */
+export async function renameMilestones(
+  request: APIRequestContext,
+  from: string,
+  to: string,
+): Promise<void> {
+  const res = await request.post("/__test/milestones/rename", {
+    params: { from, to },
+  });
+  if (!res.ok()) throw new Error(`rename failed: ${res.status()}`);
 }
 
 export interface MilestoneRow {
