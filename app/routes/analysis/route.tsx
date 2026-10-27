@@ -80,7 +80,6 @@ import { HumansSection } from "./humans";
 import { LineupsSection } from "./lineups";
 import { OverTimeSection } from "./over-time";
 import { ResultsSection, RollingSections } from "./results";
-import { StrengthSection } from "./strength";
 import { WinChanceSection } from "./win-chance";
 
 export function meta({ location }: Route.MetaArgs) {
@@ -230,7 +229,10 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
         {split.ready && (
           <SplitDetails split={split} positionGroups={filter.positionGroups} />
         )}
-        <WinChanceSection winChance={winChance} />
+        <WinChanceSection
+          winChance={winChance}
+          byStrength={split.ready ? split.byStrength : undefined}
+        />
         <OverTimeSection skillRating={skillRating} campaigns={campaigns} />
       </div>
     </>
@@ -336,7 +338,7 @@ function CircumstancesSection({
   );
 }
 
-/** By Opponent, after a result, and per Squad Member. */
+/** By humans, after a result, and per Squad Member. */
 function SplitDetails({
   split,
   positionGroups,
@@ -346,8 +348,6 @@ function SplitDetails({
 }) {
   return (
     <>
-      <StrengthSection byStrength={split.byStrength} />
-
       <HumansSection byHumans={split.byHumans} />
 
       <AfterResultSection splits={split.afterResult} />

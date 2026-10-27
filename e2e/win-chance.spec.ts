@@ -64,15 +64,8 @@ test("under 20 rated Matches the Elo estimate is used and labelled, with Wins ag
   await expect(
     section(page).getByRole("region", { name: "Wins against expected" }),
   ).toContainText("2 Wins vs 2.0 expected");
-  await expect(
-    section(page)
-      .getByRole("list", { name: "Calibration" })
-      .getByRole("listitem"),
-  ).toHaveText([
-    "Matches we were given 0–10%: won 0 of 1",
-    "Matches we were given 50–60%: won 1 of 2",
-    "Matches we were given 90–100%: won 1 of 1",
-  ]);
+  // CLUBS-73: no Calibration list, since Results by rating gap shows the same.
+  await expect(section(page).getByText("Calibration")).toHaveCount(0);
 
   // The FilterBar decides which Matches count: the Playoff Win at 50% too.
   await page.goto("/analysis");
@@ -99,6 +92,7 @@ test("Results by rating gap shows each band's Wins, draws and defeats against th
   page,
   fakeEa,
   triggerPoll,
+  isMobile,
 }) => {
   await recordRated(fakeEa, triggerPoll, [
     // Elo: −450 → 7%, −150 → 30%, 0 → 50%, 50 → 57%, 120 → 67%, 150 → 70%.
@@ -112,10 +106,12 @@ test("Results by rating gap shows each band's Wins, draws and defeats against th
   ]);
 
   await page.goto("/analysis");
-  const chart = section(page).getByRole("figure");
+  const chart = section(page)
+    .getByRole("figure")
+    .filter({ hasText: "Results by rating gap" });
   await expect(chart).toContainText("Results by rating gap");
   for (const key of ["Win", "Draw", "Loss", "Expected Win %"]) {
-    await expect(chart.getByText(key, { exact: true })).toBeVisible();
+    await expect(chart.getByText(key, { exact: true }).first()).toBeVisible();
   }
   const rows = chart
     .getByRole("table", { name: "Results by Skill Rating gap" })
@@ -129,11 +125,33 @@ test("Results by rating gap shows each band's Wins, draws and defeats against th
     "+100 to +20022001.4",
   ]);
   await expect(
-    chart.getByText("1 won, 1 drawn · 0.6 Wins expected"),
+    chart.getByText("1 won, 1 drawn · 0.6 Wins expected (30%)"),
   ).toBeVisible();
-  await expect(chart.getByText("2 won · 1.4 Wins expected")).toBeVisible();
+  await expect(
+    chart.getByText("2 won · 1.4 Wins expected (68%)"),
+  ).toBeVisible();
   // The outcome colours paint each band's bar, the Win share labelled where it fits.
   await expect(chart.getByText("2W", { exact: true })).toHaveClass(/bg-win/);
+
+  // CLUBS-73: hovering a bar shows its expected and actual Win % (pointers
+  // only; touch reads the % in the words above).
+  if (!isMobile) {
+    const band = chart.locator("li").filter({ hasText: "+100 to +200" });
+    const tooltip = band.getByText("Expected Win %", { exact: true });
+    await expect(tooltip).toBeHidden();
+    await band.getByText("2W", { exact: true }).hover();
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip.locator("..")).toContainText("68%");
+    await expect(band.getByText("Win %", { exact: true })).toBeVisible();
+  }
+
+  // CLUBS-73: the Wins against expected call-out leads, as wide as the chart.
+  const callout = await section(page)
+    .getByRole("region", { name: "Wins against expected" })
+    .boundingBox();
+  const chartBox = await chart.boundingBox();
+  expect(callout && chartBox && callout.y < chartBox.y).toBe(true);
+  expect(callout?.width).toBeCloseTo(chartBox?.width ?? 0, 0);
 
   // The FilterBar decides which Matches count: no Playoff Win at +150.
   await page.goto("/analysis?types=league");

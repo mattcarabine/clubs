@@ -2,7 +2,7 @@
  * Win Chance from D1 (CLUBS-30). The curve is always fitted over every rated
  * Competitive Match (the default filter, whatever the page's), so a Match's
  * Win Chance is the same on every page; the page's filter picks which
- * Matches are plotted, counted against expectation and calibrated.
+ * Matches are charted and counted against expectation.
  */
 import type { Db } from "~/db/client";
 
@@ -10,8 +10,6 @@ import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
 import { listMatches, type MatchSummary } from "./matches";
 import { ratingGap } from "./skill-rating";
 import {
-  type CalibrationBand,
-  calibration,
   type GapBand,
   gapBands,
   type MatchWinChance,
@@ -37,7 +35,6 @@ export interface WinChanceAnalysis {
   /** Filtered Matches left out because either club's Skill Rating is missing. */
   unrated: number;
   vsExpected: WinsAgainstExpected;
-  calibration: CalibrationBand[];
 }
 
 /** The Analysis page's Win chance section over the Matches a filter selects. */
@@ -55,7 +52,6 @@ export async function getWinChanceAnalysis(
     bands: gapBands(model, results),
     unrated: matches.length - results.length,
     vsExpected: winsAgainstExpected(model, results),
-    calibration: calibration(model, results),
   };
 }
 

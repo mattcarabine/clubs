@@ -4,7 +4,6 @@ import type { Outcome } from "~/lib/domain";
 
 import {
   billing,
-  calibration,
   eloWinChance,
   expectation,
   fitLogistic,
@@ -164,25 +163,6 @@ describe("winsAgainstExpected", () => {
       wins: 2,
       expected: expect.closeTo(2, 10),
     });
-  });
-});
-
-describe("calibration", () => {
-  it("groups Matches into 10-point bands of Win Chance with how many we won", () => {
-    const model = winChanceModel([]);
-    // Elo: 0 → 50%, 100 → 64%, 120 → 67%, 400 → 91%, 1000 → 99.7%.
-    const results: RatedResult[] = [
-      { gap: 100, outcome: "W" },
-      { gap: 120, outcome: "L" },
-      { gap: 0, outcome: "W" },
-      { gap: 400, outcome: "W" },
-      { gap: 1000, outcome: "W" },
-    ];
-    expect(calibration(model, results)).toEqual([
-      { from: 50, to: 60, played: 1, wins: 1 },
-      { from: 60, to: 70, played: 2, wins: 1 },
-      { from: 90, to: 100, played: 2, wins: 2 },
-    ]);
   });
 });
 
