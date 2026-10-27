@@ -6,8 +6,8 @@ import { OUR_CLUB_ID, win, withLineup } from "./support/match-builders.ts";
 import { daysAgo } from "./support/record.ts";
 import { expect, test } from "./support/test.ts";
 
-// CLUBS-61: a player who was sent off gets a "Red card" marker on their
-// line-up row, beside the name like MOTM, for both clubs.
+// CLUBS-61, CLUBS-64: a player who was sent off gets a small red card icon
+// on their line-up row, beside the name like MOTM, for both clubs.
 
 const CLUB_NAME = "A Bloo Bloo";
 const MATCH_ID = "861000000000001";
@@ -45,7 +45,7 @@ function playerRow(table: Locator, name: string) {
 }
 
 const redCard = (scope: Locator) =>
-  scope.getByText("Red card", { exact: true });
+  scope.getByRole("img", { name: "Red card", exact: true });
 
 test("our player who was sent off is marked, and only them", async ({
   page,
@@ -53,7 +53,11 @@ test("our player who was sent off is marked, and only them", async ({
   await page.goto(`/matches/${MATCH_ID}`);
   const ours = lineup(page, CLUB_NAME);
 
-  await expect(redCard(playerRow(ours, SENT_OFF.name))).toBeVisible();
+  const card = redCard(playerRow(ours, SENT_OFF.name));
+  await expect(card).toBeVisible();
+  await expect(card).toHaveAttribute("title", "Sent off");
+  // An icon, not a chip with the words on it.
+  await expect(ours.getByText("Red card", { exact: true })).toHaveCount(0);
   await expect(redCard(playerRow(ours, CLEAN.name))).toHaveCount(0);
   // A red card is not a rage quit: their stats still show.
   await expect(
@@ -70,7 +74,7 @@ test("an Opponent's player who was sent off is marked too", async ({
   await expect(redCard(theirs)).toHaveCount(1);
 });
 
-test("the marker fits a phone without widening the page", async ({ page }) => {
+test("the icon fits a phone without widening the page", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto(`/matches/${MATCH_ID}`);
   await expect(
