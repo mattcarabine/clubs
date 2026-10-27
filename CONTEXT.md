@@ -131,6 +131,10 @@ _Avoid_: Promotion Series, finals
 **Outcome Split**:
 Our Club's stats averaged over Wins set beside the same averages over Dropped Points.
 
+**Swing**:
+Our Club's Win % in the Matches a Squad Member rated at or above their own average, minus the Win % in the Matches they rated below it, in points. A big Swing means results follow how they play; a small one beside a high rating means their rating doesn't move the result. EA rates winners higher, so most Swings are positive: compare Squad Members with each other. Needs 3 Matches each side, with "Small sample" under 10.
+_Avoid_: Impact, influence score, importance, clutch
+
 **Comparison**:
 Two Squad Members' stats side by side, shown in the app as "Compare to…".
 _Avoid_: Head-to-head (reserved for Our Club vs an Opponent), versus, matchup

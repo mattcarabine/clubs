@@ -5,6 +5,7 @@ import {
   formatDecimal,
   formatOptional,
   formatPercentage,
+  formatPointsGap,
   formatSigned,
   formatThousands,
   NO_VALUE,
@@ -76,5 +77,13 @@ describe("formatPercentage", () => {
 
   it("shows a dash when there is no value", () => {
     expect(formatPercentage(null)).toBe(NO_VALUE);
+  });
+});
+
+describe("formatPointsGap", () => {
+  it("rounds a gap to signed whole points", () => {
+    expect(formatPointsGap(12.4)).toBe("+12 pts");
+    expect(formatPointsGap(-40)).toBe("−40 pts");
+    expect(formatPointsGap(null)).toBe(NO_VALUE);
   });
 });

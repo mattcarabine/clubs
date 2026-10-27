@@ -21,8 +21,9 @@ import {
 import { capitalise } from "~/lib/text";
 import { isFormerSquadMember } from "~/roster";
 
-import { type QuitBy, quitBy } from "./counted";
+import { isCountedAppearance, type QuitBy, quitBy } from "./counted";
 import {
+  average,
   effectSize,
   per90,
   percentage,
@@ -1390,11 +1391,52 @@ export function playerOutcomeSplit(
   };
 }
 
+/**
+ * A Squad Member's Swing (CLUBS-70): Our Club's record when they rated at or
+ * above their own average against when they rated below it. A big gap means
+ * results follow how they play; a small one beside a high rating means their
+ * rating does not move the result. EA rates winners higher, so most gaps are
+ * positive: compare Squad Members with each other.
+ */
+export interface Swing {
+  /** Our record in the Matches they rated at or above their own average. */
+  above: WinRecord;
+  /** Our record in the Matches they rated below it. */
+  below: WinRecord;
+  /** `above` minus `below` Win %, in points; null under `MIN_SPLIT_MATCHES` on either side. */
+  gap: number | null;
+  /** Either side under `SMALL_SAMPLE_MATCHES`. */
+  smallSample: boolean;
+}
+
+/** A Squad Member's Swing over their counted, rated Appearances (in the Position Groups wanted). */
+export function swing(appearances: readonly SquadAppearance[]): Swing {
+  const rated = appearances.flatMap((a) =>
+    a.rating !== null && isCountedAppearance(a)
+      ? [{ rating: a.rating, outcome: a.outcome }]
+      : [],
+  );
+  const mean = average(rated.map((a) => a.rating)) ?? 0;
+  const record = (keep: (rating: number) => boolean) =>
+    winRecord(rated.filter((a) => keep(a.rating)).map((a) => a.outcome));
+  const above = record((r) => r >= mean);
+  const below = record((r) => r < mean);
+  const gap = winRateGap({ group: above, rest: below });
+  return {
+    above,
+    below,
+    gap,
+    smallSample: gap !== null && isSmall(above.played, below.played),
+  };
+}
+
 /** A row of the Analysis page's per-player table. */
 export interface PlayerSplitRow extends PlayerOutcomeSplit {
   playerId: string;
   name: string;
   former: boolean;
+  /** Their Swing in the selected Position Groups (CLUBS-70). */
+  swing: Swing;
 }
 
 /**
@@ -1411,6 +1453,7 @@ export function playerSplits(
       name: apps[apps.length - 1].name,
       former: isFormerSquadMember(playerId),
       ...playerOutcomeSplit(apps, positionGroups),
+      swing: swing(filterByPositionGroups(apps, positionGroups)),
     }))
     .filter((row) => totalAppearances(row) > 0)
     .sort(

@@ -298,7 +298,10 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
               title="Wins vs Dropped Points"
               subtitle={`${chartCoverage(form.length, positions)}: Wins beside draws and losses, per 90 over the minutes played`}
             />
-            <OutcomeSplitPanel split={profile.outcomeSplit} />
+            <OutcomeSplitPanel
+              split={profile.outcomeSplit}
+              swing={profile.swing}
+            />
           </section>
         </>
       )}
