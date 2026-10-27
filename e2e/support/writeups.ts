@@ -28,10 +28,20 @@ export const SESSION_CLOCK = new Date(
 export const KAB = { id: "935000001", name: "Kabeeble" };
 export const TREV = { id: "935000002", name: "Trevor" };
 
-/** Kabeeble scores in every Match, Trevor plays alongside. */
-function lineup(body: AddMatchBody): AddMatchBody {
+/**
+ * Kabeeble scores twice in a Session's first Match and plays on, Trevor
+ * alongside. Scoring only once a Session never makes a scoring run
+ * (CLUBS-63), whose Milestone comment would add a call to the ones these
+ * specs count.
+ */
+function lineup(body: AddMatchBody, index: number): AddMatchBody {
   return withLineup(body, [
-    { player: KAB, goals: 1, rating: 8.4, stats: { shots: "4" } },
+    {
+      player: KAB,
+      goals: index === 0 ? 2 : 0,
+      rating: 8.4,
+      stats: { shots: "4", assists: "0" },
+    },
     { player: TREV, rating: 6.5 },
   ]);
 }
@@ -68,6 +78,7 @@ export async function serveSession(
         matchId,
         playedAt: new Date(start + i * 30 * MINUTE_MS),
       }),
+      i,
     );
     if (opponentName) {
       for (const [clubId, club] of Object.entries(body.match.clubs)) {
