@@ -5,6 +5,7 @@ import {
   CampaignPanel,
   ChartFrame,
   ChartLegend,
+  ClubLeaders,
   DataTable,
   type DataTableColumn,
   DateRangePicker,
@@ -18,6 +19,7 @@ import {
   MatchHeadline,
   MilestoneCard,
   type MilestoneCardData,
+  MilestoneRow,
   OutcomeBadge,
   PageHeader,
   PlayerChip,
@@ -48,6 +50,7 @@ import {
 } from "~/lib/domain";
 import { formatDecimal } from "~/lib/number-format";
 import { pageMeta } from "~/lib/page-meta";
+import type { LeaderBoard } from "~/stats/club-leaders";
 import { type DateRange, dateRangeLabel } from "~/stats/filter";
 import type { MilestoneEntry } from "~/stats/milestones-query";
 import type { TopPerformer } from "~/stats/top-performers";
@@ -123,6 +126,31 @@ const SAMPLE_MILESTONES: MilestoneCardData[] = [
       "A 6-1 hammering and the biggest Win since records began. Northside never laid a glove on us.",
     match: MILESTONE_MATCH,
     sessionId: "sg-milestone",
+  },
+];
+
+const SAMPLE_LEADERS: LeaderBoard[] = [
+  {
+    stat: "goals",
+    label: "Goals",
+    leaders: [
+      { playerId: "sg-1", name: "Kopite Kev", value: 98, figure: "98" },
+      { playerId: "sg-2", name: "Wingback Wes", value: 86, figure: "86" },
+      { playerId: "sg-3", name: "Big Sam", value: 52, figure: "52" },
+    ],
+  },
+  {
+    stat: "average-rating",
+    label: "Average rating",
+    leaders: [
+      { playerId: "sg-2", name: "Wingback Wes", value: 7.9, figure: "7.9" },
+      { playerId: "sg-1", name: "Kopite Kev", value: 7.6, figure: "7.6" },
+    ],
+  },
+  {
+    stat: "perfect-ratings",
+    label: "Perfect ratings",
+    leaders: [{ playerId: "sg-1", name: "Kopite Kev", value: 2, figure: "2" }],
   },
 ];
 
@@ -670,6 +698,23 @@ export default function Styleguide() {
             />
           ))}
         </div>
+      </Section>
+
+      <Section id="milestone-row" title="MilestoneRow">
+        <ul className="flex max-w-3xl flex-col gap-2">
+          {SAMPLE_MILESTONES.map((milestone) => (
+            <li key={milestone.headline}>
+              <MilestoneRow milestone={milestone} />
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      <Section id="club-leaders" title="ClubLeaders">
+        <ClubLeaders
+          boards={SAMPLE_LEADERS}
+          subtitle="EA's career totals; Perfect ratings since tracking began"
+        />
       </Section>
 
       <Section id="match-headline" title="MatchHeadline">
