@@ -38,6 +38,7 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
+import { type Consistency, consistency } from "./rating-context";
 import {
   OPPONENT_STRENGTHS,
   type OpponentStrength,
@@ -1430,6 +1431,14 @@ export function swing(appearances: readonly SquadAppearance[]): Swing {
   };
 }
 
+/** Swing and consistency, the two ways a Squad Member's ratings tell (CLUBS-70, CLUBS-74). */
+export function playerRatingProfile(appearances: readonly SquadAppearance[]): {
+  swing: Swing;
+  consistency: Consistency;
+} {
+  return { swing: swing(appearances), consistency: consistency(appearances) };
+}
+
 /** A row of the Analysis page's per-player table. */
 export interface PlayerSplitRow extends PlayerOutcomeSplit {
   playerId: string;
@@ -1437,23 +1446,34 @@ export interface PlayerSplitRow extends PlayerOutcomeSplit {
   former: boolean;
   /** Their Swing in the selected Position Groups (CLUBS-70). */
   swing: Swing;
+  /** Their Floor and Spread in the same Appearances (CLUBS-74). */
+  consistency: Consistency;
+  /**
+   * Our record in every Match they played against every one they didn't,
+   * whatever the Position Group (CLUBS-78), or null when they have none.
+   */
+  withWithout: GroupSplit | null;
 }
 
 /**
  * Every Squad Member with an Appearance in the selected Position Groups,
- * most Appearances first.
+ * most Appearances first, each with their record with and without them
+ * (`withAndWithout`, from the Outcome Split).
  */
 export function playerSplits(
   appearances: readonly SquadAppearance[],
   positionGroups: PositionGroupSelection,
+  withWithout: readonly WithWithout[],
 ): PlayerSplitRow[] {
+  const withWithoutByPlayer = new Map(withWithout.map((w) => [w.playerId, w]));
   return [...groupBy(appearances, (a) => a.playerId).entries()]
     .map(([playerId, apps]) => ({
       playerId,
       name: apps[apps.length - 1].name,
       former: isFormerSquadMember(playerId),
       ...playerOutcomeSplit(apps, positionGroups),
-      swing: swing(filterByPositionGroups(apps, positionGroups)),
+      ...playerRatingProfile(filterByPositionGroups(apps, positionGroups)),
+      withWithout: withWithoutByPlayer.get(playerId) ?? null,
     }))
     .filter((row) => totalAppearances(row) > 0)
     .sort(

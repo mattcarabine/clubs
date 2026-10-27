@@ -19,6 +19,8 @@ import {
   type PositionGroupSelection,
 } from "./positions";
 import {
+  type Consistency,
+  consistency,
   type MatchRatings,
   matchRatings,
   type RatingLink,
@@ -73,6 +75,8 @@ export interface ComparedTotals {
   formIndicator: FormIndicator | null;
   /** Rating against teammates in the same Matches (CLUBS-66), over this side's counted Appearances. */
   vsTeam: VsTeam;
+  /** Floor and Spread over the same Appearances (CLUBS-74). */
+  consistency: Consistency;
 }
 
 export interface ComparedSides {
@@ -132,6 +136,7 @@ export function compareSides(
           ),
         ),
         vsTeam: vsTeam(counted, ratings),
+        consistency: consistency(counted),
       };
     }),
     // A Squad Member appears once per Match, so A's Appearances are the Matches.

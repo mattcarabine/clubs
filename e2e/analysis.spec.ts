@@ -51,6 +51,32 @@ function tableRow(page: Page, table: string, name: string | RegExp) {
     .filter({ has: page.getByRole("rowheader", { name }) });
 }
 
+const SQUAD_TABLE = "Squad Members in Wins against draws and defeats";
+
+/** A Squad Member's figures in the Squad Members table, by column header. */
+async function squadFigures(page: Page, name: string, headers: string[]) {
+  const all = await page
+    .getByRole("table", { name: SQUAD_TABLE })
+    .getByRole("columnheader")
+    .allTextContents();
+  const cells = tableRow(page, SQUAD_TABLE, name).getByRole("cell");
+  // The first column is the row header, so data cells start one along.
+  return headers.map((h) => {
+    const index = all.findIndex((text) => text.trim() === h);
+    expect(index, `column ${h}`).toBeGreaterThan(0);
+    return cells.nth(index - 1);
+  });
+}
+
+const WITH_WITHOUT = ["Win % with", "Win % without", "With gap"];
+
+async function expectWithWithout(page: Page, name: string, values: string[]) {
+  const cells = await squadFigures(page, name, WITH_WITHOUT);
+  for (const [i, cell] of cells.entries()) {
+    await expect(cell, `${name} ${WITH_WITHOUT[i]}`).toHaveText(values[i]);
+  }
+}
+
 /** 3 Wins and 3 losses, a day apart, a full 90 minutes each. */
 function basicSplit(): AddMatchBody[] {
   return [
@@ -196,12 +222,10 @@ test("a Squad Member who plays only in Wins shows 100% with and 0% without", asy
   ]);
 
   await page.goto("/analysis");
-  await expect(
-    tableRow(page, "With and without", STAR.name).getByRole("cell"),
-  ).toHaveText(["3", "100%", "3", "0%", "+100 pts"]);
-  await expect(
-    tableRow(page, "With and without", ROCK.name).getByRole("cell"),
-  ).toHaveText(["6", "50%", "0", "–", "–"]);
+  // CLUBS-78: with and without live in the Squad Members table now.
+  await expect(region(page, "Personnel")).toHaveCount(0);
+  await expectWithWithout(page, STAR.name, ["100%", "0%", "+100 pts"]);
+  await expectWithWithout(page, ROCK.name, ["50%", "–", "–"]);
 });
 
 test("a Gap resting on fewer than 3 Matches with or without a Squad Member shows no value", async ({
@@ -219,12 +243,10 @@ test("a Gap resting on fewer than 3 Matches with or without a Squad Member shows
   ]);
 
   await page.goto("/analysis");
+  await expectWithWithout(page, BENCH.name, ["100%", "25%", "–"]);
   await expect(
-    tableRow(page, "With and without", BENCH.name).getByRole("cell"),
-  ).toHaveText(["2", "100%", "4", "25%", "–"]);
-  await expect(
-    region(page, "Personnel").getByText(
-      "A Gap needs at least 3 Matches with and 3 without.",
+    region(page, "Squad Members").getByText(
+      "a With gap needs 3 Matches each way",
     ),
   ).toBeVisible();
 });
@@ -257,7 +279,12 @@ test("a position outlier appears when its thresholds are met", async ({
   await recordPositions(fakeEa, triggerPoll, ["W", "W", "L"], ["L", "L", "W"]);
 
   await page.goto("/analysis");
-  const outliers = page.getByRole("table", { name: "Position outliers" });
+  // CLUBS-78: under the Squad Members table, beside Win % by squad size.
+  const squad = region(page, "Squad Members");
+  await expect(
+    squad.getByRole("list", { name: "Win % by Squad Members playing" }),
+  ).toBeVisible();
+  const outliers = squad.getByRole("table", { name: "Position outliers" });
   await expect(outliers.getByRole("rowheader")).toHaveText([
     `${STAR.name} at Forward`,
     `${STAR.name} at Midfielder`,
@@ -283,7 +310,7 @@ test("a position outlier does not appear under the gap", async ({
   );
 
   await page.goto("/analysis");
-  await expect(region(page, "Personnel")).toBeVisible();
+  await expect(region(page, "Squad Members")).toBeVisible();
   await expect(
     page.getByRole("table", { name: "Position outliers" }),
   ).toHaveCount(0);
@@ -406,8 +433,19 @@ test("the Position Group filter changes only the per-player section", async ({
       "Squad Members in Wins against draws and defeats",
       STAR.name,
     );
-  await expect(star().getByRole("cell").nth(3)).toHaveText("3"); // Apps W, after the 3 Swing columns
-  await expect(star().getByRole("cell").nth(4)).toHaveText("3"); // Apps DP
+  // Find the Apps columns by header, since Swing and consistency lead the table.
+  const headers = await page
+    .getByRole("table", {
+      name: "Squad Members in Wins against draws and defeats",
+    })
+    .getByRole("columnheader")
+    .allTextContents();
+  // The first column is the row header, so data cells start one along.
+  const appsW = headers.findIndex((h) => h.trim() === "Apps W") - 1;
+  const appsDp = headers.findIndex((h) => h.trim() === "Apps D/L") - 1;
+  expect(appsW).toBeGreaterThanOrEqual(0);
+  await expect(star().getByRole("cell").nth(appsW)).toHaveText("3");
+  await expect(star().getByRole("cell").nth(appsDp)).toHaveText("3");
 
   const picker = region(page, "Squad Members").getByRole("group", {
     name: "Position Group",
@@ -421,8 +459,8 @@ test("the Position Group filter changes only the per-player section", async ({
       .toBe("forward");
   }).toPass();
 
-  await expect(star().getByRole("cell").nth(3)).toHaveText("2");
-  await expect(star().getByRole("cell").nth(4)).toHaveText("1");
+  await expect(star().getByRole("cell").nth(appsW)).toHaveText("2");
+  await expect(star().getByRole("cell").nth(appsDp)).toHaveText("1");
   // Rock only kept goal, so drops out of the table.
   await expect(
     tableRow(
@@ -433,9 +471,8 @@ test("the Position Group filter changes only the per-player section", async ({
   ).toHaveCount(0);
   // Everything else is unchanged.
   expect(await outcomeSplit.textContent()).toBe(before);
-  await expect(
-    tableRow(page, "With and without", ROCK.name).getByRole("cell").first(),
-  ).toHaveText("6");
+  // With and without counts every Match, whatever the Position Group.
+  await expectWithWithout(page, STAR.name, ["50%", "–", "–"]);
 });
 
 test("the trend chart shows a rolling 10-Match Win %", async ({

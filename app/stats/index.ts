@@ -10,6 +10,8 @@ export * from "./campaigns";
 export * from "./campaigns-query";
 export * from "./club-leaders";
 export * from "./club-leaders-query";
+export * from "./club-records";
+export * from "./club-records-query";
 export * from "./club-snapshot";
 export * from "./coaching-brief";
 export * from "./comparison";
