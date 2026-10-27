@@ -128,7 +128,7 @@ test("Compare leaves out our stats from a DNF we quit, but its record still coun
 function analysisShots(page: Page): Locator {
   return page
     .getByRole("table", {
-      name: "Performance in Wins against draws and defeats",
+      name: "Performance in wins against draws and defeats",
     })
     .locator("tbody tr")
     .filter({ has: page.getByRole("rowheader", { name: "Shots per 90" }) })
@@ -159,7 +159,7 @@ test("the Outcome Split leaves our stats from a DNF we quit out of the per-90s, 
   await expect(analysisShots(page).nth(0)).toHaveText("10.0");
   await expect(analysisShots(page).nth(1)).toHaveText("4.0");
   await expect(outcomeSplitSection(page)).toContainText(
-    "EA zeroes the stats of a side that rage quits, so they leave out ours in 1 Match we rage quit.",
+    "Leaves out our stats from 1 match we rage quit, since EA wipes the stats of a side that rage quits.",
   );
 });
 
@@ -188,7 +188,7 @@ test("the Outcome Split leaves the Opponent's zeroed stats from a Match they qui
   await expect(analysisShots(page).nth(2)).toHaveText("6.0");
   await expect(analysisShots(page).nth(3)).toHaveText("9.0");
   await expect(outcomeSplitSection(page)).toContainText(
-    "EA zeroes the stats of a side that rage quits, so they leave out Opponents' in 1 Match they rage quit.",
+    "Leaves out opponents' stats from 1 match they rage quit, since EA wipes the stats of a side that rage quits.",
   );
 });
 

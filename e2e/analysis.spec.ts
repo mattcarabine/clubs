@@ -63,9 +63,9 @@ test("with no Matches it says how many more are needed and shows no findings", a
   page,
 }) => {
   await page.goto("/analysis");
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
   await expect(
-    page.getByText("3 more Wins and 3 more draws or defeats", {
+    page.getByText("3 more wins and 3 more draws or defeats", {
       exact: false,
     }),
   ).toBeVisible();
@@ -86,7 +86,7 @@ test("with fewer than 3 draws or defeats it says how many more are needed", asyn
   ]);
 
   await page.goto("/analysis");
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
   await expect(page.getByText(": 1 more draw or defeat.")).toBeVisible();
   await expect(findings(page)).toHaveCount(0);
 });
@@ -155,7 +155,7 @@ test("a DNF stopped at 45 minutes adds per-90 values, not raw totals", async ({
   await page.goto("/analysis");
   const shots = tableRow(
     page,
-    "Performance in Wins against draws and defeats",
+    "Performance in wins against draws and defeats",
     "Shots per 90",
   );
   await expect(shots.getByRole("cell").nth(0)).toHaveText("10.0");
@@ -224,7 +224,7 @@ test("a Gap resting on fewer than 3 Matches with or without a Squad Member shows
   ).toHaveText(["2", "100%", "4", "25%", "–"]);
   await expect(
     region(page, "Personnel").getByText(
-      "A Gap needs at least 3 Matches with and 3 without.",
+      "Gap is our win % with them minus without them, once there are 3 matches each way.",
     ),
   ).toBeVisible();
 });
@@ -307,7 +307,7 @@ test("Matches 30 minutes apart share a Session and 60 minutes apart start a new 
   ]);
 
   await page.goto("/analysis");
-  await expect(barList(page, "Win % by place in Session")).toHaveText([
+  await expect(barList(page, "Win % by place in session")).toHaveText([
     /^1st \(4\)\s*50%$/,
     /^2nd \(2\)\s*50%$/,
   ]);
@@ -378,7 +378,7 @@ test("each FilterBar dimension changes the results", async ({
   await expect(summary()).toContainText("4 Wins and 4 draws and defeats");
 
   await page.goto("/analysis?dnf=0&types=playoff");
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
 
   await page.goto("/analysis?dnf=0");
   await expect(summary()).toContainText("4 Wins and 4 draws and defeats");
@@ -387,7 +387,7 @@ test("each FilterBar dimension changes the results", async ({
   await expect(summary()).toContainText("3 Wins and 5 draws and defeats");
 
   await page.goto("/analysis?season=2");
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
 });
 
 test("the Position Group filter changes only the per-player section", async ({
@@ -582,8 +582,8 @@ test.describe("After a result (CLUBS-26)", () => {
 
     await page.goto("/analysis");
     await expect(region(page, "After a result")).toBeVisible();
-    await expect(afterResultBars(page, "Any next Match")).toHaveText([
-      /^After a Win \(5\)\s*20%$/,
+    await expect(afterResultBars(page, "Any next match")).toHaveText([
+      /^After a win \(5\)\s*20%$/,
       /^After a draw or defeat \(4\)\s*75%$/,
     ]);
   });
@@ -608,15 +608,15 @@ test.describe("After a result (CLUBS-26)", () => {
 
     // With Playoffs, each loss is followed by a won Playoff.
     await page.goto("/analysis");
-    await expect(afterResultBars(page, "Any next Match")).toHaveText([
-      /^After a Win \(6\)\s*33%$/,
+    await expect(afterResultBars(page, "Any next match")).toHaveText([
+      /^After a win \(6\)\s*33%$/,
       /^After a draw or defeat \(4\)\s*100%$/,
     ]);
 
     // League only skips the Playoffs: W→L three times, L→W twice and L→L.
     await page.goto("/analysis?types=league");
-    await expect(afterResultBars(page, "Any next Match")).toHaveText([
-      /^After a Win \(3\)\s*0%$/,
+    await expect(afterResultBars(page, "Any next match")).toHaveText([
+      /^After a win \(3\)\s*0%$/,
       /^After a draw or defeat \(3\)\s*67%$/,
     ]);
   });
@@ -636,13 +636,13 @@ test.describe("After a result (CLUBS-26)", () => {
 
     await page.goto("/analysis");
     // Within Sessions: W→L four times, L→W three times.
-    await expect(afterResultBars(page, "Same Session")).toHaveText([
-      /^After a Win \(4\)\s*0%$/,
+    await expect(afterResultBars(page, "Same session")).toHaveText([
+      /^After a win \(4\)\s*0%$/,
       /^After a draw or defeat \(3\)\s*100%$/,
     ]);
     // Any next Match adds the pairs across Sessions: L→L, W→W and the L→W 2 hours on.
-    await expect(afterResultBars(page, "Any next Match")).toHaveText([
-      /^After a Win \(5\)\s*20%$/,
+    await expect(afterResultBars(page, "Any next match")).toHaveText([
+      /^After a win \(5\)\s*20%$/,
       /^After a draw or defeat \(5\)\s*80%$/,
     ]);
   });
@@ -658,16 +658,16 @@ test.describe("After a result (CLUBS-26)", () => {
     await page.goto("/analysis");
     const section = region(page, "After a result");
     await expect(section).toBeVisible();
-    await expect(afterResultBars(page, "Any next Match")).toHaveCount(0);
-    await expect(afterResultBars(page, "Same Session")).toHaveCount(0);
+    await expect(afterResultBars(page, "Any next match")).toHaveCount(0);
+    await expect(afterResultBars(page, "Same session")).toHaveCount(0);
     await expect(
       section.getByText(
-        "Needs at least 3 Matches after a Win and 3 after a draw or defeat (3 and 2 so far).",
+        "Needs at least 3 matches after a win and 3 after a draw or defeat (3 and 2 so far).",
       ),
     ).toBeVisible();
     await expect(
       section.getByText(
-        "Needs at least 3 Matches after a Win and 3 after a draw or defeat (0 and 0 so far).",
+        "Needs at least 3 matches after a win and 3 after a draw or defeat (0 and 0 so far).",
       ),
     ).toBeVisible();
     await expect(
@@ -706,7 +706,7 @@ test.describe("After a result (CLUBS-26)", () => {
       await record(fakeEa, triggerPoll, tiltSessions());
 
       await page.goto("/analysis");
-      await expect(afterResultBars(page, "Same Session")).toHaveCount(2);
+      await expect(afterResultBars(page, "Same session")).toHaveCount(2);
       const fits = await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
       );

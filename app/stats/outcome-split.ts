@@ -502,8 +502,8 @@ function squadSizeOf(match: SplitMatch): string {
 
 /** Which Match counts as the one after a result. */
 export const AFTER_RESULT_SCOPES = [
-  { id: "any-next", label: "Any next Match" },
-  { id: "same-session", label: "Same Session" },
+  { id: "any-next", label: "Any next match" },
+  { id: "same-session", label: "Same session" },
 ] as const;
 
 export type AfterResultScope = (typeof AFTER_RESULT_SCOPES)[number]["id"];

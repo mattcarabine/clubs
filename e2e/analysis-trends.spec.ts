@@ -113,7 +113,7 @@ test("respects the FilterBar's Match Types", async ({
 
 test("says what will fill the page before any Matches", async ({ page }) => {
   await page.goto("/analysis");
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
   await expect(page.getByText("No skill rating yet")).toBeVisible();
 });
 
@@ -192,7 +192,7 @@ test("with too few Matches for the Outcome Split, the Win % charts by kick-off a
   await triggerPoll();
   await page.goto("/analysis");
 
-  await expect(page.getByText("Not enough Matches yet")).toBeVisible();
+  await expect(page.getByText("Not enough matches yet")).toBeVisible();
   const circumstances = page.getByRole("region", { name: "Circumstances" });
   await expect(
     circumstances.getByRole("list", { name: "Win % by day of the week" }),
