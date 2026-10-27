@@ -232,6 +232,55 @@ export function standardScore(
 }
 
 /**
+ * Pearson's correlation of paired values: +1 when they rise and fall in
+ * step, 0 when unrelated, −1 when one rises as the other falls. Null with
+ * fewer than 2 pairs, or when either side never varies.
+ */
+export function correlation(
+  pairs: readonly (readonly [number, number])[],
+): number | null {
+  const n = pairs.length;
+  if (n < 2) return null;
+  let sumX = 0;
+  let sumY = 0;
+  for (const [x, y] of pairs) {
+    sumX += x;
+    sumY += y;
+  }
+  const meanX = sumX / n;
+  const meanY = sumY / n;
+  let covariance = 0;
+  let varX = 0;
+  let varY = 0;
+  for (const [x, y] of pairs) {
+    covariance += (x - meanX) * (y - meanY);
+    varX += (x - meanX) ** 2;
+    varY += (y - meanY) ** 2;
+  }
+  if (varX === 0 || varY === 0) return null;
+  return covariance / Math.sqrt(varX * varY);
+}
+
+/**
+ * The correlation of `x` and `y` with `z` held fixed (a partial
+ * correlation): how far they still move together once what each shares
+ * with `z` is taken out. When `z` never varies it holds nothing back, so
+ * this is their plain correlation. Null when that is, or when `z` fully
+ * explains either side.
+ */
+export function partialCorrelation(
+  triples: readonly (readonly [number, number, number])[],
+): number | null {
+  const xy = correlation(triples.map(([x, y]) => [x, y]));
+  if (xy === null) return null;
+  const xz = correlation(triples.map(([x, , z]) => [x, z]));
+  const yz = correlation(triples.map(([, y, z]) => [y, z]));
+  if (xz === null || yz === null) return xy;
+  const spread = Math.sqrt((1 - xz ** 2) * (1 - yz ** 2));
+  return spread === 0 ? null : (xy - xz * yz) / spread;
+}
+
+/**
  * The effect size of a gap between two Win % (Cohen's h, signed `a - b`), so
  * a Win-rate gap ranks on the same scale as `effectSize`. Takes 0 to 100.
  */

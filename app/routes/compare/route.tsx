@@ -7,6 +7,8 @@
  * Recorded mode shows the headline stats, both rating runs on one chart and
  * Our Club's record, over every Match each played or only their Shared
  * Matches ("Played together"). Each side counts its own Position Groups.
+ * Below them, "Rise and fall together?" (CLUBS-66) asks whether the two rate
+ * well and badly in the same Matches, over every Shared Match.
  * EA totals mode shows the headline stats only: EA has no per-Match data.
  */
 import { env } from "cloudflare:workers";
@@ -32,6 +34,7 @@ import {
   formatDecimal,
   formatPercentage,
   formatSigned,
+  formatSignedDecimal,
   NO_VALUE,
 } from "~/lib/number-format";
 import { pageMeta } from "~/lib/page-meta";
@@ -55,6 +58,7 @@ import {
 
 import type { Route } from "./+types/route";
 import { PlayerPlates } from "./player-plates";
+import { RatingLink } from "./rating-link";
 import {
   SMALL_SAMPLE_NOTE,
   TaleOfTheTape,
@@ -155,7 +159,7 @@ function names(data: CompareData): readonly [string, string | null] {
 }
 
 function RecordedComparison(data: CompareDataFor<"recorded">) {
-  const { sides, shared, comparison } = data;
+  const { sides, shared, comparison, link, players } = data;
   const twoSides = sides.length === 2;
   const scope = twoSides ? comparison.scope : "all";
   return (
@@ -202,6 +206,9 @@ function RecordedComparison(data: CompareDataFor<"recorded">) {
           )}
         </section>
       </div>
+      {link && players[1] && (
+        <RatingLink link={link} names={[players[0].name, players[1].name]} />
+      )}
     </>
   );
 }
@@ -300,6 +307,14 @@ function recordedRows(sides: readonly ComparedTotals[]): TapeRow[] {
     stat("Pass %", (t) => t.passPercentage, formatPercentage),
     stat("Tackle %", (t) => t.tacklePercentage, formatPercentage),
     stat("Avg rating", (t) => t.averageRating, formatDecimal),
+    {
+      label: "Vs team",
+      values: pair(sides, (s) => s.vsTeam.gap),
+      format: formatSignedDecimal,
+      better: "higher",
+      smallSample: smallSamples(sides, (s) => s.vsTeam.matches),
+      bars: false,
+    },
     stat("MOTM", (t) => t.manOfTheMatch),
     stat("Form", (t) => t.form, formatDecimal),
   ];

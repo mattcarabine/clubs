@@ -7,6 +7,7 @@ import {
   sharedMatchIds,
 } from "./comparison";
 import { ALL_POSITIONS, type PositionGroupSelection } from "./positions";
+import { matchRatings } from "./rating-context";
 import type { SquadAppearance } from "./squad";
 
 function appearance(
@@ -66,8 +67,8 @@ function inputs(
   posB: PositionGroupSelection = ALL_POSITIONS,
 ) {
   return [
-    { appearances: A, positionGroups: posA },
-    { appearances: B, positionGroups: posB },
+    { playerId: "1", appearances: A, positionGroups: posA },
+    { playerId: "2", appearances: B, positionGroups: posB },
   ];
 }
 
@@ -78,12 +79,15 @@ describe("sharedMatchIds", () => {
   });
 });
 
+/** Every rating in A's and B's Matches. */
+const RATINGS = matchRatings([...A, ...B]);
+
 describe("compareSides", () => {
   it("counts every Match each played under All matches", () => {
     const {
       sides: [a, b],
       shared,
-    } = compareSides(inputs(), "all");
+    } = compareSides(inputs(), "all", RATINGS);
     expect(a.totals.appearances).toBe(5);
     expect(a.record).toMatchObject({ played: 5, wins: 4, losses: 1 });
     expect(a.form).toHaveLength(5);
@@ -95,7 +99,7 @@ describe("compareSides", () => {
     const {
       sides: [a, b],
       shared,
-    } = compareSides(inputs(), "together");
+    } = compareSides(inputs(), "together", RATINGS);
     expect(a.totals.appearances).toBe(3);
     expect(b.totals.appearances).toBe(3);
     expect(a.form.map((p) => p.matchId)).toEqual(["m3", "m4", "m5"]);
@@ -110,7 +114,7 @@ describe("compareSides", () => {
   it("counts each side's own Position Groups", () => {
     const {
       sides: [a, b],
-    } = compareSides(inputs(["Midfielder"], ["Forward"]), "all");
+    } = compareSides(inputs(["Midfielder"], ["Forward"]), "all", RATINGS);
     expect(a.totals.appearances).toBe(3);
     expect(b.totals.appearances).toBe(4);
   });
@@ -119,7 +123,7 @@ describe("compareSides", () => {
     const {
       sides: [a, b],
       shared,
-    } = compareSides(inputs(["Forward"], ["Forward"]), "together");
+    } = compareSides(inputs(["Forward"], ["Forward"]), "together", RATINGS);
     expect(a.totals.appearances).toBe(2);
     expect(a.totals.goals).toBe(2);
     expect(b.totals.appearances).toBe(3);
@@ -131,9 +135,20 @@ describe("compareSides", () => {
     const {
       sides: [a],
       shared,
-    } = compareSides(inputs().slice(0, 1), "together");
+    } = compareSides(inputs().slice(0, 1), "together", RATINGS);
     expect(a.totals.appearances).toBe(5);
     expect(shared).toBeNull();
+  });
+
+  it("rates each side against their teammates and links the two (CLUBS-66)", () => {
+    const { sides, link } = compareSides(inputs(), "all", RATINGS);
+    // Everyone rates 7, so A and B sit level with the team in m3..m5.
+    expect(sides.map((s) => s.vsTeam)).toEqual([
+      { matches: 3, gap: 0 },
+      { matches: 3, gap: 0 },
+    ]);
+    expect(link?.straight.matches).toBe(3);
+    expect(compareSides(inputs().slice(0, 1), "all", RATINGS).link).toBeNull();
   });
 });
 
@@ -166,11 +181,13 @@ describe("compareSides with a DNF we quit (CLUBS-48)", () => {
     const [side] = compareSides(
       [
         {
+          playerId: "1",
           appearances: [appearance("m1"), quit],
           positionGroups: ALL_POSITIONS,
         },
       ],
       "all",
+      matchRatings([appearance("m1"), quit]),
     ).sides;
     expect(side.totals.appearances).toBe(1);
     expect(side.totals.averageRating).toBe(7);

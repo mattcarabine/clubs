@@ -13,6 +13,7 @@ import {
   filterByPositionGroups,
   type PositionGroupSelection,
 } from "./positions";
+import { matchRatings, vsTeam } from "./rating-context";
 import {
   type FormIndicator,
   formIndicator,
@@ -122,6 +123,8 @@ export interface LeaderboardRow extends PlayerTotals {
   recentChange: RecentChange | null;
   /** Hot or Cold form (CLUBS-40), or null for neither. */
   formIndicator: FormIndicator | null;
+  /** Average rating minus their teammates' in the same Matches (CLUBS-66), or null with none rated. */
+  vsTeam: number | null;
 }
 
 export interface LeaderboardOptions extends ScopeOptions {
@@ -164,6 +167,7 @@ export function leaderboardRows(
   }: Pick<LeaderboardOptions, "includeFormer" | "positionGroups"> = {},
 ): LeaderboardRow[] {
   const byPlayer = groupBy(appearances, (a) => a.playerId);
+  const ratings = matchRatings(appearances);
   return [...byPlayer.entries()]
     .map(([playerId, apps]) => {
       const name = apps[apps.length - 1].name;
@@ -175,6 +179,7 @@ export function leaderboardRows(
         ...summariseAppearances(selected),
         recentChange: recentChanges(selected, name).biggest,
         formIndicator: formIndicator(selected),
+        vsTeam: vsTeam(selected, ratings).gap,
       };
     })
     .filter((row) => includeFormer || !row.former)

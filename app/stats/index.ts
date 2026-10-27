@@ -31,6 +31,7 @@ export * from "./period-compare-query";
 export * from "./player";
 export * from "./player-profile";
 export * from "./positions";
+export * from "./rating-context";
 export * from "./recent-change";
 export * from "./scope";
 export * from "./season-review";

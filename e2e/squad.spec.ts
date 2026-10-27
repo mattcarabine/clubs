@@ -225,6 +225,21 @@ test("clicking a name opens that Squad Member's page", async ({
   await expect(page).toHaveURL(`/players/${ALPHA.id}`);
 });
 
+// CLUBS-68: EA has no player images, so no placeholder initials stand in for one.
+test("a Squad Member is named without placeholder initials", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.addMatch(withLineup(win(), [{ player: ALPHA }]));
+  await triggerPoll();
+  await page.goto("/squad");
+
+  await expect(
+    squadTable(page).getByRole("rowheader", { name: /Alpha Striker/ }),
+  ).toHaveText(/^\s*Alpha Striker/);
+});
+
 test("the table scrolls inside itself on a 375px phone", async ({
   page,
   fakeEa,
