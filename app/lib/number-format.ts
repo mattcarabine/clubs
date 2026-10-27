@@ -23,6 +23,13 @@ export function formatDecimal(value: number | null, digits = 1): string {
   return value === null ? NO_VALUE : value.toFixed(digits);
 }
 
+/** A signed figure to fixed places: "+0.6", "−0.3" (a true minus sign) or "0.0". */
+export function formatSignedDecimal(value: number, digits = 1): string {
+  const text = Math.abs(value).toFixed(digits);
+  if (Number(text) === 0) return text;
+  return `${value > 0 ? "+" : "−"}${text}`;
+}
+
 /** A count as is, or a dash for a value EA did not send. */
 export function formatOptional(value: number | null): string {
   return value === null ? NO_VALUE : String(value);
