@@ -22,6 +22,7 @@ import {
   type SplitMatch,
   timeOfDay,
   usualComparison,
+  winRateGap,
   withAndWithout,
 } from "./outcome-split";
 import type { SquadAppearance } from "./squad";
@@ -636,6 +637,25 @@ describe("withAndWithout", () => {
     );
     expect(row.group).toEqual({ played: 3, wins: 3, winPercentage: 100 });
     expect(row.rest).toEqual({ played: 4, wins: 0, winPercentage: 0 });
+  });
+});
+
+describe("winRateGap", () => {
+  const record = (played: number, wins: number) => ({
+    played,
+    wins,
+    winPercentage: played === 0 ? null : (wins / played) * 100,
+  });
+
+  it("is the group's Win % minus the rest's with 3 Matches a side", () => {
+    expect(winRateGap({ group: record(3, 3), rest: record(3, 0) })).toBe(100);
+    expect(winRateGap({ group: record(4, 1), rest: record(5, 3) })).toBe(-35);
+  });
+
+  it("is null with fewer than 3 Matches on either side", () => {
+    expect(winRateGap({ group: record(2, 2), rest: record(5, 0) })).toBeNull();
+    expect(winRateGap({ group: record(5, 5), rest: record(1, 0) })).toBeNull();
+    expect(winRateGap({ group: record(6, 3), rest: record(0, 0) })).toBeNull();
   });
 });
 

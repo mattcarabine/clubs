@@ -204,6 +204,31 @@ test("a Squad Member who plays only in Wins shows 100% with and 0% without", asy
   ).toHaveText(["6", "50%", "0", "–", "–"]);
 });
 
+test("a Gap resting on fewer than 3 Matches with or without a Squad Member shows no value", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // Bench plays 2 Matches, both Wins; Rock plays all 6.
+  await record(fakeEa, triggerPoll, [
+    ...[6, 5].map((d) =>
+      withLineup(win(daysAgo(d)), [{ player: BENCH }, { player: ROCK }]),
+    ),
+    withLineup(win(daysAgo(4)), [{ player: ROCK }]),
+    ...[3, 2, 1].map((d) => withLineup(loss(daysAgo(d)), [{ player: ROCK }])),
+  ]);
+
+  await page.goto("/analysis");
+  await expect(
+    tableRow(page, "With and without", BENCH.name).getByRole("cell"),
+  ).toHaveText(["2", "100%", "4", "25%", "–"]);
+  await expect(
+    region(page, "Personnel").getByText(
+      "A Gap needs at least 3 Matches with and 3 without.",
+    ),
+  ).toBeVisible();
+});
+
 /** STAR at Forward in 3 Matches and at Midfielder in the rest, with these outcomes. */
 async function recordPositions(
   fakeEa: Fake,
