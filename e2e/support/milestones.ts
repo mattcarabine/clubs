@@ -71,12 +71,30 @@ export async function serveCareerTotals(
   );
 }
 
-/** Deletes every Milestone and its comments, as before the release. */
+/**
+ * Deletes every Milestone and its comments, as before the release; or, given
+ * a kind, only that kind's Milestones, as before the kind was added.
+ */
 export async function forgetMilestones(
   request: APIRequestContext,
+  kind?: string,
 ): Promise<void> {
-  const res = await request.post("/__test/milestones/forget");
+  const res = await request.post("/__test/milestones/forget", {
+    params: kind ? { kind } : undefined,
+  });
   if (!res.ok()) throw new Error(`forget failed: ${res.status()}`);
+}
+
+/** Stores kind `from`'s Milestones as kind `to`, e.g. one no longer detected. */
+export async function renameMilestones(
+  request: APIRequestContext,
+  from: string,
+  to: string,
+): Promise<void> {
+  const res = await request.post("/__test/milestones/rename", {
+    params: { from, to },
+  });
+  if (!res.ok()) throw new Error(`rename failed: ${res.status()}`);
 }
 
 export interface MilestoneRow {

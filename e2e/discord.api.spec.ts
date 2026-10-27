@@ -212,14 +212,14 @@ test("the post lists the Session's Milestones by headline (CLUBS-36)", async ({
   const minutesAgo = (Date.now() - SESSION_CLOCK.getTime()) / 60_000 + 120;
   await serveMatch(fakeEa, "93546000000001", minutesAgo, [
     { player: MILESTONE_KAB, goals: 3 },
-    { player: MILESTONE_LOL, rating: 9.4 },
+    { player: MILESTONE_LOL, rating: 10 },
   ]);
   await triggerPoll();
 
   const [post] = await fakeDiscord.requests();
   expect(embedOf(post).fields).toContainEqual({
     name: "Milestones",
-    value: ["Kabeeble — Hat\\-trick", "Loltown95 — 9.4 rating"].join("\n"),
+    value: ["Kabeeble — Hat\\-trick", "Loltown95 — Perfect rating"].join("\n"),
   });
 });
 
