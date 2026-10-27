@@ -33,6 +33,7 @@ import {
   formatCount,
   formatDecimal,
   formatPercentage,
+  formatSignedDecimal,
   formatThousands,
   NO_VALUE,
 } from "~/lib/number-format";
@@ -420,6 +421,10 @@ const KEY: readonly [string, string][] = [
   ["/90", "Per 90 minutes played"],
   ["Tkl %", "Tackle success"],
   ["Form", "Average rating over the last 5 Appearances"],
+  [
+    "Vs team",
+    "Rating against teammates' average in the same Matches: above 0 lifts the team",
+  ],
   ["MOTM", "Man of the Match"],
   ["CS", "Clean sheets as Goalkeeper or Defender"],
   ["Red", "Red cards (EA does not report yellow cards)"],
@@ -552,6 +557,7 @@ const COLUMNS: DataTableColumn<LeaderboardRow>[] = [
     cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
   },
   recordedStat("apps", "Apps", (r) => r.appearances),
+  recordedStat("vsTeam", "Vs team", (r) => r.vsTeam, formatSignedDecimal),
   recordedStat("goals", "G", (r) => r.goals),
   recordedStat("assists", "A", (r) => r.assists),
   recordedStat("mins", "Mins", (r) => r.minutes, formatThousands),
