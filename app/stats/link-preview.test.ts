@@ -68,7 +68,7 @@ describe("matchPreview", () => {
       ours: [],
     });
     expect(description).toBe(
-      `Playoff · ${formatLondonDateTime(PLAYED_AT)} · Win (DNF)`,
+      `Playoff · ${formatLondonDateTime(PLAYED_AT)} · Win (they rage quit)`,
     );
   });
 

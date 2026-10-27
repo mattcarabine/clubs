@@ -64,9 +64,9 @@ _Avoid_: Cap, game played, player-match
 The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfielder or Forward. These exact names are used in the app too; with no Position Group selected, a view covers "All Positions".
 _Avoid_: Position, role, attack, midfield, defence, GK/DEF/MID/FWD
 
-**DNF**:
-A Match ended early because one side quit; EA awards the result to the side that stayed. A DNF loss means we quit, a DNF Win that the Opponent did. In a DNF we quit EA keeps almost none of our stats, so our side's are not counted; its result is.
-_Avoid_: Forfeit, rage quit (in labels and code; Write-up prose may say it)
+**Rage Quit**:
+A Match ended early because one side quit; EA awards the result to the side that stayed. Shown as "We rage quit" (EA records it as our loss) or "They rage quit" (the Opponent did, and it is our Win), and counted as "rage quits". When we rage quit EA keeps almost none of our stats, so our side's are not counted; its result is. Code and URLs keep EA's name, `dnf` (`?dnf=0`).
+_Avoid_: DNF, did not finish, forfeit, abandoned
 
 **Dropped Points**:
 A Match drawn or lost.
