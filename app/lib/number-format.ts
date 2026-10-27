@@ -10,6 +10,11 @@ export function formatSigned(n: number): string {
   return "0";
 }
 
+/** A Win-rate gap in whole percentage points, "+12 pts", or a dash for null. */
+export function formatPointsGap(gap: number | null): string {
+  return gap === null ? NO_VALUE : `${formatSigned(Math.round(gap))} pts`;
+}
+
 /** A 0 to 100 percentage rounded to a whole number, "67%", or a dash for null. */
 export function formatPercentage(value: number | null): string {
   return value === null ? NO_VALUE : `${Math.round(value)}%`;

@@ -25,6 +25,7 @@ import {
   PositionGroupPicker,
   ScrollRail,
   SectionHeading,
+  SmallSampleTag,
   WinRateBarChart,
 } from "~/components";
 import { getDb } from "~/db/client";
@@ -32,8 +33,7 @@ import { formatLondonShortDate } from "~/lib/london-time";
 import {
   formatCount,
   formatPercentage,
-  formatSigned,
-  NO_VALUE,
+  formatPointsGap,
 } from "~/lib/number-format";
 import { pageMeta } from "~/lib/page-meta";
 import { playerPath } from "~/lib/paths";
@@ -457,7 +457,7 @@ function PlayerSection({
     <section aria-label="Squad Members" className="flex flex-col gap-4">
       <SectionHeading
         title="Squad Members"
-        subtitle="Each Squad Member in Wins (W) against draws and defeats (D/L), per 90 over their own minutes. The Position Group applies to this table only."
+        subtitle="Swing: our Win % when they rate above their own average minus when they rate below it, so a big Swing means results follow how they play. Then each Squad Member in Wins (W) against draws and defeats (D/L), per 90 over their own minutes. The Position Group applies to this table only."
       />
       <div className="border-shale-700 border-t-2 bg-shale-900">
         <ScrollRail className="px-3 py-3 sm:px-4">
@@ -473,6 +473,7 @@ function PlayerSection({
         rows={players}
         rowKey={(r) => r.playerId}
         rowHref={(r) => playerPath(r.playerId)}
+        initialSort={{ columnId: "swing", direction: "desc" }}
         empty={
           <EmptyState
             title="No Appearances"
@@ -543,9 +544,7 @@ function splitColumns<T extends GroupSplit>(
       (r) => r.rest.winPercentage,
       formatPercentage,
     ),
-    numberColumn("gap", "Gap", winRateGap, (gap) =>
-      gap === null ? NO_VALUE : `${formatSigned(Math.round(gap))} pts`,
-    ),
+    numberColumn("gap", "Gap", winRateGap, formatPointsGap),
   ];
 }
 
@@ -574,8 +573,37 @@ const outlierColumns: DataTableColumn<PositionOutlier>[] = [
   ...splitColumns<PositionOutlier>("at", "otherwise"),
 ];
 
+/**
+ * Swing (CLUBS-70) leads, so a phone shows it beside the name: our Win %
+ * when they rate above their own average against below it.
+ */
+const SWING_COLUMNS: DataTableColumn<PlayerSplitRow>[] = [
+  {
+    ...numberColumn("swing", "Swing", (r) => r.swing.gap),
+    cell: ({ swing }) => (
+      <span className="inline-flex flex-col items-end gap-1">
+        {formatPointsGap(swing.gap)}
+        {swing.smallSample && <SmallSampleTag />}
+      </span>
+    ),
+  },
+  numberColumn(
+    "swing-above",
+    "Win % above avg",
+    (r) => r.swing.above.winPercentage,
+    formatPercentage,
+  ),
+  numberColumn(
+    "swing-below",
+    "Win % below avg",
+    (r) => r.swing.below.winPercentage,
+    formatPercentage,
+  ),
+];
+
 const PLAYER_COLUMNS: DataTableColumn<PlayerSplitRow>[] = [
   squadMemberColumn(),
+  ...SWING_COLUMNS,
   ...PLAYER_SPLIT_STATS.flatMap((stat) =>
     (["wins", "dropped"] as const).map((side) =>
       numberColumn<PlayerSplitRow, number | null>(

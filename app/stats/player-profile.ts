@@ -8,7 +8,12 @@ import {
   eaSeasonTotals,
 } from "./ea-totals";
 import type { StatsFilter } from "./filter";
-import { type PlayerOutcomeSplit, playerOutcomeSplit } from "./outcome-split";
+import {
+  type PlayerOutcomeSplit,
+  playerOutcomeSplit,
+  type Swing,
+  swing,
+} from "./outcome-split";
 import {
   type BuildChange,
   bestAppearances,
@@ -53,6 +58,8 @@ export interface PlayerProfile {
   bestMatches: SquadAppearance[];
   /** Wins against Dropped Points over the filtered Appearances in the selected Position Groups. */
   outcomeSplit: PlayerOutcomeSplit;
+  /** Our record when they rate above their own average against below it (CLUBS-70), same Appearances. */
+  swing: Swing;
   /** The last 10 filtered Appearances in the selected Position Groups against the ones before (CLUBS-37). */
   recentChanges: RecentChanges;
   /** Hot or Cold form over the same Appearances (CLUBS-40), or null for neither. */
@@ -98,6 +105,7 @@ export async function getPlayerProfile(
     positionGroups: positionGroupSplit(appearances),
     bestMatches: bestAppearances(selected),
     outcomeSplit: playerOutcomeSplit(appearances, positionGroups),
+    swing: swing(selected),
     recentChanges: recentChanges(selected, member.name),
     formIndicator: formIndicator(selected),
     build: buildHistory(seasonSnapshots),
