@@ -24,7 +24,7 @@ export async function openColumnPicker(page: Page) {
 
 /**
  * Shows columns the Squad table hides by default, by their names in the
- * picker ("Saves", or "Rating against teammates" for Vs team).
+ * picker ("Saves", or "Rating against teammates" for Above team).
  */
 export async function showSquadColumns(page: Page, names: readonly string[]) {
   const picker = await openColumnPicker(page);

@@ -460,30 +460,40 @@ function LeaderTile({
   );
 }
 
+/** What a column means, shared by the legend and the header tooltips (CLUBS-81). */
+const MEANING = {
+  form: "Average rating over the last 5 Appearances",
+  aboveTeam:
+    "Rating against teammates' average in the same Matches: above 0 lifts the team",
+  red: "Red cards (EA does not report yellow cards)",
+  recent: `Biggest change over the last ${RECENT_WINDOW} Appearances`,
+  cs: "Clean sheets as Goalkeeper or Defender",
+  eaCs: "Clean sheets in goal for a Goalkeeper, else as a Defender",
+  games: "Games played this Season, as EA counts them",
+  shotSuccess: "Shot success, as EA rates it",
+} as const;
+
 /** What the abbreviated headers mean. */
 const KEY: readonly [string, string][] = [
   ["G / A", "Goals / assists"],
   ["/90", "Per 90 minutes played"],
   ["Tkl %", "Tackle success"],
-  ["Form", "Average rating over the last 5 Appearances"],
-  [
-    "Vs team",
-    "Rating against teammates' average in the same Matches: above 0 lifts the team",
-  ],
+  ["Form", MEANING.form],
+  ["Above team", MEANING.aboveTeam],
   ["MOTM", "Man of the Match"],
-  ["CS", "Clean sheets as Goalkeeper or Defender"],
-  ["Red", "Red cards (EA does not report yellow cards)"],
-  ["Recent", `Biggest change over the last ${RECENT_WINDOW} Appearances`],
+  ["CS", MEANING.cs],
+  ["Red", MEANING.red],
+  ["Recent", MEANING.recent],
 ];
 
 const EA_KEY: readonly [string, string][] = [
-  ["GP", "Games played this Season, as EA counts them"],
+  ["GP", MEANING.games],
   ["G / A", "Goals / assists"],
-  ["Shot %", "Shot success, as EA rates it"],
+  ["Shot %", MEANING.shotSuccess],
   ["Tkl %", "Tackle success"],
   ["MOTM", "Man of the Match"],
-  ["CS", "Clean sheets in goal for a Goalkeeper, else as a Defender"],
-  ["Red", "Red cards (EA does not report yellow cards)"],
+  ["CS", MEANING.eaCs],
+  ["Red", MEANING.red],
 ];
 
 function ColumnKey({ entries }: { entries: readonly [string, string][] }) {
@@ -589,35 +599,85 @@ function recordedStat(
   );
 }
 
-/** Full names for the abbreviated headers, shown in the Columns picker. */
-const COLUMN_LABELS: Readonly<Record<string, string>> = {
-  "G+A": "Goal contributions",
-  Rating: "Average rating",
-  Apps: "Appearances",
-  "Vs team": "Rating against teammates",
-  G: "Goals",
-  A: "Assists",
-  Mins: "Minutes played",
-  "G/90": "Goals per 90",
-  "A/90": "Assists per 90",
-  "G+A/90": "Goal contributions per 90",
-  "Pass %": "Pass success",
-  "Tkl %": "Tackle success",
-  MOTM: "Man of the Match",
-  CS: "Clean sheets",
-  Red: "Red cards",
-  "Red/90": "Red cards per 90",
-  Recent: "Biggest recent change",
-  GP: "Games played",
-  "Shot %": "Shot success",
-  "Win %": "Win rate",
+/**
+ * A column's full name for the Columns picker (where the header abbreviates
+ * it) and its meaning for the header's tooltip (CLUBS-81), by column id.
+ */
+type ColumnInfo = { label?: string; description: string };
+
+const RECORDED_INFO: Readonly<Record<string, ColumnInfo>> = {
+  ga: { label: "Goal contributions", description: "Goals plus assists" },
+  motm: {
+    label: "Man of the Match",
+    description: "Man of the Match awards",
+  },
+  rating: {
+    label: "Average rating",
+    description: "Average Match rating, out of 10",
+  },
+  form: { description: MEANING.form },
+  apps: {
+    label: "Appearances",
+    description: "Appearances in the Matches shown",
+  },
+  aboveTeam: {
+    label: "Rating against teammates",
+    description: MEANING.aboveTeam,
+  },
+  goals: { label: "Goals", description: "Goals scored" },
+  assists: { label: "Assists", description: "Assists made" },
+  mins: { label: "Minutes played", description: "Minutes played" },
+  goals90: {
+    label: "Goals per 90",
+    description: "Goals per 90 minutes played",
+  },
+  assists90: {
+    label: "Assists per 90",
+    description: "Assists per 90 minutes played",
+  },
+  ga90: {
+    label: "Goal contributions per 90",
+    description: "Goals plus assists per 90 minutes played",
+  },
+  shots: { description: "Shots taken" },
+  pass: { label: "Pass success", description: "Share of passes completed" },
+  tackle: {
+    label: "Tackle success",
+    description: "Share of tackles won",
+  },
+  cs: { label: "Clean sheets", description: MEANING.cs },
+  saves: { description: "Saves made in goal" },
+  red: { label: "Red cards", description: MEANING.red },
+  red90: {
+    label: "Red cards per 90",
+    description: "Red cards per 90 minutes played",
+  },
+  recent: { label: "Biggest recent change", description: MEANING.recent },
 };
 
-/** Names each column from `COLUMN_LABELS`, keeping any label it sets itself. */
-function withLabels<Row>(
+const EA_INFO: Readonly<Record<string, ColumnInfo>> = {
+  ga: RECORDED_INFO.ga,
+  rating: RECORDED_INFO.rating,
+  games: { label: "Games played", description: MEANING.games },
+  pass: RECORDED_INFO.pass,
+  goals: RECORDED_INFO.goals,
+  assists: RECORDED_INFO.assists,
+  shot: { label: "Shot success", description: MEANING.shotSuccess },
+  tackle: RECORDED_INFO.tackle,
+  win: { label: "Win rate", description: "Share of games won this Season" },
+  passes: { description: "Passes completed this Season" },
+  tackles: { description: "Tackles won this Season" },
+  motm: RECORDED_INFO.motm,
+  cs: { label: "Clean sheets", description: MEANING.eaCs },
+  red: RECORDED_INFO.red,
+};
+
+/** Gives each column its full name and meaning from `info`. */
+function describeColumns<Row>(
   columns: DataTableColumn<Row>[],
+  info: Readonly<Record<string, ColumnInfo>>,
 ): DataTableColumn<Row>[] {
-  return columns.map((c) => ({ label: COLUMN_LABELS[c.header], ...c }));
+  return columns.map((c) => ({ ...info[c.id], ...c }));
 }
 
 /** Starts hidden; the Columns picker brings it back. */
@@ -632,46 +692,54 @@ function hiddenByDefault<Row>(
  * phone shows them beside the name before the table scrolls. The niche ones
  * start hidden (CLUBS-80): Mins, Shots, Tkl %, CS and Saves.
  */
-const COLUMNS = withLabels<LeaderboardRow>([
-  nameColumn((r) => r.formIndicator),
-  recordedStat("ga", "G+A", (r) => r.goalContributions),
-  recordedStat("motm", "MOTM", (r) => r.manOfTheMatch),
-  recordedStat("rating", "Rating", (r) => r.averageRating, formatDecimal),
-  {
-    ...recordedStat("form", "Form", (r) => r.form),
-    cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
-  },
-  recordedStat("apps", "Apps", (r) => r.appearances),
-  recordedStat("vsTeam", "Vs team", (r) => r.vsTeam, formatSignedDecimal),
-  recordedStat("goals", "G", (r) => r.goals),
-  recordedStat("assists", "A", (r) => r.assists),
-  hiddenByDefault(
-    recordedStat("mins", "Mins", (r) => r.minutes, formatThousands),
-  ),
-  recordedStat("goals90", "G/90", (r) => r.goalsPer90, per90),
-  recordedStat("assists90", "A/90", (r) => r.assistsPer90, per90),
-  recordedStat("ga90", "G+A/90", (r) => r.goalContributionsPer90, per90),
-  hiddenByDefault(recordedStat("shots", "Shots", (r) => r.shots)),
-  recordedStat("pass", "Pass %", (r) => r.passPercentage, formatPercentage),
-  hiddenByDefault(
+const COLUMNS = describeColumns<LeaderboardRow>(
+  [
+    nameColumn((r) => r.formIndicator),
+    recordedStat("ga", "G+A", (r) => r.goalContributions),
+    recordedStat("motm", "MOTM", (r) => r.manOfTheMatch),
+    recordedStat("rating", "Rating", (r) => r.averageRating, formatDecimal),
+    {
+      ...recordedStat("form", "Form", (r) => r.form),
+      cell: (r) => <FormCell form={r.form} average={r.averageRating} />,
+    },
+    recordedStat("apps", "Apps", (r) => r.appearances),
     recordedStat(
-      "tackle",
-      "Tkl %",
-      (r) => r.tacklePercentage,
-      formatPercentage,
+      "aboveTeam",
+      "Above team",
+      (r) => r.aboveTeam,
+      formatSignedDecimal,
     ),
-  ),
-  hiddenByDefault(recordedStat("cs", "CS", (r) => r.cleanSheets)),
-  hiddenByDefault(recordedStat("saves", "Saves", (r) => r.saves)),
-  recordedStat("red", "Red", (r) => r.redCards),
-  recordedStat("red90", "Red/90", (r) => r.redCardsPer90, per90),
-  {
-    id: "recent",
-    header: "Recent",
-    cell: (r) => <RecentChangeCell change={r.recentChange} />,
-    sortValue: (r) => recentChangeRank(r.recentChange),
-  },
-]);
+    recordedStat("goals", "G", (r) => r.goals),
+    recordedStat("assists", "A", (r) => r.assists),
+    hiddenByDefault(
+      recordedStat("mins", "Mins", (r) => r.minutes, formatThousands),
+    ),
+    recordedStat("goals90", "G/90", (r) => r.goalsPer90, per90),
+    recordedStat("assists90", "A/90", (r) => r.assistsPer90, per90),
+    recordedStat("ga90", "G+A/90", (r) => r.goalContributionsPer90, per90),
+    hiddenByDefault(recordedStat("shots", "Shots", (r) => r.shots)),
+    recordedStat("pass", "Pass %", (r) => r.passPercentage, formatPercentage),
+    hiddenByDefault(
+      recordedStat(
+        "tackle",
+        "Tkl %",
+        (r) => r.tacklePercentage,
+        formatPercentage,
+      ),
+    ),
+    hiddenByDefault(recordedStat("cs", "CS", (r) => r.cleanSheets)),
+    hiddenByDefault(recordedStat("saves", "Saves", (r) => r.saves)),
+    recordedStat("red", "Red", (r) => r.redCards),
+    recordedStat("red90", "Red/90", (r) => r.redCardsPer90, per90),
+    {
+      id: "recent",
+      header: "Recent",
+      cell: (r) => <RecentChangeCell change={r.recentChange} />,
+      sortValue: (r) => recentChangeRank(r.recentChange),
+    },
+  ],
+  RECORDED_INFO,
+);
 
 /** Sorts improving first, then no change, then dropping off. */
 function recentChangeRank(change: RecentChange | null): number {
@@ -700,23 +768,26 @@ function RecentChangeCell({ change }: { change: RecentChange | null }) {
  * EA's season totals, led like the Recorded table: G+A and rating, then
  * games played and pass success, so a phone shows them before it scrolls.
  */
-const EA_COLUMNS = withLabels<EaMemberTotals>([
-  nameColumn(),
-  stat("ga", "G+A", season(goalContributions)),
-  seasonStat("rating", "Rating", "averageRating", formatDecimal),
-  seasonStat("games", "GP", "gamesPlayed"),
-  seasonStat("pass", "Pass %", "passSuccessRate", formatPercentage),
-  seasonStat("goals", "G", "goals"),
-  seasonStat("assists", "A", "assists"),
-  seasonStat("shot", "Shot %", "shotSuccessRate", formatPercentage),
-  seasonStat("tackle", "Tkl %", "tackleSuccessRate", formatPercentage),
-  seasonStat("win", "Win %", "winRate", formatPercentage),
-  seasonStat("passes", "Passes", "passesMade", formatThousands),
-  seasonStat("tackles", "Tackles", "tacklesMade", formatThousands),
-  seasonStat("motm", "MOTM", "manOfTheMatch"),
-  stat("cs", "CS", season(eaCleanSheets)),
-  seasonStat("red", "Red", "redCards"),
-]);
+const EA_COLUMNS = describeColumns<EaMemberTotals>(
+  [
+    nameColumn(),
+    stat("ga", "G+A", season(goalContributions)),
+    seasonStat("rating", "Rating", "averageRating", formatDecimal),
+    seasonStat("games", "GP", "gamesPlayed"),
+    seasonStat("pass", "Pass %", "passSuccessRate", formatPercentage),
+    seasonStat("goals", "G", "goals"),
+    seasonStat("assists", "A", "assists"),
+    seasonStat("shot", "Shot %", "shotSuccessRate", formatPercentage),
+    seasonStat("tackle", "Tkl %", "tackleSuccessRate", formatPercentage),
+    seasonStat("win", "Win %", "winRate", formatPercentage),
+    seasonStat("passes", "Passes", "passesMade", formatThousands),
+    seasonStat("tackles", "Tackles", "tacklesMade", formatThousands),
+    seasonStat("motm", "MOTM", "manOfTheMatch"),
+    stat("cs", "CS", season(eaCleanSheets)),
+    seasonStat("red", "Red", "redCards"),
+  ],
+  EA_INFO,
+);
 
 function goalContributions(s: EaSeasonTotals): number | null {
   return s.goals === null || s.assists === null ? null : s.goals + s.assists;

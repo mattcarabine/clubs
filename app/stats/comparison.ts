@@ -19,14 +19,14 @@ import {
   type PositionGroupSelection,
 } from "./positions";
 import {
+  type AboveTeam,
+  aboveTeam,
   type Consistency,
   consistency,
   type MatchRatings,
   matchRatings,
   type RatingLink,
   ratingLink,
-  type VsTeam,
-  vsTeam,
 } from "./rating-context";
 import { type FormIndicator, formIndicator } from "./recent-change";
 import {
@@ -74,7 +74,7 @@ export interface ComparedTotals {
    */
   formIndicator: FormIndicator | null;
   /** Rating against teammates in the same Matches (CLUBS-66), over this side's counted Appearances. */
-  vsTeam: VsTeam;
+  aboveTeam: AboveTeam;
   /** Floor and Spread over the same Appearances (CLUBS-74). */
   consistency: Consistency;
 }
@@ -104,7 +104,7 @@ export function sharedMatchIds(
  * Each side's totals under the scope. "Played together" first narrows both
  * sides to the Shared Matches, then each side counts only its own Position
  * Groups within them; the shared record covers every Shared Match.
- * `ratings` is every Squad Member's in the filtered Matches, for Vs team
+ * `ratings` is every Squad Member's in the filtered Matches, for Above team
  * and the Rating link.
  */
 export function compareSides(
@@ -135,7 +135,7 @@ export function compareSides(
             isCountedAppearance,
           ),
         ),
-        vsTeam: vsTeam(counted, ratings),
+        aboveTeam: aboveTeam(counted, ratings),
         consistency: consistency(counted),
       };
     }),
@@ -175,7 +175,7 @@ export interface EaComparison extends ComparisonBase {
 
 /**
  * A Comparison from Recorded Appearances in the filtered Matches, in two
- * parallel queries: every Squad Member's Appearances are read, since Vs team
+ * parallel queries: every Squad Member's Appearances are read, since Above team
  * and the Rating link need the whole line-up.
  */
 export async function getComparison(
