@@ -43,6 +43,8 @@ import {
   type MatchAppearance,
   type MatchSides,
   type MatchWinChance,
+  type QuitBy,
+  quitBy,
   sessionOfMatch,
   summariseMatchSides,
 } from "~/stats";
@@ -157,12 +159,13 @@ export default function Match({ loaderData }: Route.ComponentProps) {
         />
         {headline && <MatchHeadline text={headline} size="hero" />}
         {winChance && <WinChanceNote winChance={winChance} />}
-        {match.dnf &&
-          (match.outcome === "W" ? (
-            <DnfNote winner={clubName} quitter={opponent.name} />
-          ) : (
-            <DnfNote winner={opponent.name} quitter={clubName} />
-          ))}
+        {match.dnf && (
+          <RageQuitNote
+            by={quitBy(match)}
+            ours={clubName}
+            theirs={opponent.name}
+          />
+        )}
       </section>
 
       {report && (
@@ -285,16 +288,36 @@ function WinChanceNote({ winChance }: { winChance: MatchWinChance }) {
   );
 }
 
-function DnfNote({ winner, quitter }: { winner: string; quitter: string }) {
+/** Who rage quit and who EA gave the Match to; a level one names no side. */
+function RageQuitNote({
+  by,
+  ours,
+  theirs,
+}: {
+  by: QuitBy | null;
+  ours: string;
+  theirs: string;
+}) {
+  const [quitter, winner] = by === "us" ? [ours, theirs] : [theirs, ours];
   return (
     <aside
-      aria-label="DNF"
+      aria-label="Rage quit"
       className="mt-4 flex gap-3 border-ink border-l-4 bg-shale-900 px-4 py-3 text-ink-soft text-sm"
     >
       <p>
-        <strong className="text-ink">Did not finish.</strong> {quitter} quit
-        before full time, so EA awarded the Match to {winner}. DNF Matches count
-        in all stats unless you turn off “Include DNF” in the filters.
+        {by ? (
+          <>
+            <strong className="text-ink">{quitter} rage quit</strong> before
+            full time, so EA awarded the Match to {winner}.
+          </>
+        ) : (
+          <>
+            <strong className="text-ink">Someone rage quit</strong> before full
+            time, and EA left the Match level.
+          </>
+        )}{" "}
+        Rage quits count in all stats unless you turn off “Include rage quits”
+        in the filters.
       </p>
     </aside>
   );
@@ -316,7 +339,7 @@ function WhyWeDroppedPoints({
     <section aria-label="Why we dropped points" className="mb-8">
       <SectionHeading
         title="Why we dropped points"
-        subtitle={`Against the average of ${formatCount(reasons.wins, "Win", "Wins")}: Competitive Matches, all time, DNFs included. Counts are per 90 over how long each Match ran.`}
+        subtitle={`Against the average of ${formatCount(reasons.wins, "Win", "Wins")}: Competitive Matches, all time, rage quits included. Counts are per 90 over how long each Match ran.`}
       />
       {reasons.deviations.length === 0 ? (
         <p className="border-shale-700 border-t-2 bg-shale-900 p-4 text-ink-soft text-sm">

@@ -25,6 +25,7 @@ import {
   clubRecord,
   type LeaderboardRow,
   listMatches,
+  rageQuitLabel,
   resolveStatsFilter,
   squadLeaderboard,
   statsFilterFromRequest,
@@ -103,7 +104,7 @@ export default function TestStats({ loaderData }: Route.ComponentProps) {
             value={`${record.goalsFor}-${record.goalsAgainst}`}
           />
           <StatTile label="Points" value={record.points} />
-          <StatTile label="DNF" value={record.dnf} />
+          <StatTile label="Rage quits" value={record.dnf} />
         </StatGrid>
       </section>
 
@@ -131,7 +132,8 @@ export default function TestStats({ loaderData }: Route.ComponentProps) {
                     }}
                     label={match.matchType}
                     meta={[
-                      match.dnf ? "DNF" : formatLondonDateTime(match.playedAt),
+                      rageQuitLabel(match) ??
+                        formatLondonDateTime(match.playedAt),
                     ]}
                     outcome={match.outcome}
                   />

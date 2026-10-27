@@ -34,8 +34,6 @@ type ScoreBarProps = {
    * the score.
    */
   outcome?: Outcome;
-  /** Prefixes the hero's status tab: "DNF win". */
-  dnf?: boolean;
   /** Hero only: a strip of three figures for both sides under the bar. */
   stats?: ScoreBarStat[];
 };
@@ -83,7 +81,6 @@ export function ScoreBar({
   label,
   meta = [],
   outcome,
-  dnf = false,
   stats,
 }: ScoreBarProps) {
   const s = STYLES[size];
@@ -122,9 +119,7 @@ export function ScoreBar({
             <p
               className={`clip-slant self-center px-4 pt-1 pb-0.5 text-sm tracking-wide [--slant:0.4rem] sm:text-base ${OUTCOME_FILL[outcome]}`}
             >
-              {dnf
-                ? `DNF ${OUTCOME_LABEL[outcome].toLowerCase()}`
-                : OUTCOME_LABEL[outcome]}
+              {OUTCOME_LABEL[outcome]}
             </p>
           )}
           {outcome && (
