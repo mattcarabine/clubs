@@ -24,7 +24,7 @@ export function WinChanceSection({
     <section aria-label="Win chance" className="flex flex-col gap-4">
       <SectionHeading
         title="Win chance"
-        subtitle="Our chance of a Win before kick-off from the Skill Rating gap: ours minus the Opponent's. Draws count as Dropped Points."
+        subtitle="Our chance of a Win before kick-off from the Skill Rating gap: ours minus the Opponent's. A draw counts against us, like a defeat."
       />
       <div className="flex flex-wrap items-center gap-2 text-ink-muted text-sm">
         {model.source === "estimate" ? (
@@ -53,7 +53,7 @@ export function WinChanceSection({
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-6">
           <ChartFrame
             title="Win chance by rating gap"
-            subtitle="Each dot is a Match: at the top for a Win, at the bottom for Dropped Points."
+            subtitle="Each dot is a Match: at the top for a Win, at the bottom for a draw or defeat."
             legend={<ChartLegend entries={WIN_CHANCE_LEGEND} />}
           >
             <WinChanceChart

@@ -12,7 +12,7 @@ import type { Db } from "~/db/client";
 import { appearances, matches } from "~/db/schema";
 
 import { toOutcome } from "./convert";
-import { countsStatsOf, isCountedAppearance, quitBy, weQuit } from "./counted";
+import { countsStatsOf, isCountedAppearance, weQuit } from "./counted";
 import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
 import { listKickoffs, listMatches, type MatchSummary } from "./matches";
 import {
@@ -119,9 +119,10 @@ async function splitData(
       matchId: m.matchId,
       playedAt: m.playedAt,
       outcome: m.outcome,
-      quitBy: quitBy(m),
+      dnf: m.dnf,
       ...performanceOf(sides),
       squadSize: sides?.squadSize ?? 0,
+      opponentHumans: sides?.opponentHumans ?? 0,
       session,
       sessionPlace: place,
       ratingGap: ratingGap(m.skillRatings),
@@ -193,6 +194,8 @@ interface MatchTotals {
   secondsPlayed: number;
   /** Our Club's Appearances with minutes, a DNF we quit's included. */
   squadSize: number;
+  /** The Opponent's Appearances with minutes: its humans, since EA lists no AI players. */
+  opponentHumans: number;
 }
 
 function total(column: SQLiteColumn): SQL<number> {
@@ -239,10 +242,18 @@ async function clubMatchTotals(
   for (const row of rows) {
     const { matchId, ours, players, secondsPlayed, dnf, result, ...stats } =
       row;
-    const entry = byMatch.get(matchId) ?? { secondsPlayed: 0, squadSize: 0 };
+    const entry = byMatch.get(matchId) ?? {
+      secondsPlayed: 0,
+      squadSize: 0,
+      opponentHumans: 0,
+    };
     entry.secondsPlayed = Math.max(entry.secondsPlayed, secondsPlayed ?? 0);
     const match = { dnf, outcome: toOutcome(result) };
-    if (ours) entry.squadSize = players;
+    if (ours) {
+      entry.squadSize = players;
+    } else {
+      entry.opponentHumans = players;
+    }
     if (countsStatsOf(ours ? "us" : "opponent", match)) {
       entry[ours ? "ours" : "opponent"] = stats;
     }
