@@ -29,6 +29,11 @@ export type DataTableColumn<T> = {
   header: string;
   /** The full name where `header` abbreviates it ("Goals" for "G"), for the column picker. */
   label?: string;
+  /**
+   * With a `layout`, starts hidden until the viewer shows it from the Columns
+   * picker (CLUBS-80). Without one it has no effect.
+   */
+  defaultHidden?: boolean;
   cell: (row: T) => ReactNode;
   /** Makes the column sortable. Return null for missing values; they sort last. */
   sortValue?: (row: T) => SortValue;
