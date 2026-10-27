@@ -170,6 +170,8 @@ export interface MilestoneEntry extends MilestoneFigures {
 export interface MilestoneQuery {
   /** Our Club's Milestones, or one Squad Member's; everyone's when absent. */
   who?: "club" | { playerId: string };
+  /** Only landmarks, feats or records (CLUBS-51); every kind when absent. */
+  category?: MilestoneCategory;
   /** Only these Matches' (at most 90, for D1's bound-parameter cap), e.g. a Session's. */
   matchIds?: readonly string[];
   /** Only those detected together (one write-up call). */
@@ -192,6 +194,7 @@ export async function listMilestones(
   clubName: string,
   {
     who,
+    category,
     matchIds,
     batchKey,
     achievedBetween,
@@ -201,6 +204,9 @@ export async function listMilestones(
   const conditions: SQL[] = [isShownMatch, isDetectedKind];
   if (who === "club") conditions.push(eq(milestones.subject, "club"));
   else if (who) conditions.push(eq(milestones.playerId, who.playerId));
+  if (category) {
+    conditions.push(inArray(milestones.kind, milestoneKindsIn(category)));
+  }
   if (matchIds) conditions.push(inArray(milestones.matchId, [...matchIds]));
   if (batchKey) conditions.push(eq(milestones.batchKey, batchKey));
   if (achievedBetween) {
@@ -270,6 +276,13 @@ export async function listMilestones(
       sessionId: sessionOf.get(row.matchId) ?? row.matchId,
     };
   });
+}
+
+/** The kinds in a category, e.g. every feat. */
+function milestoneKindsIn(category: MilestoneCategory): MilestoneKind[] {
+  return (Object.keys(MILESTONE_KINDS) as MilestoneKind[]).filter(
+    (kind) => MILESTONE_KINDS[kind].category === category,
+  );
 }
 
 /** A batch of Milestones detected together, for the write-up queue. */
