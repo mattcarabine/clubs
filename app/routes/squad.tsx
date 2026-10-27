@@ -593,6 +593,7 @@ const COLUMN_LABELS: Readonly<Record<string, string>> = {
   "G+A": "Goal contributions",
   Rating: "Average rating",
   Apps: "Appearances",
+  "Vs team": "Rating against teammates",
   G: "Goals",
   A: "Assists",
   Mins: "Minutes played",
