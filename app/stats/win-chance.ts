@@ -24,6 +24,12 @@ export const UPSET_WIN_CHANCE = 0.35;
 /** Dropped Points given a Win Chance above this (0 to 1) is a Match we should have won. */
 export const SHOULD_HAVE_WON_CHANCE = 0.65;
 
+/** A Win Chance (0 to 1) at or above this makes us Favourites. */
+export const FAVOURITES_CHANCE = 0.55;
+
+/** A Win Chance (0 to 1) at or below this makes us Underdogs. */
+export const UNDERDOGS_CHANCE = 0.45;
+
 /**
  * The fit's ridge penalty on the slope (per 100 rating points). It keeps the
  * curve finite when every Win came at a bigger gap than every Dropped Points
@@ -148,6 +154,17 @@ export function expectation(
 ): Expectation | null {
   if (outcome === "W") return chance < UPSET_WIN_CHANCE ? "upset-win" : null;
   return chance > SHOULD_HAVE_WON_CHANCE ? "should-have-won" : null;
+}
+
+/** How a Win Chance billed us before kick-off. */
+export type Billing = "favourites" | "toss-up" | "underdogs";
+
+/** Judged on the whole percentage shown, so "55%" is never a toss-up. */
+export function billing(chance: number): Billing {
+  const shown = Math.round(chance * 100) / 100;
+  if (shown >= FAVOURITES_CHANCE) return "favourites";
+  if (shown <= UNDERDOGS_CHANCE) return "underdogs";
+  return "toss-up";
 }
 
 /** Wins against the Wins the curve expected: the sum of each Match's Win Chance. */
