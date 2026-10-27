@@ -22,6 +22,8 @@ import {
   RouteError,
   SectionHeading,
   Tag,
+  UPSET_FILL,
+  upsetLabel,
   useRowLink,
 } from "~/components";
 import { getDb } from "~/db/client";
@@ -55,8 +57,11 @@ import { isPlayedAppearance } from "~/stats/counted";
 import { matchPreview } from "~/stats/link-preview";
 import { groupBy } from "~/stats/summaries";
 import {
+  BIG_SHOULD_HAVE_WON_CHANCE,
+  BIG_UPSET_WIN_CHANCE,
   type Billing,
   billing,
+  type Expectation,
   formatWinChance,
   SHOULD_HAVE_WON_CHANCE,
   UPSET_WIN_CHANCE,
@@ -160,6 +165,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
           when={<LondonTime date={match.playedAt} format="moment" />}
           skillRatings={match.skillRatings}
           sides={totals}
+          upset={winChance?.expectation}
         />
         {headline && <MatchHeadline text={headline} size="hero" />}
         {winChance && <WinChanceNote winChance={winChance} />}
@@ -288,43 +294,66 @@ const NOTE_TAG =
   "clip-slant px-2 py-0.5 font-display font-bold text-shale-950 text-xs uppercase tracking-wide [--slant:0.2rem]";
 
 /**
- * Our Win Chance before kick-off, coloured and named by its Billing, and a
- * flag when the result went against it.
+ * Our Win Chance before kick-off, coloured and named by its Billing. An Upset
+ * takes over the top rule in its own colour, and a big one adds a filled banner.
  */
 function WinChanceNote({ winChance }: { winChance: MatchWinChance }) {
   const { chance, source, expectation } = winChance;
   const style = BILLING_STYLE[billing(chance)];
+  const rule = expectation ? UPSET_RULE[expectation.kind] : style.rule;
   return (
     <aside
       aria-label="Win chance"
-      className={`mt-4 flex flex-col gap-2 border-t-2 bg-shale-900 px-4 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 ${style.rule}`}
+      className={`mt-4 border-t-2 bg-shale-900 text-sm ${rule}`}
     >
-      <p className="flex flex-wrap items-center gap-2 text-ink-soft">
-        <span>
-          Win chance before kick-off:{" "}
-          <strong
-            className={`font-display font-extrabold text-xl tabular ${style.text}`}
-          >
-            {formatWinChance(chance)}
-          </strong>
-        </span>
-        <span className={`${NOTE_TAG} ${style.tag}`}>{style.label}</span>
-        {source === "estimate" && <EstimateTag />}
-      </p>
-      {expectation && (
-        <p className="flex flex-wrap items-center gap-2 text-ink-soft">
-          <span
-            className={`${NOTE_TAG} ${expectation === "upset-win" ? "bg-win" : "bg-loss"}`}
-          >
-            {expectation === "upset-win" ? "Upset Win" : "Should have won"}
-          </span>
-          {expectation === "upset-win"
-            ? `A Win from a Win Chance under ${formatWinChance(UPSET_WIN_CHANCE)}.`
-            : `Dropped Points from a Win Chance over ${formatWinChance(SHOULD_HAVE_WON_CHANCE)}.`}
+      {expectation?.big && (
+        <p
+          className={`px-4 py-2 font-display font-extrabold text-lg uppercase tracking-wide sm:text-xl ${UPSET_FILL[expectation.kind]}`}
+        >
+          {upsetLabel(expectation)}
         </p>
       )}
+      <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
+        <p className="flex flex-wrap items-center gap-2 text-ink-soft">
+          <span>
+            Win chance before kick-off:{" "}
+            <strong
+              className={`font-display font-extrabold text-xl tabular ${style.text}`}
+            >
+              {formatWinChance(chance)}
+            </strong>
+          </span>
+          <span className={`${NOTE_TAG} ${style.tag}`}>{style.label}</span>
+          {source === "estimate" && <EstimateTag />}
+        </p>
+        {expectation && (
+          <p className="flex flex-wrap items-center gap-2 text-ink-soft">
+            {!expectation.big && (
+              <span className={`${NOTE_TAG} ${UPSET_FILL[expectation.kind]}`}>
+                {upsetLabel(expectation)}
+              </span>
+            )}
+            {upsetSentence(expectation)}
+          </p>
+        )}
+      </div>
     </aside>
   );
+}
+
+const UPSET_RULE: Record<Expectation["kind"], string> = {
+  "upset-win": "border-win",
+  "should-have-won": "border-loss",
+};
+
+/** Why a result counts as an Upset, naming the threshold it passed. */
+function upsetSentence({ kind, big }: Expectation): string {
+  if (kind === "upset-win") {
+    const under = big ? BIG_UPSET_WIN_CHANCE : UPSET_WIN_CHANCE;
+    return `A Win from a Win Chance under ${formatWinChance(under)}.`;
+  }
+  const over = big ? BIG_SHOULD_HAVE_WON_CHANCE : SHOULD_HAVE_WON_CHANCE;
+  return `Dropped Points from a Win Chance over ${formatWinChance(over)}.`;
 }
 
 /** Who rage quit and who EA gave the Match to; a level one names no side. */

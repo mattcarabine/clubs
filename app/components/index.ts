@@ -95,3 +95,4 @@ export { StoryCard, StoryDeck, type StoryDeckCard } from "./story";
 export { EstimateTag, SmallSampleTag, Tag } from "./tag";
 export { Ticker, type TickerItem } from "./ticker";
 export { TopPerformersStrip } from "./top-performers-strip";
+export { UPSET_FILL, UpsetBadge, upsetLabel } from "./upset-badge";

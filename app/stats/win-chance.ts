@@ -24,6 +24,10 @@ export const UPSET_WIN_CHANCE = 0.35;
 /** Dropped Points given a Win Chance above this (0 to 1) is a Match we should have won. */
 export const SHOULD_HAVE_WON_CHANCE = 0.65;
 
+/** An upset this far out (0 to 1) is a big one: a Win from under 20%, or Dropped Points from over 80%. */
+export const BIG_UPSET_WIN_CHANCE = 0.2;
+export const BIG_SHOULD_HAVE_WON_CHANCE = 0.8;
+
 /** A Win Chance (0 to 1) at or above this makes us Favourites. */
 export const FAVOURITES_CHANCE = 0.55;
 
@@ -145,15 +149,27 @@ export function fitLogistic(
   return null;
 }
 
-/** A result against the odds: a Win we were unlikely to get, or Dropped Points we were expected to win. */
-export type Expectation = "upset-win" | "should-have-won";
+/**
+ * An Upset: a Win we were unlikely to get, or Dropped Points we were expected
+ * to win, and whether it was a big one.
+ */
+export interface Expectation {
+  kind: "upset-win" | "should-have-won";
+  big: boolean;
+}
 
 export function expectation(
   chance: number,
   outcome: Outcome,
 ): Expectation | null {
-  if (outcome === "W") return chance < UPSET_WIN_CHANCE ? "upset-win" : null;
-  return chance > SHOULD_HAVE_WON_CHANCE ? "should-have-won" : null;
+  if (outcome === "W") {
+    return chance < UPSET_WIN_CHANCE
+      ? { kind: "upset-win", big: chance < BIG_UPSET_WIN_CHANCE }
+      : null;
+  }
+  return chance > SHOULD_HAVE_WON_CHANCE
+    ? { kind: "should-have-won", big: chance > BIG_SHOULD_HAVE_WON_CHANCE }
+    : null;
 }
 
 /** How a Win Chance billed us before kick-off. */
