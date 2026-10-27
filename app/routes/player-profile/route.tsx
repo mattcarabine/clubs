@@ -301,6 +301,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
             <OutcomeSplitPanel
               split={profile.outcomeSplit}
               swing={profile.swing}
+              consistency={profile.consistency}
             />
           </section>
         </>
