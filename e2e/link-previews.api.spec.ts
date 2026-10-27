@@ -189,7 +189,6 @@ test("every page has a preview with the static card, and is never indexed", asyn
   const paths = [
     "/",
     "/squad",
-    "/matches",
     "/opponents",
     "/trends",
     "/analysis",

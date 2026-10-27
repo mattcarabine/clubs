@@ -137,7 +137,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         to="/"
         className="font-display font-bold text-lg text-sound-300 uppercase tracking-wide hover:text-ink"
       >
-        Back to Matchday
+        Back to Matches
       </Link>
       {stack && (
         <pre className="w-full overflow-x-auto bg-shale-900 p-4 text-sm">

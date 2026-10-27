@@ -21,6 +21,7 @@ import {
   EmptyState,
   FilterBar,
   FormBadge,
+  FormWatch,
   PageHeader,
   PlayerChip,
   type RowSelection,
@@ -47,6 +48,7 @@ import {
   eaCleanSheets,
   eaMemberTotals,
   type FormIndicator,
+  formWatch,
   type LeaderboardRow,
   type PositionGroupSelection,
   parseStatsFilter,
@@ -110,6 +112,7 @@ export default function Squad({ loaderData }: Route.ComponentProps) {
 }
 
 function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
+  const watch = formWatch(rows);
   return (
     <>
       <PageHeader
@@ -139,6 +142,11 @@ function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
         )}
       </ComparePicker>
       {rows.length > 0 && <ColumnKey entries={KEY} />}
+      {watch.length > 0 && (
+        <div className="mt-8">
+          <FormWatch rows={watch} />
+        </div>
+      )}
     </>
   );
 }

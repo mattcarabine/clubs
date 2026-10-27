@@ -85,7 +85,7 @@ export default function Session({ loaderData }: Route.ComponentProps) {
   const { matches, record, players, usual } = session;
   return (
     <>
-      <BackLink to="/matches">All Matches</BackLink>
+      <BackLink to="/">All Matches</BackLink>
       <PageHeader
         title="Session"
         subtitle={
@@ -198,7 +198,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       error={error}
       subject="Session"
       notFoundDescription="No Session starts with this Match. It may be older than the first Poll."
-      back={{ to: "/matches", children: "All Matches" }}
+      back={{ to: "/", children: "All Matches" }}
     />
   );
 }

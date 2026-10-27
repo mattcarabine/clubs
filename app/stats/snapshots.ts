@@ -62,7 +62,7 @@ export interface PollState {
   /** When the latest Poll that reached EA finished (a partial Poll counts), or null before the first. */
   lastPoll: Date | null;
   /**
-   * Opaque; it changes when a Poll changes what Matchday shows. The Poll
+   * Opaque; it changes when a Poll changes what the home page shows. The Poll
    * derives Matches, Appearances and Snapshots in the batch that stores their
    * Raw Payload, so the latest Raw Payload's ID covers those. A Skill Rating
    * can land in a Poll that stores no payload (EA's ratings response hashed

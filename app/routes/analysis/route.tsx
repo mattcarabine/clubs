@@ -36,6 +36,7 @@ import { pageMeta } from "~/lib/page-meta";
 import { playerPath } from "~/lib/paths";
 import {
   type AfterResultSplit,
+  clubSnapshots,
   type GroupSplit,
   getOutcomeSplit,
   getWinChanceAnalysis,
@@ -48,6 +49,7 @@ import {
   ROLLING_WIN_WINDOW,
   resolveStatsFilter,
   statsFilterFromRequest,
+  summariseClubSnapshots,
   type WithWithout,
   winRateBucket,
   winRateGap,
@@ -56,6 +58,7 @@ import { parseStatsFilter, writeStatsFilter } from "~/stats/filter";
 import type { PositionGroupSelection } from "~/stats/positions";
 
 import type { Route } from "./+types/route";
+import { ClubSnapshot } from "./club-snapshot";
 import { FindingList } from "./findings";
 import { HumansSection } from "./humans";
 import { StrengthSection } from "./strength";
@@ -73,15 +76,16 @@ export function meta({ location }: Route.MetaArgs) {
 export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
-  const [{ playedAt, ...split }, winChance, stateOfTheClub] = await Promise.all(
-    [
+  const [{ playedAt, ...split }, winChance, stateOfTheClub, snapshots] =
+    await Promise.all([
       getOutcomeSplit(db, filter, { positionGroups: filter.positionGroups }),
       getWinChanceAnalysis(db, filter),
       latestWriteup(db, "club", CLUB_SUBJECT),
-    ],
-  );
+      clubSnapshots(db),
+    ]);
   return {
     filter,
+    club: summariseClubSnapshots(snapshots),
     split,
     winChance,
     stateOfTheClub,
@@ -92,14 +96,15 @@ export async function loader({ request }: Route.LoaderArgs) {
 type AnalysisData = Route.ComponentProps["loaderData"];
 
 export default function Analysis({ loaderData }: Route.ComponentProps) {
-  const { filter, split, winChance, stateOfTheClub } = loaderData;
+  const { filter, club, split, winChance, stateOfTheClub } = loaderData;
   return (
     <>
       <PageHeader
         title="Analysis"
         subtitle="What changes between Wins and Dropped Points (draws and losses)."
       />
-      {/* Written after the latest Session, whatever the filter, so it sits above the FilterBar. */}
+      {/* EA's totals and the State of the club ignore the filter, so they sit above the FilterBar. */}
+      {club && <ClubSnapshot club={club} />}
       {stateOfTheClub && (
         <section aria-label="State of the club" className="mb-8">
           <SectionHeading

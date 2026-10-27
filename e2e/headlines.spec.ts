@@ -2,6 +2,7 @@
 /// <reference lib="dom" />
 import type { Page } from "@playwright/test";
 
+import { matchList } from "./support/match-list.ts";
 import { expect, test } from "./support/test.ts";
 import { SESSION_CLOCK, serveSession } from "./support/writeups.ts";
 
@@ -27,7 +28,7 @@ function ogDescription(page: Page) {
     .getAttribute("content");
 }
 
-test("every Match in an ended Session gets a headline: on the Matches list, the Match page, Matchday and the link preview", async ({
+test("every Match in an ended Session gets a headline: on the Matches list and its hero, the Match page and the link preview", async ({
   page,
   fakeEa,
   fakeAnthropic,
@@ -53,9 +54,9 @@ test("every Match in an ended Session gets a headline: on the Matches list, the 
   });
   await triggerPoll();
 
-  await page.goto("/matches");
+  await page.goto("/");
   for (const [i, matchId] of ids.entries()) {
-    const row = page.locator(`a[href="/matches/${matchId}"]`);
+    const row = matchList(page).locator(`a[href="/matches/${matchId}"]`);
     await expect(row).toContainText(headlines[i]);
   }
 
@@ -91,8 +92,8 @@ test("without a headline the score line shows on its own", async ({
   await triggerPoll();
   expect(await fakeAnthropic.requests()).toHaveLength(0);
 
-  await page.goto("/matches");
-  const row = page.locator(`a[href="/matches/${matchId}"]`);
+  await page.goto("/");
+  const row = matchList(page).locator(`a[href="/matches/${matchId}"]`);
   await expect(row).toContainText("A Bloo Bloo");
   await expect(row.locator("p[title]")).toHaveCount(0);
 
@@ -131,7 +132,7 @@ test("at 375px a long headline is cut with an ellipsis, in full in its tooltip, 
   });
   await triggerPoll();
 
-  await page.goto("/matches");
+  await page.goto("/");
   const headline = page.locator(`a[href="/matches/${matchId}"] p[title]`);
   await expect(headline).toHaveAttribute("title", long);
   const cut = await headline.evaluate((el) => el.scrollWidth > el.clientWidth);

@@ -10,7 +10,8 @@ import {
 } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
-// CLUBS-7: the Matchday page at `/`.
+// The home page at `/`: the Matches list (CLUBS-58, ADR 0008), led by the
+// latest Match and refreshing itself after a Poll (CLUBS-7, CLUBS-46).
 
 const CLUB_NAME = "A Bloo Bloo";
 
@@ -45,7 +46,7 @@ test("shows the latest Match's score and Opponent from the fixture", async ({
 
   const { goalsFor, goalsAgainst, opponentName } = newestFixtureMatch();
   await expect(
-    page.getByRole("heading", { level: 1, name: "Matchday" }),
+    page.getByRole("heading", { level: 1, name: "Matches" }),
   ).toBeVisible();
   const hero = latestMatch(page);
   await expect(hero).toContainText(
@@ -76,7 +77,7 @@ test("the top performers strip scrolls only when it does not fit", async ({
   await expect(ticker.getByText("tinbs_irl")).toBeVisible();
 });
 
-test("shows the latest Match's top performers, form and season snapshot", async ({
+test("shows the latest Match's top performers above the Matches list", async ({
   page,
   triggerPoll,
 }) => {
@@ -89,13 +90,10 @@ test("shows the latest Match's top performers, form and season snapshot", async 
   await expect(ticker.getByText(/Man of the Match/).first()).toBeAttached();
   await expect(ticker.getByText(/2 goals, 1 assist/).first()).toBeAttached();
 
+  // The hero's Match also heads its Session in the list below.
   await expect(
-    page.getByRole("list", { name: /Form, oldest to newest/ }),
+    page.getByRole("region", { name: /^Session, / }).first(),
   ).toBeVisible();
-
-  const snapshot = page.getByRole("region", { name: "Season snapshot" });
-  await expect(snapshot).toContainText("1632");
-  await expect(snapshot).toContainText("55-18-39");
 
   const noSideScroll = await page.evaluate(
     () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -130,9 +128,6 @@ test("flags a rage quit on the latest Match", async ({
   await expect(
     latestMatch(page).getByText("They rage quit", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("main")).toContainText(
-    /conceded, \d+ rage quits?/,
-  );
   await expect(page.getByRole("main")).not.toContainText("DNF");
 });
 
@@ -169,7 +164,7 @@ test("picks up a new result after 60s without a reload", async ({
   ).toBe(true);
 });
 
-test("an open Matchday reloads nothing after a Poll that finds nothing new, but shows the new Poll time", async ({
+test("an open home page reloads nothing after a Poll that finds nothing new, but shows the new Poll time", async ({
   page,
   request,
   triggerPoll,
@@ -215,7 +210,62 @@ test("shows a friendly empty state with an empty database", async ({
 }) => {
   await page.goto("/");
 
-  await expect(page.getByText("No Competitive Matches yet")).toBeVisible();
+  await expect(page.getByText("No Matches", { exact: true })).toBeVisible();
   await expect(latestMatch(page)).toHaveCount(0);
   await expect(page.getByText(/Updated/)).toHaveCount(0);
+});
+
+test("a filtered or later page has no hero, only the list", async ({
+  page,
+  triggerPoll,
+}) => {
+  await triggerPoll();
+  await page.goto("/?range=30d");
+  await expect(
+    page.getByRole("region", { name: /^Session, / }).first(),
+  ).toBeVisible();
+  await expect(latestMatch(page)).toHaveCount(0);
+});
+
+test("the old Matches and Sessions addresses redirect home, keeping the filter", async ({
+  page,
+  triggerPoll,
+}) => {
+  await triggerPoll();
+  for (const path of ["/matches", "/sessions"]) {
+    await page.goto(`${path}?range=30d`);
+    await expect(page).toHaveURL(/\/\?range=30d$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Matches" }),
+    ).toBeVisible();
+  }
+});
+
+test("the nav has no Matchday or Opponents, but Opponent pages still load by URL", async ({
+  page,
+  triggerPoll,
+}) => {
+  await triggerPoll();
+  await page.goto("/");
+  const nav = page.getByRole("navigation", { name: "Primary" });
+  await expect(nav.getByRole("link")).toHaveText([
+    "Matches",
+    "Squad",
+    "Trends",
+    "Analysis",
+    "Milestones",
+  ]);
+  await expect(nav.getByRole("link", { name: "Matches" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+
+  // A Match page still links to its Opponent, and the list still loads.
+  await latestMatch(page).getByRole("link").first().click();
+  await page.getByRole("link", { name: /^Head-to-head with / }).click();
+  await expect(page).toHaveURL(/\/opponents\/\d+$/);
+  await page.goto("/opponents");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Opponents" }),
+  ).toBeVisible();
 });

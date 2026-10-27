@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import { draw, loss, win, withLineup } from "./support/match-builders.ts";
+import { matchList } from "./support/match-list.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-34: the Matches page grouped by Session, and the Session page.
@@ -45,7 +46,7 @@ async function recordTwoSessions(
   await triggerPoll();
 }
 
-/** The Session sections on /matches, newest first. */
+/** The Session sections on the home page, newest first. */
 function sessions(page: Page) {
   return page.getByRole("main").getByRole("region", { name: /^Session, / });
 }
@@ -72,7 +73,7 @@ test("Matches 30 minutes apart share a Session and a 60-minute gap starts a new 
   triggerPoll,
 }) => {
   await recordTwoSessions(fakeEa, triggerPoll);
-  await page.goto("/matches");
+  await page.goto("/");
 
   await expect(sessions(page)).toHaveCount(2);
   const [newer, older] = [sessions(page).nth(0), sessions(page).nth(1)];
@@ -106,7 +107,7 @@ test("a Session header opens the Session page and a Match row its Match page", a
   triggerPoll,
 }) => {
   await recordTwoSessions(fakeEa, triggerPoll);
-  await page.goto("/matches");
+  await page.goto("/");
 
   const newer = sessions(page).first();
   await newer.getByRole("link", { name: /Session details/ }).click();
@@ -145,11 +146,11 @@ test("a partly filtered Session says how many Matches are shown, and a fully fil
   );
   await triggerPoll();
 
-  await page.goto("/matches");
+  await page.goto("/");
   await expect(sessions(page)).toHaveCount(2);
   await expect(page.getByText(/of \d+ Matches shown/)).toHaveCount(0);
 
-  await page.goto("/matches?types=league");
+  await page.goto("/?types=league");
   await expect(sessions(page)).toHaveCount(1);
   const session = sessions(page).first();
   await expect(session.getByText("1 of 2 Matches shown")).toBeVisible();
@@ -180,20 +181,20 @@ test("a page holds whole Sessions, never splitting one", async ({
   }
   await triggerPoll();
 
-  await page.goto("/matches");
+  await page.goto("/");
   await expect(page.getByText("22 Matches, newest first")).toBeVisible();
   // The newest Session (3 Matches) and 17 single-Match Sessions make 20.
   await expect(sessions(page)).toHaveCount(18);
-  await expect(matchLinks(page.getByRole("main"))).toHaveCount(20);
+  await expect(matchLinks(sessions(page))).toHaveCount(20);
   const pages = page.getByRole("navigation", { name: "Pages" });
   await expect(pages.getByText("Page 1 of 2")).toBeVisible();
   await pages.getByRole("link", { name: "Older" }).click();
   await expect(sessions(page)).toHaveCount(2);
 });
 
-test("/sessions redirects to /matches", async ({ page }) => {
+test("/sessions redirects to the home page", async ({ page }) => {
   await page.goto("/sessions");
-  await expect(page).toHaveURL(/\/matches$/);
+  await expect(page).toHaveURL(/\/$/);
   await expect(
     page.getByRole("heading", { level: 1, name: "Matches" }),
   ).toBeVisible();
@@ -270,7 +271,7 @@ test("the Session page compares the Session with the usual once there are 3 othe
   ).toBeVisible();
 });
 
-test("Matchday links to tonight's Session and a Match links to its Session", async ({
+test("The home page links to tonight's Session and a Match links to its Session", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -286,7 +287,7 @@ test("Matchday links to tonight's Session and a Match links to its Session", asy
   await expect(page).toHaveURL(new RegExp(`/sessions/${SESSIONS.older[0]}$`));
 });
 
-test("Matchday links to the last Session once tonight's is over", async ({
+test("The home page links to the last Session once tonight's is over", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -324,7 +325,7 @@ test("both pages fit a 375px phone and use the width on desktop", async ({
   await recordTwoSessions(fakeEa, triggerPoll);
   const wide = viewport?.width ?? 1440;
 
-  for (const path of ["/matches", `/sessions/${SESSIONS.newer[0]}`]) {
+  for (const path of ["/", `/sessions/${SESSIONS.newer[0]}`]) {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(path);
     await expect(page.locator('a[href^="/matches/9"]').first()).toBeVisible();
@@ -333,7 +334,9 @@ test("both pages fit a 375px phone and use the width on desktop", async ({
     if (wide >= 1024) {
       // Desktop sets a Session's two Matches side by side.
       await page.setViewportSize({ width: wide, height: 900 });
-      const rows = page.locator('a[href^="/matches/9"]');
+      // On the home page, the list below the latest Match hero.
+      const list = path === "/" ? matchList(page) : page.getByRole("main");
+      const rows = list.locator('a[href^="/matches/9"]');
       const [first, second] = [
         await rows.nth(0).boundingBox(),
         await rows.nth(1).boundingBox(),

@@ -10,10 +10,8 @@ import { CrestMark } from "./crest-mark";
 export { crestUrl };
 
 export const NAV_ITEMS = [
-  { to: "/", label: "Matchday" },
+  { to: "/", label: "Matches" },
   { to: "/squad", label: "Squad" },
-  { to: "/matches", label: "Matches" },
-  { to: "/opponents", label: "Opponents" },
   { to: "/trends", label: "Trends" },
   { to: "/analysis", label: "Analysis" },
   { to: "/milestones", label: "Milestones" },
