@@ -283,6 +283,32 @@ test("the type and Squad Member filters narrow the feed and combine", async ({
   );
 });
 
+test("Streaks have their own type, and carry the since-records-began tag", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // CLUBS-63: Kabeeble scores in three Matches in a row.
+  for (const [i, minutesAgo] of [60, 40, 20].entries()) {
+    await serveMatch(fakeEa, `93720000000000${i}`, minutesAgo, [
+      { player: KAB, goals: 1 },
+      { player: LOL },
+    ]);
+  }
+  await triggerPoll();
+  await page.goto("/milestones");
+  const types = page.getByRole("navigation", { name: "Milestone type" });
+
+  await types.getByRole("link", { name: "Streaks" }).click();
+  await expect(page).toHaveURL(/\?type=streak$/);
+  await expect(feed(page)).toHaveText([/Kabeeble — Scored in 3 in a row/]);
+  await expect(feed(page)).toContainText("Streak");
+  await expect(feed(page)).toContainText("Since records began");
+
+  await types.getByRole("link", { name: "Records" }).click();
+  await expect(feed(page)).toHaveCount(0);
+});
+
 test.describe("on a 375px phone", () => {
   test.use({ viewport: { width: 375, height: 812 } });
 

@@ -13,8 +13,13 @@
  * - **Feats** (a hat-trick, a Perfect rating) come from one Appearance.
  * - **Counts** (a 5th Perfect rating) come from the recorded Appearances,
  *   for what EA's totals don't count, so they read "since records began".
- * - **Records** (biggest Win, longest run) are judged on the recorded
- *   Matches only, so they read "since records began".
+ * - **Records** (biggest Win, biggest defeat) are judged on the recorded
+ *   Matches only, so they read "since records began". A scoreline record
+ *   leaves Rage Quits out: EA awards or cuts short their score (CLUBS-63).
+ * - **Streaks** (longest unbeaten run, scored in 4 in a row, CLUBS-63) are
+ *   records too: the club's runs of results, counting a Rage Quit by its
+ *   result, and each Squad Member's own best runs over their counted
+ *   Appearances. One fires once per run, on the Match that beats the old best.
  *
  * No Goalkeeper Milestones: the AI keeps goal, never a Squad Member.
  */
@@ -43,19 +48,32 @@ export type FeatKind =
 /** Club records, since records began. */
 export type RecordKind =
   | "record-win-margin"
-  | "record-win-run"
-  | "record-unbeaten-run"
+  | "record-defeat-margin"
   | "record-goals"
   | "record-session-wins";
+/** The club's longest runs of results, since records began. */
+export type ClubStreakKind =
+  | "record-win-run"
+  | "record-unbeaten-run"
+  | "record-winless-run";
+/** A Squad Member's own longest runs, since records began. */
+export type PlayerStreakKind = "scoring-run" | "assist-run" | "motm-run";
 
 export type MilestoneKind =
   | PlayerLandmarkKind
   | ClubLandmarkKind
   | PlayerCountKind
   | FeatKind
-  | RecordKind;
+  | RecordKind
+  | ClubStreakKind
+  | PlayerStreakKind;
 
-export type MilestoneCategory = "landmark" | "feat" | "record";
+export type MilestoneCategory = "landmark" | "feat" | "streak" | "record";
+
+/** Categories that only count recorded Matches, so read "since records began". */
+export function isSinceRecordsBegan(category: MilestoneCategory): boolean {
+  return category === "streak" || category === "record";
+}
 
 /** A rising run of thresholds: each listed value, then every `step` after the last. */
 export interface Ladder {
@@ -171,8 +189,30 @@ export function isPerfectRating(rating: number | null): rating is number {
 export const MIN_PLAYER_HISTORY = 5;
 /** Earlier recorded Matches needed before a club record counts. */
 export const MIN_RECORD_HISTORY = 5;
-/** The shortest run of Wins or unbeaten Matches, or Session Wins, worth a record. */
+/** The shortest club run of results, or Session Wins, worth a record. */
 export const MIN_RECORD_RUN = 2;
+
+/** Which of the club's Matches keep each run going. */
+export const CLUB_STREAKS: Readonly<
+  Record<ClubStreakKind, (outcome: Outcome) => boolean>
+> = {
+  "record-win-run": (o) => o === "W",
+  "record-unbeaten-run": (o) => o !== "L",
+  "record-winless-run": (o) => o !== "W",
+};
+
+/** A Squad Member's run: which Appearances keep it going, and the shortest worth a Milestone. */
+interface PlayerStreak {
+  keeps(a: DetectionAppearance): boolean;
+  minimum: number;
+}
+
+export const PLAYER_STREAKS: Readonly<Record<PlayerStreakKind, PlayerStreak>> =
+  {
+    "scoring-run": { keeps: (a) => a.goals > 0, minimum: 3 },
+    "assist-run": { keeps: (a) => a.assists > 0, minimum: 3 },
+    "motm-run": { keeps: (a) => a.manOfTheMatch, minimum: 2 },
+  };
 
 const LABEL_NOUN: Record<PlayerLandmarkKind, [string, string]> = {
   goals: ["goal", "goals"],
@@ -194,6 +234,19 @@ function playerLandmark(kind: PlayerLandmarkKind): KindDefinition {
       value === 1
         ? `${name} has their first ${singular} for A Bloo Bloo.`
         : `${name} reached ${value} ${plural} for A Bloo Bloo.`,
+  };
+}
+
+/** A Squad Member's best run: "Scored in 4 in a row", "Man of the Match 2 in a row". */
+function playerStreak(title: string, verb: string): KindDefinition {
+  return {
+    subject: "player",
+    category: "streak",
+    badge: "Streak",
+    title: ({ value }) => `${title} ${value} in a row`,
+    figure: ({ value }) => String(value),
+    sentence: (name, { value }) =>
+      `${name} ${verb} ${value} Matches in a row, their best run ${SINCE_RECORDS}.`,
   };
 }
 
@@ -285,10 +338,19 @@ export const MILESTONE_KINDS: Readonly<Record<MilestoneKind, KindDefinition>> =
       sentence: (name, { value, threshold }) =>
         `${name}'s biggest Win ${SINCE_RECORDS}: by ${value} goals, beating ${threshold}.`,
     },
-    "record-win-run": {
+    "record-defeat-margin": {
       subject: "club",
       category: "record",
       badge: "Record",
+      title: ({ value }) => `Record defeat, by ${value} goals`,
+      figure: ({ value }) => `−${value}`,
+      sentence: (name, { value, threshold }) =>
+        `${name}'s heaviest defeat ${SINCE_RECORDS}: by ${value} goals, beyond the old worst of ${threshold}.`,
+    },
+    "record-win-run": {
+      subject: "club",
+      category: "streak",
+      badge: "Streak",
       title: ({ value }) => `Record run of ${value} Wins`,
       figure: ({ value }) => String(value),
       sentence: (name, { value, threshold }) =>
@@ -296,13 +358,25 @@ export const MILESTONE_KINDS: Readonly<Record<MilestoneKind, KindDefinition>> =
     },
     "record-unbeaten-run": {
       subject: "club",
-      category: "record",
-      badge: "Record",
+      category: "streak",
+      badge: "Streak",
       title: ({ value }) => `Record unbeaten run of ${value}`,
       figure: ({ value }) => String(value),
       sentence: (name, { value, threshold }) =>
         `${name} went ${value} Matches unbeaten, the longest run ${SINCE_RECORDS} (the old best was ${threshold}).`,
     },
+    "record-winless-run": {
+      subject: "club",
+      category: "streak",
+      badge: "Streak",
+      title: ({ value }) => `Record winless run of ${value}`,
+      figure: ({ value }) => String(value),
+      sentence: (name, { value, threshold }) =>
+        `${name} went ${value} Matches without a Win, the longest run ${SINCE_RECORDS} (the old worst was ${threshold}).`,
+    },
+    "scoring-run": playerStreak("Scored in", "scored in"),
+    "assist-run": playerStreak("Assisted in", "assisted in"),
+    "motm-run": playerStreak("Man of the Match", "was Man of the Match"),
     "record-goals": {
       subject: "club",
       category: "record",
@@ -440,6 +514,7 @@ export function detectMilestones(input: DetectionInput): DetectedMilestone[] {
     ...detectPlayerLandmarks(input, matchById),
     ...detectClubLandmarks(input),
     ...detectFeats(input),
+    ...detectPlayerStreaks(input),
     ...detectRecords(input.matches),
   ]) {
     if (!isGoalkeeper(m) && !unique.has(m.dedupeKey))
@@ -623,16 +698,23 @@ interface PlayerHistory {
   scoredIn: Set<StoredPositionGroup>;
 }
 
-function detectFeats({
-  matches,
-  appearances,
-}: DetectionInput): DetectedMilestone[] {
+function appearancesByMatch(
+  appearances: readonly DetectionAppearance[],
+): Map<string, DetectionAppearance[]> {
   const byMatch = new Map<string, DetectionAppearance[]>();
   for (const a of appearances) {
     const list = byMatch.get(a.matchId) ?? [];
     list.push(a);
     byMatch.set(a.matchId, list);
   }
+  return byMatch;
+}
+
+function detectFeats({
+  matches,
+  appearances,
+}: DetectionInput): DetectedMilestone[] {
+  const byMatch = appearancesByMatch(appearances);
   const histories = new Map<string, PlayerHistory>();
   const found: DetectedMilestone[] = [];
 
@@ -724,32 +806,83 @@ function usualGroup(history: PlayerHistory): StoredPositionGroup | null {
 }
 
 /** The current run of Matches that `keeps` going, against the longest before it. */
-class RunTracker {
+class RunTracker<T extends { matchId: string }> {
   /** The longest run before the current one began. */
   bestBefore = 0;
   length = 0;
+  /** The Match the current run began in. */
   startId = "";
   private best = 0;
 
-  constructor(private readonly keeps: (outcome: Outcome) => boolean) {}
+  constructor(
+    private readonly keeps: (item: T) => boolean,
+    private readonly minimum: number,
+  ) {}
 
   /**
    * Adds the next Match. True once per run: on the Match that takes it past
-   * the old best (and to at least `MIN_RECORD_RUN`).
+   * the old best (and to at least `minimum`).
    */
-  add(match: DetectionMatch): boolean {
-    if (!this.keeps(match.outcome)) {
+  add(item: T): boolean {
+    if (!this.keeps(item)) {
       this.length = 0;
       return false;
     }
     if (this.length === 0) {
-      this.startId = match.matchId;
+      this.startId = item.matchId;
       this.bestBefore = this.best;
     }
     this.length++;
     this.best = Math.max(this.best, this.length);
-    return this.length === Math.max(this.bestBefore + 1, MIN_RECORD_RUN);
+    return this.length === Math.max(this.bestBefore + 1, this.minimum);
   }
+}
+
+/**
+ * Each Squad Member's own best runs, over their counted Appearances: one
+ * that isn't counted (0 minutes, or a Match we quit) neither extends nor
+ * ends a run, and nor does a Match they missed.
+ */
+function detectPlayerStreaks({
+  matches,
+  appearances,
+}: DetectionInput): DetectedMilestone[] {
+  const byMatch = appearancesByMatch(appearances);
+  const runs = new Map<
+    string,
+    [PlayerStreakKind, RunTracker<DetectionAppearance>][]
+  >();
+  const found: DetectedMilestone[] = [];
+  for (const match of matches) {
+    for (const a of byMatch.get(match.matchId) ?? []) {
+      if (!isCountedAppearance({ ...a, ...match })) continue;
+      let theirs = runs.get(a.playerId);
+      if (!theirs) {
+        theirs = Object.entries(PLAYER_STREAKS).map(
+          ([kind, { keeps, minimum }]) => [
+            kind as PlayerStreakKind,
+            new RunTracker(keeps, minimum),
+          ],
+        );
+        runs.set(a.playerId, theirs);
+      }
+      for (const [kind, run] of theirs) {
+        if (!run.add(a)) continue;
+        found.push({
+          kind,
+          subject: "player",
+          playerId: a.playerId,
+          value: run.length,
+          threshold: run.bestBefore,
+          positionGroup: null,
+          matchId: match.matchId,
+          achievedAt: match.playedAt,
+          dedupeKey: `player:${a.playerId}:${kind}:${run.startId}`,
+        });
+      }
+    }
+  }
+  return found;
 }
 
 function detectRecords(
@@ -757,7 +890,7 @@ function detectRecords(
 ): DetectedMilestone[] {
   const found: DetectedMilestone[] = [];
   const record = (
-    kind: RecordKind,
+    kind: RecordKind | ClubStreakKind,
     match: DetectionMatch,
     value: number,
     previous: number,
@@ -778,9 +911,15 @@ function detectRecords(
   const sessionOf = sessionIdsByMatch(matches);
 
   let bestMargin = 0;
+  let worstMargin = 0;
   let bestGoals = 0;
-  const winRun = new RunTracker((o) => o === "W");
-  const unbeatenRun = new RunTracker((o) => o !== "L");
+  const runs = Object.entries(CLUB_STREAKS).map(
+    ([kind, keeps]) =>
+      [
+        kind as ClubStreakKind,
+        new RunTracker<DetectionMatch>((m) => keeps(m.outcome), MIN_RECORD_RUN),
+      ] as const,
+  );
   let session = { id: "", wins: 0, recorded: false };
   let bestSessionWins = 0;
 
@@ -789,19 +928,30 @@ function detectRecords(
     const margin = match.goalsFor - match.goalsAgainst;
     const isWin = match.outcome === "W";
 
-    if (counts && isWin && margin > bestMargin) {
-      record("record-win-margin", match, margin, bestMargin, match.matchId);
+    // A Rage Quit's score is awarded or cut short, so it sets no scoreline record.
+    if (!match.dnf) {
+      const isLoss = match.outcome === "L";
+      if (counts && isWin && margin > bestMargin) {
+        record("record-win-margin", match, margin, bestMargin, match.matchId);
+      }
+      if (counts && isLoss && -margin > worstMargin) {
+        record(
+          "record-defeat-margin",
+          match,
+          -margin,
+          worstMargin,
+          match.matchId,
+        );
+      }
+      if (counts && match.goalsFor > bestGoals) {
+        record("record-goals", match, match.goalsFor, bestGoals, match.matchId);
+      }
+      if (isWin) bestMargin = Math.max(bestMargin, margin);
+      if (isLoss) worstMargin = Math.max(worstMargin, -margin);
+      bestGoals = Math.max(bestGoals, match.goalsFor);
     }
-    if (counts && match.goalsFor > bestGoals) {
-      record("record-goals", match, match.goalsFor, bestGoals, match.matchId);
-    }
-    if (isWin) bestMargin = Math.max(bestMargin, margin);
-    bestGoals = Math.max(bestGoals, match.goalsFor);
 
-    for (const [kind, run] of [
-      ["record-win-run", winRun],
-      ["record-unbeaten-run", unbeatenRun],
-    ] as const) {
+    for (const [kind, run] of runs) {
       if (run.add(match) && counts) {
         record(kind, match, run.length, run.bestBefore, run.startId);
       }

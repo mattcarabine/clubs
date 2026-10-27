@@ -127,6 +127,19 @@ const SAMPLE_MILESTONES: MilestoneCardData[] = [
     match: MILESTONE_MATCH,
     sessionId: "sg-milestone",
   },
+  {
+    category: "streak",
+    subject: "player",
+    playerId: "sg-player",
+    name: "Kopite Kev",
+    headline: "Kopite Kev — Scored in 4 in a row",
+    badge: "Streak",
+    figure: "4",
+    comment:
+      "Four Matches, four games on the scoresheet. Defences have started marking the tap-in zone, and it has not helped.",
+    match: MILESTONE_MATCH,
+    sessionId: "sg-milestone",
+  },
 ];
 
 const SAMPLE_LEADERS: LeaderBoard[] = [

@@ -9,6 +9,7 @@ import { formatDecimal } from "~/lib/number-format";
 import {
   DEFAULT_STATS_FILTER,
   isCountedAppearance,
+  isSinceRecordsBegan,
   listMilestoneBatches,
   listMilestones,
   MILESTONE_KINDS,
@@ -64,9 +65,10 @@ export const milestoneWriter: AiWriter = {
   },
 };
 
-const INSTRUCTIONS = `Write a comment on each Milestone in the data: our players' landmarks and feats, and the club's landmarks and records.
+const INSTRUCTIONS = `Write a comment on each Milestone in the data: our players' landmarks, feats and streaks, and the club's landmarks, streaks and records.
+- Some are records nobody wanted (a record defeat, a winless run): own them honestly, with a wry edge, and never dress them up as achievements.
 - "comments": one per Milestone, using its milestoneId. One or two sentences each, in the pundit voice: why it matters, set in the Match it came in and the form and totals given. Each Milestone's headline is shown above its comment, so don't just repeat it.
-- Records and personal bests only count Matches recorded since tracking began ("sinceRecordsBegan"), so never call them all-time. Say "since records began" in at most one comment of the batch, and only where it matters; elsewhere say it another way (a club best, his best yet) or leave it.
+- Streaks, records and personal bests only count Matches recorded since tracking began ("sinceRecordsBegan"), so never call them all-time. Say "since records began" in at most one comment of the batch, and only where it matters; elsewhere say it another way (a club best, their best yet) or leave it.
 - No two comments share an opening, a structure or a stand-out phrase, and none echoes the recent comments in the background.`;
 
 /** The task for one batch. Exported for unit tests. */
@@ -163,7 +165,7 @@ function milestoneInput(
     headline: milestoneHeadline(m.kind, name, m),
     type: definition.category,
     sinceRecordsBegan:
-      definition.category === "record" ||
+      isSinceRecordsBegan(definition.category) ||
       m.kind === "perfect-ratings" ||
       m.kind === "first-goal-in-position",
     value: m.value,
