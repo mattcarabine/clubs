@@ -10,6 +10,7 @@ import {
   type ClubMatchTotals,
   dayType,
   droppedPointsReasons,
+  formatDroppedCount,
   matchAngle,
   outcomeSplit,
   POSITION_OUTLIER_GAP,
@@ -60,6 +61,7 @@ function match(
     matchId: `m${sequence}`,
     playedAt: playedAt ?? new Date(Date.UTC(2026, 9, 1, 19, sequence)),
     outcome,
+    quitBy: null,
     secondsPlayed,
     ours: totals(ours),
     opponent: totals(opponent),
@@ -86,6 +88,19 @@ describe("outcomeSplit", () => {
     expect(split.findings).toEqual([]);
   });
 
+  it("counts the Matches each side rage quit", () => {
+    const split = outcomeSplit(
+      [
+        match("W", { quitBy: "opponent", opponent: undefined }),
+        match("L", { quitBy: "us" }),
+        match("L", { quitBy: "us" }),
+        match("D"),
+      ],
+      [],
+    );
+    expect(split.rageQuits).toEqual({ us: 2, opponent: 1 });
+  });
+
   it("counts draws as Dropped Points", () => {
     const split = outcomeSplit(
       [...many(3, () => match("W")), ...many(3, () => match("D"))],
@@ -102,14 +117,14 @@ describe("outcomeSplit", () => {
     expect(top).toEqual({
       id: "ours-shots",
       factor: "Performance",
-      text: "In Dropped Points we take 3.0 fewer shots per 90 (9.0 vs 12.0)",
-      counts: "3 Wins, 3 Dropped Points",
+      text: "In draws and defeats we take 3.0 fewer shots per 90 than in Wins (9.0 vs 12.0)",
+      counts: "3 Wins, 3 draws and defeats",
       smallSample: true,
     });
   });
 
   it("scales counts to 90 minutes by how long each Match ran", () => {
-    // A DNF stopped at 45 minutes with 5 shots is 10 per 90, like the rest.
+    // A rage quit at 45 minutes with 5 shots is 10 per 90, like the rest.
     const split = outcomeSplit(
       [
         ...many(3, () => match("W", { ours: { shots: 10 } })),
@@ -178,6 +193,13 @@ function session(outcomes: string, id: number): SplitMatch[] {
   return [...outcomes].map((o) => match(o as Outcome, { session: id }));
 }
 
+describe("formatDroppedCount", () => {
+  it("names Dropped Points as draws and defeats", () => {
+    expect(formatDroppedCount(1)).toBe("1 draw or defeat");
+    expect(formatDroppedCount(9)).toBe("9 draws and defeats");
+  });
+});
+
 describe("afterResult", () => {
   const scope = (splits: AfterResultSplit[], id: AfterResultScope) =>
     splits.find((s) => s.scope === id);
@@ -231,13 +253,13 @@ describe("afterResult", () => {
     expect(sameSession).toEqual({
       id: "after-same-session",
       factor: "After a result",
-      text: "After Dropped Points in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
+      text: "After a draw or defeat in the same Session we win 20% (5 Matches) vs 60% after a Win (5)",
       counts:
-        "5 Matches after Dropped Points, 5 after a Win in the same Session",
+        "5 Matches after a draw or defeat, 5 after a Win in the same Session",
       smallSample: true,
     });
     expect(findings.find((f) => f.id === "after-any-next")?.text).toBe(
-      "After Dropped Points we win 33% (6 Matches) vs 60% after a Win (5)",
+      "After a draw or defeat we win 33% (6 Matches) vs 60% after a Win (5)",
     );
   });
 

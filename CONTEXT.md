@@ -61,11 +61,11 @@ The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfield
 _Avoid_: Position, role, attack, midfield, defence, GK/DEF/MID/FWD
 
 **Rage Quit**:
-A Match ended early because one side quit; EA awards the result to the side that stayed. Shown as "We rage quit" (EA records it as our loss) or "They rage quit" (the Opponent did, and it is our Win), and counted as "rage quits". When we rage quit EA keeps almost none of our stats, so our side's are not counted; its result is. Code and URLs keep EA's name, `dnf` (`?dnf=0`).
+A Match ended early because one side quit; EA awards the result to the side that stayed. Shown as "We rage quit" (EA records it as our loss) or "They rage quit" (the Opponent did, and it is our Win), and counted as "rage quits". EA keeps almost none of the quitting side's stats, so they are not counted (ours in a Match we quit, the Opponent's in one they quit); its result is. Code and URLs keep EA's name, `dnf` (`?dnf=0`).
 _Avoid_: DNF, did not finish, forfeit, abandoned
 
 **Dropped Points**:
-A Match drawn or lost.
+A Match drawn or lost. The term names the idea in code and in compact labels; a sentence on the site says "draws and defeats" ("In draws and defeats we take 5.3 fewer shots per 90 than in Wins", "After a draw or defeat…"), since "in Dropped Points" reads as jargon.
 _Avoid_: Non-win, bad result
 
 **Session**:

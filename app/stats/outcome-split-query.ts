@@ -12,7 +12,7 @@ import type { Db } from "~/db/client";
 import { appearances, matches } from "~/db/schema";
 
 import { toOutcome } from "./convert";
-import { isCountedAppearance, weQuit } from "./counted";
+import { countsStatsOf, isCountedAppearance, quitBy, weQuit } from "./counted";
 import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
 import { listKickoffs, listMatches, type MatchSummary } from "./matches";
 import {
@@ -119,6 +119,7 @@ async function splitData(
       matchId: m.matchId,
       playedAt: m.playedAt,
       outcome: m.outcome,
+      quitBy: quitBy(m),
       ...performanceOf(sides),
       squadSize: sides?.squadSize ?? 0,
       session,
@@ -200,8 +201,9 @@ function total(column: SQLiteColumn): SQL<number> {
 
 /**
  * Each club's Appearance totals in every Match `where` selects, by Match ID.
- * 0-minute Appearances are left out, and so are our totals in a DNF we quit
- * (`counted.ts`), though they still count towards the squad size.
+ * 0-minute Appearances are left out, and so are a club's totals in a Match
+ * it rage quit (`counted.ts`), though ours still count towards the squad
+ * size.
  */
 async function clubMatchTotals(
   db: Db,
@@ -239,11 +241,10 @@ async function clubMatchTotals(
       row;
     const entry = byMatch.get(matchId) ?? { secondsPlayed: 0, squadSize: 0 };
     entry.secondsPlayed = Math.max(entry.secondsPlayed, secondsPlayed ?? 0);
-    if (!ours) {
-      entry.opponent = stats;
-    } else {
-      entry.squadSize = players;
-      if (!weQuit({ dnf, outcome: toOutcome(result) })) entry.ours = stats;
+    const match = { dnf, outcome: toOutcome(result) };
+    if (ours) entry.squadSize = players;
+    if (countsStatsOf(ours ? "us" : "opponent", match)) {
+      entry[ours ? "ours" : "opponent"] = stats;
     }
     byMatch.set(matchId, entry);
   }

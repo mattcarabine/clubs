@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  countsStatsOf,
   isCountedAppearance,
   isPlayedAppearance,
   quitBy,
@@ -19,6 +20,23 @@ describe("quitBy", () => {
   it("is null for a Match played to the end", () => {
     expect(quitBy({ dnf: false, outcome: "L" })).toBeNull();
     expect(weQuit({ dnf: false, outcome: "L" })).toBe(false);
+  });
+});
+
+describe("countsStatsOf", () => {
+  it("leaves out only the side that quit", () => {
+    const usQuit = { dnf: true, outcome: "L" } as const;
+    const theyQuit = { dnf: true, outcome: "W" } as const;
+    expect(countsStatsOf("us", usQuit)).toBe(false);
+    expect(countsStatsOf("opponent", usQuit)).toBe(true);
+    expect(countsStatsOf("us", theyQuit)).toBe(true);
+    expect(countsStatsOf("opponent", theyQuit)).toBe(false);
+  });
+
+  it("counts both sides of a Match played to the end", () => {
+    const played = { dnf: false, outcome: "W" } as const;
+    expect(countsStatsOf("us", played)).toBe(true);
+    expect(countsStatsOf("opponent", played)).toBe(true);
   });
 });
 

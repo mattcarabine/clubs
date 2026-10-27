@@ -4,7 +4,7 @@
  * profile's "Wins vs Dropped Points" panel; `outcome-split-query.ts` feeds
  * them from D1.
  *
- * Count stats are per 90 over how long each Match ran, so a DNF stopped at
+ * Count stats are per 90 over how long each Match ran, so a rage quit at
  * 45 minutes counts as half a Match rather than skewing the averages; rates
  * (pass %, tackle %, conversion) and ratings are not adjusted. Every finding
  * is ranked on one scale: Cohen's d for the averages, Cohen's h for the
@@ -21,6 +21,7 @@ import {
 import { capitalise } from "~/lib/text";
 import { isFormerSquadMember } from "~/roster";
 
+import type { QuitBy } from "./counted";
 import {
   effectSize,
   per90,
@@ -60,6 +61,14 @@ export const TOP_FINDINGS = 5;
 /** Wins or Dropped Points (a Match drawn or lost). */
 export type OutcomeSide = "wins" | "dropped";
 
+/**
+ * "1 draw or defeat", "9 draws and defeats": how copy names Dropped Points,
+ * since the glossary term reads as jargon in a sentence (CONTEXT.md).
+ */
+export function formatDroppedCount(count: number): string {
+  return formatCount(count, "draw or defeat", "draws and defeats");
+}
+
 export function outcomeSide(outcome: Outcome): OutcomeSide {
   return outcome === "W" ? "wins" : "dropped";
 }
@@ -86,7 +95,9 @@ export interface SplitMatch {
   outcome: Outcome;
   /** How long the Match ran: the longest Appearance in it, on either side. */
   secondsPlayed: number;
-  /** Null when a club's stats are not counted, e.g. ours in a DNF we quit (`counted.ts`). */
+  /** Who rage quit, or null for a Match played to the end. */
+  quitBy: QuitBy | null;
+  /** Null when a club's stats are not counted: the side that rage quit (`counted.ts`). */
   ours: ClubMatchTotals | null;
   opponent: ClubMatchTotals | null;
   /** How many Squad Members played. */
@@ -117,7 +128,7 @@ interface PerformanceMetric {
     secondsPlayed: number,
   ) => WeightedValue | null;
   format: (value: number) => string;
-  /** The finding's sentence after "In Dropped Points". */
+  /** The finding's sentence after "In draws and defeats". */
   describe: (club: Club, diff: number) => string;
   /** One Match against a typical Win, before "than in a typical Win": "6.1 fewer shots per 90". */
   compare: (club: Club, diff: number) => string;
@@ -482,7 +493,7 @@ export function afterResult(
   });
 }
 
-/** "After Dropped Points in the same Session we win 20% (5 Matches) vs 60% after a Win (5)". */
+/** "After a draw or defeat in the same Session we win 20% (5 Matches) vs 60% after a Win (5)". */
 function afterResultFinding({
   scope,
   afterWin,
@@ -495,8 +506,8 @@ function afterResultFinding({
     "After a result",
     { group: afterDropped, rest: afterWin },
     {
-      text: `After Dropped Points${when} we win ${formatPercentage(afterDropped.winPercentage)} (${droppedCount}) vs ${formatPercentage(afterWin.winPercentage)} after a Win (${afterWin.played})`,
-      counts: `${droppedCount} after Dropped Points, ${afterWin.played} after a Win${when}`,
+      text: `After a draw or defeat${when} we win ${formatPercentage(afterDropped.winPercentage)} (${droppedCount}) vs ${formatPercentage(afterWin.winPercentage)} after a Win (${afterWin.played})`,
+      counts: `${droppedCount} after a draw or defeat, ${afterWin.played} after a Win${when}`,
     },
   );
 }
@@ -636,7 +647,7 @@ export interface Finding {
   id: string;
   factor: Factor;
   text: string;
-  /** The Matches behind it: "12 Wins, 9 Dropped Points". */
+  /** The Matches behind it: "12 Wins, 9 draws and defeats". */
   counts: string;
   /** Either side has fewer than `SMALL_SAMPLE_MATCHES` Matches. */
   smallSample: boolean;
@@ -736,6 +747,8 @@ function withoutNulls<T>(items: readonly (T | null)[]): T[] {
 
 export interface OutcomeSplit {
   record: { wins: number; dropped: number };
+  /** Matches each side rage quit: its performance stats leave them out. */
+  rageQuits: Record<QuitBy, number>;
   /** Whether both sides have `MIN_SPLIT_MATCHES`; otherwise only `record` is meaningful. */
   ready: boolean;
   findings: Finding[];
@@ -873,6 +886,10 @@ export function outcomeSplit(
 
   return {
     record,
+    rageQuits: {
+      us: matches.filter((m) => m.quitBy === "us").length,
+      opponent: matches.filter((m) => m.quitBy === "opponent").length,
+    },
     ready,
     findings: findings
       .sort((a, b) => b.strength - a.strength || a.id.localeCompare(b.id))
@@ -935,8 +952,8 @@ function performanceSplit(
     finding: {
       id: `${club}-${metric.id}`,
       factor: "Performance",
-      text: `In Dropped Points ${metric.describe(club, dropped - wins)} (${values.dropped} vs ${values.wins})`,
-      counts: `${formatCount(n.wins, "Win", "Wins")}, ${n.dropped} Dropped Points`,
+      text: `In draws and defeats ${metric.describe(club, dropped - wins)} than in Wins (${values.dropped} vs ${values.wins})`,
+      counts: `${formatCount(n.wins, "Win", "Wins")}, ${formatDroppedCount(n.dropped)}`,
       smallSample: isSmall(n.wins, n.dropped),
       strength: Math.abs(effect),
     },

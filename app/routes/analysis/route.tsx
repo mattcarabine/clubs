@@ -1,7 +1,7 @@
 /**
  * Analysis (CLUBS-25): the Outcome Split. What changes between Wins and
- * Dropped Points, from performance, personnel and circumstances, led by the
- * five biggest differences in plain English. Every number comes from
+ * Dropped Points ("draws and defeats" in copy), from performance, personnel
+ * and circumstances, led by the five biggest differences in plain English. Every number comes from
  * `getOutcomeSplit`; the global FilterBar applies to all of it, and the
  * Position Group selection only to the per-player table.
  */
@@ -36,6 +36,7 @@ import { pageMeta } from "~/lib/page-meta";
 import { playerPath } from "~/lib/paths";
 import {
   type AfterResultSplit,
+  formatDroppedCount,
   type GroupSplit,
   getOutcomeSplit,
   getWinChanceAnalysis,
@@ -51,6 +52,7 @@ import {
   type WithWithout,
   winRateBucket,
 } from "~/stats";
+import type { QuitBy } from "~/stats/counted";
 import { parseStatsFilter, writeStatsFilter } from "~/stats/filter";
 import type { PositionGroupSelection } from "~/stats/positions";
 
@@ -63,7 +65,7 @@ export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
     title: "A Bloo Bloo — Analysis",
     description:
-      "Wins against Dropped Points, results after a win or a loss, and results by Opponent strength.",
+      "Wins against draws and defeats, results after a win or a loss, and results by Opponent strength.",
     path: location.pathname,
   });
 }
@@ -95,7 +97,7 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
     <>
       <PageHeader
         title="Analysis"
-        subtitle="What changes between Wins and Dropped Points (draws and losses)."
+        subtitle="What changes between Wins and draws or defeats."
       />
       {/* Written after the latest Session, whatever the filter, so it sits above the FilterBar. */}
       {stateOfTheClub && (
@@ -127,7 +129,7 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
   );
 }
 
-/** "Needs 2 more Wins and 1 more Dropped Points Match." */
+/** "…: 2 more Wins and 1 more draw or defeat." */
 function notEnoughMatches(record: { wins: number; dropped: number }): string {
   const winsNeeded = MIN_SPLIT_MATCHES - record.wins;
   const droppedNeeded = MIN_SPLIT_MATCHES - record.dropped;
@@ -137,10 +139,14 @@ function notEnoughMatches(record: { wins: number; dropped: number }): string {
   }
   if (droppedNeeded > 0) {
     needed.push(
-      `${formatCount(droppedNeeded, "more Match", "more Matches")} with Dropped Points`,
+      formatCount(
+        droppedNeeded,
+        "more draw or defeat",
+        "more draws or defeats",
+      ),
     );
   }
-  return `The Outcome Split needs at least ${MIN_SPLIT_MATCHES} Wins and ${MIN_SPLIT_MATCHES} Dropped Points in these filters: ${needed.join(" and ")}.`;
+  return `The Outcome Split needs at least ${MIN_SPLIT_MATCHES} Wins and ${formatDroppedCount(MIN_SPLIT_MATCHES)} in these filters: ${needed.join(" and ")}.`;
 }
 
 function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
@@ -150,14 +156,14 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
       <section aria-label="Top findings">
         <SectionHeading
           title="Top findings"
-          subtitle={`The biggest differences across ${formatCount(record.wins, "Win", "Wins")} and ${record.dropped} Dropped Points, ranked by effect size.`}
+          subtitle={`The biggest differences across ${formatCount(record.wins, "Win", "Wins")} and ${formatDroppedCount(record.dropped)}, ranked by effect size.`}
         />
         {split.findings.length > 0 ? (
           <FindingList findings={split.findings} />
         ) : (
           <EmptyState
             title="No differences yet"
-            description="Nothing changes between Wins and Dropped Points in these Matches."
+            description="Nothing changes between Wins and draws or defeats in these Matches."
           />
         )}
       </section>
@@ -165,10 +171,10 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
       <section aria-label="Outcome Split">
         <SectionHeading
           title="Outcome Split"
-          subtitle="Averages in Wins against Dropped Points. Counts are per 90 over how long each Match ran."
+          subtitle={`Averages in Wins against draws and defeats. Counts are per 90 over how long each Match ran.${rageQuitNote(split.rageQuits)}`}
         />
         <DataTable
-          caption="Performance in Wins and Dropped Points"
+          caption="Performance in Wins against draws and defeats"
           columns={PERFORMANCE_COLUMNS}
           rows={split.performance}
           rowKey={(r) => r.id}
@@ -271,7 +277,7 @@ function OutcomeSplitSections({ split, matchLabels, filter }: AnalysisData) {
   );
 }
 
-/** Win % in the Match after a Win against after Dropped Points, any next Match and within a Session. */
+/** Win % in the Match after a Win against after a draw or defeat, any next Match and within a Session. */
 function AfterResultSection({
   splits,
 }: {
@@ -281,7 +287,7 @@ function AfterResultSection({
     <section aria-label="After a result" className="flex flex-col gap-4">
       <SectionHeading
         title="After a result"
-        subtitle="Win % in the Match after a Win against the Match after Dropped Points, among the filtered Matches. Matches played in brackets."
+        subtitle="Win % in the Match after a Win against the Match after a draw or defeat, among the filtered Matches. Matches played in brackets."
       />
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-6">
         {splits.map((split) => (
@@ -299,12 +305,12 @@ function AfterResultSection({
                 label={`Win % after a result: ${split.label}`}
                 buckets={[
                   winRateBucket("After a Win", split.afterWin),
-                  winRateBucket("After Dropped Points", split.afterDropped),
+                  winRateBucket("After a draw or defeat", split.afterDropped),
                 ]}
               />
             ) : (
               <p className="text-ink-muted text-sm">
-                {`Needs at least ${MIN_SPLIT_MATCHES} Matches after a Win and ${MIN_SPLIT_MATCHES} after Dropped Points (${split.afterWin.played} and ${split.afterDropped.played} so far).`}
+                {`Needs at least ${MIN_SPLIT_MATCHES} Matches after a Win and ${MIN_SPLIT_MATCHES} after a draw or defeat (${split.afterWin.played} and ${split.afterDropped.played} so far).`}
               </p>
             )}
           </ChartFrame>
@@ -335,7 +341,7 @@ function PlayerSection({
     <section aria-label="Squad Members" className="flex flex-col gap-4">
       <SectionHeading
         title="Squad Members"
-        subtitle="Each Squad Member in Wins (W) against Dropped Points (DP), per 90 over their own minutes. The Position Group applies to this table only."
+        subtitle="Each Squad Member in Wins (W) against draws and defeats (D/L), per 90 over their own minutes. The Position Group applies to this table only."
       />
       <div className="border-shale-700 border-t-2 bg-shale-900">
         <ScrollRail className="px-3 py-3 sm:px-4">
@@ -346,7 +352,7 @@ function PlayerSection({
         </ScrollRail>
       </div>
       <DataTable
-        caption="Squad Members in Wins and Dropped Points"
+        caption="Squad Members in Wins against draws and defeats"
         columns={PLAYER_COLUMNS}
         rows={players}
         rowKey={(r) => r.playerId}
@@ -362,12 +368,28 @@ function PlayerSection({
   );
 }
 
+/**
+ * " Each side's stats leave out the Matches it rage quit: …", or nothing
+ * when no one quit. EA zeroes the quitter's stats (CLUBS-56).
+ */
+function rageQuitNote(rageQuits: Record<QuitBy, number>): string {
+  const sides = [
+    rageQuits.us > 0 &&
+      `ours in ${formatCount(rageQuits.us, "Match", "Matches")} we rage quit`,
+    rageQuits.opponent > 0 &&
+      `Opponents' in ${formatCount(rageQuits.opponent, "Match", "Matches")} they rage quit`,
+  ].filter(Boolean);
+  return sides.length === 0
+    ? ""
+    : ` EA zeroes the stats of a side that rage quits, so they leave out ${sides.join(" and ")}.`;
+}
+
 const PERFORMANCE_COLUMNS: DataTableColumn<PerformanceRow>[] = [
   { id: "stat", header: "Stat", cell: (r) => r.label },
   { id: "wins", header: "Wins", align: "right", cell: (r) => r.ours.wins },
   {
     id: "dropped",
-    header: "Dropped Points",
+    header: "Draws and defeats",
     align: "right",
     cell: (r) => r.ours.dropped,
   },
@@ -379,7 +401,7 @@ const PERFORMANCE_COLUMNS: DataTableColumn<PerformanceRow>[] = [
   },
   {
     id: "opp-dropped",
-    header: "Opponent in Dropped Points",
+    header: "Opponent in draws and defeats",
     align: "right",
     cell: (r) => r.opponent.dropped,
   },
@@ -448,7 +470,7 @@ const PLAYER_COLUMNS: DataTableColumn<PlayerSplitRow>[] = [
     (["wins", "dropped"] as const).map((side) =>
       numberColumn<PlayerSplitRow, number | null>(
         `${stat.id}-${side}`,
-        `${stat.short} ${side === "wins" ? "W" : "DP"}`,
+        `${stat.short} ${side === "wins" ? "W" : "D/L"}`,
         (r) => stat.value(r[side]),
         stat.format,
       ),

@@ -15,7 +15,8 @@ import { expect, test } from "./support/test.ts";
 
 // CLUBS-48: gaps in EA's data are not performances. A player who drops out
 // (0 minutes, a 3.0) is never counted, and our side of a DNF we quit is left
-// out of every stat, while the Match still counts in the record.
+// out of every stat, while the Match still counts in the record. CLUBS-56
+// does the same for the Opponent's side of a Match they quit.
 
 /** Squad Members that exist only in these specs. */
 const ALPHA = { id: "948000001", name: "Alpha Gap" };
@@ -123,6 +124,22 @@ test("Compare leaves out our stats from a DNF we quit, but its record still coun
   await expect(compareFigure(teamRecord, "Lost")).toHaveText("1");
 });
 
+/** The Analysis page's Shots per 90 row: ours in Wins, ours in draws and defeats, then the Opponent's. */
+function analysisShots(page: Page): Locator {
+  return page
+    .getByRole("table", {
+      name: "Performance in Wins against draws and defeats",
+    })
+    .locator("tbody tr")
+    .filter({ has: page.getByRole("rowheader", { name: "Shots per 90" }) })
+    .getByRole("cell");
+}
+
+/** The Analysis page's Outcome Split heading text, where the rage-quit note sits. */
+function outcomeSplitSection(page: Page): Locator {
+  return page.getByRole("region", { name: "Outcome Split", exact: true });
+}
+
 test("the Outcome Split leaves our stats from a DNF we quit out of the per-90s, but counts the loss", async ({
   page,
   fakeEa,
@@ -138,11 +155,54 @@ test("the Outcome Split leaves our stats from a DNF we quit out of the per-90s, 
   await page.goto("/analysis");
   await expect(
     page.getByRole("region", { name: "Top findings", exact: true }),
-  ).toContainText("3 Wins and 4 Dropped Points");
-  const shots = page
-    .getByRole("table", { name: "Performance in Wins and Dropped Points" })
-    .locator("tbody tr")
-    .filter({ has: page.getByRole("rowheader", { name: "Shots per 90" }) });
-  await expect(shots.getByRole("cell").nth(0)).toHaveText("10.0");
-  await expect(shots.getByRole("cell").nth(1)).toHaveText("4.0");
+  ).toContainText("3 Wins and 4 draws and defeats");
+  await expect(analysisShots(page).nth(0)).toHaveText("10.0");
+  await expect(analysisShots(page).nth(1)).toHaveText("4.0");
+  await expect(outcomeSplitSection(page)).toContainText(
+    "EA zeroes the stats of a side that rage quits, so they leave out ours in 1 Match we rage quit.",
+  );
+});
+
+// CLUBS-56: EA zeroes the Opponent's side when they quit, just as it does ours.
+test("the Outcome Split leaves the Opponent's zeroed stats from a Match they quit out of their per-90s", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await record(fakeEa, triggerPoll, [
+    ...[9, 8, 7].map((d) =>
+      withShots(lasting(win(daysAgo(d)), 90), 6, "opponent"),
+    ),
+    // They quit at 30 minutes and EA kept no shots for them; counted, it
+    // would drag their 6.0 in our Wins down to 5.1.
+    withShots(lasting(dnf({ ourWin: true, ...daysAgo(6) }), 30), 0, "opponent"),
+    ...[5, 4, 3].map((d) =>
+      withShots(lasting(loss(daysAgo(d)), 90), 9, "opponent"),
+    ),
+  ]);
+
+  await page.goto("/analysis");
+  await expect(
+    page.getByRole("region", { name: "Top findings", exact: true }),
+  ).toContainText("4 Wins and 3 draws and defeats");
+  await expect(analysisShots(page).nth(2)).toHaveText("6.0");
+  await expect(analysisShots(page).nth(3)).toHaveText("9.0");
+  await expect(outcomeSplitSection(page)).toContainText(
+    "EA zeroes the stats of a side that rage quits, so they leave out Opponents' in 1 Match they rage quit.",
+  );
+});
+
+test("the Outcome Split says nothing about rage quits when no one quit", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await record(fakeEa, triggerPoll, [
+    ...[6, 5, 4].map((d) => win(daysAgo(d))),
+    ...[3, 2, 1].map((d) => loss(daysAgo(d))),
+  ]);
+
+  await page.goto("/analysis");
+  await expect(outcomeSplitSection(page)).toBeVisible();
+  await expect(outcomeSplitSection(page)).not.toContainText("rage quit");
 });
