@@ -61,6 +61,14 @@ export { OutcomeBadge } from "./outcome-badge";
 export { PERFORMER_COLUMNS } from "./performer-columns";
 export { PlayerChip } from "./player-chip";
 export {
+  Popover,
+  PopoverCaret,
+  type PopoverState,
+  PopoverTab,
+  popoverTriggerProps,
+  usePopover,
+} from "./popover";
+export {
   EA_POSITIONS_DISABLED,
   PositionGroupPicker,
 } from "./position-group-picker";
