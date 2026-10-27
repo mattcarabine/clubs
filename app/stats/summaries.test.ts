@@ -222,6 +222,16 @@ describe("summariseMatchSides", () => {
     });
   });
 
+  it("leaves out a player who dropped out, so a 3.0 never drags the average", () => {
+    const sides = summariseMatchSides([
+      appearance(true, { rating: 8 }),
+      appearance(true, { rating: 3, secondsPlayed: 0 }),
+      appearance(false, { rating: 3, secondsPlayed: 0 }),
+    ]);
+    expect(sides.ours).toMatchObject({ appearances: 1, averageRating: 8 });
+    expect(sides.theirs.appearances).toBe(0);
+  });
+
   it("gives a side with no Appearances zero of them", () => {
     const sides = summariseMatchSides([appearance(true)]);
     expect(sides.theirs.appearances).toBe(0);
