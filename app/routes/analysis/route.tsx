@@ -32,6 +32,7 @@ import { getDb } from "~/db/client";
 import { formatLondonShortDate } from "~/lib/london-time";
 import {
   formatCount,
+  formatDecimal,
   formatPercentage,
   formatPointsGap,
 } from "~/lib/number-format";
@@ -457,7 +458,7 @@ function PlayerSection({
     <section aria-label="Squad Members" className="flex flex-col gap-4">
       <SectionHeading
         title="Squad Members"
-        subtitle="Swing: our Win % when they rate above their own average minus when they rate below it, so a big Swing means results follow how they play. Then each Squad Member in Wins (W) against draws and defeats (D/L), per 90 over their own minutes. The Position Group applies to this table only."
+        subtitle="Swing: our Win % when they rate above their own average minus when they rate below it, so a big Swing means results follow how they play. Floor: the rating they reach in 4 of 5 Matches, so a high Floor is consistently good; Spread: how far their ratings wander, so low is steady. Then each Squad Member in Wins (W) against draws and defeats (D/L), per 90 over their own minutes. The Position Group applies to this table only."
       />
       <div className="border-shale-700 border-t-2 bg-shale-900">
         <ScrollRail className="px-3 py-3 sm:px-4">
@@ -598,6 +599,22 @@ const SWING_COLUMNS: DataTableColumn<PlayerSplitRow>[] = [
     "Win % below avg",
     (r) => r.swing.below.winPercentage,
     formatPercentage,
+  ),
+  // Consistency (CLUBS-74): how good on a bad night, and how steady.
+  {
+    ...numberColumn("floor", "Floor", (r) => r.consistency.floor),
+    cell: ({ consistency }) => (
+      <span className="inline-flex flex-col items-end gap-1">
+        {formatDecimal(consistency.floor)}
+        {consistency.smallSample && <SmallSampleTag />}
+      </span>
+    ),
+  },
+  numberColumn(
+    "spread",
+    "Spread",
+    (r) => r.consistency.spread,
+    (v) => formatDecimal(v, 2),
   ),
 ];
 

@@ -4,7 +4,11 @@ import {
   numberColumn,
   SmallSampleTag,
 } from "~/components";
-import { formatPercentage, formatPointsGap } from "~/lib/number-format";
+import {
+  formatDecimal,
+  formatPercentage,
+  formatPointsGap,
+} from "~/lib/number-format";
 import {
   PLAYER_SPLIT_STATS,
   type PlayerOutcomeSplit,
@@ -12,10 +16,12 @@ import {
   type PositionGroupWinRecord,
   type Swing,
 } from "~/stats/outcome-split";
+import type { Consistency } from "~/stats/rating-context";
 
 type OutcomeSplitPanelProps = {
   split: PlayerOutcomeSplit;
   swing: Swing;
+  consistency: Consistency;
 };
 
 /**
@@ -24,7 +30,11 @@ type OutcomeSplitPanelProps = {
  * Group, all following the profile's filters and Position Group selection.
  * The profile shows it only when there are Appearances to split.
  */
-export function OutcomeSplitPanel({ split, swing }: OutcomeSplitPanelProps) {
+export function OutcomeSplitPanel({
+  split,
+  swing,
+  consistency,
+}: OutcomeSplitPanelProps) {
   const statColumns: DataTableColumn<PlayerSplitStat>[] = [
     { id: "stat", header: "Stat", cell: (s) => s.label },
     {
@@ -44,6 +54,7 @@ export function OutcomeSplitPanel({ split, swing }: OutcomeSplitPanelProps) {
   return (
     <>
       <SwingLine swing={swing} />
+      <ConsistencyLine consistency={consistency} />
       <div className="grid gap-6 lg:grid-cols-2">
         <DataTable
           caption="Wins against Dropped Points"
@@ -78,6 +89,24 @@ function SwingLine({ swing }: { swing: Swing }) {
         <strong className="text-ink">{formatPointsGap(swing.gap)}</strong>).
       </span>
       {swing.smallSample && <SmallSampleTag />}
+    </p>
+  );
+}
+
+/**
+ * Floor and Spread (CLUBS-74) in a sentence: "They rate 7.2 or better in 4
+ * of 5 Matches, give or take 0.45." Nothing under 5 rated Appearances.
+ */
+function ConsistencyLine({ consistency }: { consistency: Consistency }) {
+  const { floor, spread, smallSample } = consistency;
+  if (floor === null || spread === null) return null;
+  return (
+    <p className="mb-4 flex flex-wrap items-center gap-2 text-ink-soft text-sm">
+      <span>
+        They rate <strong className="text-ink">{formatDecimal(floor)}</strong>{" "}
+        or better in 4 of 5 Matches, give or take {formatDecimal(spread, 2)}.
+      </span>
+      {smallSample && <SmallSampleTag />}
     </p>
   );
 }

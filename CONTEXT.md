@@ -139,6 +139,14 @@ Our Club's stats averaged over Wins set beside the same averages over Dropped Po
 Our Club's Win % in the Matches a Squad Member rated at or above their own average, minus the Win % in the Matches they rated below it, in points. A big Swing means results follow how they play; a small one beside a high rating means their rating doesn't move the result. EA rates winners higher, so most Swings are positive: compare Squad Members with each other. Needs 3 Matches each side, with "Small sample" under 10.
 _Avoid_: Impact, influence score, importance, clutch
 
+**Floor**:
+The rating a Squad Member reaches or beats in 4 of 5 Matches (the 20th percentile of their ratings). A high Floor is consistently good, whatever their Swing. Needs 5 rated Appearances, with "Small sample" under 10.
+_Avoid_: Minimum, worst rating, baseline
+
+**Spread**:
+How far a Squad Member's ratings wander from their own average (the standard deviation). Low is steady. Same thresholds as Floor.
+_Avoid_: Variance, volatility, inconsistency
+
 **Comparison**:
 Two Squad Members' stats side by side, shown in the app as "Compare to…".
 _Avoid_: Head-to-head (reserved for Our Club vs an Opponent), versus, matchup
