@@ -16,6 +16,7 @@ export {
   SERIES_COLORS,
   type SeriesColor,
 } from "./charts/chart-frame";
+export { GapBandChart, GapBandLegend } from "./charts/gap-band-chart";
 export { LineChart, type LineSeries } from "./charts/line-chart";
 export { Sparkline } from "./charts/sparkline";
 export {
@@ -27,7 +28,6 @@ export {
   type StepChartPoint,
   type StepMarker,
 } from "./charts/step-chart";
-export { WinChanceChart } from "./charts/win-chance-chart";
 export { WinRateBarChart } from "./charts/win-rate-bar-chart";
 export { WinRateCompareChart } from "./charts/win-rate-compare-chart";
 export { Chip, ChipGroup, chipClassName } from "./chip";

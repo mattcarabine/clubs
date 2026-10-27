@@ -13,6 +13,8 @@ import {
   EmptyState,
   FormBadge,
   FormGuide,
+  GapBandChart,
+  GapBandLegend,
   HeadToHeadBar,
   LastUpdatedBadge,
   LineChart,
@@ -58,6 +60,7 @@ import type { LeaderBoard } from "~/stats/club-leaders";
 import { type DateRange, dateRangeLabel } from "~/stats/filter";
 import type { MilestoneEntry } from "~/stats/milestones-query";
 import type { TopPerformer } from "~/stats/top-performers";
+import type { GapBand } from "~/stats/win-chance";
 import type { Route } from "./+types/styleguide";
 
 export function meta({ location }: Route.MetaArgs) {
@@ -79,6 +82,54 @@ const DIVISION_LEVELS = [
   "Division 2",
   "Division 1",
   "Elite",
+];
+
+const GAP_BANDS: GapBand[] = [
+  {
+    from: null,
+    to: -300,
+    played: 4,
+    wins: 0,
+    draws: 1,
+    losses: 3,
+    expectedWins: 0.3,
+  },
+  {
+    from: -200,
+    to: -100,
+    played: 5,
+    wins: 2,
+    draws: 1,
+    losses: 2,
+    expectedWins: 1.2,
+  },
+  {
+    from: 0,
+    to: 100,
+    played: 9,
+    wins: 4,
+    draws: 3,
+    losses: 2,
+    expectedWins: 5.1,
+  },
+  {
+    from: 100,
+    to: 200,
+    played: 6,
+    wins: 5,
+    draws: 0,
+    losses: 1,
+    expectedWins: 4.3,
+  },
+  {
+    from: 300,
+    to: null,
+    played: 2,
+    wins: 2,
+    draws: 0,
+    losses: 0,
+    expectedWins: 1.9,
+  },
 ];
 
 const DIVISION_STEPS: StepChartPoint[] = [
@@ -956,6 +1007,16 @@ export default function Styleguide() {
               label="Goals and assists by Appearance"
               labels={APPEARANCE_DATES}
               series={CONTRIBUTION_SERIES}
+            />
+          </ChartFrame>
+          <ChartFrame
+            title="Results by rating gap"
+            subtitle="Wins, draws and defeats by Skill Rating gap, against the Win % expected"
+            legend={<GapBandLegend />}
+          >
+            <GapBandChart
+              label="Results by Skill Rating gap"
+              bands={GAP_BANDS}
             />
           </ChartFrame>
           <ChartFrame

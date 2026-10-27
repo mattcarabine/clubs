@@ -93,6 +93,58 @@ test("under 20 rated Matches the Elo estimate is used and labelled, with Wins ag
   await expect(matchNote(page)).toHaveCount(0);
 });
 
+// CLUBS-69: the chart groups Matches by rating gap, each band's Wins, draws
+// and defeats in the outcome colours against the Win % expected.
+test("Results by rating gap shows each band's Wins, draws and defeats against the Wins expected, following the FilterBar", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await recordRated(fakeEa, triggerPoll, [
+    // Elo: −450 → 7%, −150 → 30%, 0 → 50%, 50 → 57%, 120 → 67%, 150 → 70%.
+    { gap: -450, build: loss() },
+    { gap: -150, build: win() },
+    { gap: -150, build: draw() },
+    { gap: 0, build: win() },
+    { gap: 50, build: draw() },
+    { gap: 120, build: win() },
+    { gap: 150, build: win({ matchType: "playoffMatch" }) },
+  ]);
+
+  await page.goto("/analysis");
+  const chart = section(page).getByRole("figure");
+  await expect(chart).toContainText("Results by rating gap");
+  for (const key of ["Win", "Draw", "Loss", "Expected Win %"]) {
+    await expect(chart.getByText(key, { exact: true })).toBeVisible();
+  }
+  const rows = chart
+    .getByRole("table", { name: "Results by Skill Rating gap" })
+    .getByRole("row");
+  // Rating gap, played, won, drawn, lost, Wins expected; biggest underdog first.
+  await expect(rows).toHaveText([
+    "Rating gapPlayedWonDrawnLostWins expected",
+    "Under −30010010.1",
+    "−200 to −10021100.6",
+    "0 to +10021101.1",
+    "+100 to +20022001.4",
+  ]);
+  await expect(
+    chart.getByText("1 won, 1 drawn · 0.6 Wins expected"),
+  ).toBeVisible();
+  await expect(chart.getByText("2 won · 1.4 Wins expected")).toBeVisible();
+  // The outcome colours paint each band's bar, the Win share labelled where it fits.
+  await expect(chart.getByText("2W", { exact: true })).toHaveClass(/bg-win/);
+
+  // The FilterBar decides which Matches count: no Playoff Win at +150.
+  await page.goto("/analysis?types=league");
+  await expect(
+    section(page)
+      .getByRole("table", { name: "Results by Skill Rating gap" })
+      .getByRole("row")
+      .last(),
+  ).toHaveText("+100 to +20011000.7");
+});
+
 test("Upsets either way are flagged in the score strip and the note, big ones with a banner", async ({
   page,
   fakeEa,
@@ -232,8 +284,8 @@ test("20 or more rated Matches fit a curve where a bigger gap gives a bigger cha
     section(page).getByText("Estimate", { exact: true }),
   ).toHaveCount(0);
   await expect(
-    section(page).getByRole("img", { name: "Win chance by Skill Rating gap" }),
-  ).toBeVisible();
+    section(page).getByRole("table", { name: "Results by Skill Rating gap" }),
+  ).toHaveCount(1);
 
   const low = await matchChance(page, "30201");
   await expect(

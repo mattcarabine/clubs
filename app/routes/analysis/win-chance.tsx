@@ -1,25 +1,25 @@
 import {
   ChartFrame,
-  ChartLegend,
   EstimateTag,
+  GapBandChart,
+  GapBandLegend,
   SectionHeading,
-  WinChanceChart,
 } from "~/components";
 import { formatCount, formatDecimal } from "~/lib/number-format";
 import { type CalibrationBand, MIN_FITTED_MATCHES } from "~/stats/win-chance";
 import type { WinChanceAnalysis } from "~/stats/win-chance-query";
 
 /**
- * "Win chance" (CLUBS-30): the curve of our Win Chance over the Skill Rating
- * gap with the filtered Matches on it, Wins against the Wins it expected,
- * and how often we won at each band of Win Chance.
+ * "Win chance" (CLUBS-30): the filtered Matches' results by band of Skill
+ * Rating gap against the Wins expected (CLUBS-69), our Wins against the
+ * Wins the curve expected, and how often we won at each band of Win Chance.
  */
 export function WinChanceSection({
   winChance,
 }: {
   winChance: WinChanceAnalysis;
 }) {
-  const { model, points, unrated, vsExpected } = winChance;
+  const { model, bands, unrated, vsExpected } = winChance;
   return (
     <section aria-label="Win chance" className="flex flex-col gap-4">
       <SectionHeading
@@ -45,22 +45,18 @@ export function WinChanceSection({
           </span>
         )}
       </div>
-      {points.length === 0 ? (
+      {bands.length === 0 ? (
         <p className="text-ink-muted text-sm">
           No rated Matches in these filters yet.
         </p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-6">
           <ChartFrame
-            title="Win chance by rating gap"
-            subtitle="Each dot is a Match: at the top for a Win, at the bottom for a draw or defeat."
-            legend={<ChartLegend entries={WIN_CHANCE_LEGEND} />}
+            title="Results by rating gap"
+            subtitle="Our Skill Rating minus the Opponent's: below 0 they were rated higher. Green past the marker means we won more than expected."
+            legend={<GapBandLegend />}
           >
-            <WinChanceChart
-              label="Win chance by Skill Rating gap"
-              model={model}
-              points={points}
-            />
+            <GapBandChart label="Results by Skill Rating gap" bands={bands} />
           </ChartFrame>
           <div className="flex min-w-0 flex-col gap-4">
             <section
@@ -113,8 +109,3 @@ function CalibrationList({ bands }: { bands: CalibrationBand[] }) {
     </div>
   );
 }
-
-const WIN_CHANCE_LEGEND = [
-  { id: "curve", label: "Win Chance" },
-  { id: "matches", label: "Matches" },
-];

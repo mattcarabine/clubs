@@ -12,11 +12,12 @@ import { ratingGap } from "./skill-rating";
 import {
   type CalibrationBand,
   calibration,
+  type GapBand,
+  gapBands,
   type MatchWinChance,
   matchWinChance,
   ratedResults,
   type WinChanceModel,
-  type WinChancePoint,
   type WinsAgainstExpected,
   winChanceModel,
   winsAgainstExpected,
@@ -31,8 +32,8 @@ async function getWinChanceModel(db: Db): Promise<WinChanceModel> {
 
 export interface WinChanceAnalysis {
   model: WinChanceModel;
-  /** The filtered rated Matches, oldest first. */
-  points: WinChancePoint[];
+  /** The filtered rated Matches by rating gap, biggest underdog first. */
+  bands: GapBand[];
   /** Filtered Matches left out because either club's Skill Rating is missing. */
   unrated: number;
   vsExpected: WinsAgainstExpected;
@@ -46,12 +47,12 @@ export async function getWinChanceAnalysis(
 ): Promise<WinChanceAnalysis> {
   const [model, matches] = await Promise.all([
     getWinChanceModel(db),
-    listMatches(db, filter, { order: "oldest" }),
+    listMatches(db, filter),
   ]);
   const results = ratedResults(matches);
   return {
     model,
-    points: results.map((r) => ({ gap: r.gap, won: r.outcome === "W" })),
+    bands: gapBands(model, results),
     unrated: matches.length - results.length,
     vsExpected: winsAgainstExpected(model, results),
     calibration: calibration(model, results),

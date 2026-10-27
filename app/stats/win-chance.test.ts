@@ -9,6 +9,8 @@ import {
   expectation,
   fitLogistic,
   formatWinChance,
+  gapBandLabel,
+  gapBands,
   MIN_FITTED_MATCHES,
   matchWinChance,
   type RatedResult,
@@ -181,6 +183,52 @@ describe("calibration", () => {
       { from: 60, to: 70, played: 2, wins: 1 },
       { from: 90, to: 100, played: 2, wins: 2 },
     ]);
+  });
+});
+
+describe("gapBands", () => {
+  it("groups Matches into 100-point bands of gap, ends open past ±300, with each outcome and the Wins expected", () => {
+    const model = winChanceModel([]);
+    const results: RatedResult[] = [
+      { gap: 150, outcome: "W" },
+      { gap: -100, outcome: "D" },
+      { gap: -1, outcome: "L" },
+      { gap: 100, outcome: "L" },
+      { gap: 0, outcome: "W" },
+      { gap: -301, outcome: "L" },
+      { gap: -700, outcome: "W" },
+      { gap: 300, outcome: "W" },
+      { gap: 900, outcome: "D" },
+    ];
+    const bands = gapBands(model, results);
+    expect(bands.map((b) => [b.from, b.to])).toEqual([
+      [null, -300],
+      [-100, 0],
+      [0, 100],
+      [100, 200],
+      [300, null],
+    ]);
+    expect(bands[0]).toMatchObject({ played: 2, wins: 1, draws: 0, losses: 1 });
+    expect(bands[1]).toMatchObject({ played: 2, wins: 0, draws: 1, losses: 1 });
+    expect(bands[3]).toMatchObject({ played: 2, wins: 1, draws: 0, losses: 1 });
+    expect(bands[3].expectedWins).toBeCloseTo(
+      eloWinChance(150) + eloWinChance(100),
+      10,
+    );
+    expect(bands[4]).toMatchObject({ played: 2, wins: 1, draws: 1, losses: 0 });
+  });
+
+  it("has no bands without rated Matches", () => {
+    expect(gapBands(winChanceModel([]), [])).toEqual([]);
+  });
+});
+
+describe("gapBandLabel", () => {
+  it("names closed and open bands with signed gaps", () => {
+    expect(gapBandLabel({ from: -100, to: 0 })).toBe("−100 to 0");
+    expect(gapBandLabel({ from: 100, to: 200 })).toBe("+100 to +200");
+    expect(gapBandLabel({ from: null, to: -300 })).toBe("Under −300");
+    expect(gapBandLabel({ from: 300, to: null })).toBe("+300 and over");
   });
 });
 
