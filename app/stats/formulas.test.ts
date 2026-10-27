@@ -4,6 +4,7 @@ import type { Outcome } from "~/lib/domain";
 
 import {
   average,
+  correlation,
   cumulativePoints,
   currentStreak,
   effectSize,
@@ -11,6 +12,7 @@ import {
   minutesPlayed,
   oppositeOutcome,
   outcomeFromScore,
+  partialCorrelation,
   passPercentage,
   per90,
   percentage,
@@ -25,6 +27,82 @@ import {
   winPercentage,
   winRateEffectSize,
 } from "./formulas";
+
+describe("correlation", () => {
+  it("is +1 in step, −1 in opposition and near 0 when unrelated", () => {
+    expect(
+      correlation([
+        [1, 2],
+        [2, 4],
+        [3, 6],
+      ]),
+    ).toBeCloseTo(1);
+    expect(
+      correlation([
+        [1, 3],
+        [2, 2],
+        [3, 1],
+      ]),
+    ).toBeCloseTo(-1);
+    expect(
+      correlation([
+        [1, 1],
+        [2, -1],
+        [3, -1],
+        [4, 1],
+      ]),
+    ).toBeCloseTo(0);
+  });
+
+  it("is null with under two pairs or a side that never varies", () => {
+    expect(correlation([])).toBeNull();
+    expect(correlation([[1, 2]])).toBeNull();
+    expect(
+      correlation([
+        [1, 7],
+        [2, 7],
+        [3, 7],
+      ]),
+    ).toBeNull();
+  });
+});
+
+describe("partialCorrelation", () => {
+  it("takes out what both share with the third", () => {
+    // x and y are each z plus their own unrelated wobble.
+    const z = [1, 2, 3, 4, 5, 6];
+    const wobbleX = [1, -1, 1, -1, 1, -1];
+    const wobbleY = [1, 1, -1, -1, 1, 1];
+    const triples = z.map(
+      (v, i) => [v + wobbleX[i], v + wobbleY[i], v] as const,
+    );
+    expect(correlation(triples.map(([x, y]) => [x, y]))).toBeGreaterThan(0.5);
+    expect(partialCorrelation(triples)).toBeCloseTo(
+      correlation(wobbleX.map((w, i) => [w, wobbleY[i]])) ?? Number.NaN,
+    );
+  });
+
+  it("is the plain correlation when the third never varies", () => {
+    const triples = [
+      [1, 2, 5],
+      [2, 3, 5],
+      [3, 5, 5],
+    ] as const;
+    expect(partialCorrelation(triples)).toBeCloseTo(
+      correlation(triples.map(([x, y]) => [x, y])) ?? Number.NaN,
+    );
+  });
+
+  it("is null when the third explains a side completely", () => {
+    expect(
+      partialCorrelation([
+        [1, 2, 1],
+        [2, 1, 2],
+        [3, 3, 3],
+      ]),
+    ).toBeNull();
+  });
+});
 
 describe("rollingWinPercentage", () => {
   it("is the Win % over the last 10 Matches at each point", () => {
