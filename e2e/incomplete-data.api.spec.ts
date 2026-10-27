@@ -182,13 +182,13 @@ test("a feat in a DNF we quit, or from a 0-minute Appearance, is no Milestone", 
 }) => {
   const quit = withLineup(
     dnf({ ourWin: false, matchId: "94813000000001", playedAt: kickOff(300) }),
-    [{ player: KAB, rating: 9.5 }],
+    [{ player: KAB, rating: 10 }],
   );
   const finished = withLineup(
     win({ matchId: "94813000000002", playedAt: kickOff(200) }),
     [
-      { player: KAB, rating: 9.5 },
-      { player: TREV, rating: 9.5, stats: { secondsPlayed: "0" } },
+      { player: KAB, rating: 10 },
+      { player: TREV, rating: 10, stats: { secondsPlayed: "0" } },
     ],
   );
   await fakeEa.addMatch(quit);
@@ -196,7 +196,7 @@ test("a feat in a DNF we quit, or from a 0-minute Appearance, is no Milestone", 
   await triggerPoll();
 
   const feats = (await db.rows<MilestoneRow>("milestones")).filter(
-    (m) => m.kind === "rating",
+    (m) => m.kind === "perfect-rating",
   );
   expect(feats.map((m) => [m.player_id, m.match_id])).toEqual([
     [KAB.id, "94813000000002"],

@@ -174,8 +174,12 @@ The sign-off on advice aimed at one Squad Member, such as their Coaching notes.
 _Avoid_: Coach, manager, AI coach
 
 **Milestone**:
-A notable achievement by Our Club or a Squad Member, reached in a specific Match: a landmark in EA's career totals (a 50th goal, a 100th Win), a one-Match feat (a hat-trick, a 9.0 rating) or a club record. Records count only recorded Matches, so they are "since records began". There are no Goalkeeper Milestones: the AI keeps goal.
+A notable achievement by Our Club or a Squad Member, reached in a specific Match: a landmark in EA's career totals (a 50th goal, a 100th Win) or in the recorded Appearances (a 5th Perfect rating), a one-Match feat (a hat-trick, a Perfect rating) or a club record. Records and recorded counts cover only recorded Matches, so they are "since records began". There are no Goalkeeper Milestones: the AI keeps goal.
 _Avoid_: Achievement, award, badge
+
+**Perfect rating**:
+A Match rating of 10.0, EA's highest. It is the only rating that makes a Milestone.
+_Avoid_: 10.0 rating, perfect 10
 
 ### Data capture
 
