@@ -16,10 +16,12 @@ import {
   passPercentage,
   per90,
   percentage,
+  percentile,
   points,
   ratio,
   rollingAverage,
   rollingWinPercentage,
+  standardDeviation,
   standardScore,
   tacklePercentage,
   weightedMean,
@@ -64,6 +66,24 @@ describe("correlation", () => {
         [3, 7],
       ]),
     ).toBeNull();
+  });
+});
+
+describe("standardDeviation", () => {
+  it("is how far values wander from their mean", () => {
+    expect(standardDeviation([2, 4, 4, 4, 5, 5, 7, 9])).toBe(2);
+    expect(standardDeviation([7, 7, 7])).toBe(0);
+    expect(standardDeviation([])).toBeNull();
+  });
+});
+
+describe("percentile", () => {
+  it("interpolates between the sorted values", () => {
+    expect(percentile([10, 1, 5], 0)).toBe(1);
+    expect(percentile([10, 1, 5], 0.5)).toBe(5);
+    expect(percentile([10, 1, 5], 1)).toBe(10);
+    expect(percentile([6, 7, 8, 9, 10], 0.2)).toBeCloseTo(6.8);
+    expect(percentile([], 0.2)).toBeNull();
   });
 });
 

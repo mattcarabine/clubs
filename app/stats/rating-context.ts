@@ -9,12 +9,21 @@
  * - Rating link: whether two Squad Members rise and fall together over their
  *   Shared Matches, straight up and with the rest of the line-up's night
  *   taken out (Compare).
+ * - Consistency (CLUBS-74): a Squad Member's Floor, the rating they reach in
+ *   4 of 5 Matches, and Spread, how far their ratings wander (Analysis,
+ *   Compare, the profile).
  *
  * Only counted Appearances with a rating count (`isCountedAppearance`), so a
  * rage-quit 3.0 or our side of a Match we quit never moves either figure.
  */
 import { isCountedAppearance, type QuitInput } from "./counted";
-import { average, correlation, partialCorrelation } from "./formulas";
+import {
+  average,
+  correlation,
+  partialCorrelation,
+  percentile,
+  standardDeviation,
+} from "./formulas";
 
 /** What an Appearance needs to place its rating in its Match. */
 export type RatedAppearance = QuitInput & {
@@ -212,4 +221,42 @@ export function linkReading({
     default:
       return "Mostly the team: take out the rest of the line-up's night and the link fades.";
   }
+}
+
+/** Below this many rated Appearances, a Squad Member has no Floor or Spread. */
+export const MIN_CONSISTENCY_APPEARANCES = 5;
+
+/** Below this many, Floor and Spread carry "Small sample". */
+export const SMALL_CONSISTENCY_SAMPLE = 10;
+
+/** The share of Matches a Floor is reached or beaten in: 4 of 5. */
+export const FLOOR_SHARE = 0.8;
+
+/** How consistently good a Squad Member is (CLUBS-74). */
+export interface Consistency {
+  /** Counted, rated Appearances. */
+  matches: number;
+  /** The rating they reach or beat in 4 of 5 Matches; high is consistently good. */
+  floor: number | null;
+  /** The standard deviation of their ratings; low is steady. */
+  spread: number | null;
+  /** Under `SMALL_CONSISTENCY_SAMPLE`, with figures. */
+  smallSample: boolean;
+}
+
+/** Floor and Spread over a Squad Member's counted, rated Appearances. */
+export function consistency(
+  appearances: readonly RatedAppearance[],
+): Consistency {
+  const ratings = appearances.flatMap((a) => {
+    const rating = countedRating(a);
+    return rating === null ? [] : [rating];
+  });
+  const enough = ratings.length >= MIN_CONSISTENCY_APPEARANCES;
+  return {
+    matches: ratings.length,
+    floor: enough ? percentile(ratings, 1 - FLOOR_SHARE) : null,
+    spread: enough ? standardDeviation(ratings) : null,
+    smallSample: enough && ratings.length < SMALL_CONSISTENCY_SAMPLE,
+  };
 }

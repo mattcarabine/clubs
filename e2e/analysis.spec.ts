@@ -406,8 +406,19 @@ test("the Position Group filter changes only the per-player section", async ({
       "Squad Members in Wins against draws and defeats",
       STAR.name,
     );
-  await expect(star().getByRole("cell").nth(3)).toHaveText("3"); // Apps W, after the 3 Swing columns
-  await expect(star().getByRole("cell").nth(4)).toHaveText("3"); // Apps DP
+  // Find the Apps columns by header, since Swing and consistency lead the table.
+  const headers = await page
+    .getByRole("table", {
+      name: "Squad Members in Wins against draws and defeats",
+    })
+    .getByRole("columnheader")
+    .allTextContents();
+  // The first column is the row header, so data cells start one along.
+  const appsW = headers.findIndex((h) => h.trim() === "Apps W") - 1;
+  const appsDp = headers.findIndex((h) => h.trim() === "Apps D/L") - 1;
+  expect(appsW).toBeGreaterThanOrEqual(0);
+  await expect(star().getByRole("cell").nth(appsW)).toHaveText("3");
+  await expect(star().getByRole("cell").nth(appsDp)).toHaveText("3");
 
   const picker = region(page, "Squad Members").getByRole("group", {
     name: "Position Group",
@@ -421,8 +432,8 @@ test("the Position Group filter changes only the per-player section", async ({
       .toBe("forward");
   }).toPass();
 
-  await expect(star().getByRole("cell").nth(3)).toHaveText("2");
-  await expect(star().getByRole("cell").nth(4)).toHaveText("1");
+  await expect(star().getByRole("cell").nth(appsW)).toHaveText("2");
+  await expect(star().getByRole("cell").nth(appsDp)).toHaveText("1");
   // Rock only kept goal, so drops out of the table.
   await expect(
     tableRow(

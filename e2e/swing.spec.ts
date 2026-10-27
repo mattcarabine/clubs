@@ -137,5 +137,5 @@ test("the profile says the Swing in a sentence", async ({
   await expect(panel).toContainText(
     "We win 100% when they play above their average and 0% when below (a Swing of +100 pts).",
   );
-  await expect(panel.getByText("Small sample")).toBeVisible();
+  await expect(panel.getByText("Small sample").first()).toBeVisible();
 });
