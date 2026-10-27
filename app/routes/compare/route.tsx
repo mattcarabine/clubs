@@ -308,11 +308,11 @@ function recordedRows(sides: readonly ComparedTotals[]): TapeRow[] {
     stat("Tackle %", (t) => t.tacklePercentage, formatPercentage),
     stat("Avg rating", (t) => t.averageRating, formatDecimal),
     {
-      label: "Vs team",
-      values: pair(sides, (s) => s.vsTeam.gap),
+      label: "Above team",
+      values: pair(sides, (s) => s.aboveTeam.gap),
       format: formatSignedDecimal,
       better: "higher",
-      smallSample: smallSamples(sides, (s) => s.vsTeam.matches),
+      smallSample: smallSamples(sides, (s) => s.aboveTeam.matches),
       bars: false,
     },
     // Consistency (CLUBS-74): a dash under 5 rated Appearances.

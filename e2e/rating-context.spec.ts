@@ -6,7 +6,7 @@ import type { AddMatchBody } from "./fake-ea/control.ts";
 import { dnf, type Lineup, win, withLineup } from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
-// CLUBS-66: ratings in the context of the team. Vs team on the Squad table
+// CLUBS-66: ratings in the context of the team. Above team on the Squad table
 // and Compare, and "Rise and fall together?" on Compare.
 
 const ALPHA = { id: "900000031", name: "Alpha Lifter" };
@@ -102,17 +102,21 @@ test("the Squad table rates each Squad Member against their teammates", async ({
 }) => {
   await recordTide(fakeEa, triggerPoll);
   await page.goto("/squad");
-  await expect(await squadCell(page, ALPHA.name, "Vs team")).toHaveText("+0.6");
-  await expect(await squadCell(page, BRAVO.name, "Vs team")).toHaveText("−0.3");
-  await expect(await squadCell(page, CHARLIE.name, "Vs team")).toHaveText(
+  await expect(await squadCell(page, ALPHA.name, "Above team")).toHaveText(
+    "+0.6",
+  );
+  await expect(await squadCell(page, BRAVO.name, "Above team")).toHaveText(
+    "−0.3",
+  );
+  await expect(await squadCell(page, CHARLIE.name, "Above team")).toHaveText(
     "−0.3",
   );
   await expect(page.getByText("above 0 lifts the team")).toBeVisible();
 
-  // EA totals have no per-Match ratings, so no Vs team.
+  // EA totals have no per-Match ratings, so no Above team.
   await page.goto("/squad?source=ea");
   await expect(
-    squadTable(page).getByRole("columnheader", { name: "Vs team" }),
+    squadTable(page).getByRole("columnheader", { name: "Above team" }),
   ).toHaveCount(0);
 });
 
@@ -123,7 +127,7 @@ test("a Squad Member who never had a rated teammate shows a dash", async ({
 }) => {
   await record(fakeEa, triggerPoll, [{ lineup: [{ player: ALPHA }] }]);
   await page.goto("/squad");
-  await expect(await squadCell(page, ALPHA.name, "Vs team")).toHaveText("–");
+  await expect(await squadCell(page, ALPHA.name, "Above team")).toHaveText("–");
 });
 
 test("Compare says whether two Squad Members rise and fall together, or with the team", async ({
@@ -135,10 +139,10 @@ test("Compare says whether two Squad Members rise and fall together, or with the
   await page.goto(`/compare?players=${ALPHA.id},${BRAVO.id}`);
 
   const tape = page.getByRole("table", { name: "Headline stats" });
-  const vsTeam = tape.locator("tbody tr").filter({
-    has: page.getByRole("rowheader", { name: "Vs team", exact: true }),
+  const aboveTeam = tape.locator("tbody tr").filter({
+    has: page.getByRole("rowheader", { name: "Above team", exact: true }),
   });
-  await expect(vsTeam.locator("[data-figure]")).toHaveText(["+0.6", "−0.3"]);
+  await expect(aboveTeam.locator("[data-figure]")).toHaveText(["+0.6", "−0.3"]);
 
   const panel = riseAndFall(page);
   await expect(panel).toContainText("10 Matches both were rated together");
