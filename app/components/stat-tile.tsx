@@ -16,7 +16,7 @@ type StatTileProps = {
   delta?: StatDelta;
   /** Recent values, oldest first, drawn as a sparkline. */
   trend?: readonly number[];
-  /** Highlight one tile per group, e.g. the headline stat on Matchday. */
+  /** Highlight one tile per group, e.g. the Skill rating in the Season snapshot. */
   featured?: boolean;
 };
 

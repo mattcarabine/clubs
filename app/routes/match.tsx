@@ -132,7 +132,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
   const motm = match.appearances.find((a) => a.manOfTheMatch);
   return (
     <>
-      <BackLink to="/matches">All Matches</BackLink>
+      <BackLink to="/">All Matches</BackLink>
       <PageHeader
         title={`v ${opponent.name}`}
         subtitle={<LondonTime date={match.playedAt} format="moment" />}
@@ -252,7 +252,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       error={error}
       subject="Match"
       notFoundDescription="No recorded Match has this ID. It may be older than the first Poll."
-      back={{ to: "/matches", children: "All Matches" }}
+      back={{ to: "/", children: "All Matches" }}
     />
   );
 }

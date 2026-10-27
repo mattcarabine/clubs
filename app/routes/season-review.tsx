@@ -514,7 +514,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       error={error}
       subject="Season Review"
       notFoundDescription="There is no review of this Season. A review is written once a Season has ended."
-      back={{ to: "/", children: "Matchday" }}
+      back={{ to: "/", children: "All Matches" }}
     />
   );
 }

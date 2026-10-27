@@ -1,6 +1,10 @@
 /**
- * The Match list (CLUBS-34): every Match the filter selects, newest first,
- * under a header for its Session, a page of whole Sessions at a time.
+ * Matches, the home page (`/`, ADR 0008): every Match the filter selects,
+ * newest first, under a header for its Session, a page of whole Sessions at a
+ * time (CLUBS-34). Unfiltered, the first page leads with the latest Match as
+ * a hero with its top performers. While it is open the page checks for a new
+ * Poll every minute (CLUBS-7), and reloads its data only when one changed
+ * something (CLUBS-46).
  */
 import { env } from "cloudflare:workers";
 import { Link, useSearchParams } from "react-router";
@@ -9,11 +13,14 @@ import { latestWriteups } from "~/ai/writeups";
 import {
   EmptyState,
   FilterBar,
+  HERO_WIDTH,
+  LastUpdatedBadge,
   LondonTime,
   MatchHeadline,
   MatchScoreBar,
   PageHeader,
   SessionHeader,
+  TopPerformersStrip,
 } from "~/components";
 import { getDb } from "~/db/client";
 import { formatLondonDate, formatLondonTimeSpan } from "~/lib/london-time";
@@ -21,36 +28,54 @@ import { pageMeta } from "~/lib/page-meta";
 import { parsePage, withPage } from "~/lib/pagination";
 import { sessionPath } from "~/lib/paths";
 import { firstSentence } from "~/lib/text";
+import { useLivePoll } from "~/lib/use-live-poll";
 import {
+  getMatch,
+  isDefaultStatsFilter,
+  isTonight,
   listSessionPage,
+  type MatchSides,
+  type MatchSkillRatings,
+  type MatchSummary,
+  pollState,
   resolveStatsFilter,
   type SessionSummary,
   statsFilterFromRequest,
+  summariseMatchSides,
+  type TopPerformer,
+  topPerformers,
 } from "~/stats";
 
 import type { Route } from "./+types/matches";
 
 /** A page holds whole Sessions until it has at least this many Matches. */
 const PAGE_SIZE = 20;
+/** How often an open Matches page checks for a new Poll. */
+const REFRESH_CHECK_MS = 60_000;
 
 export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
     title: "A Bloo Bloo — Matches",
     description:
-      "Every Match, grouped by Session, with scores, Outcomes and top performers.",
+      "The latest Match, then every Match grouped by Session, with scores, Outcomes and top performers.",
     path: location.pathname,
   });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
+  // First, so the version it carries is never newer than the data below.
+  const poll = await pollState(db);
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
   const page = parsePage(new URL(request.url).searchParams);
   const { sessions, pages, total } = await listSessionPage(db, filter, {
     page,
     pageSize: PAGE_SIZE,
   });
-  const [recaps, headlines] = await Promise.all([
+  // The hero is "what just happened", so only the unfiltered first page has one.
+  const lead =
+    page === 1 && isDefaultStatsFilter(filter) ? sessions[0] : undefined;
+  const [recaps, headlines, latest] = await Promise.all([
     latestWriteups(
       db,
       "session",
@@ -61,6 +86,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       "headline",
       sessions.flatMap((s) => s.matches.map((m) => m.matchId)),
     ),
+    lead ? getMatch(db, lead.matches[0].matchId) : null,
   ]);
   // Only each recap's first sentence leaves the server.
   const teasers = Object.fromEntries(
@@ -68,6 +94,22 @@ export async function loader({ request }: Route.LoaderArgs) {
   );
   return {
     clubName: env.EA_CLUB_NAME,
+    poll,
+    hero:
+      lead && latest
+        ? {
+            match: lead.matches[0],
+            skillRatings: latest.skillRatings,
+            sides: summariseMatchSides(latest.appearances),
+            performers: topPerformers(
+              latest.appearances.filter((a) => a.isOurClub),
+            ),
+            session: {
+              path: sessionPath(lead.id),
+              label: isTonight(lead) ? "Tonight's Session" : "Last Session",
+            },
+          }
+        : null,
     filter,
     sessions,
     teasers,
@@ -81,15 +123,34 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Matches({ loaderData }: Route.ComponentProps) {
-  const { clubName, filter, sessions, teasers, headlines, page, pages, total } =
-    loaderData;
+  const {
+    clubName,
+    poll,
+    hero,
+    filter,
+    sessions,
+    teasers,
+    headlines,
+    page,
+    pages,
+    total,
+  } = loaderData;
+  const { lastPoll } = useLivePoll(poll, REFRESH_CHECK_MS);
   const pageLink = usePageLink();
   return (
     <>
       <PageHeader
         title="Matches"
         subtitle={`${total} ${total === 1 ? "Match" : "Matches"}, newest first`}
+        aside={lastPoll && <LastUpdatedBadge updatedAt={lastPoll} />}
       />
+      {hero && (
+        <LatestMatch
+          clubName={clubName}
+          headline={headlines[hero.match.matchId] ?? null}
+          {...hero}
+        />
+      )}
       <FilterBar filter={filter} />
 
       {sessions.length === 0 ? (
@@ -97,7 +158,7 @@ export default function Matches({ loaderData }: Route.ComponentProps) {
           title={total === 0 ? "No Matches" : "No Matches on this page"}
           description={
             total === 0
-              ? "No Matches fit these filters. Widen the Match Types or dates, or wait for the next Poll."
+              ? "No Matches fit these filters. Widen the Match Types or dates, or wait for the next Poll: Polls check EA every 5 minutes, and this page refreshes itself."
               : "This page is past the last Match."
           }
           action={
@@ -124,6 +185,56 @@ export default function Matches({ loaderData }: Route.ComponentProps) {
 
       {pages > 1 && <Pagination page={page} pages={pages} />}
     </>
+  );
+}
+
+/** The latest Competitive Match as the lead score strip, with its top performers. */
+function LatestMatch({
+  clubName,
+  match,
+  headline,
+  skillRatings,
+  sides,
+  performers,
+  session,
+}: {
+  clubName: string;
+  match: MatchSummary;
+  headline: string | null;
+  skillRatings?: MatchSkillRatings;
+  sides: MatchSides;
+  performers: TopPerformer[];
+  /** The Session that holds this Match. */
+  session: { path: string; label: string };
+}) {
+  return (
+    <section aria-labelledby="latest-match" className={`mb-10 ${HERO_WIDTH}`}>
+      <h2 id="latest-match" className="sr-only">
+        Latest Match
+      </h2>
+      <Link to={`/matches/${match.matchId}`} className="block hover:opacity-90">
+        <MatchScoreBar
+          clubName={clubName}
+          match={match}
+          size="hero"
+          when={<LondonTime date={match.playedAt} format="moment" />}
+          skillRatings={skillRatings}
+          sides={sides}
+        />
+        {headline && <MatchHeadline text={headline} size="hero" />}
+      </Link>
+      {performers.length > 0 && (
+        <div className="mt-1">
+          <TopPerformersStrip performers={performers} />
+        </div>
+      )}
+      <Link
+        to={session.path}
+        className="mt-3 inline-block font-display font-bold text-lg text-sound-300 uppercase tracking-wide hover:text-ink"
+      >
+        {session.label} <span aria-hidden>›</span>
+      </Link>
+    </section>
   );
 }
 

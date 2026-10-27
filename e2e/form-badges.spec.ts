@@ -8,7 +8,7 @@ import { daysAgo, record } from "./support/record.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-40: Hot and Cold form badges, the last 5 ratings against the usual,
-// on Squad, the profile, Compare and Matchday.
+// on Squad (with its Form watch strip), the profile and Compare.
 
 /** Squad Members that exist only in these specs. */
 const HOT = { id: "900000051", name: "Hot Hand" };
@@ -124,22 +124,20 @@ test("Compare shows a badge on each side", async ({
   await expect(badge(plates, HOT_DETAIL)).toHaveCount(0);
 });
 
-test("Matchday lists who is in form and out of form, only when someone qualifies", async ({
+test("Squad lists who is in form and out of form, only when someone qualifies", async ({
   page,
   fakeEa,
   triggerPoll,
 }) => {
-  await page.clock.install();
   // 14 Matches: nobody has 10 before their last 5 yet.
   const matches = season();
   await record(fakeEa, triggerPoll, matches.slice(0, 14));
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Matchday" })).toBeVisible();
+  await page.goto("/squad");
+  await expect(page.getByRole("heading", { name: "Squad" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Form watch" })).toHaveCount(0);
 
-  // CLUBS-46: the open page picks the new Match up at its next check.
   await record(fakeEa, triggerPoll, matches.slice(14));
-  await page.clock.fastForward("01:00");
+  await page.reload();
   const strip = page.getByRole("region", { name: "Form watch" });
   const inForm = strip.getByRole("list", { name: "In form" });
   await expect(inForm.getByRole("listitem")).toHaveCount(1);
@@ -182,7 +180,6 @@ test.describe("on a 375px phone", () => {
     await record(fakeEa, triggerPoll, season());
 
     for (const path of [
-      "/",
       "/squad",
       `/players/${HOT.id}`,
       `/compare?players=${HOT.id},${COLD.id}`,
@@ -209,7 +206,9 @@ test.describe("on a 375px phone", () => {
     await expect(page.locator("[title^='Last 5']")).toHaveCount(0);
     const withoutBadges = await nameColumnWidth();
     await page.goto("/squad");
-    await expect(badge(page, HOT_DETAIL)).toHaveCount(1);
+    await expect(
+      badge(page.getByRole("table", { name: "Squad Members" }), HOT_DETAIL),
+    ).toHaveCount(1);
     expect(await nameColumnWidth()).toBe(withoutBadges);
 
     // On phones the badge is just its arrow; the word is only read out.

@@ -712,3 +712,21 @@ test.describe("After a result (CLUBS-26)", () => {
     });
   });
 });
+
+test("EA's Season snapshot sits on Analysis, unchanged by the filters", async ({
+  page,
+  triggerPoll,
+}) => {
+  await triggerPoll();
+  for (const path of ["/analysis", "/analysis?range=7d"]) {
+    await page.goto(path);
+    const snapshot = page.getByRole("region", { name: "Season snapshot" });
+    await expect(snapshot).toContainText("1632");
+    await expect(snapshot).toContainText("55-18-39");
+  }
+
+  await page.goto("/");
+  await expect(
+    page.getByRole("region", { name: "Season snapshot" }),
+  ).toHaveCount(0);
+});

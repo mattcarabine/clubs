@@ -6,7 +6,7 @@ import { KAB, LOL, serveMatch } from "./support/milestones.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-36: Milestone comments, and Milestones on the Match page, the
-// profile and Matchday. The Milestones page itself is milestones-page.spec.ts.
+// profile. The Milestones page itself is milestones-page.spec.ts.
 
 /** Anything that would label the copy as machine-written. */
 const AI_LABEL = /claude|anthropic|\bAI\b|written by|generated/i;
@@ -66,7 +66,7 @@ async function milestoneId(page: Page): Promise<string> {
   return String(row.id);
 }
 
-test("the Match page, the profile and Matchday show the relevant Milestones", async ({
+test("the Match page and the profile show the relevant Milestones", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -102,27 +102,17 @@ test("the Match page, the profile and Matchday show the relevant Milestones", as
   await expect(
     theirs.getByRole("link", { name: "All their Milestones" }),
   ).toHaveAttribute("href", `/milestones?who=${LOL.id}`);
-
-  await page.goto("/");
-  const latest = page.getByRole("region", { name: "Latest Milestone" });
-  await expect(latest.getByRole("article")).toHaveCount(1);
-  await expect(latest.getByRole("article")).toHaveText(
-    /Kabeeble — Hat-trick|Loltown95 — 4 goal involvements/,
-  );
-  await expect(
-    latest.getByRole("link", { name: "All Milestones" }),
-  ).toHaveAttribute("href", "/milestones");
 });
 
 test.describe("on a 375px phone", () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
-  test("the nav keeps all seven items usable without scrolling the page sideways", async ({
+  test("the nav keeps every item usable without scrolling the page sideways", async ({
     page,
   }) => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Primary" });
-    await expect(nav.getByRole("link")).toHaveCount(7);
+    await expect(nav.getByRole("link")).toHaveCount(5);
     await expectNoHorizontalScroll(page);
 
     await nav.getByRole("link", { name: "Milestones" }).click();

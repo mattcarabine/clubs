@@ -191,29 +191,16 @@ export interface SquadFormRow {
 }
 
 /**
- * The current Squad Members in Hot or Cold form over the filtered Matches
- * (CLUBS-40), biggest gap first, for Matchday's strip. One query.
+ * The current Squad Members in Hot or Cold form (CLUBS-40) among Squad table
+ * rows, biggest gap first, for the Squad page's Form watch strip.
  */
-export async function squadForm(
-  db: Db,
-  filter: StatsFilter,
-): Promise<SquadFormRow[]> {
-  const byPlayer = groupBy(
-    await squadAppearances(db, filter),
-    (a) => a.playerId,
-  );
-  const rows: SquadFormRow[] = [];
-  for (const [playerId, apps] of byPlayer) {
-    if (isFormerSquadMember(playerId)) continue;
-    const indicator = formIndicator(apps);
-    if (!indicator) continue;
-    rows.push({
-      playerId,
-      name: apps[apps.length - 1].name,
-      formIndicator: indicator,
-    });
+export function formWatch(rows: readonly LeaderboardRow[]): SquadFormRow[] {
+  const watch: SquadFormRow[] = [];
+  for (const { playerId, name, former, formIndicator } of rows) {
+    if (former || !formIndicator) continue;
+    watch.push({ playerId, name, formIndicator });
   }
-  return rows.sort(
+  return watch.sort(
     (a, b) => formGap(b.formIndicator) - formGap(a.formIndicator),
   );
 }
