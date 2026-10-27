@@ -60,10 +60,11 @@ test("the hero shows the result in words over an outcome-coloured rule", async (
     { body: win({ matchId: "31001" }), word: "Win", colour: WIN },
     { body: draw({ matchId: "31002" }), word: "Draw", colour: DRAW },
     { body: loss({ matchId: "31003" }), word: "Loss", colour: LOSS },
-    { body: dnf({ matchId: "31004" }), word: "DNF win", colour: WIN },
+    // A rage quit keeps the plain result; the tab cluster says who quit.
+    { body: dnf({ matchId: "31004" }), word: "Win", colour: WIN },
     {
       body: dnf({ matchId: "31005", ourWin: false }),
-      word: "DNF loss",
+      word: "Loss",
       colour: LOSS,
     },
   ];
@@ -101,16 +102,16 @@ test("one tab cluster holds the Match Type, status and kick-off", async ({
     hero(page)
       .getByRole("list", { name: "Match details" })
       .getByRole("listitem"),
-  ).toHaveText(["League", "DNF", MOMENT]);
+  ).toHaveText(["League", "They rage quit", MOMENT]);
 
-  // Matchday's lead Match (the DNF, played last) uses the same cluster.
+  // Matchday's lead Match (the rage quit, played last) uses the same cluster.
   await page.goto("/");
   await expect(
     page
       .getByRole("region", { name: "Latest Match" })
       .getByRole("list", { name: "Match details" })
       .getByRole("listitem"),
-  ).toHaveText(["League", "DNF", MOMENT]);
+  ).toHaveText(["League", "They rage quit", MOMENT]);
 });
 
 test("the stat strip compares both clubs' shots, pass % and tackles", async ({

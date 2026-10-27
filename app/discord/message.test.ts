@@ -104,6 +104,22 @@ describe("sessionPostBody", () => {
     });
   });
 
+  it("says which side rage quit, never DNF", () => {
+    const matches = [
+      { ...match("m1", "W", [3, 0]), dnf: true },
+      { ...match("m2", "L", [0, 3]), dnf: true },
+    ];
+    const [embed] = sessionPostBody(
+      input({ recap: null, headlines: new Map(), matches }),
+    ).embeds;
+    expect(embed.description).toBe(
+      [
+        "**W** A Bloo Bloo 3–0 Kebab Over6pack (they rage quit)",
+        "**L** A Bloo Bloo 0–3 Kebab Over6pack (we rage quit)",
+      ].join("\n"),
+    );
+  });
+
   it("goes without a recap or a top performer", () => {
     const [embed] = sessionPostBody(input({ recap: null, players: [] })).embeds;
     expect(embed.description).toMatch(/^\*\*W\*\*/);

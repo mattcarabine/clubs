@@ -119,31 +119,45 @@ test.describe("Match detail", () => {
     ).toHaveAttribute("href", `/opponents/${opponentId}`);
   });
 
-  test("a DNF win shows a DNF badge and explains it", async ({
+  test("a rage quit says which side quit, and never DNF", async ({
     page,
     fakeEa,
     triggerPoll,
   }) => {
     await fakeEa.setPayload("clubs/matches", [], "leagueMatch");
-    await fakeEa.addMatch(dnf({ matchId: "800000000000001" }));
+    const theyQuit = dnf({ matchId: "800000000000001" });
+    const weQuit = dnf({ matchId: "800000000000003", ourWin: false });
+    await fakeEa.addMatch(theyQuit);
+    await fakeEa.addMatch(weQuit);
     await triggerPoll();
 
     await page.goto("/matches");
-    await expect(matchLinks(page)).toHaveCount(1);
-    await expect(
-      matchLinks(page).first().getByTitle("Did not finish"),
-    ).toBeVisible();
-    await matchLinks(page).first().click();
+    await expect(matchLinks(page)).toHaveCount(2);
+    for (const label of ["They rage quit", "We rage quit"]) {
+      await expect(
+        page.getByRole("main").getByText(label, { exact: true }),
+      ).toHaveCount(1);
+    }
+    await expect(page.getByRole("main")).not.toContainText("DNF");
 
-    await expect(page).toHaveURL(/\/matches\/800000000000001$/);
+    await page.goto("/matches/800000000000001");
     const score = page.getByRole("region", { name: "Score" });
-    await expect(score.getByTitle("Did not finish")).toBeVisible();
-    await expect(score.getByText("DNF win", { exact: true })).toBeVisible();
     await expect(
-      page.getByRole("complementary", { name: "DNF" }),
+      score.getByText("They rage quit", { exact: true }),
+    ).toBeVisible();
+    await expect(score.getByText("Win", { exact: true })).toBeVisible();
+
+    await page.goto("/matches/800000000000003");
+    await expect(
+      score.getByText("We rage quit", { exact: true }),
+    ).toBeVisible();
+    await expect(score.getByText("Loss", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("complementary", { name: "Rage quit" }),
     ).toContainText(
-      `quit before full time, so EA awarded the Match to ${CLUB_NAME}`,
+      `${CLUB_NAME} rage quit before full time, so EA awarded the Match to`,
     );
+    await expect(page.getByRole("main")).not.toContainText("DNF");
   });
 
   test("a Friendly's page is a 404, though the Poll stored it", async ({
