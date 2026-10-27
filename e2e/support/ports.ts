@@ -37,7 +37,8 @@ export const FAKE_ANTHROPIC_PORT =
 export const FAKE_DISCORD_PORT =
   portFromEnv("FAKE_DISCORD_PORT") ?? APP_PORT + 3;
 
-export const APP_URL = `http://localhost:${APP_PORT}`;
+/** IPv4, as `vite preview` is bound (playwright.config.ts). */
+export const APP_URL = `http://127.0.0.1:${APP_PORT}`;
 export const FAKE_EA_URL = `http://localhost:${FAKE_EA_PORT}`;
 /** The Worker's `EA_BASE_URL` for this run, passed in at runtime. */
 export const FAKE_EA_BASE_URL = `${FAKE_EA_URL}${EA_PREFIX}`;
