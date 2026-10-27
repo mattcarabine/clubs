@@ -71,6 +71,13 @@
       "when": 1793064607619,
       "tag": "0009_season_2_starts_at_first_match",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793065555823,
+      "tag": "0010_rewrite_season_1_review",
+      "breakpoints": true
     }
   ]
 }
