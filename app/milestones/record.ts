@@ -8,7 +8,9 @@
  * rerunning it stores nothing twice. While no Milestone is stored (the
  * release, or a fresh database) it backfills: every Match and Snapshot
  * already in D1, oldest first. After that it runs only on Polls that stored
- * new Matches or Snapshots, over the latest few Snapshots and Matches.
+ * new Matches or Snapshots, over the latest few Snapshots and Matches. The
+ * exception is a kind with nothing stored yet (one just added, CLUBS-52): it
+ * keeps what it finds in older Matches too, so it backfills on its first run.
  */
 import type { BatchItem } from "drizzle-orm/batch";
 
@@ -44,11 +46,12 @@ export async function recordMilestones(
   now: Date,
   pollChanged: boolean,
 ): Promise<MilestoneRun | null> {
-  const [stored] = await db
-    .select({ id: milestones.id })
-    .from(milestones)
-    .limit(1);
-  const backfill = stored === undefined;
+  const storedKinds = new Set(
+    (await db.selectDistinct({ kind: milestones.kind }).from(milestones)).map(
+      (row) => row.kind,
+    ),
+  );
+  const backfill = storedKinds.size === 0;
   if (!backfill && !pollChanged) return null;
 
   const input = await milestoneDetectionInput(db, {
@@ -58,7 +61,7 @@ export async function recordMilestones(
     input.matches.slice(-RECENT_MATCHES).map((m) => m.matchId),
   );
   const detected = detectMilestones(input).filter(
-    (m) => backfill || recent.has(m.matchId),
+    (m) => backfill || recent.has(m.matchId) || !storedKinds.has(m.kind),
   );
   if (detected.length === 0) return { backfill, detected: 0 };
 
