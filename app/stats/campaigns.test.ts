@@ -56,6 +56,22 @@ const summary = (results: string, rules?: CampaignRuleSet) =>
   }));
 
 describe("replayCampaigns", () => {
+  it("counts a Match kicked off at the Season start in that Season", () => {
+    // Season 2 of FC 27 as we played it: the Season starts at its first Match.
+    const matches = run("WLLWLWWDL");
+    const { campaigns } = replayCampaigns(matches, [matches[0].playedAt]);
+    expect(
+      campaigns.map((c) => ({
+        division: c.division,
+        points: c.points,
+        outcome: c.outcome,
+      })),
+    ).toEqual([
+      { division: 6, points: 9, outcome: "promoted" },
+      { division: 5, points: 1, outcome: "in-progress" },
+    ]);
+  });
+
   it("replays nothing before the first Season start", () => {
     const early = run("WWW", new Date(SEASON_START.getTime() - 10 * HOUR_MS));
     expect(replayCampaigns(early, []).campaigns).toEqual([]);

@@ -61,7 +61,14 @@ export async function ingestPayloads(
     ourClubId,
     ourPlayers,
   );
-  statements.push(...(await seasonStatements(db, snapshotRows, ourClubId)));
+  statements.push(
+    ...(await seasonStatements(
+      db,
+      snapshotRows,
+      ourClubId,
+      newMatches.map(({ match }) => match),
+    )),
+  );
   if (snapshotRows.length)
     statements.push(bulkInsert(db, snapshots, snapshotRows));
 
