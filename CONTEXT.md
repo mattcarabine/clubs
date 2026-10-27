@@ -34,6 +34,10 @@ _Avoid_: Odds, win probability, expected result
 How a Win Chance billed Our Club before kick-off: **Favourites** at 55% or more, **Underdogs** at 45% or less, and a **Toss-up** between.
 _Avoid_: Expected to win, odds-on
 
+**Upset**:
+A result against our Win Chance: an **Upset Win** from under 35%, or Dropped Points from over 65% (**Should have won**). It is a **big upset** from under 20% ("Big upset Win") or over 80% ("Should really have won").
+_Avoid_: Shock, surprise result
+
 **Squad Member**:
 Anyone who has made an Appearance for Our Club, identified by their stable EA player ID (persona names can change; IDs don't). Our Club has no guests.
 _Avoid_: Member, user, teammate, guest

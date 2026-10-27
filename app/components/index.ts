@@ -32,6 +32,11 @@ export { WinRateBarChart } from "./charts/win-rate-bar-chart";
 export { WinRateCompareChart } from "./charts/win-rate-compare-chart";
 export { Chip, ChipGroup, chipClassName } from "./chip";
 export { ClubLeaders } from "./club-leaders";
+export {
+  type ColumnLayoutState,
+  ColumnPicker,
+  useColumnLayout,
+} from "./column-layout";
 export { CrestMark } from "./crest-mark";
 export {
   DataTable,
@@ -95,3 +100,4 @@ export { StoryCard, StoryDeck, type StoryDeckCard } from "./story";
 export { EstimateTag, SmallSampleTag, Tag } from "./tag";
 export { Ticker, type TickerItem } from "./ticker";
 export { TopPerformersStrip } from "./top-performers-strip";
+export { UPSET_FILL, UpsetBadge, upsetLabel } from "./upset-badge";

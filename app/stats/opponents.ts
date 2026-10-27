@@ -3,6 +3,7 @@ import { and, desc, eq, isNotNull } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
 import { clubs, matches } from "~/db/schema";
+import { crestUrl } from "~/ea/crest";
 
 import type { StatsFilter } from "./filter";
 import { type Club, listMatches } from "./matches";
@@ -51,7 +52,11 @@ export async function getOpponent(
 ): Promise<OpponentDetail | null> {
   const [[club], [rated]] = await Promise.all([
     db
-      .select({ clubId: clubs.clubId, name: clubs.name })
+      .select({
+        clubId: clubs.clubId,
+        name: clubs.name,
+        crestAssetId: clubs.crestAssetId,
+      })
       .from(clubs)
       .innerJoin(matches, eq(matches.opponentClubId, clubs.clubId))
       .where(and(eq(clubs.clubId, clubId), isShownMatch))
@@ -76,6 +81,7 @@ export async function getOpponent(
   return {
     clubId: club.clubId,
     name: club.name ?? club.clubId,
+    crestUrl: crestUrl(club.crestAssetId),
     latestRating:
       rated?.skillRating != null
         ? { skillRating: rated.skillRating, playedAt: rated.playedAt }

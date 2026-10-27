@@ -149,7 +149,10 @@ function matchStatements(
   return [
     bulkInsert(db, clubs, [...clubRows.values()]).onConflictDoUpdate({
       target: clubs.clubId,
-      set: { name: sql`coalesce(excluded.name, clubs.name)` },
+      set: {
+        name: sql`coalesce(excluded.name, clubs.name)`,
+        crestAssetId: sql`coalesce(excluded.crest_asset_id, clubs.crest_asset_id)`,
+      },
     }),
     bulkInsert(db, players, [...playerRows.values()]).onConflictDoUpdate({
       target: players.playerId,

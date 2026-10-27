@@ -23,7 +23,7 @@ function match(
     matchId,
     matchType: "League",
     playedAt: new Date("2026-10-17T19:30:00Z"),
-    opponent: { clubId: "1", name: opponent },
+    opponent: { clubId: "1", name: opponent, crestUrl: null },
     goalsFor,
     goalsAgainst,
     outcome,

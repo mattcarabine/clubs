@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 import { formatOptional, formatPercentage } from "~/lib/number-format";
 import type { MatchSkillRatings, MatchSummary } from "~/stats/matches";
 import type { MatchSides } from "~/stats/summaries";
+import type { Expectation } from "~/stats/win-chance";
 
 import { RageQuitBadge } from "./rage-quit-badge";
 import { ScoreBar, type ScoreBarStat } from "./score-bar";
+import { UpsetBadge } from "./upset-badge";
 
 type MatchScoreBarProps = {
   /** Our Club's name, always on the left in club blue. */
@@ -20,11 +22,13 @@ type MatchScoreBarProps = {
   skillRatings?: MatchSkillRatings;
   /** Hero only: both clubs' totals, for the stat strip. Hidden unless both sides have Appearances. */
   sides?: MatchSides;
+  /** Hero only: an Upset, named in the tab cluster in place of "Full time". */
+  upset?: Expectation | null;
 };
 
 /**
  * A ScoreBar for one Match from Our Club's side. The hero groups Match Type,
- * "Full time" or who rage quit and the kick-off into one tab cluster; compact
+ * "Full time" (or who rage quit, or an Upset) and the kick-off into one tab cluster; compact
  * rows show the Match Type, a rage quit badge and the kick-off.
  */
 export function MatchScoreBar({
@@ -34,10 +38,12 @@ export function MatchScoreBar({
   when,
   skillRatings,
   sides,
+  upset,
 }: MatchScoreBarProps) {
   const hero = size === "hero";
   let status: ReactNode = null;
   if (match.dnf) status = <RageQuitBadge dnf outcome={match.outcome} />;
+  else if (hero && upset) status = <UpsetBadge upset={upset} />;
   else if (hero) status = "Full time";
   const ratings = hero ? skillRatings : undefined;
   const hasRatings =
@@ -59,6 +65,7 @@ export function MatchScoreBar({
         away={{
           name: match.opponent.name,
           score: match.goalsAgainst,
+          crestUrl: match.opponent.crestUrl,
           detail: hasRatings && <SkillRating value={ratings.opponent} />,
         }}
         size={size}

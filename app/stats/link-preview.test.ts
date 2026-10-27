@@ -37,7 +37,7 @@ const MATCH = {
   dnf: false,
   goalsFor: 3,
   goalsAgainst: 7,
-  opponent: { clubId: "1", name: "Kebab Over6pack" },
+  opponent: { clubId: "1", name: "Kebab Over6pack", crestUrl: null },
   ours: [
     appearance("Trevor", { rating: 6.1 }),
     appearance("Dan", { goals: 2, assists: 1, manOfTheMatch: true }),

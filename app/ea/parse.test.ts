@@ -9,6 +9,7 @@ import {
   parseMatches,
   parseSkillRatings,
   parseSnapshotEntries,
+  toCrestAssetId,
   toDecimal,
   toInt,
   toPositionGroup,
@@ -95,6 +96,19 @@ describe("string coercion", () => {
   });
 });
 
+describe("toCrestAssetId", () => {
+  it("keeps an all-digit crest ID", () => {
+    expect(toCrestAssetId("99160118")).toBe("99160118");
+  });
+
+  it.each([undefined, "", "99/../x", "12a", 99160118, "1234567890123"])(
+    "drops %s",
+    (value) => {
+      expect(toCrestAssetId(value)).toBeNull();
+    },
+  );
+});
+
 describe("parseMatches", () => {
   it("parses the recorded league Matches from Our Club's point of view", () => {
     const matches = parseMatches(recorded, "leagueMatch", OUR_CLUB);
@@ -109,8 +123,12 @@ describe("parseMatches", () => {
       result: "win",
       dnf: false,
       clubs: [
-        { clubId: OUR_CLUB, name: "A Bloo Bloo" },
-        { clubId: "356611", name: "Bunch of bums" },
+        { clubId: OUR_CLUB, name: "A Bloo Bloo", crestAssetId: "99160118" },
+        {
+          clubId: "356611",
+          name: "Bunch of bums",
+          crestAssetId: "99161008",
+        },
       ],
     });
     // Appearances for both clubs: 4 of ours, 3 of theirs.
@@ -179,8 +197,8 @@ describe("parseMatches", () => {
       result: "draw",
       // JS orders integer-like keys numerically, so "9" comes first.
       clubs: [
-        { clubId: "9", name: null },
-        { clubId: OUR_CLUB, name: null },
+        { clubId: "9", name: null, crestAssetId: null },
+        { clubId: OUR_CLUB, name: null, crestAssetId: null },
       ],
     });
     expect(match.appearances[0]).toMatchObject({
