@@ -10,7 +10,9 @@
  *   kick-off order. A threshold passed before the first Snapshot is never
  *   reported, and a crossing the recorded Matches cannot account for is
  *   skipped rather than guessed.
- * - **Feats** (a hat-trick, a 9.0 rating) come from one Appearance.
+ * - **Feats** (a hat-trick, a Perfect rating) come from one Appearance.
+ * - **Counts** (a 5th Perfect rating) come from the recorded Appearances,
+ *   for what EA's totals don't count, so they read "since records began".
  * - **Records** (biggest Win, longest run) are judged on the recorded
  *   Matches only, so they read "since records began".
  *
@@ -30,12 +32,13 @@ export type { MilestoneSubject };
 /** Career landmarks, from EA's totals in Snapshots. */
 export type PlayerLandmarkKind = "goals" | "assists" | "appearances" | "motm";
 export type ClubLandmarkKind = "club-wins" | "club-matches";
+/** Counts of feats by a Squad Member, from the recorded Appearances. */
+export type PlayerCountKind = "perfect-ratings";
 /** One-Match feats by a Squad Member. */
 export type FeatKind =
   | "hat-trick"
   | "goal-involvements"
-  | "rating"
-  | "personal-best-rating"
+  | "perfect-rating"
   | "first-goal-in-position";
 /** Club records, since records began. */
 export type RecordKind =
@@ -48,6 +51,7 @@ export type RecordKind =
 export type MilestoneKind =
   | PlayerLandmarkKind
   | ClubLandmarkKind
+  | PlayerCountKind
   | FeatKind
   | RecordKind;
 
@@ -131,16 +135,38 @@ export const CLUB_LANDMARKS: Readonly<Record<ClubLandmarkKind, ClubLandmark>> =
     },
   };
 
+/**
+ * A Squad Member's count of a feat, from the recorded Appearances: which
+ * Appearances add one, and the counts worth a Milestone. The first is the
+ * feat itself, so a ladder starts above 1.
+ */
+interface PlayerCount {
+  counts(a: DetectionAppearance): boolean;
+  ladder: Ladder;
+}
+
 /** A hat-trick: this many goals in one Match. */
 export const HAT_TRICK_GOALS = 3;
 /** Goals plus assists in one Match that make a feat (when not already a hat-trick). */
 export const GOAL_INVOLVEMENTS = 4;
-/** A Match rating at least this high is a feat. */
-export const STANDOUT_RATING = 9;
+/** EA's top Match rating: a Perfect rating, the only rating that is a feat. */
+export const PERFECT_RATING = 10;
+
+export const PLAYER_COUNTS: Readonly<Record<PlayerCountKind, PlayerCount>> = {
+  "perfect-ratings": {
+    counts: (a) => isPerfectRating(a.rating),
+    ladder: { start: [3, 5, 10, 25], step: 25 },
+  },
+};
+
+export function isPerfectRating(rating: number | null): rating is number {
+  return rating !== null && rating >= PERFECT_RATING;
+}
+
 /**
- * Earlier recorded Appearances a Squad Member needs before a personal best
- * or a first goal in a Position Group counts, so the first few Matches
- * recorded don't all read as bests.
+ * Earlier recorded Appearances a Squad Member needs before a first goal in a
+ * Position Group counts, so the first few Matches recorded don't all read as
+ * firsts.
  */
 export const MIN_PLAYER_HISTORY = 5;
 /** Earlier recorded Matches needed before a club record counts. */
@@ -186,6 +212,15 @@ export const MILESTONE_KINDS: Readonly<Record<MilestoneKind, KindDefinition>> =
     assists: playerLandmark("assists"),
     appearances: playerLandmark("appearances"),
     motm: playerLandmark("motm"),
+    "perfect-ratings": {
+      subject: "player",
+      category: "landmark",
+      badge: "Landmark",
+      title: ({ value }) => `${ordinal(value)} Perfect rating`,
+      figure: ({ value }) => String(value),
+      sentence: (name, { value }) =>
+        `${name} has ${value} Perfect ratings for A Bloo Bloo ${SINCE_RECORDS}.`,
+    },
     "club-wins": {
       subject: "club",
       category: "landmark",
@@ -222,23 +257,14 @@ export const MILESTONE_KINDS: Readonly<Record<MilestoneKind, KindDefinition>> =
       sentence: (name, { value }) =>
         `${name} scored or assisted ${value} goals in one Match.`,
     },
-    rating: {
+    "perfect-rating": {
       subject: "player",
       category: "feat",
-      badge: "Feat",
-      title: ({ value }) => `${formatDecimal(value)} rating`,
+      badge: "Perfect rating",
+      title: () => "Perfect rating",
       figure: ({ value }) => formatDecimal(value),
       sentence: (name, { value }) =>
-        `${name} was rated ${formatDecimal(value)} for this Match.`,
-    },
-    "personal-best-rating": {
-      subject: "player",
-      category: "feat",
-      badge: "Personal best",
-      title: ({ value }) => `Personal best rating of ${formatDecimal(value)}`,
-      figure: ({ value }) => formatDecimal(value),
-      sentence: (name, { value, threshold }) =>
-        `${name} set a personal best rating of ${formatDecimal(value)}, beating ${formatDecimal(threshold)} ${SINCE_RECORDS}.`,
+        `${name} was rated a perfect ${formatDecimal(value)} for this Match.`,
     },
     "first-goal-in-position": {
       subject: "player",
@@ -297,9 +323,14 @@ export const MILESTONE_KINDS: Readonly<Record<MilestoneKind, KindDefinition>> =
     },
   };
 
-export function isMilestoneKind(kind: string): kind is MilestoneKind {
-  return Object.hasOwn(MILESTONE_KINDS, kind);
-}
+/**
+ * Kinds no longer detected (CLUBS-52: only a Perfect rating is a rating
+ * feat). A migration deletes their rows, and queries never show any left.
+ */
+export const RETIRED_MILESTONE_KINDS = [
+  "rating",
+  "personal-best-rating",
+] as const;
 
 /** "Loltown95 — 50th goal". */
 export function milestoneHeadline(
@@ -587,8 +618,7 @@ function detectClubLandmarks({
 /** What is known of a Squad Member before a Match. */
 interface PlayerHistory {
   appearances: number;
-  ratedAppearances: number;
-  bestRating: number | null;
+  counts: Map<PlayerCountKind, number>;
   appearancesByGroup: Map<StoredPositionGroup, number>;
   scoredIn: Set<StoredPositionGroup>;
 }
@@ -612,13 +642,12 @@ function detectFeats({
       if (!isCountedAppearance({ ...a, ...match })) continue;
       const history = histories.get(a.playerId) ?? {
         appearances: 0,
-        ratedAppearances: 0,
-        bestRating: null,
+        counts: new Map(),
         appearancesByGroup: new Map(),
         scoredIn: new Set(),
       };
       const feat = (
-        kind: FeatKind,
+        kind: FeatKind | PlayerCountKind,
         value: number,
         extra: Partial<DetectedMilestone> = {},
         key = match.matchId,
@@ -641,17 +670,17 @@ function detectFeats({
         feat("goal-involvements", a.goals + a.assists);
       }
 
-      const isBest =
-        a.rating !== null &&
-        history.bestRating !== null &&
-        history.ratedAppearances >= MIN_PLAYER_HISTORY &&
-        a.rating > history.bestRating;
-      if (isBest && a.rating !== null) {
-        feat("personal-best-rating", a.rating, {
-          threshold: history.bestRating,
-        });
-      } else if (a.rating !== null && a.rating >= STANDOUT_RATING) {
-        feat("rating", a.rating);
+      if (isPerfectRating(a.rating)) {
+        feat("perfect-rating", a.rating);
+      }
+
+      for (const [kind, { counts, ladder }] of Object.entries(PLAYER_COUNTS)) {
+        if (!counts(a)) continue;
+        const before = history.counts.get(kind as PlayerCountKind) ?? 0;
+        history.counts.set(kind as PlayerCountKind, before + 1);
+        for (const t of thresholdsCrossed(ladder, before, before + 1)) {
+          feat(kind as PlayerCountKind, t, { threshold: t }, String(t));
+        }
       }
 
       const group = a.positionGroup;
@@ -671,10 +700,6 @@ function detectFeats({
       }
 
       history.appearances++;
-      if (a.rating !== null) {
-        history.ratedAppearances++;
-        history.bestRating = Math.max(history.bestRating ?? a.rating, a.rating);
-      }
       if (group) {
         history.appearancesByGroup.set(
           group,

@@ -20,6 +20,9 @@
  *   read since the last call (`app/db/rows-read.ts`), then starts again at 0.
  * - `POST /__test/milestones/forget` deletes every Milestone and its
  *   comments, as before Milestones were released, so the next Poll backfills.
+ *   With `?kind=K` it deletes only that kind's, as before K was added.
+ * - `POST /__test/milestones/rename?from=A&to=B` stores kind A's Milestones
+ *   as kind B, e.g. as one that is no longer detected (CLUBS-52).
  *
  * Every request also loads `TEST_ROSTER` (Roster entries for players that
  * exist only in E2E specs) into the Roster.
@@ -102,11 +105,23 @@ export async function handleTestRoute(
   }
 
   if (route === "milestones/forget" && request.method === "POST") {
-    await env.DB.batch([
-      env.DB.prepare("DELETE FROM ai_writeups WHERE kind = 'milestone'"),
-      env.DB.prepare("DELETE FROM ai_jobs WHERE kind = 'milestone'"),
-      env.DB.prepare("DELETE FROM milestones"),
-    ]);
+    const kind = searchParams.get("kind");
+    await env.DB.batch(
+      kind
+        ? [env.DB.prepare("DELETE FROM milestones WHERE kind = ?").bind(kind)]
+        : [
+            env.DB.prepare("DELETE FROM ai_writeups WHERE kind = 'milestone'"),
+            env.DB.prepare("DELETE FROM ai_jobs WHERE kind = 'milestone'"),
+            env.DB.prepare("DELETE FROM milestones"),
+          ],
+    );
+    return new Response(null, { status: 204 });
+  }
+
+  if (route === "milestones/rename" && request.method === "POST") {
+    await env.DB.prepare("UPDATE milestones SET kind = ? WHERE kind = ?")
+      .bind(searchParams.get("to"), searchParams.get("from"))
+      .run();
     return new Response(null, { status: 204 });
   }
 
