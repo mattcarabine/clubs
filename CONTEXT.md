@@ -69,7 +69,10 @@ One player's participation in one Match, with that player's stats for it. An App
 _Avoid_: Cap, game played, player-match
 
 **Position Group**:
-The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfielder or Forward. These exact names are used in the app too; with no Position Group selected, a view covers "All Positions".
+The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfielder or Forward. These exact names are used in the app too.
+
+**Main Position**:
+The Position Group a Squad Member made most of their Appearances in, among the Matches the filters select; a tie goes to the one they played most recently, and Appearances with no position never decide it. With "Main position only" on (the default, CLUBS-82), their stats count only those Appearances, so a midfielder and a forward are each judged where they play.
 _Avoid_: Position, role, attack, midfield, defence, GK/DEF/MID/FWD
 
 **Rage Quit**:

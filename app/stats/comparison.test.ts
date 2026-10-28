@@ -6,7 +6,6 @@ import {
   resolveComparisonPlayers,
   sharedMatchIds,
 } from "./comparison";
-import { ALL_POSITIONS, type PositionGroupSelection } from "./positions";
 import { matchRatings } from "./rating-context";
 import type { SquadAppearance } from "./squad";
 
@@ -62,13 +61,10 @@ const B = ["m3", "m4", "m5", "m6"].map((id) =>
   appearance(id, { playerId: "2", positionGroup: "Forward" }),
 );
 
-function inputs(
-  posA: PositionGroupSelection = ALL_POSITIONS,
-  posB: PositionGroupSelection = ALL_POSITIONS,
-) {
+function inputs() {
   return [
-    { playerId: "1", appearances: A, positionGroups: posA },
-    { playerId: "2", appearances: B, positionGroups: posB },
+    { playerId: "1", appearances: A },
+    { playerId: "2", appearances: B },
   ];
 }
 
@@ -87,7 +83,7 @@ describe("compareSides", () => {
     const {
       sides: [a, b],
       shared,
-    } = compareSides(inputs(), "all", RATINGS);
+    } = compareSides(inputs(), "all", RATINGS, false);
     expect(a.totals.appearances).toBe(5);
     expect(a.record).toMatchObject({ played: 5, wins: 4, losses: 1 });
     expect(a.form).toHaveLength(5);
@@ -99,7 +95,7 @@ describe("compareSides", () => {
     const {
       sides: [a, b],
       shared,
-    } = compareSides(inputs(), "together", RATINGS);
+    } = compareSides(inputs(), "together", RATINGS, false);
     expect(a.totals.appearances).toBe(3);
     expect(b.totals.appearances).toBe(3);
     expect(a.form.map((p) => p.matchId)).toEqual(["m3", "m4", "m5"]);
@@ -111,21 +107,22 @@ describe("compareSides", () => {
     });
   });
 
-  it("counts each side's own Position Groups", () => {
+  it("counts each side's own Main Position", () => {
     const {
       sides: [a, b],
-    } = compareSides(inputs(["Midfielder"], ["Forward"]), "all", RATINGS);
+    } = compareSides(inputs(), "all", RATINGS, true);
+    // A played Midfielder 3 times and Forward twice; B always Forward.
     expect(a.totals.appearances).toBe(3);
     expect(b.totals.appearances).toBe(4);
   });
 
-  it("counts each side's Position Groups within the Shared Matches", () => {
+  it("finds the Main Position before narrowing to the Shared Matches", () => {
     const {
       sides: [a, b],
       shared,
-    } = compareSides(inputs(["Forward"], ["Forward"]), "together", RATINGS);
-    expect(a.totals.appearances).toBe(2);
-    expect(a.totals.goals).toBe(2);
+    } = compareSides(inputs(), "together", RATINGS, true);
+    // In m3..m5 A played Midfielder once and Forward twice, but their Main Position is Midfielder.
+    expect(a.form.map((p) => p.matchId)).toEqual(["m3"]);
     expect(b.totals.appearances).toBe(3);
     // A Shared Match counts whatever position either played in it.
     expect(shared?.played).toBe(3);
@@ -135,20 +132,22 @@ describe("compareSides", () => {
     const {
       sides: [a],
       shared,
-    } = compareSides(inputs().slice(0, 1), "together", RATINGS);
+    } = compareSides(inputs().slice(0, 1), "together", RATINGS, false);
     expect(a.totals.appearances).toBe(5);
     expect(shared).toBeNull();
   });
 
   it("rates each side against their teammates and links the two (CLUBS-66)", () => {
-    const { sides, link } = compareSides(inputs(), "all", RATINGS);
+    const { sides, link } = compareSides(inputs(), "all", RATINGS, false);
     // Everyone rates 7, so A and B sit level with the team in m3..m5.
     expect(sides.map((s) => s.aboveTeam)).toEqual([
       { matches: 3, gap: 0 },
       { matches: 3, gap: 0 },
     ]);
     expect(link?.straight.matches).toBe(3);
-    expect(compareSides(inputs().slice(0, 1), "all", RATINGS).link).toBeNull();
+    expect(
+      compareSides(inputs().slice(0, 1), "all", RATINGS, false).link,
+    ).toBeNull();
   });
 });
 
@@ -183,11 +182,11 @@ describe("compareSides with a DNF we quit (CLUBS-48)", () => {
         {
           playerId: "1",
           appearances: [appearance("m1"), quit],
-          positionGroups: ALL_POSITIONS,
         },
       ],
       "all",
       matchRatings([appearance("m1"), quit]),
+      true,
     ).sides;
     expect(side.totals.appearances).toBe(1);
     expect(side.totals.averageRating).toBe(7);

@@ -165,7 +165,7 @@ test("changes under the effect-size threshold are not shown", async ({
   await expect(section(page).getByRole("listitem")).toHaveCount(0);
 });
 
-test("the Position Group and Match Type filters change the result", async ({
+test("main position only and the Match Type filter change the result", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -180,16 +180,17 @@ test("the Position Group and Match Type filters change the result", async ({
     ),
   );
 
-  await page.goto(profile);
+  await page.goto(`${profile}?positions=all`);
   await expect(
     changes(page, "Improving").filter({ hasText: "Pass %" }),
   ).toHaveCount(1);
 
   // League only: just the 10 Midfielder Appearances.
-  await page.goto(`${profile}?types=league`);
+  await page.goto(`${profile}?types=league&positions=all`);
   await expect(section(page)).toContainText("Not enough Appearances yet");
 
-  await page.goto(`${profile}?pos=forward`);
+  // 10 each way, so the latest, Forward, is the main position: only its 10 count.
+  await page.goto(profile);
   await expect(section(page)).toContainText("Not enough Appearances yet");
   await expect(section(page)).toContainText(
     "Form Finder has 10 in these filters",

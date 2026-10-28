@@ -417,11 +417,12 @@ test("each FilterBar dimension changes the results", async ({
   await expect(page.getByText("Not enough matches yet")).toBeVisible();
 });
 
-test("the Position Group filter changes only the per-player section", async ({
+test("main position only (CLUBS-82) changes only the per-player section", async ({
   page,
   fakeEa,
   triggerPoll,
 }) => {
+  // Star: 3 at Forward, then 3 at Midfielder. Level, so the latest (Midfielder) is their main position.
   await recordPositions(fakeEa, triggerPoll, ["W", "W", "L"], ["L", "L", "W"]);
 
   await page.goto("/analysis");
@@ -444,34 +445,37 @@ test("the Position Group filter changes only the per-player section", async ({
   const playedW = headers.findIndex((h) => h.trim() === "Played W") - 1;
   const playedDl = headers.findIndex((h) => h.trim() === "Played D/L") - 1;
   expect(playedW).toBeGreaterThanOrEqual(0);
-  await expect(star().getByRole("cell").nth(playedW)).toHaveText("3");
-  await expect(star().getByRole("cell").nth(playedDl)).toHaveText("3");
 
-  const picker = region(page, "Squad Members").getByRole("group", {
-    name: "Position Group",
-  });
-  await expect(async () => {
-    await picker.getByRole("button", { name: "Forward", exact: true }).click();
-    await expect
-      .poll(() => new URL(page.url()).searchParams.get("pos"), {
-        timeout: 1000,
-      })
-      .toBe("forward");
-  }).toPass();
-
-  await expect(star().getByRole("cell").nth(playedW)).toHaveText("2");
-  await expect(star().getByRole("cell").nth(playedDl)).toHaveText("1");
-  // Rock only kept goal, so drops out of the table.
+  const toggle = region(page, "Squad Members")
+    .getByRole("group", { name: "Position" })
+    .getByRole("button", { name: "Main position only" });
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(star().getByRole("cell").nth(playedW)).toHaveText("1");
+  await expect(star().getByRole("cell").nth(playedDl)).toHaveText("2");
+  // Rock only kept goal, so their main position keeps every Match.
   await expect(
     tableRow(
       page,
       "Squad Members in Wins against draws and defeats",
       ROCK.name,
     ),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
+
+  await expect(async () => {
+    await toggle.click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("positions"), {
+        timeout: 1000,
+      })
+      .toBe("all");
+  }).toPass();
+
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(star().getByRole("cell").nth(playedW)).toHaveText("3");
+  await expect(star().getByRole("cell").nth(playedDl)).toHaveText("3");
   // Everything else is unchanged.
   expect(await outcomeSplit.textContent()).toBe(before);
-  // With and without counts every Match, whatever the Position Group.
+  // With and without counts every Match, whatever the position.
   await expectWithWithout(page, STAR.name, ["50%", "–", "–"]);
 });
 
@@ -499,7 +503,7 @@ test("the trend chart shows a rolling 10-Match Win %", async ({
   await expect(trend.locator("svg line[stroke-dasharray]")).toHaveCount(1);
 });
 
-test("the profile panel shows Wins against Dropped Points and follows ?pos=", async ({
+test("the profile panel shows Wins against Dropped Points and follows main position only", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -518,13 +522,15 @@ test("the profile panel shows Wins against Dropped Points and follows ?pos=", as
       .getByRole("table", { name: "Win % at each Position Group" })
       .getByRole("rowheader");
 
+  // Main position Midfielder: 1 Win, 2 losses there.
   await page.goto(`/players/${STAR.id}`);
-  await expect(apps()).toHaveText(["3", "3"]);
+  await expect(apps()).toHaveText(["1", "2"]);
+  // Every position is still listed.
   await expect(byPosition()).toHaveText(["Forward", "Midfielder"]);
 
-  await page.goto(`/players/${STAR.id}?pos=forward`);
-  await expect(apps()).toHaveText(["2", "1"]);
-  await expect(byPosition()).toHaveText(["Forward"]);
+  await page.goto(`/players/${STAR.id}?positions=all`);
+  await expect(apps()).toHaveText(["3", "3"]);
+  await expect(byPosition()).toHaveText(["Forward", "Midfielder"]);
 });
 
 test.describe("on a 375px phone", () => {
@@ -546,7 +552,7 @@ test.describe("on a 375px phone", () => {
 
     for (const path of [
       "/analysis",
-      "/analysis?pos=forward",
+      "/analysis?positions=all",
       `/players/${STAR.id}`,
     ]) {
       await page.goto(path);

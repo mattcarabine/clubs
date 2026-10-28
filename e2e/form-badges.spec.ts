@@ -28,17 +28,18 @@ test.beforeEach(async ({ fakeEa }) => {
 
 /**
  * 15 Matches a day apart. The first 10 are League Matches with everyone in
- * their usual role; the last 5 are Playoff Matches, with Hot Hand at Forward.
- * New Boy misses the first Match, so has only 9 before the last 5.
+ * their usual role (Hot Hand at Midfielder); the last 5 are Playoff Matches,
+ * with Hot Hand at `hotRecentPos`. New Boy misses the first Match, so has
+ * only 9 before the last 5.
  */
-function season(): AddMatchBody[] {
+function season(hotRecentPos = "midfielder"): AddMatchBody[] {
   return Array.from({ length: 15 }, (_, i) => {
     const recent = i >= 10;
     const lineup: Lineup = [
       {
         player: HOT,
         rating: recent ? 8 : 7,
-        pos: recent ? "forward" : "midfielder",
+        pos: recent ? hotRecentPos : "midfielder",
       },
       { player: COLD, rating: recent ? 6.5 : 7.5 },
       // A small change: 0.2 up.
@@ -117,11 +118,6 @@ test("Compare shows a badge on each side", async ({
   const plates = page.getByRole("region", { name: "Squad Members compared" });
   await expect(badge(plates, HOT_DETAIL)).toContainText("Hot");
   await expect(badge(plates, COLD_DETAIL)).toContainText("Cold");
-
-  // Hot Hand's last 5 were all at Forward: as a Midfielder, no badge.
-  await page.goto(`/compare?players=${HOT.id},${COLD.id}&posA=midfielder`);
-  await expect(badge(plates, COLD_DETAIL)).toBeVisible();
-  await expect(badge(plates, HOT_DETAIL)).toHaveCount(0);
 });
 
 test("Squad lists who is in form and out of form, only when someone qualifies", async ({
@@ -149,22 +145,31 @@ test("Squad lists who is in form and out of form, only when someone qualifies", 
   await expect(outOfForm).toContainText(COLD_DETAIL);
 });
 
-test("badges follow the FilterBar and Position Group filters", async ({
+test("badges follow the FilterBar and main position only", async ({
   page,
   fakeEa,
   triggerPoll,
 }) => {
-  await record(fakeEa, triggerPoll, season());
+  // Hot Hand's last 5 at Forward, away from their main position (Midfielder).
+  await record(fakeEa, triggerPoll, season("forward"));
 
   // League only: the 10 earlier Matches, with no 10 before the last 5.
-  await page.goto("/squad?types=league");
+  await page.goto("/squad?types=league&positions=all");
   await expect(page.locator("[title^='Last 5']")).toHaveCount(0);
 
-  // As Forward, Hot Hand has only the last 5 Appearances.
-  await page.goto("/squad?pos=forward");
-  await expect(badge(page, HOT_DETAIL)).toHaveCount(0);
-  await page.goto(`/players/${HOT.id}?pos=forward`);
-  await expect(badge(page, HOT_DETAIL)).toHaveCount(0);
+  // In their main position alone, Hot Hand has no last 5 to compare.
+  for (const path of [
+    "/squad",
+    `/players/${HOT.id}`,
+    `/compare?players=${HOT.id},${COLD.id}`,
+  ]) {
+    await page.goto(path);
+    await expect(page.locator("h1"), path).toBeVisible();
+    await expect(badge(page, HOT_DETAIL), path).toHaveCount(0);
+  }
+  // Counting every position, they are Hot.
+  await page.goto("/squad?positions=all");
+  await expect(badge(squadRow(page, HOT.name), HOT_DETAIL)).toHaveCount(1);
   await page.goto(`/players/${HOT.id}?types=league`);
   await expect(badge(page, HOT_DETAIL)).toHaveCount(0);
 });

@@ -1,84 +1,43 @@
 /**
- * Position Group selections (CLUBS-23): which of a Squad Member's
- * Appearances count, by the Position Group EA reported for each. An empty
- * selection means All Positions.
+ * Main Position (CLUBS-82): the Position Group a Squad Member made most of
+ * their Appearances in, among the Matches the filters select. With "Main
+ * position only" on (the default), their stats count only those Appearances,
+ * so a midfielder is judged as a midfielder and a forward as a forward.
  *
- * Everything here takes the selection as a parameter rather than reading a
- * URL param, so one page can hold several: the global `?pos=` on the Squad
- * table and profile, and one per player on Compare (`?posA=` / `?posB=`).
+ * It replaces picking Position Groups by hand (CLUBS-23), which never made
+ * two Squad Members comparable when each plays somewhere different.
  */
-import { POSITION_GROUPS, type PositionGroup } from "~/lib/domain";
-
-/** Selected Position Groups in `POSITION_GROUPS` order; empty means All Positions. */
-export type PositionGroupSelection = readonly PositionGroup[];
-
-export const ALL_POSITIONS: PositionGroupSelection = [];
-
-/** The label for an empty selection (CONTEXT.md "Position Group"). */
-export const ALL_POSITIONS_LABEL = "All Positions";
+import type { PositionGroup } from "~/lib/domain";
 
 /**
- * Reads a URL value like `midfielder,forward`, ignoring case, unknown names
- * and repeats. Missing or wholly invalid values give All Positions.
+ * The Position Group most of these Appearances (one Squad Member's, oldest
+ * first) were in. A tie goes to the group played in most recently.
+ * Appearances with no position never decide it; null when none has one.
  */
-export function parsePositionGroups(
-  raw: string | null,
-): PositionGroupSelection {
-  if (raw === null) return ALL_POSITIONS;
-  const wanted = new Set(raw.toLowerCase().split(","));
-  return POSITION_GROUPS.filter((group) => wanted.has(group.toLowerCase()));
-}
-
-/** The URL value for a selection, or null for All Positions (left out of the URL). */
-export function writePositionGroups(
-  groups: PositionGroupSelection,
-): string | null {
-  const canonical = canonicalPositionGroups(groups);
-  return canonical.length
-    ? canonical.map((group) => group.toLowerCase()).join(",")
-    : null;
-}
-
-/** Adds or removes one Position Group. Removing the last one gives All Positions. */
-export function togglePositionGroup(
-  groups: PositionGroupSelection,
-  group: PositionGroup,
-): PositionGroupSelection {
-  return canonicalPositionGroups(
-    groups.includes(group)
-      ? groups.filter((g) => g !== group)
-      : [...groups, group],
-  );
+export function mainPosition(
+  appearances: readonly { positionGroup: PositionGroup | null }[],
+): PositionGroup | null {
+  const counts = new Map<PositionGroup, number>();
+  let main: PositionGroup | null = null;
+  for (const { positionGroup } of appearances) {
+    if (positionGroup === null) continue;
+    const count = (counts.get(positionGroup) ?? 0) + 1;
+    counts.set(positionGroup, count);
+    // `>=` hands a tie to the later Appearance's group.
+    if (main === null || count >= (counts.get(main) ?? 0)) main = positionGroup;
+  }
+  return main;
 }
 
 /**
- * Whether an Appearance in `group` counts under the selection. All Positions
- * counts everything, including Appearances where EA sent no position.
+ * One Squad Member's Appearances that count: with `mainOnly`, those in their
+ * Main Position (all of them when none has a position); otherwise all.
  */
-export function inPositionGroups(
-  groups: PositionGroupSelection,
-  group: PositionGroup | null,
-): boolean {
-  return groups.length === 0 || (group !== null && groups.includes(group));
-}
-
-/** The Appearances (or anything with a `positionGroup`) the selection counts. */
-export function filterByPositionGroups<
+export function inMainPosition<
   Row extends { positionGroup: PositionGroup | null },
->(rows: readonly Row[], groups: PositionGroupSelection): Row[] {
-  return rows.filter((row) => inPositionGroups(groups, row.positionGroup));
-}
-
-/** "All Positions", or the selected names: "Midfielder or Forward". */
-export function describePositionGroups(groups: PositionGroupSelection): string {
-  const names = canonicalPositionGroups(groups);
-  if (names.length === 0) return ALL_POSITIONS_LABEL;
-  if (names.length === 1) return names[0];
-  return `${names.slice(0, -1).join(", ")} or ${names.at(-1)}`;
-}
-
-function canonicalPositionGroups(
-  groups: PositionGroupSelection,
-): PositionGroup[] {
-  return POSITION_GROUPS.filter((group) => groups.includes(group));
+>(appearances: readonly Row[], mainOnly: boolean): Row[] {
+  const main = mainOnly ? mainPosition(appearances) : null;
+  return main === null
+    ? [...appearances]
+    : appearances.filter((a) => a.positionGroup === main);
 }

@@ -276,15 +276,17 @@ test("on EA totals the headline stats come from EA, and the chart and scope togg
   );
   await expect(page.getByText("EA gives no per-Match data")).toBeVisible();
 
-  // Each side's Position Group picker stays, disabled with the reason.
-  const picker = page.getByRole("group", { name: /: Position Group$/ });
-  await expect(picker).toHaveCount(2);
+  // "Main position only" stays, disabled with the reason.
+  const position = filters(page).getByRole("group", {
+    name: "Position",
+    exact: true,
+  });
   await expect(
-    picker.first().getByRole("button", { name: "Forward" }),
+    position.getByRole("button", { name: "Main position only" }),
   ).toBeDisabled();
-  await expect(picker.first()).toHaveAttribute(
+  await expect(position).toHaveAttribute(
     "title",
-    "EA's totals can't be split by Position Group",
+    "EA's totals can't be split by position",
   );
 });
 
@@ -381,7 +383,7 @@ test("a repeated or unknown ID shows the first Squad Member and a picker, not an
   }
 });
 
-test("an unknown first ID moves the second Squad Member to A with their Position Groups", async ({
+test("an unknown first ID moves the second Squad Member to A", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -391,16 +393,12 @@ test("an unknown first ID moves the second Squad Member to A with their Position
     [{ player: BRAVO, pos: "midfielder" }],
   ]);
 
-  await page.goto(`/compare?players=999999999,${BRAVO.id}&posB=forward`);
+  await page.goto(`/compare?players=999999999,${BRAVO.id}&positions=all`);
   await expect(plate(page, "First")).toHaveAccessibleName(
     `First Squad Member: ${BRAVO.name}`,
   );
-  await expectFigures(headline(page), "Appearances", ["1", "–"]);
-  await expect(
-    page
-      .getByRole("group", { name: `${BRAVO.name}: Position Group` })
-      .getByRole("button", { name: "Forward" }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expectFigures(headline(page), "Appearances", ["2", "–"]);
+  expect(new URL(page.url()).searchParams.get("positions")).toBe("all");
 });
 
 test("a plate's picker lists the whole Squad, marks the current pick and keeps out the other side's", async ({
@@ -483,7 +481,7 @@ test("changing the FilterBar changes both columns", async ({
   await expectFigures(table, "Appearances", ["1", "1"]);
 });
 
-test("each side counts its own Position Groups", async ({
+test("each side counts its own main position (CLUBS-82)", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -511,24 +509,21 @@ test("each side counts its own Position Groups", async ({
 
   await page.goto(`/compare?players=${ALPHA.id},${BRAVO.id}`);
   const table = headline(page);
-  await expectFigures(table, "Appearances", ["5", "4"]);
-
-  const chip = (who: string, name: string) =>
-    page
-      .getByRole("group", { name: `${who}: Position Group` })
-      .getByRole("button", { name, exact: true });
-  await expect(chip(ALPHA.name, "All Positions")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-
-  await clickUntil(page, chip(ALPHA.name, "Midfielder"), "posA", "midfielder");
-  await clickUntil(page, chip(BRAVO.name, "Forward"), "posB", "forward");
+  const toggle = filters(page).getByRole("button", {
+    name: "Main position only",
+  });
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await expectFigures(table, "Appearances", ["3", "4"]);
+  const plates = page.getByRole("region", { name: "Squad Members compared" });
+  await expect(plates.getByText("Main position: Midfielder")).toBeVisible();
+  await expect(plates.getByText("Main position: Forward")).toBeVisible();
 
-  await clickUntil(page, chip(ALPHA.name, "All Positions"), "posA", null);
-  await clickUntil(page, chip(BRAVO.name, "All Positions"), "posB", null);
+  await clickUntil(page, toggle, "positions", "all");
   await expectFigures(table, "Appearances", ["5", "4"]);
+  await expect(plates.getByText(/Main position:/)).toHaveCount(0);
+
+  await clickUntil(page, toggle, "positions", null);
+  await expectFigures(table, "Appearances", ["3", "4"]);
 });
 
 test("Compare fits a 375px phone", async ({ page, fakeEa, triggerPoll }) => {
@@ -541,7 +536,7 @@ test("Compare fits a 375px phone", async ({ page, fakeEa, triggerPoll }) => {
 
   for (const query of [
     `players=${ALPHA.id},${BRAVO.id}`,
-    `players=${ALPHA.id},${BRAVO.id}&scope=together&posA=midfielder`,
+    `players=${ALPHA.id},${BRAVO.id}&scope=together&positions=all`,
     `players=${ALPHA.id},${BRAVO.id}&source=ea`,
     `players=${ALPHA.id}`,
     "",

@@ -17,26 +17,33 @@ import {
 const params = (query: string) => new URLSearchParams(query);
 
 describe("parseStatsFilter", () => {
-  it("defaults to Competitive Matches, DNF included, all dates, All Positions", () => {
+  it("defaults to Competitive Matches, DNF included, all dates, main position only", () => {
     expect(parseStatsFilter(params(""))).toEqual({
       matchTypes: ["League", "Playoff"],
       includeDnf: true,
       dates: { kind: "all" },
-      positionGroups: [],
+      mainPositionOnly: true,
     });
   });
 
   it("reads every field", () => {
     expect(
       parseStatsFilter(
-        params("types=playoff,league&dnf=0&range=30d&pos=forward,midfielder"),
+        params("types=playoff,league&dnf=0&range=30d&positions=all"),
       ),
     ).toEqual({
       matchTypes: ["League", "Playoff"],
       includeDnf: false,
       dates: { kind: "preset", preset: "30d" },
-      positionGroups: ["Midfielder", "Forward"],
+      mainPositionOnly: false,
     });
+  });
+
+  it("treats any other positions value, such as an old ?pos= link, as main position only", () => {
+    expect(parseStatsFilter(params("positions=main")).mainPositionOnly).toBe(
+      true,
+    );
+    expect(parseStatsFilter(params("pos=forward")).mainPositionOnly).toBe(true);
   });
 
   it("ignores Friendlies, which are never shown", () => {
@@ -141,10 +148,10 @@ describe("writeStatsFilter", () => {
       includeDnf: false,
       dates: { kind: "preset", preset: "7d" },
       season: 2,
-      positionGroups: ["Forward", "Defender"],
+      mainPositionOnly: false,
     };
     expect(writeStatsFilter(params(""), filter).toString()).toBe(
-      "types=playoff&dnf=0&range=7d&season=2&pos=defender%2Cforward",
+      "types=playoff&dnf=0&range=7d&season=2&positions=all",
     );
   });
 
@@ -184,13 +191,13 @@ describe("writeStatsFilter", () => {
         matchTypes: ["Playoff"],
         includeDnf: false,
         dates: { kind: "preset", preset: "30d" },
-        positionGroups: ["Goalkeeper"],
+        mainPositionOnly: false,
       },
       {
         matchTypes: ["League"],
         includeDnf: true,
         dates: { kind: "custom", from: "2026-01-01", to: "2026-10-17" },
-        positionGroups: [],
+        mainPositionOnly: true,
       },
       { ...DEFAULT_STATS_FILTER, season: 3 },
     ];

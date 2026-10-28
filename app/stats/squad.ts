@@ -8,11 +8,7 @@ import { displayName, isFormerSquadMember } from "~/roster";
 
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
 import type { StatsFilter } from "./filter";
-import {
-  ALL_POSITIONS,
-  filterByPositionGroups,
-  type PositionGroupSelection,
-} from "./positions";
+import { inMainPosition } from "./positions";
 import { aboveTeam, matchRatings } from "./rating-context";
 import {
   type FormIndicator,
@@ -131,30 +127,29 @@ export interface LeaderboardOptions extends ScopeOptions {
   /** Include Former Squad Members (default: current squad only). */
   includeFormer?: boolean;
   /**
-   * Count only Appearances in these Position Groups (default: All
-   * Positions). Pass `filter.positionGroups` for the global selection.
+   * Count only each Squad Member's Appearances in their Main Position
+   * (default: every Appearance). Pass `filter.mainPositionOnly`.
    */
-  positionGroups?: PositionGroupSelection;
+  mainPositionOnly?: boolean;
 }
 
 /**
  * One row per Squad Member with totals over the filtered Matches, most
- * Appearances first. With `positionGroups`, everyone who played in those
- * Matches keeps a row, and the totals count only their Appearances in those
- * Position Groups, so a Squad Member with none has 0 Appearances.
+ * Appearances first. With `mainPositionOnly`, the totals count only each
+ * Squad Member's Appearances in their Main Position.
  */
 export async function squadLeaderboard(
   db: Db,
   filter: StatsFilter,
   {
     includeFormer = false,
-    positionGroups = ALL_POSITIONS,
+    mainPositionOnly = false,
     ...scope
   }: LeaderboardOptions = {},
 ): Promise<LeaderboardRow[]> {
   return leaderboardRows(await squadAppearances(db, filter, scope), {
     includeFormer,
-    positionGroups,
+    mainPositionOnly,
   });
 }
 
@@ -163,15 +158,15 @@ export function leaderboardRows(
   appearances: readonly SquadAppearance[],
   {
     includeFormer = false,
-    positionGroups = ALL_POSITIONS,
-  }: Pick<LeaderboardOptions, "includeFormer" | "positionGroups"> = {},
+    mainPositionOnly = false,
+  }: Pick<LeaderboardOptions, "includeFormer" | "mainPositionOnly"> = {},
 ): LeaderboardRow[] {
   const byPlayer = groupBy(appearances, (a) => a.playerId);
   const ratings = matchRatings(appearances);
   return [...byPlayer.entries()]
     .map(([playerId, apps]) => {
       const name = apps[apps.length - 1].name;
-      const selected = filterByPositionGroups(apps, positionGroups);
+      const selected = inMainPosition(apps, mainPositionOnly);
       return {
         playerId,
         name,

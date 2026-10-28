@@ -34,10 +34,7 @@ import {
   winPercentage,
   winRateEffectSize,
 } from "./formulas";
-import {
-  filterByPositionGroups,
-  type PositionGroupSelection,
-} from "./positions";
+import { inMainPosition } from "./positions";
 import { type Consistency, consistency } from "./rating-context";
 import {
   OPPONENT_STRENGTHS,
@@ -1362,20 +1359,20 @@ export interface PositionGroupWinRecord extends WinRecord {
 export interface PlayerOutcomeSplit {
   wins: PlayerTotals;
   dropped: PlayerTotals;
-  /** Win % by Position Group, most Appearances first. */
+  /** Win % by Position Group over every Appearance, whatever "Main position only" says, most Appearances first. */
   byPositionGroup: PositionGroupWinRecord[];
 }
 
 /**
  * One Squad Member's Outcome Split over their Appearances (oldest first), in
- * the selected Position Groups. Per-90s use their own minutes. Shared by the
- * Analysis page's per-player table and the profile's panel.
+ * their Main Position with `mainPositionOnly`. Per-90s use their own minutes.
+ * Shared by the Analysis page's per-player table and the profile's panel.
  */
 export function playerOutcomeSplit(
   appearances: readonly SquadAppearance[],
-  positionGroups: PositionGroupSelection,
+  mainPositionOnly: boolean,
 ): PlayerOutcomeSplit {
-  const selected = filterByPositionGroups(appearances, positionGroups);
+  const selected = inMainPosition(appearances, mainPositionOnly);
   return {
     wins: summariseAppearances(
       selected.filter((a) => outcomeSide(a.outcome) === "wins"),
@@ -1383,7 +1380,7 @@ export function playerOutcomeSplit(
     dropped: summariseAppearances(
       selected.filter((a) => outcomeSide(a.outcome) === "dropped"),
     ),
-    byPositionGroup: [...groupBy(selected, (a) => a.positionGroup).entries()]
+    byPositionGroup: [...groupBy(appearances, (a) => a.positionGroup).entries()]
       .map(([positionGroup, apps]) => ({
         positionGroup,
         ...winRecord(apps.map((a) => a.outcome)),
@@ -1410,7 +1407,7 @@ export interface Swing {
   smallSample: boolean;
 }
 
-/** A Squad Member's Swing over their counted, rated Appearances (in the Position Groups wanted). */
+/** A Squad Member's Swing over their counted, rated Appearances (in their Main Position when asked). */
 export function swing(appearances: readonly SquadAppearance[]): Swing {
   const rated = appearances.flatMap((a) =>
     a.rating !== null && isCountedAppearance(a)
@@ -1444,7 +1441,7 @@ export interface PlayerSplitRow extends PlayerOutcomeSplit {
   playerId: string;
   name: string;
   former: boolean;
-  /** Their Swing in the selected Position Groups (CLUBS-70). */
+  /** Their Swing, in their Main Position when asked (CLUBS-70). */
   swing: Swing;
   /** Their Floor and Spread in the same Appearances (CLUBS-74). */
   consistency: Consistency;
@@ -1456,13 +1453,14 @@ export interface PlayerSplitRow extends PlayerOutcomeSplit {
 }
 
 /**
- * Every Squad Member with an Appearance in the selected Position Groups,
- * most Appearances first, each with their record with and without them
- * (`withAndWithout`, from the Outcome Split).
+ * Every Squad Member with an Appearance in the filtered Matches, most
+ * Appearances first, each with their record with and without them
+ * (`withAndWithout`, from the Outcome Split). "Main position only" never
+ * drops anyone: everyone who played has Appearances in their Main Position.
  */
 export function playerSplits(
   appearances: readonly SquadAppearance[],
-  positionGroups: PositionGroupSelection,
+  mainPositionOnly: boolean,
   withWithout: readonly WithWithout[],
 ): PlayerSplitRow[] {
   const withWithoutByPlayer = new Map(withWithout.map((w) => [w.playerId, w]));
@@ -1471,8 +1469,8 @@ export function playerSplits(
       playerId,
       name: apps[apps.length - 1].name,
       former: isFormerSquadMember(playerId),
-      ...playerOutcomeSplit(apps, positionGroups),
-      ...playerRatingProfile(filterByPositionGroups(apps, positionGroups)),
+      ...playerOutcomeSplit(apps, mainPositionOnly),
+      ...playerRatingProfile(inMainPosition(apps, mainPositionOnly)),
       withWithout: withWithoutByPlayer.get(playerId) ?? null,
     }))
     .filter((row) => totalAppearances(row) > 0)

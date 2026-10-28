@@ -4,20 +4,14 @@
  * season totals (which it cannot). The URL format is in `comparison-params.ts`.
  */
 import type { Db } from "~/db/client";
+import type { PositionGroup } from "~/lib/domain";
 
-import {
-  COMPARISON_SIDES,
-  type ComparisonParams,
-  type ComparisonScope,
-} from "./comparison-params";
+import type { ComparisonParams, ComparisonScope } from "./comparison-params";
 import { isCountedAppearance } from "./counted";
 import { type EaSeasonTotals, eaMemberTotals } from "./ea-totals";
 import type { StatsFilter } from "./filter";
 import { type FormPoint, formSeries } from "./player";
-import {
-  filterByPositionGroups,
-  type PositionGroupSelection,
-} from "./positions";
+import { inMainPosition, mainPosition } from "./positions";
 import {
   type AboveTeam,
   aboveTeam,
@@ -52,13 +46,11 @@ export function isSmallSample(matches: number): boolean {
 
 /**
  * One side's input: a Squad Member's filtered Appearances, oldest first,
- * DNFs we quit included (they count in records, not stats), and their
- * Position Groups.
+ * DNFs we quit included (they count in records, not stats).
  */
 export interface ComparisonSideInput {
   playerId: string;
   appearances: readonly SquadAppearance[];
-  positionGroups: PositionGroupSelection;
 }
 
 /** One side of a Recorded Comparison. */
@@ -69,14 +61,16 @@ export interface ComparedTotals {
   /** Our Club's record in the Matches this side's Appearances count. */
   record: RecordSummary;
   /**
-   * Hot or Cold form (CLUBS-40) over all this side's Appearances in its
-   * Position Groups, Shared or not: form is the Squad Member's own.
+   * Hot or Cold form (CLUBS-40) over all this side's counted Appearances,
+   * Shared or not: form is the Squad Member's own.
    */
   formIndicator: FormIndicator | null;
   /** Rating against teammates in the same Matches (CLUBS-66), over this side's counted Appearances. */
   aboveTeam: AboveTeam;
   /** Floor and Spread over the same Appearances (CLUBS-74). */
   consistency: Consistency;
+  /** The Main Position this side counts (CLUBS-82); null when every position counts. */
+  mainPosition: PositionGroup | null;
 }
 
 export interface ComparedSides {
@@ -86,7 +80,7 @@ export interface ComparedSides {
   shared: RecordSummary | null;
   /**
    * With two sides: whether they rate well and badly in the same Matches
-   * (CLUBS-66), over every Shared Match whatever the scope or Position Groups.
+   * (CLUBS-66), over every Shared Match whatever the scope or positions.
    */
   link: RatingLink | null;
 }
@@ -101,9 +95,10 @@ export function sharedMatchIds(
 }
 
 /**
- * Each side's totals under the scope. "Played together" first narrows both
- * sides to the Shared Matches, then each side counts only its own Position
- * Groups within them; the shared record covers every Shared Match.
+ * Each side's totals under the scope. With `mainPositionOnly`, each side
+ * counts only its Appearances in its own Main Position (found over all its
+ * filtered Appearances); "Played together" then keeps the Shared Matches
+ * among them. The shared record covers every Shared Match.
  * `ratings` is every Squad Member's in the filtered Matches, for Above team
  * and the Rating link.
  */
@@ -111,6 +106,7 @@ export function compareSides(
   inputs: readonly ComparisonSideInput[],
   scope: ComparisonScope,
   ratings: MatchRatings,
+  mainPositionOnly: boolean,
 ): ComparedSides {
   const shared =
     scope === "together" && inputs.length === 2
@@ -119,24 +115,19 @@ export function compareSides(
   const inScope = (appearances: readonly SquadAppearance[]) =>
     shared ? appearances.filter((a) => shared.has(a.matchId)) : appearances;
   return {
-    sides: inputs.map(({ appearances, positionGroups }) => {
-      const selected = filterByPositionGroups(
-        inScope(appearances),
-        positionGroups,
-      );
+    sides: inputs.map(({ appearances }) => {
+      const own = inMainPosition(appearances, mainPositionOnly);
+      const selected = inScope(own);
       // Our side's stats in a DNF we quit are left out; its result is not.
       const counted = selected.filter(isCountedAppearance);
       return {
         totals: summariseAppearances(counted),
         form: formSeries(counted),
         record: summariseRecord(selected),
-        formIndicator: formIndicator(
-          filterByPositionGroups(appearances, positionGroups).filter(
-            isCountedAppearance,
-          ),
-        ),
+        formIndicator: formIndicator(own.filter(isCountedAppearance)),
         aboveTeam: aboveTeam(counted, ratings),
         consistency: consistency(counted),
+        mainPosition: mainPositionOnly ? mainPosition(appearances) : null,
       };
     }),
     // A Squad Member appears once per Match, so A's Appearances are the Matches.
@@ -190,19 +181,23 @@ export async function getComparison(
       : [],
   ]);
   const players = resolveComparisonPlayers(params.players, members);
-  const inputs = players.map(({ playerId }, i) => ({
+  const inputs = players.map(({ playerId }) => ({
     playerId,
     appearances: appearances.filter((a) => a.playerId === playerId),
-    positionGroups: params.positionGroups[COMPARISON_SIDES[i]],
   }));
   return {
     members,
     players,
-    ...compareSides(inputs, params.scope, matchRatings(appearances)),
+    ...compareSides(
+      inputs,
+      params.scope,
+      matchRatings(appearances),
+      filter.mainPositionOnly,
+    ),
   };
 }
 
-/** A Comparison of EA's season totals, which the filter and Position Groups cannot narrow. */
+/** A Comparison of EA's season totals, which the filter and positions cannot narrow. */
 export async function getEaComparison(
   db: Db,
   params: ComparisonParams,

@@ -45,7 +45,6 @@ import { sortBy } from "~/lib/sort";
 import {
   COMPARISON_SIDES,
   comparePath,
-  describePositionGroups,
   type EaMemberTotals,
   type EaSeasonTotals,
   eaCleanSheets,
@@ -53,7 +52,6 @@ import {
   type FormIndicator,
   formWatch,
   type LeaderboardRow,
-  type PositionGroupSelection,
   parseStatsFilter,
   parseStatsSource,
   RECENT_WINDOW,
@@ -101,7 +99,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   const rows = await squadLeaderboard(db, filter, {
     includeFormer,
-    positionGroups: filter.positionGroups,
+    mainPositionOnly: filter.mainPositionOnly,
   });
   return {
     source: "recorded" as const,
@@ -131,7 +129,7 @@ function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
     <>
       <PageHeader
         title="Squad"
-        subtitle={squadSubtitle(rows.length, filter.positionGroups)}
+        subtitle={formatCount(rows.length, "Squad Member", "Squad Members")}
         aside={<SquadToggle includeFormer={includeFormer} />}
       />
       <FilterBar filter={filter} source="recorded" positions />
@@ -211,17 +209,6 @@ function EaSquad({ filter, includeFormer, rows }: SquadData<"ea">) {
       {rows.length > 0 && <ColumnKey entries={EA_KEY} />}
     </>
   );
-}
-
-/** "4 Squad Members", saying which Appearances count when a Position Group is selected. */
-function squadSubtitle(
-  count: number,
-  positionGroups: PositionGroupSelection,
-): string {
-  const members = formatCount(count, "Squad Member", "Squad Members");
-  return positionGroups.length
-    ? `${members}, counting Appearances as ${describePositionGroups(positionGroups)}`
-    : members;
 }
 
 /** Current squad only, or everyone including Former Squad Members. */

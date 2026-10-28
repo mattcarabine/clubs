@@ -1,21 +1,15 @@
 /**
- * A Comparison's URL format (CLUBS-20): which two Squad Members, which
- * Matches ("All matches" or "Played together"), and each side's Position
- * Groups. Lives in the URL next to the filter and source, so a Comparison
- * can be shared:
+ * A Comparison's URL format (CLUBS-20): which two Squad Members and which
+ * Matches ("All matches" or "Played together"). Lives in the URL next to the
+ * filter (whose "Main position only" applies to both sides) and source, so a
+ * Comparison can be shared:
  *
- *   /compare?players=256171605,380993182&scope=together&posA=midfielder&posB=forward
+ *   /compare?players=256171605,380993182&scope=together
  *
- * Defaults (All matches, All Positions) are left out of the URL. Client-safe:
+ * The default (All matches) is left out of the URL. Client-safe:
  * no queries, so the compare page's controls can import it.
  */
 import { parseStatsFilter, withoutPage, writeStatsFilter } from "./filter";
-import {
-  ALL_POSITIONS,
-  type PositionGroupSelection,
-  parsePositionGroups,
-  writePositionGroups,
-} from "./positions";
 import { parseStatsSource, writeStatsSource } from "./source";
 
 /** The two sides of a Comparison: A on the left, B on the right. */
@@ -34,14 +28,12 @@ export const COMPARISON_SCOPE_LABEL: Record<ComparisonScope, string> = {
 export const COMPARISON_PARAMS = {
   players: "players",
   scope: "scope",
-  positionGroups: { A: "posA", B: "posB" },
 } as const;
 
 export interface ComparisonParams {
   /** Up to two distinct Squad Member IDs, A first. Not yet checked against the Squad. */
   players: string[];
   scope: ComparisonScope;
-  positionGroups: Record<ComparisonSide, PositionGroupSelection>;
 }
 
 /** The Comparison in `params`; anything missing or invalid takes its default. */
@@ -56,10 +48,6 @@ export function parseComparisonParams(
     players: [...new Set(ids)].slice(0, COMPARISON_SIDES.length),
     scope:
       params.get(COMPARISON_PARAMS.scope) === "together" ? "together" : "all",
-    positionGroups: {
-      A: parsePositionGroups(params.get(COMPARISON_PARAMS.positionGroups.A)),
-      B: parsePositionGroups(params.get(COMPARISON_PARAMS.positionGroups.B)),
-    },
   };
 }
 
@@ -86,23 +74,10 @@ export function writeComparisonScope(
   );
 }
 
-export function writeComparisonPositionGroups(
-  params: URLSearchParams,
-  side: ComparisonSide,
-  groups: PositionGroupSelection,
-): URLSearchParams {
-  return setOrDelete(
-    params,
-    COMPARISON_PARAMS.positionGroups[side],
-    writePositionGroups(groups),
-  );
-}
-
 /**
  * The canonical params once the requested players are checked against the
  * Squad, or null when `params` already is. A repeated or unknown ID is
- * dropped, and each kept player brings their Position Groups along, so
- * `players=unknown,B&posB=forward` becomes `players=B&posA=forward`.
+ * dropped, so `players=unknown,B` becomes `players=B`.
  */
 export function canonicalComparisonParams(
   params: URLSearchParams,
@@ -112,43 +87,25 @@ export function canonicalComparisonParams(
   const kept = requested.players.filter((id) => known.includes(id));
   const raw = params.get(COMPARISON_PARAMS.players);
   if (raw === null || raw === kept.join(",")) return null;
-  let next = writeComparisonPlayers(params, kept);
-  for (const [i, side] of COMPARISON_SIDES.entries()) {
-    const from = COMPARISON_SIDES[requested.players.indexOf(kept[i] ?? "")];
-    next = writeComparisonPositionGroups(
-      next,
-      side,
-      from ? requested.positionGroups[from] : [],
-    );
-  }
-  return next;
+  return writeComparisonPlayers(params, kept);
 }
 
 /**
  * The compare page for these Squad Members, opened from a page with the
- * global filter in `from` (the Squad table, a profile). The filter and source
- * carry over; the global Position Group selection becomes each side's.
+ * global filter in `from` (the Squad table, a profile). The filter, "Main
+ * position only" included, and the source carry over.
  */
 export function comparePath(
   from: URLSearchParams,
   players: readonly string[],
 ): string {
-  const filter = parseStatsFilter(from);
-  let next = writeStatsSource(
-    writeStatsFilter(new URLSearchParams(), {
-      ...filter,
-      positionGroups: ALL_POSITIONS,
-    }),
-    parseStatsSource(from),
+  const next = writeComparisonPlayers(
+    writeStatsSource(
+      writeStatsFilter(new URLSearchParams(), parseStatsFilter(from)),
+      parseStatsSource(from),
+    ),
+    players,
   );
-  next = writeComparisonPlayers(next, players);
-  players.forEach((_, i) => {
-    next = writeComparisonPositionGroups(
-      next,
-      COMPARISON_SIDES[i],
-      filter.positionGroups,
-    );
-  });
   const search = next.toString();
   // Keep the commas readable in the address bar.
   return `/compare${search ? `?${search.replaceAll("%2C", ",")}` : ""}`;

@@ -27,7 +27,8 @@ type OutcomeSplitPanelProps = {
 /**
  * "Wins vs Dropped Points" (CLUBS-25): the Squad Member's stats in Wins
  * beside the same stats in Dropped Points, and the Win % at each Position
- * Group, all following the profile's filters and Position Group selection.
+ * Group (every one played), all following the profile's filters and "Main
+ * position only".
  * The profile shows it only when there are Appearances to split.
  */
 export function OutcomeSplitPanel({

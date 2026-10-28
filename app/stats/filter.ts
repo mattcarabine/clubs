@@ -4,11 +4,11 @@
  *
  *   ?types=league&dnf=0&range=30d&season=2
  *   ?from=2026-10-05&to=2026-10-12
- *   ?pos=midfielder,forward
+ *   ?positions=all
  *   ?campaign=current|previous|3
  *
  * Defaults (Competitive Matches, DNF included, all dates, all Seasons, no
- * Campaign) are left out of the URL, so an unfiltered page has a clean
+ * Campaign, main position only) are left out of the URL, so an unfiltered page has a clean
  * address.
  *
  * Adding a dimension: add a field to `StatsFilter` and `DEFAULT_STATS_FILTER`,
@@ -26,13 +26,6 @@ import {
   londonDateKey,
   londonDayStart,
 } from "~/lib/london-time";
-
-import {
-  ALL_POSITIONS,
-  type PositionGroupSelection,
-  parsePositionGroups,
-  writePositionGroups,
-} from "./positions";
 
 /**
  * The Match Types a filter can select: the Competitive ones. Friendlies are
@@ -170,12 +163,12 @@ export interface StatsFilter {
   /** One Season's number; absent means all Seasons. */
   season?: number;
   /**
-   * Which of a Squad Member's Appearances count, by Position Group; empty
-   * means All Positions. Only player-level stats apply it (the Squad table
-   * and profile), by passing it to `squadLeaderboard` / `getPlayerProfile`;
+   * Count only each Squad Member's Appearances in their Main Position
+   * (CLUBS-82, `positions.ts`). Only player-level stats apply it (Squad,
+   * profile, Analysis's Squad members, Compare), through `inMainPosition`;
    * `matchScope` ignores it, since it narrows Appearances, not Matches.
    */
-  positionGroups: PositionGroupSelection;
+  mainPositionOnly: boolean;
   /**
    * One Campaign's Matches: League only, from its first Match to its last.
    * Absent means no Campaign narrowing.
@@ -187,7 +180,7 @@ export const DEFAULT_STATS_FILTER: StatsFilter = {
   matchTypes: COMPETITIVE_MATCH_TYPES,
   includeDnf: true,
   dates: ALL_DATES,
-  positionGroups: ALL_POSITIONS,
+  mainPositionOnly: true,
 };
 
 /** The URL search params the filter owns. */
@@ -198,7 +191,8 @@ export const FILTER_PARAMS = {
   from: "from",
   to: "to",
   season: "season",
-  positionGroups: "pos",
+  /** `?positions=all` counts every position; absent means main position only. */
+  mainPositionOnly: "positions",
   campaign: "campaign",
 } as const;
 
@@ -212,9 +206,7 @@ export function parseStatsFilter(params: URLSearchParams): StatsFilter {
     includeDnf: params.get(FILTER_PARAMS.includeDnf) !== "0",
     dates: parseDates(params),
     season: parseSeason(params.get(FILTER_PARAMS.season)),
-    positionGroups: parsePositionGroups(
-      params.get(FILTER_PARAMS.positionGroups),
-    ),
+    mainPositionOnly: params.get(FILTER_PARAMS.mainPositionOnly) !== "all",
     campaign: parseCampaign(params.get(FILTER_PARAMS.campaign)),
   };
 }
@@ -262,8 +254,8 @@ export function writeStatsFilter(
   );
   setOrDelete(
     next,
-    FILTER_PARAMS.positionGroups,
-    writePositionGroups(filter.positionGroups),
+    FILTER_PARAMS.mainPositionOnly,
+    filter.mainPositionOnly ? null : "all",
   );
   setOrDelete(
     next,
@@ -279,7 +271,7 @@ export function isDefaultStatsFilter(filter: StatsFilter): boolean {
     filter.includeDnf === DEFAULT_STATS_FILTER.includeDnf &&
     filter.dates.kind === "all" &&
     filter.season === undefined &&
-    filter.positionGroups.length === 0 &&
+    filter.mainPositionOnly &&
     filter.campaign === undefined
   );
 }

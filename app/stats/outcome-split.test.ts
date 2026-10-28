@@ -742,7 +742,7 @@ describe("playerOutcomeSplit", () => {
         app("D", "Forward", 0),
         app("L", "Midfielder", 0),
       ],
-      [],
+      false,
     );
     expect(split.wins.goalsPer90).toBe(2);
     expect(split.dropped.appearances).toBe(2);
@@ -757,14 +757,20 @@ describe("playerOutcomeSplit", () => {
     ]);
   });
 
-  it("follows the Position Group selection", () => {
+  it("counts only the Main Position when asked, but lists every Position Group", () => {
     const split = playerOutcomeSplit(
-      [app("W", "Forward", 2), app("L", "Midfielder", 0)],
-      ["Midfielder"],
+      [
+        app("W", "Forward", 2),
+        app("L", "Midfielder", 0),
+        app("D", "Midfielder", 1),
+      ],
+      true,
     );
     expect(split.wins.appearances).toBe(0);
+    expect(split.dropped.appearances).toBe(2);
     expect(split.byPositionGroup.map((r) => r.positionGroup)).toEqual([
       "Midfielder",
+      "Forward",
     ]);
   });
 });

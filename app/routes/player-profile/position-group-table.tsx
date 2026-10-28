@@ -1,18 +1,11 @@
 import { DataTable, type DataTableColumn, EmptyState } from "~/components";
+import type { PositionGroup } from "~/lib/domain";
 import { formatDecimal } from "~/lib/number-format";
-import type { PositionGroupSelection, PositionGroupSplit } from "~/stats";
+import type { PositionGroupSplit } from "~/stats";
 
-/** Whether a row's Position Group is selected; "Unknown" never is. */
-function isSelected(
-  row: PositionGroupSplit,
-  selected: PositionGroupSelection,
-): boolean {
-  return row.positionGroup !== null && selected.includes(row.positionGroup);
-}
-
-/** The row header, with a "Selected" badge so the highlight is not colour alone. */
+/** The row header, with a "Main" badge on the Main Position, so the highlight is not colour alone. */
 function groupColumn(
-  selected: PositionGroupSelection,
+  main: PositionGroup | null,
 ): DataTableColumn<PositionGroupSplit> {
   return {
     id: "group",
@@ -20,9 +13,9 @@ function groupColumn(
     cell: (r) => (
       <>
         {r.positionGroup ?? "Unknown"}
-        {isSelected(r, selected) && (
+        {main !== null && r.positionGroup === main && (
           <span className="clip-slant ml-2 bg-rave px-1.5 py-0.5 font-display font-bold text-shale-950 text-xs uppercase tracking-wide [--slant:0.2rem]">
-            Selected
+            Main
           </span>
         )}
       </>
@@ -56,26 +49,29 @@ const STAT_COLUMNS: DataTableColumn<PositionGroupSplit>[] = [
 
 type PositionGroupTableProps = {
   rows: readonly PositionGroupSplit[];
-  /** The FilterBar's Position Groups, highlighted; the rows themselves are never filtered. */
-  selected: PositionGroupSelection;
+  /** Their Main Position (CLUBS-82), marked; the rows themselves are never filtered. */
+  main: PositionGroup | null;
+  /** "Main position only" is on, so the Main Position's row is highlighted as the one counted. */
+  counted: boolean;
 };
 
 /**
  * Appearances, average rating and G+A for each Position Group played: the
- * overview, so it lists every group whatever the selection, picking out the
- * selected ones.
+ * overview, so it lists every group whatever "Main position only" says,
+ * marking the Main Position.
  */
 export function PositionGroupTable({
   rows,
-  selected,
+  main,
+  counted,
 }: PositionGroupTableProps) {
   return (
     <DataTable
       caption="By Position Group"
-      columns={[groupColumn(selected), ...STAT_COLUMNS]}
+      columns={[groupColumn(main), ...STAT_COLUMNS]}
       rows={rows}
       rowKey={(r) => r.positionGroup ?? "unknown"}
-      highlight={(r) => isSelected(r, selected)}
+      highlight={(r) => counted && main !== null && r.positionGroup === main}
       empty={
         <EmptyState
           title="No Appearances"

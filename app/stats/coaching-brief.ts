@@ -10,7 +10,6 @@ import { type CoachingWeek, coachingWeekLastMoment } from "~/lib/coaching-week";
 
 import { DEFAULT_STATS_FILTER } from "./filter";
 import { type PlayerOutcomeSplit, playerOutcomeSplit } from "./outcome-split";
-import { ALL_POSITIONS } from "./positions";
 import {
   type FormIndicator,
   formIndicator,
@@ -97,7 +96,7 @@ export function coachingBriefs(
       ]
         .map((apps) => summariseAppearances(apps))
         .sort((a, b) => b.appearances - a.appearances),
-      outcomeSplit: playerOutcomeSplit(upToWeekEnd, ALL_POSITIONS),
+      outcomeSplit: playerOutcomeSplit(upToWeekEnd, false),
       allTime: summariseAppearances(upToWeekEnd),
     });
   }

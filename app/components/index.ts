@@ -56,6 +56,10 @@ export { HeadToHeadBar, type HeadToHeadRecord } from "./head-to-head-bar";
 export { PageHeader, SectionHeading } from "./headings";
 export { LastUpdatedBadge } from "./last-updated-badge";
 export { LondonTime } from "./london-time";
+export {
+  EA_POSITIONS_DISABLED,
+  MainPositionToggle,
+} from "./main-position-toggle";
 export { MatchHeadline } from "./match-headline";
 export { MatchScoreBar } from "./match-score-bar";
 export {
@@ -75,10 +79,6 @@ export {
   popoverTriggerProps,
   usePopover,
 } from "./popover";
-export {
-  EA_POSITIONS_DISABLED,
-  PositionGroupPicker,
-} from "./position-group-picker";
 export { RageQuitBadge } from "./rage-quit-badge";
 export { BackLink, isNotFound, RouteError } from "./route-error";
 export {
