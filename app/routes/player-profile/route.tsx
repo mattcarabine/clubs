@@ -30,6 +30,7 @@ import {
   StatTile,
 } from "~/components";
 import { getDb } from "~/db/client";
+import type { PositionGroup } from "~/lib/domain";
 import { formatLondonShortDate } from "~/lib/london-time";
 import {
   formatCount,
@@ -39,10 +40,8 @@ import {
 import { pageMeta } from "~/lib/page-meta";
 import {
   comparePath,
-  describePositionGroups,
   getPlayerProfile,
   listMilestones,
-  type PositionGroupSelection,
   RECENT_WINDOW,
   resolveStatsFilter,
   statsFilterFromRequest,
@@ -90,7 +89,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
   const [profile, coachingNotes, milestones] = await Promise.all([
     getPlayerProfile(db, params.playerId, filter, {
-      positionGroups: filter.positionGroups,
+      mainPositionOnly: filter.mainPositionOnly,
     }),
     writeupHistory(db, "coaching", params.playerId, COACHING_WEEKS_SHOWN),
     listMilestones(db, env.EA_CLUB_NAME, {
@@ -126,7 +125,8 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
   const { member, totals, form, build, career, season } = profile;
   const labels = form.map((p) => formatLondonShortDate(p.playedAt));
   const latestBuild = build.at(-1) ?? null;
-  const positions = filter.positionGroups;
+  // The Position Group the stats below count, when only the main one does.
+  const counted = filter.mainPositionOnly ? profile.mainPosition : null;
   // One Position Group would only repeat the tiles above.
   const showPositionGroups = profile.positionGroups.length > 1;
 
@@ -165,8 +165,8 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
           <div className="flex flex-wrap items-center gap-3">
             <BuildPlate
               build={latestBuild}
-              // The usual Position Group, whatever the selection.
-              positionGroup={profile.positionGroups[0]?.positionGroup ?? null}
+              // The usual Position Group, whatever the toggle says.
+              positionGroup={profile.mainPosition}
             />
             <CompareLink playerId={member.playerId} />
           </div>
@@ -201,11 +201,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         <div className="mb-8">
           <EmptyState
             title="No Appearances in these filters"
-            description={
-              positions.length
-                ? `No Appearances as ${describePositionGroups(positions)} in these Matches. Pick another Position Group or widen the filters.`
-                : "Widen the Match Types or dates to see this Squad Member's form."
-            }
+            description="Widen the Match Types or dates to see this Squad Member's form."
           />
         </div>
       ) : (
@@ -213,7 +209,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
           <section aria-label="Recent changes" className="mb-8">
             <SectionHeading
               title="Recent changes"
-              subtitle={`The last ${RECENT_WINDOW} Appearances against the ones before${positions.length ? `, as ${describePositionGroups(positions)}` : ""}`}
+              subtitle={`The last ${RECENT_WINDOW} Appearances against the ones before${counted ? `, as ${counted}` : ""}`}
             />
             <RecentChangesPanel
               name={member.name}
@@ -225,7 +221,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
             <div className="min-w-0 lg:col-span-2">
               <ChartFrame
                 title="Match rating"
-                subtitle={`${chartCoverage(form.length, positions)}, with the rolling 5-Match average`}
+                subtitle={`${chartCoverage(form.length, counted)}, with the rolling 5-Match average`}
                 legend={<ChartLegend entries={RATING_SERIES} />}
               >
                 <LineChart
@@ -296,7 +292,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
           <section aria-label="Wins vs Dropped Points" className="mb-8">
             <SectionHeading
               title="Wins vs Dropped Points"
-              subtitle={`${chartCoverage(form.length, positions)}: Wins beside draws and losses, per 90 over the minutes played`}
+              subtitle={`${chartCoverage(form.length, counted)}: Wins beside draws and losses, per 90 over the minutes played`}
             />
             <OutcomeSplitPanel
               split={profile.outcomeSplit}
@@ -350,7 +346,8 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
             <SectionHeading title="By Position Group" />
             <PositionGroupTable
               rows={profile.positionGroups}
-              selected={positions}
+              main={profile.mainPosition}
+              counted={filter.mainPositionOnly}
             />
           </section>
         )}
@@ -379,13 +376,11 @@ function CompareLink({ playerId }: { playerId: string }) {
   );
 }
 
-/** The Matches the charts cover: "12 Matches", or "2 Matches as Forward" under a selection. */
+/** The Matches the charts cover: "12 Matches", or "2 Matches as Forward" in their main position only. */
 function chartCoverage(
   matchCount: number,
-  positionGroups: PositionGroupSelection,
+  counted: PositionGroup | null,
 ): string {
   const matches = formatCount(matchCount, "Match", "Matches");
-  return positionGroups.length
-    ? `${matches} as ${describePositionGroups(positionGroups)}`
-    : matches;
+  return counted ? `${matches} as ${counted}` : matches;
 }

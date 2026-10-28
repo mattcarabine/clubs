@@ -5,33 +5,23 @@ import {
   comparePath,
   parseComparisonParams,
   writeComparisonPlayers,
-  writeComparisonPositionGroups,
   writeComparisonScope,
 } from "./comparison-params";
 
 const params = (query: string) => new URLSearchParams(query);
 
 describe("parseComparisonParams", () => {
-  it("defaults to no players, All matches and All Positions", () => {
+  it("defaults to no players and All matches", () => {
     expect(parseComparisonParams(params(""))).toEqual({
       players: [],
       scope: "all",
-      positionGroups: { A: [], B: [] },
     });
   });
 
-  it("reads two players, the scope and each side's Position Groups", () => {
+  it("reads two players and the scope", () => {
     expect(
-      parseComparisonParams(
-        params(
-          "players=1,2&scope=together&posA=midfielder&posB=forward,midfielder",
-        ),
-      ),
-    ).toEqual({
-      players: ["1", "2"],
-      scope: "together",
-      positionGroups: { A: ["Midfielder"], B: ["Midfielder", "Forward"] },
-    });
+      parseComparisonParams(params("players=1,2&scope=together&posA=forward")),
+    ).toEqual({ players: ["1", "2"], scope: "together" });
   });
 
   it("drops a repeated ID, blanks and anything past two", () => {
@@ -48,22 +38,19 @@ describe("parseComparisonParams", () => {
 });
 
 describe("writing a Comparison", () => {
-  it("writes players, scope and positions, leaving defaults out", () => {
+  it("writes players and scope, leaving defaults out", () => {
     let next = writeComparisonPlayers(params("page=2&types=league"), [
       "1",
       "2",
     ]);
     next = writeComparisonScope(next, "together");
-    next = writeComparisonPositionGroups(next, "B", ["Forward"]);
     expect(Object.fromEntries(next)).toEqual({
       types: "league",
       players: "1,2",
       scope: "together",
-      posB: "forward",
     });
 
     next = writeComparisonScope(next, "all");
-    next = writeComparisonPositionGroups(next, "B", []);
     next = writeComparisonPlayers(next, []);
     expect(Object.fromEntries(next)).toEqual({ types: "league" });
   });
@@ -75,18 +62,17 @@ describe("comparePath", () => {
     expect(comparePath(params(""), ["1"])).toBe("/compare?players=1");
   });
 
-  it("carries the filter and source, making the global Position Groups each side's", () => {
+  it("carries the filter, main position only included, and source", () => {
     const path = comparePath(
-      params("types=league&source=ea&pos=forward&former=1&page=3"),
+      params("types=league&source=ea&positions=all&former=1&page=3"),
       ["1", "2"],
     );
     const search = new URL(path, "https://x.test").searchParams;
     expect(Object.fromEntries(search)).toEqual({
       types: "league",
       source: "ea",
+      positions: "all",
       players: "1,2",
-      posA: "forward",
-      posB: "forward",
     });
   });
 });
@@ -103,28 +89,22 @@ describe("canonicalComparisonParams", () => {
   };
 
   it("leaves a valid Comparison alone", () => {
-    expect(canonical("players=1,2&posB=forward", ["1", "2"])).toBeNull();
+    expect(canonical("players=1,2", ["1", "2"])).toBeNull();
     expect(canonical("", [])).toBeNull();
   });
 
   it("drops a repeated ID", () => {
-    expect(canonical("players=1,1&posA=forward", ["1"])).toEqual({
-      players: "1",
-      posA: "forward",
+    expect(canonical("players=1,1", ["1"])).toEqual({ players: "1" });
+  });
+
+  it("moves the Squad Member after an unknown ID to A", () => {
+    expect(canonical("players=404,2&types=league", ["2"])).toEqual({
+      types: "league",
+      players: "2",
     });
   });
 
-  it("moves the Squad Member after an unknown ID to A, with their Position Groups", () => {
-    expect(
-      canonical("players=404,2&posA=midfielder&posB=forward&types=league", [
-        "2",
-      ]),
-    ).toEqual({ types: "league", players: "2", posA: "forward" });
-  });
-
-  it("drops an unknown second ID and its Position Groups", () => {
-    expect(canonical("players=1,404&posB=forward", ["1"])).toEqual({
-      players: "1",
-    });
+  it("drops an unknown second ID", () => {
+    expect(canonical("players=1,404", ["1"])).toEqual({ players: "1" });
   });
 });

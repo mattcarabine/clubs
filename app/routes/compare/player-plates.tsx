@@ -1,32 +1,27 @@
 /**
  * The two Squad Member plates at the top of a Comparison: A on deep blue to
  * the left, B on green to the right. Each plate is a switcher over the whole
- * Squad (Former Squad Members marked), with that side's Position Group
- * picker beneath it.
+ * Squad (Former Squad Members marked), with that side's form and, under
+ * "Main position only", the Main Position it counts beneath it.
  */
 import { useSearchParams } from "react-router";
 
 import {
-  EA_POSITIONS_DISABLED,
   FormBadge,
   PlayerChip,
   Popover,
   PopoverCaret,
   PopoverTab,
-  PositionGroupPicker,
   popoverTriggerProps,
-  ScrollRail,
   usePopover,
 } from "~/components";
+import type { PositionGroup } from "~/lib/domain";
 import {
   COMPARISON_SIDES,
   type ComparisonSide,
   type FormIndicator,
-  type PositionGroupSelection,
   type SquadMemberOption,
-  type StatsSource,
   writeComparisonPlayers,
-  writeComparisonPositionGroups,
 } from "~/stats";
 
 /** The switchers' names: each one's accessible label. */
@@ -39,18 +34,17 @@ type PlayerPlatesProps = {
   members: readonly SquadMemberOption[];
   /** The zero to two compared, A first. */
   players: readonly SquadMemberOption[];
-  positionGroups: Record<ComparisonSide, PositionGroupSelection>;
-  source: StatsSource;
   /** Each side's Hot or Cold form (CLUBS-40), A first; none for EA totals. */
   formIndicators?: readonly (FormIndicator | null)[];
+  /** The Main Position each side counts (CLUBS-82), A first; none for EA totals or every position. */
+  mainPositions?: readonly (PositionGroup | null)[];
 };
 
 export function PlayerPlates({
   members,
   players,
-  positionGroups,
-  source,
   formIndicators = [],
+  mainPositions = [],
 }: PlayerPlatesProps) {
   const [, setSearchParams] = useSearchParams();
   const update = (write: (params: URLSearchParams) => URLSearchParams) =>
@@ -93,25 +87,17 @@ export function PlayerPlates({
             </div>
           );
         })}
-      {COMPARISON_SIDES.map((side, i) => {
-        const player = players[i];
-        return player ? (
-          <ScrollRail key={side} className="col-span-2 sm:col-span-1">
-            <PositionGroupPicker
-              label={`${player.name}: Position Group`}
-              value={positionGroups[side]}
-              onChange={(groups) =>
-                update((params) =>
-                  writeComparisonPositionGroups(params, side, groups),
-                )
-              }
-              disabledReason={
-                source === "ea" ? EA_POSITIONS_DISABLED : undefined
-              }
-            />
-          </ScrollRail>
-        ) : null;
-      })}
+      {mainPositions.some(Boolean) &&
+        COMPARISON_SIDES.map((side, i) => (
+          <p
+            key={side}
+            className={`min-w-0 text-ink-muted text-sm ${side === "B" ? "text-right" : ""}`}
+          >
+            {mainPositions[i] &&
+              players[i] &&
+              `Main position: ${mainPositions[i]}`}
+          </p>
+        ))}
     </section>
   );
 }

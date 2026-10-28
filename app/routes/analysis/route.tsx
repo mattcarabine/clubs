@@ -6,8 +6,8 @@
  * Outcome Split: what changes between Wins and Dropped Points ("draws and defeats" in copy), from
  * performance, personnel and circumstances, led by the five biggest
  * differences in plain English. Last, "Over time": the Skill Rating and
- * Division history, unfiltered. The Position Group selection applies only to
- * the per-player table.
+ * Division history, unfiltered. "Main position only" applies only to the
+ * per-player table.
  */
 import { env } from "cloudflare:workers";
 import { useSearchParams } from "react-router";
@@ -20,9 +20,9 @@ import {
   type DataTableColumn,
   EmptyState,
   FilterBar,
+  MainPositionToggle,
   numberColumn,
   PageHeader,
-  PositionGroupPicker,
   ScrollRail,
   SectionHeading,
   SmallSampleTag,
@@ -69,7 +69,6 @@ import {
 } from "~/stats";
 import type { QuitBy } from "~/stats/counted";
 import { parseStatsFilter, writeStatsFilter } from "~/stats/filter";
-import type { PositionGroupSelection } from "~/stats/positions";
 
 import type { Route } from "./+types/route";
 import { CampaignSection, campaignsView } from "./campaigns";
@@ -103,7 +102,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     appearances,
     campaign,
   ] = await Promise.all([
-    getOutcomeSplit(db, filter, { positionGroups: filter.positionGroups }),
+    getOutcomeSplit(db, filter, {
+      mainPositionOnly: filter.mainPositionOnly,
+    }),
     getWinChanceAnalysis(db, filter),
     latestWriteup(db, "club", CLUB_SUBJECT),
     clubSnapshots(db),
@@ -227,7 +228,10 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
           </>
         )}
         {split.ready && (
-          <SplitDetails split={split} positionGroups={filter.positionGroups} />
+          <SplitDetails
+            split={split}
+            mainPositionOnly={filter.mainPositionOnly}
+          />
         )}
         <WinChanceSection
           winChance={winChance}
@@ -341,10 +345,10 @@ function CircumstancesSection({
 /** By humans, after a result, and per Squad Member. */
 function SplitDetails({
   split,
-  positionGroups,
+  mainPositionOnly,
 }: {
   split: OutcomeSplitData;
-  positionGroups: PositionGroupSelection;
+  mainPositionOnly: boolean;
 }) {
   return (
     <>
@@ -352,7 +356,7 @@ function SplitDetails({
 
       <AfterResultSection splits={split.afterResult} />
 
-      <PlayerSection split={split} positionGroups={positionGroups} />
+      <PlayerSection split={split} mainPositionOnly={mainPositionOnly} />
     </>
   );
 }
@@ -402,18 +406,18 @@ function AfterResultSection({
 
 function PlayerSection({
   split,
-  positionGroups,
+  mainPositionOnly,
 }: {
   split: OutcomeSplitData;
-  positionGroups: PositionGroupSelection;
+  mainPositionOnly: boolean;
 }) {
   const [, setSearchParams] = useSearchParams();
-  const setPositionGroups = (next: PositionGroupSelection) =>
+  const setMainPositionOnly = (next: boolean) =>
     setSearchParams(
       (params) =>
         writeStatsFilter(params, {
           ...parseStatsFilter(params),
-          positionGroups: next,
+          mainPositionOnly: next,
         }),
       { preventScrollReset: true },
     );
@@ -421,7 +425,7 @@ function PlayerSection({
     <section aria-label="Squad Members" className="flex flex-col gap-4">
       <SectionHeading
         title="Squad members"
-        subtitle="How each squad member plays, and how much our results depend on it. The position picker changes this table only."
+        subtitle="How each squad member plays, and how much our results depend on it. The position toggle changes this table only."
       />
       <dl
         aria-label="Key"
@@ -436,9 +440,9 @@ function PlayerSection({
       </dl>
       <div className="border-shale-700 border-t-2 bg-shale-900">
         <ScrollRail className="px-3 py-3 sm:px-4">
-          <PositionGroupPicker
-            value={positionGroups}
-            onChange={setPositionGroups}
+          <MainPositionToggle
+            value={mainPositionOnly}
+            onChange={setMainPositionOnly}
           />
         </ScrollRail>
       </div>
@@ -452,7 +456,7 @@ function PlayerSection({
         empty={
           <EmptyState
             title="No appearances"
-            description="No squad member played in these positions. Pick another or choose All Positions."
+            description="No squad member played in these matches. Widen the filters to see them."
           />
         }
       />

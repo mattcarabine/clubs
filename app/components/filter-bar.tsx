@@ -30,8 +30,8 @@ import { Chip, ChipGroup } from "./chip";
 import { DateRangePicker } from "./date-range-picker";
 import {
   EA_POSITIONS_DISABLED,
-  PositionGroupPicker,
-} from "./position-group-picker";
+  MainPositionToggle,
+} from "./main-position-toggle";
 import { ScrollRail } from "./scroll-rail";
 
 type FilterBarProps = {
@@ -44,9 +44,9 @@ type FilterBarProps = {
    */
   source?: StatsSource;
   /**
-   * Shows the Position Group selection (`?pos=`). Only player-level pages
-   * (the Squad table, a profile) pass it; team-level pages leave it off. On
-   * EA totals it stays visible but disabled.
+   * Shows the "Main position only" toggle (`?positions=all` turns it off).
+   * Only player-level pages (Squad, a profile, Compare) pass it; team-level
+   * pages leave it off. On EA totals it stays visible but disabled.
    */
   positions?: boolean;
 };
@@ -59,7 +59,7 @@ type FilterBarProps = {
  * loader reruns with the new filter and the view can be shared.
  *
  * With a `source`, it leads with the Recorded / EA totals toggle; with
- * `positions`, the Position Group selection follows it.
+ * `positions`, the "Main position only" toggle follows it.
  *
  * While a filter change is loading, the chips show the pending URL and the
  * next change builds on it, so quick successive clicks all count.
@@ -99,10 +99,10 @@ export function FilterBar(props: FilterBarProps) {
   );
 
   const positionPicker = props.positions && (
-    <PositionGroupPicker
-      value={filter.positionGroups}
-      onChange={(positionGroups) =>
-        updateFilter((f) => ({ ...f, positionGroups }))
+    <MainPositionToggle
+      value={filter.mainPositionOnly}
+      onChange={(mainPositionOnly) =>
+        updateFilter((f) => ({ ...f, mainPositionOnly }))
       }
       disabledReason={source === "ea" ? EA_POSITIONS_DISABLED : undefined}
     />
@@ -124,7 +124,7 @@ export function FilterBar(props: FilterBarProps) {
           EA's own totals, including Matches from before tracking began. The
           Match filters don't apply to them.
           {/* Phones have no tooltips, so the disabled chips' reason is said here too. */}
-          {props.positions && " Nor can they be split by Position Group."}
+          {props.positions && " Nor can they be split by position."}
         </p>
       </section>
     );

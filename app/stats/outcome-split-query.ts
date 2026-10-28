@@ -28,15 +28,14 @@ import {
   type UsualComparisonRow,
   usualComparison,
 } from "./outcome-split";
-import { ALL_POSITIONS, type PositionGroupSelection } from "./positions";
 import { isPlayedAppearanceSql, matchScope, type ScopeOptions } from "./scope";
 import { sessionPlaces } from "./sessions";
 import { ratingGap } from "./skill-rating";
 import { type SquadAppearance, squadAppearances } from "./squad";
 
 export interface OutcomeSplitOptions {
-  /** Narrows only the per-player rows. */
-  positionGroups?: PositionGroupSelection;
+  /** Counts each Squad Member's Main Position only, in the per-player rows alone. */
+  mainPositionOnly?: boolean;
 }
 
 export interface OutcomeSplitPage extends OutcomeSplit {
@@ -49,12 +48,12 @@ export interface OutcomeSplitPage extends OutcomeSplit {
 export async function getOutcomeSplit(
   db: Db,
   filter: StatsFilter,
-  { positionGroups = ALL_POSITIONS }: OutcomeSplitOptions = {},
+  { mainPositionOnly = false }: OutcomeSplitOptions = {},
 ): Promise<OutcomeSplitPage> {
   const { summaries, squad, split } = await splitData(db, filter);
   return {
     ...split,
-    players: playerSplits(squad, positionGroups, split.withWithout),
+    players: playerSplits(squad, mainPositionOnly, split.withWithout),
     playedAt: summaries.map((m) => m.playedAt),
   };
 }

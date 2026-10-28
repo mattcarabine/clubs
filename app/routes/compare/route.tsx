@@ -2,11 +2,12 @@
  * Compare (CLUBS-20): two Squad Members side by side as a broadcast tale of
  * the tape. Squad Member A is on the left in blue, B on the right in green.
  *
- *   /compare?players=A,B&scope=together&posA=midfielder&posB=forward&source=ea
+ *   /compare?players=A,B&scope=together&positions=all&source=ea
  *
  * Recorded mode shows the headline stats, both rating runs on one chart and
  * Our Club's record, over every Match each played or only their Shared
- * Matches ("Played together"). Each side counts its own Position Groups.
+ * Matches ("Played together"). With "Main position only" (the default),
+ * each side counts only its own Main Position.
  * Below them, "Rise and fall together?" (CLUBS-66) asks whether the two rate
  * well and badly in the same Matches, over every Shared Match.
  * EA totals mode shows the headline stats only: EA has no per-Match data.
@@ -106,7 +107,7 @@ type CompareDataFor<Source> = Extract<CompareData, { source: Source }>;
 const SIDE_COLORS = [SERIES_COLORS[1], SERIES_COLORS[0]] as const;
 
 export default function Compare({ loaderData }: Route.ComponentProps) {
-  const { filter, source, comparison, members, players } = loaderData;
+  const { filter, source, members, players } = loaderData;
   const [a, b] = players;
   return (
     <>
@@ -118,15 +119,18 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
             : "Two Squad Members, side by side"
         }
       />
-      <FilterBar filter={filter} source={source} />
+      <FilterBar filter={filter} source={source} positions />
       <PlayerPlates
         members={members}
         players={players}
-        positionGroups={comparison.positionGroups}
-        source={source}
         formIndicators={
           loaderData.source === "recorded"
             ? loaderData.sides.map((s) => s.formIndicator)
+            : undefined
+        }
+        mainPositions={
+          loaderData.source === "recorded"
+            ? loaderData.sides.map((s) => s.mainPosition)
             : undefined
         }
       />
