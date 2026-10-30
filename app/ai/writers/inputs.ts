@@ -97,6 +97,16 @@ export function lineupInput(
 }
 
 /**
+ * Whether `lineupInput` leaves anyone's stats out of a Match: a player who
+ * dropped out, or our side of a DNF we quit (`ProseContext.dataGaps`).
+ */
+export function hasDataGaps(
+  match: ResultFields & { appearances: readonly MatchAppearance[] },
+): boolean {
+  return weQuit(match) || !match.appearances.every(isPlayedAppearance);
+}
+
+/**
  * A sentence from `~/stats` with its site labels in football words, so the
  * model isn't handed the labels the house style keeps out of prose.
  */

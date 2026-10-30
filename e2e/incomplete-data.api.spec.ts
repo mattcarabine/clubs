@@ -175,6 +175,59 @@ test("a write-up that breaks the house style is written again once, and only the
   });
 });
 
+test("a zero from a full Match with no gaps in the data is stored as written", async ({
+  fakeEa,
+  fakeAnthropic,
+  triggerPoll,
+  db,
+}) => {
+  const matchId = "94814000000001";
+  await fakeEa.addMatch(
+    withLineup(win({ matchId, playedAt: kickOff() }), [
+      { player: KAB, rating: 6.1, stats: { shots: "0" } },
+    ]),
+  );
+  const recap = `${KAB.name} played the full match and had no shots.`;
+  await fakeAnthropic.reply({
+    recap,
+    matchReports: [
+      { matchId, report: "Not a single shot from him.", headline: "Shot-shy" },
+    ],
+    stateOfTheClub: "Fake state.",
+  });
+  await triggerPoll();
+
+  expect(await fakeAnthropic.requests()).toHaveLength(1);
+  const writeups = await db.rows<AiWriteupRow>("ai_writeups");
+  expect(writeups.find((w) => w.kind === "session")?.text).toBe(recap);
+});
+
+test("a zero-shots claim is still sent back when a player dropped out", async ({
+  fakeEa,
+  fakeAnthropic,
+  triggerPoll,
+}) => {
+  const matchId = "94815000000001";
+  await fakeEa.addMatch(
+    withLineup(win({ matchId, playedAt: kickOff() }), [
+      { player: KAB, rating: 7 },
+      { player: TREV, rating: 3, stats: { secondsPlayed: "0" } },
+    ]),
+  );
+  await fakeAnthropic.reply({
+    recap: `${TREV.name} had no shots.`,
+    matchReports: [{ matchId, report: "A win.", headline: "A win" }],
+    stateOfTheClub: "Fake state.",
+  });
+  await triggerPoll();
+
+  const requests = await fakeAnthropic.requests();
+  expect(requests).toHaveLength(2);
+  expect(promptText(requests[1].body)).toContain(
+    "a zero-shots or zero-passes claim",
+  );
+});
+
 test("a feat in a DNF we quit, or from a 0-minute Appearance, is no Milestone", async ({
   fakeEa,
   triggerPoll,
