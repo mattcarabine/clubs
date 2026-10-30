@@ -47,6 +47,18 @@ describe("proseProblems", () => {
     expect(proseProblems(sentence)).toEqual([]);
   });
 
+  it("takes a zero-shots or zero-passes claim for a gap only when the data has one", () => {
+    const sentence = "Loltown95 had no shots and not a single completed pass";
+    const problem = "a zero-shots or zero-passes claim";
+    expect(proseProblems(sentence)).toEqual([problem]);
+    expect(proseProblems(sentence, { dataGaps: true })).toEqual([problem]);
+    expect(proseProblems(sentence, { dataGaps: false })).toEqual([]);
+    // Nobody in the data has zero minutes, so that is always a gap.
+    expect(
+      proseProblems("Kabeeble played zero minutes", { dataGaps: false }),
+    ).toEqual(["a zero-minutes claim"]);
+  });
+
   it.each([
     "Mucky Mayhem won 3-0 and A Bloo Bloo were outclassed, then bailed.",
     "A 1,831-rated side ran riot, 7–3 at the whistle.",

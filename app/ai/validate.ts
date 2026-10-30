@@ -29,6 +29,13 @@ export function isText(value: unknown, maxLength: number): value is string {
 export interface ProseContext {
   /** Days between the first recorded Match and the write-up's moment, when known. */
   trackedDays?: number;
+  /**
+   * Whether the data leaves someone's stats out: a dropped-out player, or
+   * our side of a Match we quit. Only then is a zero-shots or zero-passes
+   * claim taken for a gap; without one, every zero in the data is real.
+   * Unknown counts as yes.
+   */
+  dataGaps?: boolean;
 }
 
 /** Tracking must cover this many days before prose may talk about "the last month". */
@@ -63,12 +70,14 @@ const LABEL_RULES: readonly ProseRule[] = [
   },
 ];
 
+/** A dropped-out player reported as if they played: the data never has a real zero. */
+const ZERO_MINUTES_RULE: ProseRule = {
+  pattern: /\b(?:zero|0|no|nil) (?:minutes?|mins)\b/i,
+  problem: "a zero-minutes claim",
+};
+
 /** EA's gaps (a dropped-out player, our side of a DNF we quit) reported as if they happened. */
-const ZERO_CLAIM_RULES: readonly ProseRule[] = [
-  {
-    pattern: /\b(?:zero|0|no|nil) (?:minutes?|mins)\b/i,
-    problem: "a zero-minutes claim",
-  },
+const ZERO_STAT_RULES: readonly ProseRule[] = [
   {
     pattern: /\b(?:zero|0|no|nil) (?:completed )?(?:shots?|passes)\b/i,
     problem: "a zero-shots or zero-passes claim",
@@ -113,9 +122,14 @@ const SCORE =
  */
 export function proseProblems(
   text: string,
-  { trackedDays }: ProseContext = {},
+  { trackedDays, dataGaps = true }: ProseContext = {},
 ): string[] {
-  const problems = [...LABEL_RULES, ...ZERO_CLAIM_RULES]
+  const rules = [
+    ...LABEL_RULES,
+    ZERO_MINUTES_RULE,
+    ...(dataGaps ? ZERO_STAT_RULES : []),
+  ];
+  const problems = rules
     .filter(({ pattern }) => pattern.test(text))
     .map(({ problem }) => problem);
   for (const [score, a, b] of text.matchAll(SCORE)) {

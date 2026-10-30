@@ -28,7 +28,13 @@ import { promptName } from "../sanitise";
 import { hasExactly, isText } from "../validate";
 import { CLUB_SUBJECT, recentWriteups } from "../writeups";
 import { HEADLINE_RULES, headlineDraft } from "./headline";
-import { daysBetween, lineupInput, proseLabels, resultInput } from "./inputs";
+import {
+  daysBetween,
+  hasDataGaps,
+  lineupInput,
+  proseLabels,
+  resultInput,
+} from "./inputs";
 
 interface SessionSubject extends Subject {
   /** The newest Session that is over also gets the State of the club. */
@@ -102,7 +108,7 @@ export function sessionTask(
     kind: "session",
     subjectKey,
     version,
-    prose: { trackedDays },
+    prose: { trackedDays, dataGaps: brief.matches.some(hasDataGaps) },
     prompt: {
       system: HOUSE_STYLE,
       context: {
