@@ -6,15 +6,19 @@ import {
   ChartFrame,
   EmptyState,
   LineChart,
+  LondonTime,
   SectionHeading,
 } from "~/components";
-import { formatSigned } from "~/lib/number-format";
+import { formatCount, formatSigned } from "~/lib/number-format";
+import type { UnlistedDay } from "~/stats";
 
 import { type CampaignsView, DivisionHistory } from "./campaigns";
 
 export interface SkillRatingView {
   labels: string[];
   values: number[];
+  /** Matches EA counted but never listed (CLUBS-90), by London day, oldest first. */
+  unlisted: UnlistedDay[];
 }
 
 export function OverTimeSection({
@@ -65,9 +69,30 @@ function SkillRatingSection({ skillRating }: { skillRating: SkillRatingView }) {
               The line starts once EA's rating changes.
             </p>
           )}
+          <UnlistedNote days={skillRating.unlisted} />
         </ChartFrame>
       )}
     </section>
+  );
+}
+
+/** Why the rating moved with no match to show for it. */
+function UnlistedNote({ days }: { days: readonly UnlistedDay[] }) {
+  if (days.length === 0) return null;
+  const total = days.reduce((sum, d) => sum + d.count, 0);
+  return (
+    <p className="mt-3 text-ink-muted text-sm">
+      EA counted {formatCount(total, "match", "matches")} it never listed, so{" "}
+      {total === 1 ? "it is" : "they are"} missing from this site:{" "}
+      {days.map(({ day, count, ratingChange }, i) => (
+        <span key={day.getTime()}>
+          {i > 0 && ", "}
+          {count} on <LondonTime date={day} format="day" />
+          {ratingChange !== null && ` (rating ${formatSigned(ratingChange)})`}
+        </span>
+      ))}
+      .
+    </p>
   );
 }
 

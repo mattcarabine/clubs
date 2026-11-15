@@ -127,6 +127,20 @@
       "when": 1794708048380,
       "tag": "0017_rebuild_scoreline_record_milestones",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1794711138899,
+      "tag": "0018_fixed_wendigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1794711139722,
+      "tag": "0019_backfill_our_rating_before",
+      "breakpoints": true
     }
   ]
 }

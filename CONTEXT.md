@@ -19,15 +19,15 @@ How many human players the Opponent fielded in a Match: its Appearances with min
 _Avoid_: Real players, opponent size, lobby size
 
 **Skill Rating**:
-EA's rating of a club's strength (`skillRating` in `clubs/overallStats`). Each Match records both clubs' Skill Ratings at the time it was played.
+EA's rating of a club's strength (`skillRating` in `clubs/overallStats`). Each Match records both clubs' Skill Ratings as first read after it, so they already include its result, and Our Club's going into it (CLUBS-88): our reading one game earlier by EA's own count. The **rating gap** is ours minus the Opponent's before kick-off, with the Opponent's worked back by taking our change out of theirs. A Match with no reading of ours between it and the Match before has no rating gap.
 _Avoid_: Elo, SR, club rating, strength
 
 **Opponent Rating**:
-The Opponent's Skill Rating at a Match, read within an hour of it. Matches recorded before ratings were captured are backfilled with the Opponent's current rating instead.
+The Opponent's Skill Rating read within an hour after a Match, so it includes that result. Matches recorded before ratings were captured are backfilled with the Opponent's current rating instead.
 _Avoid_: Opposition strength, enemy rating
 
 **Win Chance**:
-Our Club's chance of a Win before kick-off, from the gap between our Skill Rating and the Opponent Rating. Fitted to our rated Competitive Matches (draws count as Dropped Points) once there are 20 of them; before that it is an Elo-style estimate, shown as "Estimate".
+Our Club's chance of a Win before kick-off, from the rating gap (see Skill Rating): both clubs' ratings as they stood going into the Match, never the ones its result moved. Fitted to our rated Competitive Matches (draws count as Dropped Points) once there are 20 of them; before that it is an Elo-style estimate, shown as "Estimate".
 _Avoid_: Odds, win probability, expected result
 
 **Billing**:
@@ -53,7 +53,7 @@ _Avoid_: Squad list, members list
 ### Matches
 
 **Match**:
-One completed game between Our Club and an Opponent, identified by EA's match ID.
+One completed game between Our Club and an Opponent, identified by EA's match ID. Its time (`played_at`, EA's `timestamp`) is when it **ended**, not when it kicked off (CLUBS-89): a full Match takes about 17 minutes of real time, and one cut short by a Rage Quit is stamped sooner after the Match before it. Code and docs still say "kick-off" for this time in places (the Session rule, a Season's start); read it as full time. On the page say when a match was "played".
 _Avoid_: Game, fixture, result
 
 **Match Type**:
@@ -104,7 +104,7 @@ A Match drawn or lost. The term names the idea in code and in compact labels; a 
 _Avoid_: Non-win, bad result
 
 **Session**:
-A run of Matches with no more than 45 minutes between consecutive kick-offs.
+A run of Matches with no more than 45 minutes between consecutive Match times (full time to full time: see Match).
 _Avoid_: Sitting, night
 
 **Season**:

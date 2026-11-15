@@ -335,7 +335,7 @@ function whenWePlayCard({ whenWePlay: when }: Review): StoryDeckCard | null {
         figureCaption={`Matches on a ${when.busiestNight.label}`}
       >
         <p>
-          Busiest kick-off: {when.busiestTime.label}, with{" "}
+          Busiest time: {when.busiestTime.label}, with{" "}
           {formatCount(when.busiestTime.played, "Match", "Matches")}.
         </p>
         {when.best && <SlotLine label="Best slot" slot={when.best} />}

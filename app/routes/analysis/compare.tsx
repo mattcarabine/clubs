@@ -104,7 +104,11 @@ export function ComparisonSection({
           <div className="grid gap-4 lg:grid-cols-2 lg:gap-x-6">
             {(
               [
-                ["By kick-off", "Win % by kick-off time", comparison.byKickoff],
+                [
+                  "By time of night",
+                  "Win % by time of night",
+                  comparison.byKickoff,
+                ],
                 ["By day", "Win % by day of the week", comparison.byDay],
               ] as const
             ).map(([title, label, buckets]) => (

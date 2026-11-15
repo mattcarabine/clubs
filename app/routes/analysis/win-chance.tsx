@@ -47,7 +47,7 @@ export function WinChanceSection({
         )}
         {unrated > 0 && (
           <span>
-            {`${formatCount(unrated, "match", "matches")} without skill ratings ${unrated === 1 ? "is" : "are"} left out.`}
+            {`${formatCount(unrated, "match", "matches")} without skill ratings from before kick-off ${unrated === 1 ? "is" : "are"} left out.`}
           </span>
         )}
       </div>
