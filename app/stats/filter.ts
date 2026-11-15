@@ -2,7 +2,7 @@
  * The global stats filter: which Matches every stat on a page counts. It
  * lives in the URL so a filtered view can be shared and survives a reload.
  *
- *   ?types=league&dnf=0&range=30d&season=2
+ *   ?types=league&range=30d&season=2
  *   ?from=2026-10-05&to=2026-10-12
  *   ?positions=all
  *   ?campaign=current|previous|3
@@ -157,8 +157,6 @@ export interface CampaignSelection {
 export interface StatsFilter {
   /** Never empty; always in `MATCH_TYPES` order. */
   matchTypes: readonly MatchType[];
-  /** DNF Matches count by default; pages still flag them. */
-  includeDnf: boolean;
   dates: DateRange;
   /** One Season's number; absent means all Seasons. */
   season?: number;
@@ -178,7 +176,6 @@ export interface StatsFilter {
 
 export const DEFAULT_STATS_FILTER: StatsFilter = {
   matchTypes: COMPETITIVE_MATCH_TYPES,
-  includeDnf: true,
   dates: ALL_DATES,
   mainPositionOnly: true,
 };
@@ -186,7 +183,6 @@ export const DEFAULT_STATS_FILTER: StatsFilter = {
 /** The URL search params the filter owns. */
 export const FILTER_PARAMS = {
   matchTypes: "types",
-  includeDnf: "dnf",
   range: "range",
   from: "from",
   to: "to",
@@ -196,6 +192,9 @@ export const FILTER_PARAMS = {
   campaign: "campaign",
 } as const;
 
+/** The old "Include rage quits" parameter (`?dnf=0`), now ignored. */
+const RETIRED_DNF_PARAM = "dnf";
+
 /** Reset whenever the filter changes, since the old page may no longer exist. */
 const PAGE_PARAM = "page";
 
@@ -203,7 +202,6 @@ const PAGE_PARAM = "page";
 export function parseStatsFilter(params: URLSearchParams): StatsFilter {
   return {
     matchTypes: parseMatchTypes(params.get(FILTER_PARAMS.matchTypes)),
-    includeDnf: params.get(FILTER_PARAMS.includeDnf) !== "0",
     dates: parseDates(params),
     season: parseSeason(params.get(FILTER_PARAMS.season)),
     mainPositionOnly: params.get(FILTER_PARAMS.mainPositionOnly) !== "all",
@@ -230,7 +228,8 @@ export function writeStatsFilter(
     FILTER_PARAMS.matchTypes,
     writeMatchTypes(filter.matchTypes),
   );
-  setOrDelete(next, FILTER_PARAMS.includeDnf, filter.includeDnf ? null : "0");
+  // "Include rage quits" is gone (CLUBS-91): drop it from old links.
+  next.delete(RETIRED_DNF_PARAM);
   const { dates } = filter;
   setOrDelete(
     next,
@@ -268,7 +267,6 @@ export function writeStatsFilter(
 export function isDefaultStatsFilter(filter: StatsFilter): boolean {
   return (
     sameMatchTypes(filter.matchTypes, DEFAULT_STATS_FILTER.matchTypes) &&
-    filter.includeDnf === DEFAULT_STATS_FILTER.includeDnf &&
     filter.dates.kind === "all" &&
     filter.season === undefined &&
     filter.mainPositionOnly &&

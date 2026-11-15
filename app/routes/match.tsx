@@ -457,8 +457,7 @@ function RageQuitNote({
             {awarded[1]}.{" "}
           </>
         )}
-        Rage quits count in all stats unless you turn off “Include rage quits”
-        in the filters.
+        It counts in all stats like any other match.
       </p>
     </aside>
   );

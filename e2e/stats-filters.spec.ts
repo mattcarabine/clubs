@@ -79,10 +79,11 @@ test("toggling filters updates the URL and the totals", async ({
 
   await page.goto("/test/stats");
 
-  // Defaults: Competitive Matches, rage quits included, all dates.
+  // Defaults: Competitive Matches, all dates. Rage quits always count
+  // (CLUBS-91), so there is no control for them.
   await expectPressed(page, "League", true);
   await expectPressed(page, "Playoff", true);
-  await expectPressed(page, "Include rage quits", true);
+  await expect(filterButton(page, "Include rage quits")).toHaveCount(0);
   await expect(dateTrigger(page)).toHaveText("All dates");
   const everything = {
     played: "6",
@@ -109,29 +110,18 @@ test("toggling filters updates the URL and the totals", async ({
     dnf: "1",
   });
 
-  await filterButton(page, "Include rage quits").click();
-  await expect.poll(() => searchParam(page, "dnf")).toBe("0");
-  await expectRecord(page, {
-    played: "4",
-    wdl: "2-1-1",
-    goals: "9-7",
-    points: "7",
-    dnf: "0",
-  });
-
   await choosePreset(page, "Last 30 days");
   await expect.poll(() => searchParam(page, "range")).toBe("30d");
   await expectRecord(page, {
-    played: "3",
-    wdl: "2-0-1",
-    goals: "7-5",
-    points: "6",
-    dnf: "0",
+    played: "4",
+    wdl: "3-0-1",
+    goals: "10-5",
+    points: "9",
+    dnf: "1",
   });
 
   // Back to the defaults: the filter leaves the URL entirely.
   await filterButton(page, "Playoff").click();
-  await filterButton(page, "Include rage quits").click();
   await choosePreset(page, "All dates");
   await expect.poll(() => new URL(page.url()).search).toBe("");
   await expectRecord(page, everything);
@@ -149,17 +139,17 @@ test("a filtered URL restores the filter on load", async ({
   );
   await triggerPoll();
 
+  // An old link's `dnf=0` is ignored: the rage quit counts.
   await page.goto("/test/stats?types=playoff&dnf=0");
 
   await expectPressed(page, "Playoff", true);
   await expectPressed(page, "League", false);
-  await expectPressed(page, "Include rage quits", false);
   await expectRecord(page, {
-    played: "1",
-    wdl: "0-1-0",
-    goals: "1-1",
+    played: "2",
+    wdl: "0-1-1",
+    goals: "1-4",
     points: "1",
-    dnf: "0",
+    dnf: "1",
   });
   // The only selected Match Type cannot be turned off.
   await expect(filterButton(page, "Playoff")).toBeDisabled();

@@ -52,7 +52,7 @@ async function playDaily(
   }
 }
 
-test("the club's Streaks and biggest defeat count a Rage Quit by result, but never its score", async ({
+test("the club's Streaks and scoreline records count a Rage Quit like any other Match (CLUBS-91)", async ({
   fakeEa,
   triggerPoll,
   db,
@@ -71,9 +71,9 @@ test("the club's Streaks and biggest defeat count a Rage Quit by result, but nev
     [
       // 6: winless in 2, a record, and a record 2-goal defeat.
       (o) => loss({ ...o, goalsFor: 0, goalsAgainst: 2 }),
-      // 7: we rage quit 0-3: winless in 3, but no record defeat by 3.
+      // 7: we rage quit 0-3: a record defeat by 3.
       (o) => dnf({ ...o, ourWin: false }),
-      // 8: they rage quit 3-0: a Win that starts a run, but no record goals.
+      // 8: they rage quit 3-0: a Win that starts a run, with record goals and margin.
       (o) => dnf({ ...o, ourWin: true }),
       (o) => win({ ...o, goalsFor: 2, goalsAgainst: 1 }),
       // 10: a record 3 Wins in a row, counting the Rage Quit.
@@ -89,10 +89,13 @@ test("the club's Streaks and biggest defeat count a Rage Quit by result, but nev
       ["record-unbeaten-run", 3, 2, matchId(5)],
       ["record-winless-run", 2, 1, matchId(6)],
       ["record-defeat-margin", 2, 1, matchId(6)],
+      ["record-defeat-margin", 3, 2, matchId(7)],
+      ["record-goals", 3, 2, matchId(8)],
+      ["record-win-margin", 3, 1, matchId(8)],
       ["record-win-run", 3, 2, matchId(10)],
     ]),
   );
-  expect(club).toHaveLength(4);
+  expect(club).toHaveLength(7);
   const winRun = (await db.rows<MilestoneRow>("milestones")).find(
     (m) => m.kind === "record-win-run",
   );

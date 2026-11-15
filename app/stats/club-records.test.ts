@@ -67,12 +67,6 @@ describe("longestRun", () => {
   it("needs a run of two", () => {
     expect(longestRun([W(0), L(1)], isWin)).toBeNull();
   });
-
-  it("steps over skipped Matches without ending the run", () => {
-    const quit = match(1, "L", 0, 3, { dnf: true });
-    const run = longestRun([W(0), quit, W(2)], isWin, (m) => m.dnf);
-    expect(run).toMatchObject({ length: 2, ongoing: true });
-  });
 });
 
 describe("clubRecords", () => {
@@ -82,7 +76,7 @@ describe("clubRecords", () => {
     );
   });
 
-  it("finds the biggest win and heaviest defeat, first set first, leaving rage quits out", () => {
+  it("finds the biggest win and heaviest defeat, first set first, rage quits included (CLUBS-91)", () => {
     const records = clubRecords(
       [
         match(0, "W", 4, 1),
@@ -94,13 +88,13 @@ describe("clubRecords", () => {
       null,
     );
     expect(record(records, "biggest-win")).toMatchObject({
-      figure: "4–1",
+      figure: "9–0",
       note: "v Rivals FC",
-      href: "/matches/m0",
+      href: "/matches/m3",
     });
     expect(record(records, "most-goals")).toMatchObject({
-      figure: "5",
-      note: "5–2 v Rivals FC",
+      figure: "9",
+      note: "9–0 v Rivals FC",
     });
     expect(record(records, "heaviest-defeat")).toMatchObject({
       figure: "0–4",

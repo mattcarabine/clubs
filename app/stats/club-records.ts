@@ -5,10 +5,9 @@
  * feeds it every Competitive Match, oldest first, and the best Division EA's
  * leaderboard Snapshots show. Like Milestones, they ignore the `StatsFilter`.
  *
- * The rules follow the record and Streak Milestones (CLUBS-63): a run of
- * results counts a Rage Quit by its result (`CLUB_STREAKS`), while anything
- * read from the score (scorelines, scoring and clean-sheet runs,
- * giant-killings) skips one, since EA awards or cuts short its score. A tie
+ * The rules follow the record and Streak Milestones: a Rage Quit counts
+ * like any other Match, by EA's result and by its real score (CLUBS-87,
+ * CLUBS-91). A tie
  * keeps the record with whoever set it first, except that a run still going
  * holds it once it draws level.
  */
@@ -83,16 +82,14 @@ interface Run {
   last: RecordMatch;
 }
 
-/** The longest run of Matches that `keeps` going; `skips` neither extends nor ends one. */
+/** The longest run of Matches that `keeps` going. */
 export function longestRun(
   matches: readonly RecordMatch[],
   keeps: (m: RecordMatch) => boolean,
-  skips: (m: RecordMatch) => boolean = () => false,
 ): (Run & { ongoing: boolean }) | null {
   let best: Run | null = null;
   let current: Run | null = null;
   for (const m of matches) {
-    if (skips(m)) continue;
     if (!keeps(m)) {
       current = null;
       continue;
@@ -126,8 +123,6 @@ function bestMatch(
 const matchPath = (m: RecordMatch) => `/matches/${m.matchId}`;
 const versus = (m: RecordMatch) => `v ${m.opponent.name}`;
 const scoreline = (m: RecordMatch) => `${m.goalsFor}–${m.goalsAgainst}`;
-/** Its score is EA's to award, so it sets no scoreline record. */
-const isRageQuit = (m: RecordMatch) => m.dnf;
 
 function divisionFigure(division: DivisionNumber): string {
   return divisionName(division).replace("Division", "Div");
@@ -150,7 +145,6 @@ export function clubRecords(
     record: Omit<ClubRecord, "id" | "label" | "ongoing" | "low"> &
       Partial<Pick<ClubRecord, "ongoing" | "low">>,
   ) => records.push({ id, label, ongoing: false, low: false, ...record });
-  const scored = matches.filter((m) => !isRageQuit(m));
 
   const runRecord = (
     id: ClubRecordId,
@@ -204,7 +198,7 @@ export function clubRecords(
     longestRun(matches, (m) => CLUB_STREAKS["record-unbeaten-run"](m.outcome)),
   );
 
-  const win = bestMatch(scored, (m) =>
+  const win = bestMatch(matches, (m) =>
     m.outcome === "W" ? m.goalsFor - m.goalsAgainst : null,
   );
   if (win) {
@@ -216,7 +210,7 @@ export function clubRecords(
     });
   }
 
-  const goals = bestMatch(scored, (m) => (m.goalsFor > 0 ? m.goalsFor : null));
+  const goals = bestMatch(matches, (m) => (m.goalsFor > 0 ? m.goalsFor : null));
   if (goals) {
     add("most-goals", "Most goals in a match", {
       figure: String(goals.value),
@@ -252,16 +246,16 @@ export function clubRecords(
     "scoring-run",
     "Longest scoring run",
     "matches in a row with a goal",
-    longestRun(matches, (m) => m.goalsFor > 0, isRageQuit),
+    longestRun(matches, (m) => m.goalsFor > 0),
   );
   runRecord(
     "clean-sheet-run",
     "Clean sheets in a row",
     "matches without conceding",
-    longestRun(matches, (m) => m.goalsAgainst === 0, isRageQuit),
+    longestRun(matches, (m) => m.goalsAgainst === 0),
   );
 
-  const giant = bestMatch(scored, ({ outcome, skillRatings: r }) => {
+  const giant = bestMatch(matches, ({ outcome, skillRatings: r }) => {
     if (outcome !== "W" || r.ours === null || r.opponent === null) return null;
     const gap = r.opponent - r.ours;
     return gap > 0 ? gap : null;
@@ -275,7 +269,7 @@ export function clubRecords(
     });
   }
 
-  const defeat = bestMatch(scored, (m) =>
+  const defeat = bestMatch(matches, (m) =>
     m.outcome === "L" ? m.goalsAgainst - m.goalsFor : null,
   );
   if (defeat) {

@@ -517,17 +517,22 @@ describe("CLUBS-63 club streaks and biggest defeat", () => {
         ["W", 2, 1],
       ]),
     ).toEqual([
+      ["record-defeat-margin", 3, 1, "m5"],
       ["record-winless-run", 2, 1, "m5"],
+      ["record-goals", 3, 2, "m6"],
+      ["record-win-margin", 3, 1, "m6"],
       ["record-unbeaten-run", 3, 2, "m8"],
       ["record-win-run", 3, 2, "m8"],
     ]);
   });
 
-  it("sets no scoreline record from a Rage Quit", () => {
+  it("sets a scoreline record from a Rage Quit like any other Match (CLUBS-91)", () => {
     const scorelines = (rest: [Outcome, number, number, boolean?][]) =>
-      found(rest).filter(([kind]) => !String(kind).endsWith("-run"));
-    expect(scorelines([["W", 7, 0, true]])).toEqual([]);
-    expect(scorelines([["L", 0, 5, true]])).toEqual([]);
+      found(rest)
+        .filter(([kind]) => !String(kind).endsWith("-run"))
+        .map(([kind]) => kind);
+    expect(scorelines([["W", 7, 0, true]])).toContain("record-win-margin");
+    expect(scorelines([["L", 0, 5, true]])).toContain("record-defeat-margin");
   });
 });
 

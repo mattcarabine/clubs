@@ -57,7 +57,7 @@ function opponentName(body: ReturnType<typeof win>): string {
   return String((club as { details?: { name?: string } }).details?.name);
 }
 
-test("a DNF we quit reaches the Match report prompt as quitBy us, with its end minute and no stats of ours", async ({
+test("a DNF we quit reaches the Match report prompt as quitBy us, with its end minute and our stats (CLUBS-91)", async ({
   fakeEa,
   fakeAnthropic,
   triggerPoll,
@@ -82,15 +82,14 @@ test("a DNF we quit reaches the Match report prompt as quitBy us, with its end m
     '"endedAtMinute":20',
     `"score":"3-0 to ${opponentName(body)} when it ended"`,
     '"result":"we lost"',
-    `"ourPlayers":["${KAB.name}"]`,
+    `"name":"${KAB.name}","positionGroup"`,
     `"droppedOut":[{"club":"A Bloo Bloo","name":"${TREV.name}"}]`,
     // The short, brutal treatment for a Match we quit.
     "we were outclassed and pulled the plug",
   ]) {
     expect(prompt).toContain(text);
   }
-  // Neither our stats from the Match nor the dropped-out player's zeros.
-  expect(prompt).not.toContain(`"name":"${KAB.name}","positionGroup"`);
+  // Never the dropped-out player's zeros.
   expect(prompt).not.toContain(`"name":"${TREV.name}","positionGroup"`);
   expect(prompt).not.toContain('"dnf"');
 });

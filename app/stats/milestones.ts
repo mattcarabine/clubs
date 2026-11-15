@@ -928,28 +928,26 @@ function detectRecords(
     const margin = match.goalsFor - match.goalsAgainst;
     const isWin = match.outcome === "W";
 
-    // A Rage Quit's score is awarded or cut short, so it sets no scoreline record.
-    if (!match.dnf) {
-      const isLoss = match.outcome === "L";
-      if (counts && isWin && margin > bestMargin) {
-        record("record-win-margin", match, margin, bestMargin, match.matchId);
-      }
-      if (counts && isLoss && -margin > worstMargin) {
-        record(
-          "record-defeat-margin",
-          match,
-          -margin,
-          worstMargin,
-          match.matchId,
-        );
-      }
-      if (counts && match.goalsFor > bestGoals) {
-        record("record-goals", match, match.goalsFor, bestGoals, match.matchId);
-      }
-      if (isWin) bestMargin = Math.max(bestMargin, margin);
-      if (isLoss) worstMargin = Math.max(worstMargin, -margin);
-      bestGoals = Math.max(bestGoals, match.goalsFor);
+    // A Rage Quit counts too: its score is the real one (CLUBS-87, CLUBS-91).
+    const isLoss = match.outcome === "L";
+    if (counts && isWin && margin > bestMargin) {
+      record("record-win-margin", match, margin, bestMargin, match.matchId);
     }
+    if (counts && isLoss && -margin > worstMargin) {
+      record(
+        "record-defeat-margin",
+        match,
+        -margin,
+        worstMargin,
+        match.matchId,
+      );
+    }
+    if (counts && match.goalsFor > bestGoals) {
+      record("record-goals", match, match.goalsFor, bestGoals, match.matchId);
+    }
+    if (isWin) bestMargin = Math.max(bestMargin, margin);
+    if (isLoss) worstMargin = Math.max(worstMargin, -margin);
+    bestGoals = Math.max(bestGoals, match.goalsFor);
 
     for (const [kind, run] of runs) {
       if (run.add(match) && counts) {

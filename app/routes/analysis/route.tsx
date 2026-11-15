@@ -109,8 +109,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     latestWriteup(db, "club", CLUB_SUBJECT),
     clubSnapshots(db),
     listMatches(db, filter, { order: "oldest" }),
-    // Line-up records count results, so they keep the DNFs we quit.
-    squadAppearances(db, filter, { includeQuitMatches: true }),
+    squadAppearances(db, filter),
     getCampaignProgress(db),
   ]);
   if (campaign.mismatch) {

@@ -182,7 +182,6 @@ export async function getComparison(
     listSquadMembers(db),
     params.players.length > 0
       ? squadAppearances(db, filter, {
-          includeQuitMatches: true,
           withEvents: params.players,
         })
       : [],
