@@ -112,15 +112,25 @@ function splitOf(
     return null;
   }
   const text = { wins: metric.format(wins), dropped: metric.format(dropped) };
-  if (text.wins === text.dropped) return null;
+  // Figures that round apart can still differ by nothing worth a sentence.
+  if (
+    text.wins === text.dropped ||
+    metric.format(Math.abs(wins - dropped)) === metric.format(0)
+  ) {
+    return null;
+  }
   return {
     wins,
     dropped,
     text,
-    effect,
+    // A stat that never varies on either side has an infinite effect.
+    effect: Math.max(-MAX_EFFECT, Math.min(MAX_EFFECT, effect)),
     smallSample: fewest < SMALL_SAMPLE_MATCHES,
   };
 }
+
+/** The cap on an effect, so two stats that never vary still sort. */
+const MAX_EFFECT = 99;
 
 const emptySamples = (): Record<OutcomeSide, WeightedValue[]> => ({
   wins: [],
@@ -153,6 +163,12 @@ function appearanceTotals(a: SquadAppearance): ClubMatchTotals {
   };
 }
 
+/** One Appearance beside its totals, worked out once for every stat. */
+interface PlayerMatch {
+  appearance: SquadAppearance;
+  totals: ClubMatchTotals;
+}
+
 /**
  * The Squad Member whose own split of `metric` is biggest in the team's
  * direction (`sign` of the team's effect), or null when no one's is clear.
@@ -160,14 +176,14 @@ function appearanceTotals(a: SquadAppearance): ClubMatchTotals {
 function standoutPlayer(
   metric: PerformanceMetric,
   sign: number,
-  byPlayer: ReadonlyMap<string, readonly SquadAppearance[]>,
+  byPlayer: ReadonlyMap<string, readonly PlayerMatch[]>,
 ): DriverPlayer | null {
   let best: (DriverPlayer & { strength: number }) | null = null;
   for (const [playerId, own] of byPlayer) {
     const samples = emptySamples();
-    for (const a of own) {
-      const sample = metric.sample(appearanceTotals(a), a.secondsPlayed);
-      if (sample) samples[outcomeSide(a.outcome)].push(sample);
+    for (const { appearance, totals } of own) {
+      const sample = metric.sample(totals, appearance.secondsPlayed);
+      if (sample) samples[outcomeSide(appearance.outcome)].push(sample);
     }
     const split = splitOf(metric, samples);
     if (!split || Math.sign(split.effect) !== sign) continue;
@@ -177,7 +193,7 @@ function standoutPlayer(
     }
     best = {
       playerId,
-      name: own[own.length - 1].name,
+      name: own[own.length - 1].appearance.name,
       former: isFormerSquadMember(playerId),
       ...split.text,
       smallSample: split.smallSample,
@@ -197,10 +213,11 @@ export function resultDrivers(
   matches: readonly SplitMatch[],
   appearances: readonly SquadAppearance[],
 ): ResultDrivers {
-  const byPlayer = groupBy(appearances, (a) => a.playerId);
   const ranked: {
     side: keyof ResultDrivers;
     strength: number;
+    metric: PerformanceMetric;
+    sign: number;
     driver: ResultDriver;
   }[] = [];
   for (const metric of [...PERFORMANCE_METRICS, ...DETAIL_METRICS]) {
@@ -224,6 +241,8 @@ export function resultDrivers(
       ranked.push({
         side,
         strength: Math.abs(split.effect),
+        metric,
+        sign: Math.sign(split.effect),
         driver: {
           id: `${club}-${metric.id}`,
           club,
@@ -234,19 +253,29 @@ export function resultDrivers(
               : `In draws and defeats ${metric.describe(club, split.dropped - split.wins)} than in wins`,
           ...split.text,
           smallSample: split.smallSample,
-          player:
-            club === "ours"
-              ? standoutPlayer(metric, Math.sign(split.effect), byPlayer)
-              : null,
+          player: null,
         },
       });
     }
   }
+  // Only the drivers shown name a Squad Member: reading every Appearance's
+  // Match Events once, and once per shown stat, keeps the request cheap.
+  let byPlayer: Map<string, PlayerMatch[]> | null = null;
   const top = (side: keyof ResultDrivers) =>
     ranked
       .filter((r) => r.side === side)
       .sort((a, b) => b.strength - a.strength)
       .slice(0, TOP_DRIVERS)
-      .map((r) => r.driver);
+      .map(({ driver, metric, sign }) => {
+        if (driver.club !== "ours") return driver;
+        byPlayer ??= groupBy(
+          appearances.map((appearance) => ({
+            appearance,
+            totals: appearanceTotals(appearance),
+          })),
+          (m) => m.appearance.playerId,
+        );
+        return { ...driver, player: standoutPlayer(metric, sign, byPlayer) };
+      });
   return { win: top("win"), lose: top("lose") };
 }
