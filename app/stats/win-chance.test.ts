@@ -216,9 +216,18 @@ describe("ratedResults", () => {
   it("keeps Matches with both Skill Ratings as gaps and leaves the rest out", () => {
     expect(
       ratedResults([
-        { skillRatings: { ours: 1600, opponent: 1450 }, outcome: "W" },
-        { skillRatings: { ours: null, opponent: 1450 }, outcome: "L" },
-        { skillRatings: { ours: 1600, opponent: null }, outcome: "D" },
+        {
+          skillRatings: { ours: 1600, opponent: 1450, oursBefore: 1600 },
+          outcome: "W",
+        },
+        {
+          skillRatings: { ours: null, opponent: 1450, oursBefore: null },
+          outcome: "L",
+        },
+        {
+          skillRatings: { ours: 1600, opponent: null, oursBefore: 1600 },
+          outcome: "D",
+        },
       ]),
     ).toEqual([{ gap: 150, outcome: "W" }]);
   });
@@ -230,7 +239,7 @@ describe("matchWinChance", () => {
   it("gives a rated Match its chance, source and flag", () => {
     expect(
       matchWinChance(estimate, {
-        skillRatings: { ours: 1300, opponent: 1600 },
+        skillRatings: { ours: 1300, opponent: 1600, oursBefore: 1300 },
         outcome: "W",
       }),
     ).toEqual({
@@ -243,7 +252,7 @@ describe("matchWinChance", () => {
   it("is null for an unrated Match", () => {
     expect(
       matchWinChance(estimate, {
-        skillRatings: { ours: 1300, opponent: null },
+        skillRatings: { ours: 1300, opponent: null, oursBefore: 1300 },
         outcome: "W",
       }),
     ).toBeNull();
