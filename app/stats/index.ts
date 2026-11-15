@@ -33,6 +33,7 @@ export * from "./period-compare";
 export * from "./period-compare-query";
 export * from "./player";
 export * from "./player-profile";
+export * from "./player-summary-brief";
 export * from "./positions";
 export * from "./rating-context";
 export * from "./recent-change";

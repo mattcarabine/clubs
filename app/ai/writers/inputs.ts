@@ -1,10 +1,11 @@
 /** Prompt input shapes shared by the writers. */
 import type { Outcome } from "~/lib/domain";
-import { formatDecimal } from "~/lib/number-format";
+import { formatDecimal, formatPercentage } from "~/lib/number-format";
 import {
   type AppearanceStats,
   isPlayedAppearance,
   type MatchAppearance,
+  type PlayerTotals,
   quitBy,
   weQuit,
 } from "~/stats";
@@ -153,4 +154,22 @@ function endMinute(appearances: readonly MatchAppearance[]): number {
   return Math.round(
     Math.max(0, ...appearances.map((a) => a.secondsPlayed)) / 60,
   );
+}
+
+/** A Squad Member's totals, as every writer hands them over. */
+export function totalsInput(totals: PlayerTotals) {
+  return {
+    appearances: totals.appearances,
+    minutes: totals.minutes,
+    goals: totals.goals,
+    assists: totals.assists,
+    shots: totals.shots,
+    averageRating: formatDecimal(totals.averageRating),
+    manOfTheMatch: totals.manOfTheMatch,
+    passPercentage: formatPercentage(totals.passPercentage),
+    tacklePercentage: formatPercentage(totals.tacklePercentage),
+    goalsPer90: formatDecimal(totals.goalsPer90, 2),
+    assistsPer90: formatDecimal(totals.assistsPer90, 2),
+    shotsPer90: formatDecimal(totals.shotsPer90, 2),
+  };
 }

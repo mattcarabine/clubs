@@ -212,6 +212,10 @@ _Avoid_: Advice, feedback, tips, AI coaching
 A London week, Monday 00:00 to Monday 00:00. Its Coaching notes are written by the first Poll after 09:00 London on the Monday that ends it; only the latest such week is ever written, so nothing is invented for older weeks.
 _Avoid_: Training week, gameweek
 
+**Player summary**:
+Two or three short paragraphs on how a Squad Member plays, from every recorded Match in their Main Position (their Event Stats beside the Yardstick, and their share of the team's work), at the top of their profile. Written once they have 5 Appearances, and again only after a Coaching week they played in. The Coaching notes are the weekly view; this is the lasting one.
+_Avoid_: Scouting report, bio
+
 **Season Review**:
 The story of one finished Season, told as a deck of cards: its record, Division journey, best and worst Matches, best Session, when we play, Nemesis and favourite Opponent, the Awards, and Write-ups to open and close it. Written once, on the Poll that sees the next Season start, and announced only by a Discord post with its link: nothing on the site links to it.
 _Avoid_: Wrapped, season summary, recap

@@ -15,6 +15,7 @@ import { drainQueue } from "./queue";
 import { coachingWriter } from "./writers/coaching";
 import { headlineWriter } from "./writers/headline";
 import { milestoneWriter } from "./writers/milestones";
+import { playerSummaryWriter } from "./writers/player-summary";
 import { seasonReviewWriter } from "./writers/season-review";
 import { sessionWriter } from "./writers/session";
 
@@ -24,7 +25,8 @@ import { sessionWriter } from "./writers/session";
  * comments next: one short call per Poll that found any, so they never wait
  * behind a backlog of recaps. The weekly coaching notes (one call) come
  * before the headline backlog, which follows the Session writer, which
- * writes new Sessions' headlines itself.
+ * writes new Sessions' headlines itself. Player summaries (one call per
+ * Squad Member who played last week) go last: nothing waits on them.
  */
 const WRITERS = [
   seasonReviewWriter,
@@ -32,6 +34,7 @@ const WRITERS = [
   sessionWriter,
   coachingWriter,
   headlineWriter,
+  playerSummaryWriter,
 ];
 
 /** The client config from Worker env, or null without an API key (local dev, by default). */

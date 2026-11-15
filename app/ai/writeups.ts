@@ -13,7 +13,8 @@ import { aiJobs, aiWriteups } from "~/db/schema";
  * (the Match report) and `headline` by the Match's; `club` (the State of the
  * club) by `CLUB_SUBJECT`; `coaching` (a Squad Member's coaching notes,
  * CLUBS-44) by the player ID, its job by the week; a `milestone` comment by
- * the Milestone's ID; `season-review` (CLUBS-45) by `seasonReviewKey`.
+ * the Milestone's ID; `season-review` (CLUBS-45) by `seasonReviewKey`; a
+ * `player-summary` (CLUBS-94) by the player ID.
  */
 export type WriteupKind =
   | "session"
@@ -22,7 +23,8 @@ export type WriteupKind =
   | "club"
   | "coaching"
   | "milestone"
-  | "season-review";
+  | "season-review"
+  | "player-summary";
 
 /** The State of the club has one subject: Our Club. */
 export const CLUB_SUBJECT = "club";

@@ -13,7 +13,7 @@
 import { env } from "cloudflare:workers";
 import { data, Link, useSearchParams } from "react-router";
 
-import { writeupHistory } from "~/ai/writeups";
+import { latestWriteup, writeupHistory } from "~/ai/writeups";
 
 import {
   ChartFrame,
@@ -59,6 +59,7 @@ import { EaTotals } from "./ea-totals";
 import { Influence } from "./influence";
 import { OutcomeSplitPanel } from "./outcome-split-panel";
 import { PlayStyle } from "./play-style";
+import { PlayerSummary } from "./player-summary";
 import { PositionGroupTable } from "./position-group-table";
 import { RecentChangesPanel } from "./recent-changes";
 
@@ -92,11 +93,12 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
-  const [profile, coachingNotes, milestones] = await Promise.all([
+  const [profile, coachingNotes, summary, milestones] = await Promise.all([
     getPlayerProfile(db, params.playerId, filter, {
       mainPositionOnly: filter.mainPositionOnly,
     }),
     writeupHistory(db, "coaching", params.playerId, COACHING_WEEKS_SHOWN),
+    latestWriteup(db, "player-summary", params.playerId),
     listMilestones(db, env.EA_CLUB_NAME, {
       who: { playerId: params.playerId },
       limit: PROFILE_MILESTONES,
@@ -108,6 +110,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     filter,
     profile,
     coachingNotes,
+    summary,
     milestones,
   };
 }
@@ -126,7 +129,8 @@ const CONTRIBUTION_SERIES = [
 ] as const;
 
 export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
-  const { clubName, filter, profile, coachingNotes, milestones } = loaderData;
+  const { clubName, filter, profile, coachingNotes, summary, milestones } =
+    loaderData;
   const { member, totals, form, build, career, season } = profile;
   const labels = form.map((p) => formatLondonShortDate(p.playedAt));
   const latestBuild = build.at(-1) ?? null;
@@ -203,6 +207,8 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
           />
         </StatGrid>
       </section>
+
+      <PlayerSummary name={member.name} summary={summary} />
 
       {form.length > 0 && (
         <section aria-label="Influence" className="mb-8">
