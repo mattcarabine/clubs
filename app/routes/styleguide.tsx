@@ -731,6 +731,7 @@ export default function Styleguide() {
               losses: 1,
               goalsFor: 11,
               goalsAgainst: 6,
+              winPercentage: 60,
             }}
             form={["W", "D", "W", "L", "W"]}
             topPerformer={{
@@ -755,6 +756,7 @@ export default function Styleguide() {
               losses: 0,
               goalsFor: 2,
               goalsAgainst: 0,
+              winPercentage: 100,
             }}
             form={["W"]}
             topPerformer={null}

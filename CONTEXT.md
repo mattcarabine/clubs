@@ -100,7 +100,7 @@ A Match ended early because one side quit; EA awards the result to the side that
 _Avoid_: DNF, did not finish, forfeit, abandoned
 
 **Dropped Points**:
-A Match drawn or lost. The term names the idea in code and docs only, never on the page (CLUBS-98): it counts Matches, not points, so "2 Dropped Points" for two defeats reads as two points when six were dropped. The site says "draws and defeats" in sentences, headings and table headers ("In draws and defeats we take 5.3 fewer shots per 90 than in Wins", "After a draw or defeat…", "Wins vs draws and defeats"), and "not won" where space is tight (a Session's "2 not won"). "Why we dropped points" on a Match page is fine: there the phrase is true.
+A Match drawn or lost. The term names the idea in code and docs only, never on the page (CLUBS-98): it counts Matches, not points, so "2 Dropped Points" for two defeats reads as two points when six were dropped. The site says "draws and defeats" in sentences, headings and table headers ("In draws and defeats we take 5.3 fewer shots per 90 than in Wins", "After a draw or defeat…", "Wins vs draws and defeats"); a Session's record shows its Win % instead of a count ("33% won"). "Why we dropped points" on a Match page is fine: there the phrase is true.
 _Avoid_: Non-win, bad result
 
 **Session**:
