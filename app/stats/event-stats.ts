@@ -365,12 +365,12 @@ export const EVENT_STATS = {
   },
   bestPassChoices: {
     group: "attacking",
-    // EA gives this mostly for shots on target, rarely for a pass, so it
+    // EA gives this far more often for a shot on target than for a pass, so it
     // sits with attacking, whatever its id says (CLUBS-100).
     label: "Best option taken",
     header: "Best opt/90",
     description:
-      "Times EA judged they took the best option on the ball, per 90 minutes. Mostly given for shots on target",
+      "Times EA judged they took the best option on the ball, per 90 minutes. A shot on target earns it far more often than a pass",
     unit: "per90",
     better: "high",
     value: rate("bestChoices"),

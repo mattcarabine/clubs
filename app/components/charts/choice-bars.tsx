@@ -80,8 +80,9 @@ export function ChoiceBars({ label, groups }: ChoiceBarsProps) {
         ))}
       </div>
       <figcaption className="mt-4 text-ink-muted text-xs">
-        EA judges every pass and shot. Best option is mostly given for shots on
-        target, and no good option includes most passes that went astray.
+        EA judges every pass and shot. A shot on target earns best option far
+        more often than a pass does, and no good option includes most passes
+        that went astray.
       </figcaption>
     </figure>
   );

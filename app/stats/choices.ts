@@ -8,10 +8,11 @@
  * they see.
  *
  * What the verdicts cover, checked on the recorded Matches (CLUBS-100):
- * every pass and every shot gets one; "best option" is mostly given for
- * shots on target; nearly every pass that goes astray lands in "no good
- * option"; "good option" comes only from completed passes. So this is how
- * they choose, not how well they strike a pass: pass completion says that.
+ * every pass and every shot gets one; a shot on target earns "best option"
+ * far more often than a pass does (about 0.6 a shot against 0.04 a pass);
+ * nearly every pass that goes astray lands in "no good option"; "good
+ * option" comes only from completed passes. So this is how they choose, not
+ * how well they strike a pass: pass completion says that.
  *
  * Pure and client-safe.
  */
