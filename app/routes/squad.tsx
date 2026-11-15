@@ -10,7 +10,11 @@
  */
 import { env } from "cloudflare:workers";
 import { type ReactNode, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import {
+  Link,
+  type ShouldRevalidateFunctionArgs,
+  useSearchParams,
+} from "react-router";
 
 import {
   ChangeArrow,
@@ -26,6 +30,7 @@ import {
   PageHeader,
   PlayerChip,
   type RowSelection,
+  ScrollRail,
   useColumnLayout,
 } from "~/components";
 import { getDb } from "~/db/client";
@@ -47,9 +52,15 @@ import {
   comparePath,
   type EaMemberTotals,
   type EaSeasonTotals,
+  EVENT_STAT_GROUPS,
+  EVENT_STATS,
+  type EventStatGroup,
+  type EventStatId,
   eaCleanSheets,
   eaMemberTotals,
+  eventStatsIn,
   type FormIndicator,
+  formatEventStat,
   formWatch,
   type LeaderboardRow,
   parseStatsFilter,
@@ -74,6 +85,24 @@ const COLUMN_LAYOUT_KEYS = {
   recorded: "squad-columns:recorded:v2",
   ea: "squad-columns:ea",
 } as const;
+
+/**
+ * `?view=` picks which part of the game the Recorded table shows (CLUBS-85):
+ * absent for the overview, or an Event Stat group.
+ */
+const VIEW_PARAM = "view";
+
+type SquadView = "overview" | EventStatGroup;
+
+const VIEWS: readonly { id: SquadView; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  ...EVENT_STAT_GROUPS,
+];
+
+function parseView(params: URLSearchParams): SquadView {
+  const value = params.get(VIEW_PARAM);
+  return EVENT_STAT_GROUPS.find((g) => g.id === value)?.id ?? "overview";
+}
 
 export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
@@ -100,6 +129,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const rows = await squadLeaderboard(db, filter, {
     includeFormer,
     mainPositionOnly: filter.mainPositionOnly,
+    eventStats: true,
   });
   return {
     source: "recorded" as const,
@@ -107,6 +137,24 @@ export async function loader({ request }: Route.LoaderArgs) {
     includeFormer,
     rows,
   };
+}
+
+/** Switching view only changes which columns show: the rows are the same. */
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  const rest = (url: URL) => {
+    const params = new URLSearchParams(url.search);
+    params.delete(VIEW_PARAM);
+    params.sort();
+    return `${url.pathname}?${params}`;
+  };
+  if (currentUrl.href !== nextUrl.href && rest(currentUrl) === rest(nextUrl)) {
+    return false;
+  }
+  return defaultShouldRevalidate;
 }
 
 type SquadData<Source> = Extract<
@@ -124,7 +172,10 @@ export default function Squad({ loaderData }: Route.ComponentProps) {
 
 function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
   const watch = formWatch(rows);
-  const layout = useColumnLayout(COLUMN_LAYOUT_KEYS.recorded, COLUMNS);
+  const [searchParams] = useSearchParams();
+  const view = parseView(searchParams);
+  // Held here, so the Compare ticks survive a change of view.
+  const ticks = useState<readonly string[]>([]);
   return (
     <>
       <PageHeader
@@ -134,20 +185,47 @@ function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
       />
       <FilterBar filter={filter} source="recorded" positions />
       {rows.length > 0 && <Leaders leaders={LEADERS} rows={rows} />}
+      {rows.length > 0 && <ViewPicker view={view} />}
+      {/* Keyed, so each view keeps its own choice of columns. */}
+      <RecordedTable key={view} view={view} rows={rows} ticks={ticks} />
+      {watch.length > 0 && (
+        <div className="mt-8">
+          <FormWatch rows={watch} />
+        </div>
+      )}
+    </>
+  );
+}
+
+/** One view of the Recorded table, with its own columns, sort and key. */
+function RecordedTable({
+  view,
+  rows,
+  ticks,
+}: {
+  view: SquadView;
+  rows: SquadData<"recorded">["rows"];
+  ticks: Ticks;
+}) {
+  const { columns, layoutKey, sort, key } = VIEW_TABLES[view];
+  const layout = useColumnLayout(layoutKey, columns);
+  return (
+    <>
       <ComparePicker
         rows={rows}
-        tools={<ColumnPicker columns={COLUMNS} layout={layout} />}
+        ticks={ticks}
+        tools={<ColumnPicker columns={columns} layout={layout} />}
       >
         {(select) => (
           <DataTable
             caption="Squad Members"
             select={select}
             layout={layout}
-            columns={COLUMNS}
+            columns={columns}
             rows={rows}
             rowKey={(r) => r.playerId}
             rowHref={(r) => playerPath(r.playerId)}
-            initialSort={{ columnId: "apps", direction: "desc" }}
+            initialSort={{ columnId: sort, direction: "desc" }}
             empty={
               <EmptyState
                 title="No Squad Members to show"
@@ -157,13 +235,35 @@ function RecordedSquad({ filter, includeFormer, rows }: SquadData<"recorded">) {
           />
         )}
       </ComparePicker>
-      {rows.length > 0 && <ColumnKey entries={KEY} />}
-      {watch.length > 0 && (
-        <div className="mt-8">
-          <FormWatch rows={watch} />
-        </div>
-      )}
+      {rows.length > 0 && <ColumnKey entries={key} />}
     </>
+  );
+}
+
+/** Which part of the game the table shows: the overview, or one group of stats. */
+function ViewPicker({ view }: { view: SquadView }) {
+  const [, setSearchParams] = useSearchParams();
+  const show = (next: SquadView) =>
+    setSearchParams(
+      (current) => {
+        const params = new URLSearchParams(current);
+        if (next === "overview") params.delete(VIEW_PARAM);
+        else params.set(VIEW_PARAM, next);
+        return params;
+      },
+      { preventScrollReset: true },
+    );
+  return (
+    <fieldset className="mb-4 min-w-0">
+      <legend className="mb-1.5 text-ink-muted text-sm">Stats to show</legend>
+      <ScrollRail className="gap-x-1!">
+        {VIEWS.map(({ id, label }) => (
+          <Chip key={id} pressed={id === view} onClick={() => show(id)}>
+            {label}
+          </Chip>
+        ))}
+      </ScrollRail>
+    </fieldset>
   );
 }
 
@@ -247,14 +347,18 @@ function SquadToggle({ includeFormer }: { includeFormer: boolean }) {
  */
 function ComparePicker<Row extends SquadRow>({
   rows,
+  ticks,
   tools,
   children,
 }: {
   rows: readonly Row[];
+  /** The ticked IDs' state, when a parent keeps it; its own otherwise. */
+  ticks?: Ticks;
   tools: ReactNode;
   children: (select: RowSelection<Row>) => ReactNode;
 }) {
-  const [ticked, setTicked] = useState<readonly string[]>([]);
+  const ownTicks = useState<readonly string[]>([]);
+  const [ticked, setTicked] = ticks ?? ownTicks;
   // A filter change can drop a ticked Squad Member's row; they no longer count.
   const pickedRows = ticked.flatMap((id) =>
     rows.filter((r) => r.playerId === id),
@@ -291,6 +395,9 @@ function ComparePicker<Row extends SquadRow>({
     </>
   );
 }
+
+/** The ticked Squad Members' IDs and their setter. */
+type Ticks = [readonly string[], (ticked: readonly string[]) => void];
 
 /** Who is ticked so far, or what to do when nobody is. */
 function tickedLabel(names: readonly string[], full: boolean): string {
@@ -727,6 +834,68 @@ const COLUMNS = describeColumns<LeaderboardRow>(
   ],
   RECORDED_INFO,
 );
+
+/** One Event Stat as a column: per 90 minutes or a share, with its meaning. */
+function eventStatColumn(id: EventStatId): DataTableColumn<LeaderboardRow> {
+  const { header, label, description } = EVENT_STATS[id];
+  return {
+    ...recordedStat(
+      id,
+      header,
+      (r) => r.eventStats?.[id] ?? null,
+      (value) => formatEventStat(id, value),
+    ),
+    label,
+    description,
+  };
+}
+
+type ViewTable = {
+  columns: DataTableColumn<LeaderboardRow>[];
+  layoutKey: string;
+  /** The column the view opens sorted by, biggest first. */
+  sort: string;
+  key: readonly [string, string][];
+};
+
+/** A group's view: the name, how many they played, then the group's stats. */
+function eventStatView(group: EventStatGroup): ViewTable {
+  const ids = eventStatsIn(group);
+  return {
+    columns: [
+      nameColumn<LeaderboardRow>((r) => r.formIndicator),
+      ...ids.map(eventStatColumn),
+      {
+        ...RECORDED_INFO.apps,
+        ...recordedStat("apps", "Played", (r) => r.appearances),
+      },
+    ],
+    layoutKey: `squad-columns:${group}`,
+    sort: ids[0],
+    key: ids.map((id) => {
+      const { header, description, better } = EVENT_STATS[id];
+      return [
+        header,
+        better === "low" ? `${description}. Lower is better` : description,
+      ];
+    }),
+  };
+}
+
+/** Every view of the Recorded table. */
+const VIEW_TABLES: Record<SquadView, ViewTable> = {
+  overview: {
+    columns: COLUMNS,
+    layoutKey: COLUMN_LAYOUT_KEYS.recorded,
+    sort: "apps",
+    key: KEY,
+  },
+  attacking: eventStatView("attacking"),
+  passing: eventStatView("passing"),
+  onTheBall: eventStatView("onTheBall"),
+  defending: eventStatView("defending"),
+  discipline: eventStatView("discipline"),
+};
 
 /** Sorts improving first, then no change, then dropping off. */
 function recentChangeRank(change: RecentChange | null): number {

@@ -199,7 +199,13 @@ export async function getMatchDetails(
   return found.map((match) => {
     const lineups = (byMatch.get(match.matchId) ?? [])
       .map(({ appearance, personaName }): MatchAppearance => {
-        const { matchId: _, positionGroup, ...stats } = appearance;
+        // Match Events stay in the loader: the map is too big for the browser.
+        const {
+          matchId: _,
+          events: _events,
+          positionGroup,
+          ...stats
+        } = appearance;
         const isOurClub = appearance.clubId !== match.opponentClubId;
         return {
           ...stats,

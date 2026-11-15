@@ -1,12 +1,28 @@
 /** Squad Member queries: Appearances, leaderboards and the Squad Member record. */
-import { and, asc, eq, min } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  getTableColumns,
+  isNotNull,
+  min,
+  not,
+  sql,
+} from "drizzle-orm";
 
 import type { Db } from "~/db/client";
 import { appearances, clubs, matches, players } from "~/db/schema";
+import type { MatchEvents } from "~/ea/events";
 import type { MatchType, Outcome } from "~/lib/domain";
 import { displayName, isFormerSquadMember } from "~/roster";
 
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
+import {
+  type EventAppearance,
+  type EventStatValues,
+  eventStatValues,
+  eventTotals,
+} from "./event-stats";
 import type { StatsFilter } from "./filter";
 import { inMainPosition } from "./positions";
 import { aboveTeam, matchRatings } from "./rating-context";
@@ -44,6 +60,12 @@ export interface SquadAppearance extends AppearanceStats {
   goalsAgainst: number;
   outcome: Outcome;
   dnf: boolean;
+  /**
+   * The Appearance's Match Events, only with `withEvents`; null when EA sent
+   * none. Work figures out from them in the loader: the map itself is too
+   * big to send to the browser.
+   */
+  events?: MatchEvents | null;
 }
 
 export interface SquadAppearanceOptions extends ScopeOptions {
@@ -55,7 +77,13 @@ export interface SquadAppearanceOptions extends ScopeOptions {
    * `isCountedAppearance` before totalling them.
    */
   includeQuitMatches?: boolean;
+  /** Read each Appearance's Match Events too, for Event Stats (CLUBS-85). */
+  withEvents?: boolean;
 }
+
+/** Every Appearance column but the Match Events, which are read only on request. */
+const { events: eventsColumn, ...appearanceColumns } =
+  getTableColumns(appearances);
 
 /**
  * Our Club's counted Appearances (`isCountedAppearance`) in the Matches a
@@ -68,12 +96,14 @@ export async function squadAppearances(
   {
     playerId,
     includeQuitMatches = false,
+    withEvents = false,
     ...scope
   }: SquadAppearanceOptions = {},
 ): Promise<SquadAppearance[]> {
   const rows = await db
     .select({
-      appearance: appearances,
+      appearance: appearanceColumns,
+      events: withEvents ? eventsColumn : sql<null>`null`,
       personaName: players.personaName,
       match: matches,
       opponentName: clubs.name,
@@ -92,31 +122,60 @@ export async function squadAppearances(
     )
     .orderBy(asc(matches.playedAt), asc(appearances.playerId));
 
-  return rows.map(({ appearance, personaName, match, opponentName }) => {
-    // Match Events stay out until the per-player layer reads them (CLUBS-85):
-    // these rows reach loaders, and the map would ride along to the browser.
-    const {
-      matchId,
-      clubId: _,
-      events: _events,
-      positionGroup,
-      ...stats
-    } = appearance;
-    return {
-      ...stats,
-      positionGroup: toPositionGroup(positionGroup),
-      name: displayName(appearance.playerId, personaName),
-      matchId,
-      matchType: toMatchType(match.matchType),
-      playedAt: match.playedAt,
-      opponentClubId: match.opponentClubId,
-      opponentName: opponentName ?? match.opponentClubId,
-      goalsFor: match.goalsFor,
-      goalsAgainst: match.goalsAgainst,
-      outcome: toOutcome(match.result),
-      dnf: match.dnf,
-    };
-  });
+  return rows.map(
+    ({ appearance, events, personaName, match, opponentName }) => {
+      const { matchId, clubId: _, positionGroup, ...stats } = appearance;
+      return {
+        ...stats,
+        ...(withEvents ? { events } : {}),
+        positionGroup: toPositionGroup(positionGroup),
+        name: displayName(appearance.playerId, personaName),
+        matchId,
+        matchType: toMatchType(match.matchType),
+        playedAt: match.playedAt,
+        opponentClubId: match.opponentClubId,
+        opponentName: opponentName ?? match.opponentClubId,
+        goalsFor: match.goalsFor,
+        goalsAgainst: match.goalsAgainst,
+        outcome: toOutcome(match.result),
+        dnf: match.dnf,
+      };
+    },
+  );
+}
+
+/**
+ * The opposing humans' Appearances with Match Events in the Matches a filter
+ * selects, for the Yardstick (`positionTotals`). Whoever played counts, on
+ * either side of a rage quit: EA zeroes a quitter's named stats, never their
+ * Match Events.
+ */
+export async function opponentEventAppearances(
+  db: Db,
+  filter: StatsFilter,
+  scope: ScopeOptions = {},
+): Promise<EventAppearance[]> {
+  const rows = await db
+    .select({
+      positionGroup: appearances.positionGroup,
+      secondsPlayed: appearances.secondsPlayed,
+      redCards: appearances.redCards,
+      events: appearances.events,
+    })
+    .from(appearances)
+    .innerJoin(matches, eq(matches.matchId, appearances.matchId))
+    .where(
+      and(
+        not(isOurAppearance),
+        isPlayedAppearanceSql,
+        isNotNull(appearances.events),
+        matchScope(db, filter, scope),
+      ),
+    );
+  return rows.map((row) => ({
+    ...row,
+    positionGroup: toPositionGroup(row.positionGroup),
+  }));
 }
 
 export interface LeaderboardRow extends PlayerTotals {
@@ -129,6 +188,8 @@ export interface LeaderboardRow extends PlayerTotals {
   formIndicator: FormIndicator | null;
   /** Average rating minus their teammates' in the same Matches (CLUBS-66), or null with none rated. */
   aboveTeam: number | null;
+  /** Their Event Stats (CLUBS-85), or null when no Appearance carried Match Events. */
+  eventStats: EventStatValues | null;
 }
 
 export interface LeaderboardOptions extends ScopeOptions {
@@ -139,6 +200,11 @@ export interface LeaderboardOptions extends ScopeOptions {
    * (default: every Appearance). Pass `filter.mainPositionOnly`.
    */
   mainPositionOnly?: boolean;
+  /**
+   * Read Match Events and give each row its `eventStats` (default: null).
+   * Only for a page that shows them: parsing every map costs CPU.
+   */
+  eventStats?: boolean;
 }
 
 /**
@@ -152,10 +218,15 @@ export async function squadLeaderboard(
   {
     includeFormer = false,
     mainPositionOnly = false,
+    eventStats = false,
     ...scope
   }: LeaderboardOptions = {},
 ): Promise<LeaderboardRow[]> {
-  return leaderboardRows(await squadAppearances(db, filter, scope), {
+  const appearances = await squadAppearances(db, filter, {
+    ...scope,
+    withEvents: eventStats,
+  });
+  return leaderboardRows(appearances, {
     includeFormer,
     mainPositionOnly,
   });
@@ -183,12 +254,21 @@ export function leaderboardRows(
         recentChange: recentChanges(selected, name).biggest,
         formIndicator: formIndicator(selected),
         aboveTeam: aboveTeam(selected, ratings).gap,
+        eventStats: eventStatsOf(selected),
       };
     })
     .filter((row) => includeFormer || !row.former)
     .sort(
       (a, b) => b.appearances - a.appearances || a.name.localeCompare(b.name),
     );
+}
+
+/** Event Stats over Appearances read `withEvents`; null when none has Match Events. */
+function eventStatsOf(
+  appearances: readonly SquadAppearance[],
+): EventStatValues | null {
+  const totals = eventTotals(appearances);
+  return totals.appearances === 0 ? null : eventStatValues(totals);
 }
 
 /** A current Squad Member in Hot or Cold form. */

@@ -1,7 +1,10 @@
 /**
- * A Squad Member's profile (CLUBS-10): form charts, the Position Group split
- * and best Matches over the filtered Appearances, plus EA's own season and
- * career totals (CLUBS-19) and build history, which the filter does not touch.
+ * A Squad Member's profile (CLUBS-10). It leads with Influence (CLUBS-85):
+ * their share of what the team does, what they add and give away beside a
+ * typical opponent, and what goes with winning, all from Match Events. Then
+ * form charts, "How they play", the Position Group split and best Matches
+ * over the filtered Appearances, plus EA's own season and career totals
+ * (CLUBS-19) and build history, which the filter does not touch.
  *
  * The FilterBar's Position Group selection (CLUBS-23) narrows the totals,
  * charts and best Matches; the Position Group split stays whole as the
@@ -53,7 +56,9 @@ import { BestMatches } from "./best-matches";
 import { BuildPlate, BuildProgression } from "./build";
 import { COACHING_WEEKS_SHOWN, CoachingNotes } from "./coaching-notes";
 import { EaTotals } from "./ea-totals";
+import { Influence } from "./influence";
 import { OutcomeSplitPanel } from "./outcome-split-panel";
+import { PlayStyle } from "./play-style";
 import { PositionGroupTable } from "./position-group-table";
 import { RecentChangesPanel } from "./recent-changes";
 
@@ -127,6 +132,11 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
   const latestBuild = build.at(-1) ?? null;
   // The Position Group the stats below count, when only the main one does.
   const counted = filter.mainPositionOnly ? profile.mainPosition : null;
+  // Who the yardstick is: opponents in the one position counted, or in each they played.
+  const against = counted
+    ? `typical opposing ${counted.toLowerCase()}`
+    : "typical opponent in the same positions";
+  const events = profile.events;
   // One Position Group would only repeat the tiles above.
   const showPositionGroups = profile.positionGroups.length > 1;
 
@@ -194,6 +204,27 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         </StatGrid>
       </section>
 
+      {form.length > 0 && (
+        <section aria-label="Influence" className="mb-8">
+          <SectionHeading
+            title="Influence"
+            subtitle={
+              events
+                ? `How much of what we do comes from ${member.name}, good and bad, over ${formatCount(events.appearances, "match", "matches")}${counted ? ` as a ${counted.toLowerCase()}` : ""}`
+                : undefined
+            }
+          />
+          {events ? (
+            <Influence name={member.name} events={events} against={against} />
+          ) : (
+            <EmptyState
+              title="No detailed stats in these matches"
+              description="EA sent none of the detail behind this section for these matches."
+            />
+          )}
+        </section>
+      )}
+
       {/* Not filtered: each week's notes cover that week's Competitive Matches. */}
       <CoachingNotes notes={coachingNotes} />
 
@@ -216,6 +247,16 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
               changes={profile.recentChanges}
             />
           </section>
+
+          {events && (
+            <section aria-label="How they play" className="mb-8">
+              <SectionHeading
+                title="How they play"
+                subtitle={`Each figure beside a ${against}`}
+              />
+              <PlayStyle events={events} against={against} />
+            </section>
+          )}
 
           <div className="mb-8 grid gap-6 lg:grid-cols-3">
             <div className="min-w-0 lg:col-span-2">
