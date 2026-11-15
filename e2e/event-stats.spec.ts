@@ -205,6 +205,82 @@ test("what they add and give away sits beside a typical opponent in their positi
   ).toContainText("Typical opponent in the same positions: 2.00");
 });
 
+test("a profile says how they give the ball away", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const match = bare(win());
+  // Kabeeble: 16 of 20 short passes, 5 of 10 long and 1 of 2 crosses came
+  // off; 6 of the failed ones went forward, 2 sideways; lost the ball 4 times.
+  playing(match, OUR_CLUB_ID, KABEEBLE, {
+    24: 16,
+    25: 4,
+    28: 5,
+    29: 5,
+    36: 1,
+    37: 1,
+    31: 6,
+    35: 2,
+    216: 12,
+    105: 1,
+    106: 3,
+  });
+  // Their midfielder: 17 of 20 short passes, 2 of 10 long.
+  playing(match, OPPONENT_ID, THEIR_MIDFIELDER, {
+    24: 17,
+    25: 3,
+    28: 2,
+    29: 8,
+  });
+  await fakeEa.addMatch(match);
+  await triggerPoll();
+
+  await page.goto(PROFILE);
+  const giveaways = section(page, "How they give the ball away");
+  await expect(
+    giveaways.getByRole("img", {
+      name: "Passes that went astray, by kind: Short passes 40%, Medium passes 0%, Long passes 50%, Crosses 10%",
+    }),
+  ).toBeVisible();
+  await expect(
+    giveaways.getByRole("img", {
+      name: "Passes that went astray, by direction: Forward 75%, Sideways 25%, Backward 0%",
+    }),
+  ).toBeVisible();
+  // 12 passes went astray and they lost it on the ball 4 times.
+  await expect(
+    giveaways.getByRole("img", {
+      name: "Every time they gave it away: Passes astray 75%, Lost on the ball 25%",
+    }),
+  ).toBeVisible();
+  await expect(
+    giveaways.getByRole("img", {
+      name: "Where they lose it on the ball: Our third 25%, Middle third 75%, Their third 0%",
+    }),
+  ).toBeVisible();
+  await expect(
+    yardstick(section(page, "How it goes"), "ballLost"),
+  ).toContainText(/Lost on the ball\s*4\.00/);
+
+  // Each kind of pass tried often enough, beside a typical opponent.
+  const cameOff = section(page, "Passes that came off");
+  await expect(yardstick(cameOff, "short")).toContainText(/Short passes\s*80%/);
+  await expect(yardstick(cameOff, "short")).toContainText(
+    "Typical opposing midfielder: 85%",
+  );
+  await expect(
+    yardstick(cameOff, "short").getByText("Worse", { exact: true }),
+  ).toBeVisible();
+  await expect(yardstick(cameOff, "long")).toContainText("Much better");
+  // Two crosses are too few to judge.
+  await expect(yardstick(cameOff, "crosses")).toHaveCount(0);
+
+  await expect(giveaways).toContainText(
+    "Lost on the ball means tackled, or a dribble or touch gone wrong",
+  );
+});
+
 test("a profile says what goes with winning", async ({
   page,
   fakeEa,

@@ -57,6 +57,7 @@ import { BestMatches } from "./best-matches";
 import { BuildPlate, BuildProgression } from "./build";
 import { COACHING_WEEKS_SHOWN, CoachingNotes } from "./coaching-notes";
 import { EaTotals } from "./ea-totals";
+import { Giveaways, hasGiveaways } from "./giveaways";
 import { Influence } from "./influence";
 import { OutcomeSplitPanel } from "./outcome-split-panel";
 import { PlayStyle } from "./play-style";
@@ -275,6 +276,16 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
               changes={profile.recentChanges}
             />
           </section>
+
+          {events && hasGiveaways(events) && (
+            <section aria-label="How they give the ball away" className="mb-8">
+              <SectionHeading
+                title="How they give the ball away"
+                subtitle="Passes that go astray, and the ball lost when tackled or dribbling"
+              />
+              <Giveaways events={events} against={against} />
+            </section>
+          )}
 
           {events && (
             <section aria-label="How they play" className="mb-8">

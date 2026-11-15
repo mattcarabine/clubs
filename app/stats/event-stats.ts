@@ -55,8 +55,12 @@ export const EVENT_COUNTS = [
   "forwardPassesFailed",
   "sidewaysPasses",
   "backwardPasses",
+  "sidewaysPassesFailed",
+  "backwardPassesFailed",
   "shortPasses",
+  "shortPassesFailed",
   "mediumPasses",
+  "mediumPassesFailed",
   "longPassesCompleted",
   "longPassesFailed",
   "throughBalls",
@@ -122,8 +126,12 @@ export function eventCounts(appearance: EventAppearance): EventCounts | null {
     forwardPassesFailed: n("forwardPassesFailed"),
     sidewaysPasses: n("sidewaysPassesCompleted", "sidewaysPassesFailed"),
     backwardPasses: n("backwardPassesCompleted", "backwardPassesFailed"),
+    sidewaysPassesFailed: n("sidewaysPassesFailed"),
+    backwardPassesFailed: n("backwardPassesFailed"),
     shortPasses: n("shortPassesCompleted", "shortPassesFailed"),
+    shortPassesFailed: n("shortPassesFailed"),
     mediumPasses: n("mediumPassesCompleted", "mediumPassesFailed"),
+    mediumPassesFailed: n("mediumPassesFailed"),
     longPassesCompleted: n("longPassesCompleted"),
     longPassesFailed: n("longPassesFailed"),
     throughBalls: n("throughBalls"),
@@ -968,12 +976,31 @@ export function evenestThreshold(values: readonly number[]): number | null {
   return best ? best.threshold : null;
 }
 
-/** Where a Squad Member wins and loses the ball, and how they pass and shoot: shares of 100. */
-export interface StyleMix {
-  id: "passDirection" | "passLength" | "ballWon" | "ballLost" | "shots";
+/** Shares of 100 of something counted `total` times. */
+export interface ShareMix {
   /** How many things the shares divide. */
   total: number;
   parts: { label: string; share: number }[];
+}
+
+/** Where a Squad Member wins and loses the ball, and how they pass and shoot. */
+export interface StyleMix extends ShareMix {
+  id: "passDirection" | "passLength" | "ballWon" | "ballLost" | "shots";
+}
+
+/** Counts as shares of 100 of their total; nothing when there is nothing to divide. */
+function sharesOf(
+  parts: readonly (readonly [string, number])[],
+): ShareMix | null {
+  const total = parts.reduce((sum, [, count]) => sum + count, 0);
+  if (total === 0) return null;
+  return {
+    total,
+    parts: parts.map(([label, count]) => ({
+      label,
+      share: (count / total) * 100,
+    })),
+  };
 }
 
 /** The style mixes with anything to divide, in page order. */
@@ -983,18 +1010,8 @@ export function styleMixes(totals: EventTotals): StyleMix[] {
     id: StyleMix["id"],
     parts: readonly (readonly [string, number])[],
   ): StyleMix[] => {
-    const total = parts.reduce((sum, [, count]) => sum + count, 0);
-    if (total === 0) return [];
-    return [
-      {
-        id,
-        total,
-        parts: parts.map(([label, count]) => ({
-          label,
-          share: (count / total) * 100,
-        })),
-      },
-    ];
+    const shares = sharesOf(parts);
+    return shares ? [{ id, ...shares }] : [];
   };
   return [
     ...mix("passDirection", [
@@ -1024,6 +1041,123 @@ export function styleMixes(totals: EventTotals): StyleMix[] {
   ];
 }
 
+/** A kind of pass, by how far it goes. */
+export const PASS_TYPES = [
+  { id: "short", label: "Short passes" },
+  { id: "medium", label: "Medium passes" },
+  { id: "long", label: "Long passes" },
+  { id: "crosses", label: "Crosses" },
+] as const;
+
+export type PassTypeId = (typeof PASS_TYPES)[number]["id"];
+
+/** How often one kind of pass reached a teammate, beside the Yardstick. */
+export interface PassTypeLine {
+  id: PassTypeId;
+  label: string;
+  attempted: number;
+  failed: number;
+  /** The share completed, 0 to 100. */
+  value: number | null;
+  /** Null unless the Yardstick tried it `MIN_PASS_TYPE_ATTEMPTS` times too. */
+  yardstick: number | null;
+  /** Judged on the share that failed, so 99% beside 90% is far apart. */
+  standing: Standing | null;
+}
+
+/**
+ * How a Squad Member gives the ball away (CLUBS-99), as far as EA says:
+ * passes gone astray beside the ball lost while on it (tackled, or a dribble
+ * or touch gone wrong: EA does not split those), the failed passes by length
+ * and by direction, and how often each kind of pass comes off. EA has no
+ * count for a failed through ball.
+ */
+export interface Giveaways {
+  /**
+   * Every time they gave it away: passes gone astray beside the ball lost
+   * while on it (EA's possession lost, which tracks the other side's tackles
+   * and the player's own dribbling, not their passing).
+   */
+  overall: ShareMix | null;
+  /** Failed passes by kind; EA gives a length to nearly all of them. */
+  byLength: ShareMix | null;
+  /** Failed passes by direction; EA gives one to about three in four. */
+  byDirection: ShareMix | null;
+  /** The kinds tried at least `MIN_PASS_TYPE_ATTEMPTS` times, in `PASS_TYPES` order. */
+  passTypes: PassTypeLine[];
+}
+
+/** A kind of pass tried fewer times than this has no completion rate worth showing. */
+export const MIN_PASS_TYPE_ATTEMPTS = 10;
+
+function passTypeCounts(
+  counts: EventCounts,
+): Record<PassTypeId, { attempted: number; failed: number }> {
+  return {
+    short: { attempted: counts.shortPasses, failed: counts.shortPassesFailed },
+    medium: {
+      attempted: counts.mediumPasses,
+      failed: counts.mediumPassesFailed,
+    },
+    long: {
+      attempted: counts.longPassesCompleted + counts.longPassesFailed,
+      failed: counts.longPassesFailed,
+    },
+    crosses: {
+      attempted: counts.crossesCompleted + counts.crossesFailed,
+      failed: counts.crossesFailed,
+    },
+  };
+}
+
+/** `giveaways` for one set of totals, `against` being its Yardstick; null with nothing to show. */
+export function giveaways(
+  totals: EventTotals,
+  against: EventTotals | null,
+): Giveaways | null {
+  const own = passTypeCounts(totals.counts);
+  const theirs = against && passTypeCounts(against.counts);
+  const completed = (type: { attempted: number; failed: number }) =>
+    percentage(type.attempted - type.failed, type.attempted);
+  const passTypes = PASS_TYPES.flatMap(({ id, label }): PassTypeLine[] => {
+    if (own[id].attempted < MIN_PASS_TYPE_ATTEMPTS) return [];
+    const value = completed(own[id]);
+    const yardstick =
+      theirs && theirs[id].attempted >= MIN_PASS_TYPE_ATTEMPTS
+        ? completed(theirs[id])
+        : null;
+    const failed = (share: number | null) =>
+      share === null ? null : 100 - share;
+    return [
+      {
+        id,
+        label,
+        ...own[id],
+        value,
+        yardstick,
+        standing: standing("low", failed(value), failed(yardstick)),
+      },
+    ];
+  });
+  const { counts } = totals;
+  const byLength = sharesOf(
+    PASS_TYPES.map(({ id, label }) => [label, own[id].failed] as const),
+  );
+  const byDirection = sharesOf([
+    ["Forward", counts.forwardPassesFailed],
+    ["Sideways", counts.sidewaysPassesFailed],
+    ["Backward", counts.backwardPassesFailed],
+  ]);
+  const overall = sharesOf([
+    ["Passes astray", counts.passesFailed],
+    ["Lost on the ball", ballLost(counts)],
+  ]);
+  if (!overall && !byLength && !byDirection && passTypes.length === 0) {
+    return null;
+  }
+  return { overall, byLength, byDirection, passTypes };
+}
+
 /** One Event Stat beside its Yardstick. */
 export interface EventStatLine {
   id: EventStatId;
@@ -1041,6 +1175,7 @@ export interface PlayerEventProfile {
   teamShares: TeamShares;
   movers: ResultMovers;
   mixes: StyleMix[];
+  giveaways: Giveaways | null;
 }
 
 /**
@@ -1077,5 +1212,6 @@ export function playerEventProfile(
     teamShares: teamShares(own, team),
     movers: resultMovers(own),
     mixes: styleMixes(totals),
+    giveaways: giveaways(totals, against),
   };
 }
