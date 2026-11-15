@@ -18,6 +18,8 @@ import {
   RECENT_BASELINE_DAYS,
   type RecordSummary,
   type SessionBrief,
+  type SessionStandout,
+  type SessionStandouts,
 } from "~/stats";
 import { revised } from "../config";
 import type { GenerateTask, WriteupDraft } from "../generate";
@@ -91,6 +93,7 @@ const INSTRUCTIONS = `Write about the Session in the data, which has just finish
 - When a Match's "quitBy" is "us", we were outclassed and pulled the plug. Its report is one or two short, brutal sentences: the score, the minute it ended and how thoroughly we were run over. No excuses, no silver linings. Say "outclassed and bailed" in a way none of the recent pieces have.
 - When "quitBy" is "opponent", they gave up while we were on top: enjoy it, briefly.
 - A player's "detail" holds the finer counts of that Match: shots on target, through balls, dribbles, the ball won and lost, interceptions, fouls and yellow cards. Reach for one where it explains a Match (a midfielder who kept winning the ball back, a forward who kept losing it), in football words. Never list them.
+- "againstOurOtherSessions", when present, ranks this Session among the Sessions so far: "didWell" and "didBadly" list the stats in which it was among our best or worst, with the figure this Session and over the others. Work the most telling one or two into the recap in football words ("we have never kept the ball better"). Leave it out when the lists are empty.
 - ${HEADLINE_RULES}`;
 
 const CLUB_INSTRUCTIONS = `
@@ -133,6 +136,9 @@ export function sessionTask(
         name: promptName(row.name),
         ...totalsInput(row),
       })),
+      ...(brief.standouts && {
+        againstOurOtherSessions: standoutsInput(brief.standouts),
+      }),
       ...(withClub && { club: clubInput(brief.club) }),
     },
     schema: outputSchema(matchIds, withClub),
@@ -292,6 +298,22 @@ function recordInput(record: RecordSummary) {
     goalsAgainst: record.goalsAgainst,
     points: record.points,
     winPercentage: formatPercentage(record.winPercentage),
+  };
+}
+
+/** Where the Session ranks among the Sessions so far, stat by stat. */
+function standoutsInput({ well, badly, sessions }: SessionStandouts) {
+  const list = (standouts: readonly SessionStandout[]) =>
+    standouts.map((s) => ({
+      stat: s.label,
+      thisSession: s.value,
+      otherSessions: s.usual,
+      standing: s.standing,
+    }));
+  return {
+    sessionsCompared: sessions,
+    didWell: list(well),
+    didBadly: list(badly),
   };
 }
 
