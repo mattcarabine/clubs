@@ -49,8 +49,8 @@ export interface OutcomeSplitPage extends OutcomeSplit {
   /** Why we win and why we lose (CLUBS-95); empty until the split is `ready`. */
   drivers: ResultDrivers;
   /**
-   * How EA judged our passes and shots (CLUBS-100), every position counted;
-   * null before any Match Events.
+   * How EA judged our passes and shots (CLUBS-100), each Squad Member in
+   * their Main Position (CLUBS-101); null before any Match Events.
    */
   choices: ChoiceBreakdown | null;
   players: PlayerSplitRow[];

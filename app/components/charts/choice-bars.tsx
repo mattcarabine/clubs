@@ -16,6 +16,11 @@ export type ChoiceBarRow = {
   mix: ChoiceMix;
   /** Beside the name, in place of "207 choices": for a mix whose count means little. */
   note?: string;
+  /**
+   * After "33% good or best", in place of the share that should have passed
+   * elsewhere: e.g. how it sits against a yardstick.
+   */
+  detail?: string;
   /** Makes the name a link, e.g. to a profile. */
   to?: string;
 };
@@ -47,7 +52,8 @@ const VERDICT_FILL: Record<ChoiceVerdict, string> = {
  * from the left edge, "should have passed elsewhere" from the right, so both
  * ends compare down the rows whatever the number of choices. A share is
  * printed on its segment where it fits; the row says the share that was good
- * or best, which a ranking goes by, and marks a small sample in words.
+ * or best, then the share that should have passed elsewhere or the row's own
+ * `detail`, and marks a small sample in words.
  * Hovering, tapping or focusing a bar lists all four shares, and each bar's
  * label carries them for screen readers.
  */
@@ -146,8 +152,9 @@ function ChoiceBar({ row }: { row: ChoiceBarRow }) {
             <span className="font-semibold text-ink">
               {formatPercentage(mix.goodOrBest)}
             </span>{" "}
-            good or best · {formatPercentage(mix.shares.poor)} should have
-            passed elsewhere
+            good or best ·{" "}
+            {row.detail ??
+              `${formatPercentage(mix.shares.poor)} should have passed elsewhere`}
           </span>
           {mix.smallSample && <SmallSampleTag />}
         </span>
