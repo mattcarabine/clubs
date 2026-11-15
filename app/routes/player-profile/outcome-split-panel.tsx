@@ -25,7 +25,7 @@ type OutcomeSplitPanelProps = {
 };
 
 /**
- * "Wins vs Dropped Points" (CLUBS-25): the Squad Member's stats in Wins
+ * "Wins vs draws and defeats" (CLUBS-25): the Squad Member's stats in Wins
  * beside the same stats in Dropped Points, and the Win % at each Position
  * Group (every one played), all following the profile's filters and "Main
  * position only".
@@ -46,7 +46,7 @@ export function OutcomeSplitPanel({
     },
     {
       id: "dropped",
-      header: "Dropped Points",
+      header: "Draws and defeats",
       align: "right",
       cell: (s) => s.format(s.value(split.dropped)),
     },
@@ -58,7 +58,7 @@ export function OutcomeSplitPanel({
       <ConsistencyLine consistency={consistency} />
       <div className="grid gap-6 lg:grid-cols-2">
         <DataTable
-          caption="Wins against Dropped Points"
+          caption="Wins against draws and defeats"
           columns={statColumns}
           rows={PLAYER_SPLIT_STATS}
           rowKey={(s) => s.id}

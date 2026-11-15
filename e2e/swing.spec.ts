@@ -133,7 +133,7 @@ test("the profile says the Swing in a sentence", async ({
 }) => {
   await recordDeciderAndPadder(fakeEa, triggerPoll);
   await page.goto(`/players/${ALPHA.id}`);
-  const panel = page.getByRole("region", { name: "Wins vs Dropped Points" });
+  const panel = page.getByRole("region", { name: "Wins vs draws and defeats" });
   await expect(panel).toContainText(
     "We win 100% when they play above their average and 0% when below (a Swing of +100 pts).",
   );

@@ -19,12 +19,12 @@ type SessionRecordProps = {
 };
 
 /**
- * A Session's W-D-L as scoreboard numerals, its Dropped Points picked out on
- * a loss-red tab, and the goals either way.
+ * A Session's W-D-L as scoreboard numerals, its Dropped Points counted on a
+ * loss-red tab ("2 not won": Matches, never points), and the goals either way.
  */
 export function SessionRecord({ record }: SessionRecordProps) {
   const { wins, draws, losses, goalsFor, goalsAgainst } = record;
-  const dropped = draws + losses;
+  const notWon = draws + losses;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <p className="font-display font-extrabold text-3xl text-ink uppercase tabular leading-none">
@@ -35,9 +35,9 @@ export function SessionRecord({ record }: SessionRecordProps) {
           <RecordCount value={losses} letter="L" />
         </span>
       </p>
-      {dropped > 0 && (
+      {notWon > 0 && (
         <span className="clip-slant bg-loss px-3 py-1 font-display font-extrabold text-base text-shale-950 uppercase leading-none tracking-wide [--slant:0.35rem]">
-          {dropped} Dropped Points
+          {notWon} not won
         </span>
       )}
       <p className="text-ink-soft text-sm">

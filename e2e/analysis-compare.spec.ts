@@ -55,6 +55,9 @@ test("the last 7 days compare with the 7 days before, and a shared link keeps it
   await expect(figure(page, "Goals conceded")).toContainText(
     "1.33 per match better",
   );
+  // CLUBS-98: the share of Matches drawn or lost, not "Dropped Points".
+  await expect(figure(page, "Draws and defeats")).toContainText("33%");
+  await expect(figure(page, "Draws and defeats")).toContainText("was 67%");
   await expect(
     comparison(page).getByRole("list", {
       name: "Win % by day of the week, compared",

@@ -1,7 +1,7 @@
 /**
  * The Outcome Split (CLUBS-25): what changes between Wins and Dropped Points.
  * Pure roll-ups of Matches and Appearances into the Analysis page and the
- * profile's "Wins vs Dropped Points" panel; `outcome-split-query.ts` feeds
+ * profile's "Wins vs draws and defeats" panel; `outcome-split-query.ts` feeds
  * them from D1.
  *
  * Count stats are per 90 over how long each Match ran, so a rage quit at

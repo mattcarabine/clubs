@@ -358,10 +358,10 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
             </ChartFrame>
           </div>
 
-          <section aria-label="Wins vs Dropped Points" className="mb-8">
+          <section aria-label="Wins vs draws and defeats" className="mb-8">
             <SectionHeading
-              title="Wins vs Dropped Points"
-              subtitle={`${chartCoverage(form.length, counted)}: Wins beside draws and losses, per 90 over the minutes played`}
+              title="Wins vs draws and defeats"
+              subtitle={`${chartCoverage(form.length, counted)}, per 90 minutes`}
             />
             <OutcomeSplitPanel
               split={profile.outcomeSplit}
