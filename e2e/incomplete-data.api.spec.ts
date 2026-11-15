@@ -80,7 +80,7 @@ test("a DNF we quit reaches the Match report prompt as quitBy us, with its end m
   for (const text of [
     '"quitBy":"us"',
     '"endedAtMinute":20',
-    `"score":"3-0 to ${opponentName(body)}"`,
+    `"score":"3-0 to ${opponentName(body)} when it ended"`,
     '"result":"we lost"',
     `"ourPlayers":["${KAB.name}"]`,
     `"droppedOut":[{"club":"A Bloo Bloo","name":"${TREV.name}"}]`,
