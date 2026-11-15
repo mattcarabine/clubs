@@ -174,8 +174,8 @@ test("a small sample is said in words and listed last, and a handful of choices 
   const match = bare(win());
   // Kabeeble: 25% good or best, but of only 40 choices.
   playing(match, OUR_CLUB_ID, KABEEBLE, verdicts(2, 8, 20, 10));
-  // tinbs_irl: 20% of 100.
-  playing(match, OUR_CLUB_ID, TINBS, verdicts(10, 10, 60, 20));
+  // tinbs_irl: 20% of 300.
+  playing(match, OUR_CLUB_ID, TINBS, verdicts(30, 30, 180, 60));
   // Loltown95: 5 choices, too few to share out.
   playing(match, OUR_CLUB_ID, LOLTOWN, verdicts(1, 1, 2, 1));
   await fakeEa.addMatch(match);
@@ -194,8 +194,8 @@ test("a small sample is said in words and listed last, and a handful of choices 
   await expect(members.nth(1)).toContainText("25% good or best");
   await expect(members.nth(1)).toContainText("Small sample");
   await expect(section.getByText("Loltown95")).toHaveCount(0);
-  // Their 5 choices still count in the club's 145.
-  await expect(bar(section, "Our club")).toContainText("145 choices");
+  // Their 5 choices still count in the club's 345.
+  await expect(bar(section, "Our club")).toContainText("345 choices");
 });
 
 test("a profile sets the squad member beside a typical opponent in their position and our club", async ({

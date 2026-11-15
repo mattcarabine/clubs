@@ -91,7 +91,7 @@ const DIVISION_LEVELS = [
 /** Our club, a regular and a small sample. */
 const CHOICE_MIXES = [
   [62, 180, 430, 148],
-  [28, 61, 97, 48],
+  [56, 122, 194, 96],
   [3, 9, 22, 12],
 ].flatMap(([bestChoices, goodChoices, noGoodOptions, poorChoices]) => {
   const mix = choiceMix({

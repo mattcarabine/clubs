@@ -89,7 +89,7 @@ One count from a Squad Member's Match Events, with our Win % in the Matches they
 _Avoid_: Driver, predictor, key factor
 
 **Choice Mix**:
-EA's verdict on each pass and shot a player makes, as shares of all their verdicts: best option taken, good option taken, no good option, should have passed elsewhere (CLUBS-100). It says how well they choose, however much of the ball they see, and never how cleanly they pass: a shot on target earns "best option" far more often than a pass does, and "no good option" takes in most passes that went astray. Under 20 verdicts there is no mix, and under 100 it is a small sample. On the page it is "choices on the ball".
+EA's verdict on each pass and shot a player makes, as shares of all their verdicts: best option taken, good option taken, no good option, should have passed elsewhere (CLUBS-100). It says how well they choose, however much of the ball they see, and never how cleanly they pass: a shot on target earns "best option" far more often than a pass does, a pass that goes astray is almost never good or best, and forwards get fewer good or best options than midfielders. Under 20 verdicts there is no mix, and under 300 it is a small sample. On the page it is "choices on the ball".
 _Avoid_: Passing quality, pass rating, decision score
 
 **Position Group**:
