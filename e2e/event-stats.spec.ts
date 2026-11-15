@@ -345,3 +345,32 @@ test.describe("on a 375px phone", () => {
     }
   });
 });
+
+test("no page sends a player's raw Match Events to the browser", async ({
+  request,
+  fakeEa,
+  triggerPoll,
+  db,
+}) => {
+  // A count no figure on any page could show by chance.
+  const marker = "987654";
+  const added = playing(win(), OUR_CLUB_ID, KABEEBLE, { 999: Number(marker) });
+  await fakeEa.addMatch(added);
+  await triggerPoll();
+  const stored = await db.rows<{ events: string | null }>("appearances");
+  expect(stored.some((a) => a.events?.includes(marker))).toBe(true);
+
+  for (const path of [
+    "/",
+    "/squad",
+    "/squad?view=passing",
+    PROFILE,
+    `/matches/${added.match.matchId}`,
+    "/analysis",
+    `/compare?players=${KABEEBLE},${TINBS}`,
+  ]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+    expect(await response.text(), path).not.toContain(marker);
+  }
+});
