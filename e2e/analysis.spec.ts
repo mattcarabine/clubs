@@ -186,6 +186,24 @@ test("a DNF stopped at 45 minutes adds per-90 values, not raw totals", async ({
   );
   await expect(shots.getByRole("cell").nth(0)).toHaveText("10.0");
   await expect(shots.getByRole("cell").nth(1)).toHaveText("4.0");
+  // CLUBS-93: the gap is wins minus draws and defeats, and the bigger figure is marked.
+  await expect(shots.getByRole("cell").nth(2)).toHaveText("+6.0");
+  await expect(shots.getByRole("cell").nth(0).locator("strong")).toHaveText(
+    "10.0",
+  );
+  // Every built Match has the same passing, and no one makes a save.
+  const ours = page.getByRole("region", { name: "Outcome Split" });
+  await expect(ours.locator("[data-level]").first()).toContainText(
+    /About the same either way: .*pass completion/,
+  );
+  await expect(
+    tableRow(
+      page,
+      "Performance in wins against draws and defeats",
+      "Pass completion",
+    ),
+  ).toHaveCount(0);
+  await expect(ours).not.toContainText(/saves per 90/i);
 });
 
 test("findings from 10 Matches a side drop the Small sample mark", async ({
