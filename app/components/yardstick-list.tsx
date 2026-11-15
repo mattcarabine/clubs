@@ -28,13 +28,24 @@ type YardstickListProps = {
   items: readonly YardstickItem[];
 };
 
+const CHIP = "clip-slant px-1.5 [--slant:0.15rem]";
+
+/** The "much" standings are filled slanted chips, so they stand out from the plain words. */
 const STANDING = {
-  better: { word: "Better", colour: "text-win" },
-  worse: { word: "Worse", colour: "text-loss" },
-  level: { word: "Level", colour: "text-ink-muted" },
+  muchBetter: {
+    word: "Much better",
+    className: `${CHIP} bg-win text-shale-950`,
+  },
+  better: { word: "Better", className: "text-win" },
+  level: { word: "Level", className: "text-ink-muted" },
+  worse: { word: "Worse", className: "text-loss" },
+  muchWorse: {
+    word: "Much worse",
+    className: `${CHIP} bg-loss text-shale-950`,
+  },
 } as const satisfies Record<
   YardstickStanding,
-  { word: string; colour: string }
+  { word: string; className: string }
 >;
 
 /** How far along the track the larger of the two figures reaches. */
@@ -43,8 +54,8 @@ const FULL_BAR = 0.86;
 /**
  * Figures set against a yardstick (CLUBS-85): each row is a bar for the
  * figure and a marker for what it is set against, with both numbers and
- * "Better", "Worse" or "Level" in words. Place it on `shale-900`, which the
- * `loss` text needs.
+ * "Much better", "Better", "Level", "Worse" or "Much worse" in words
+ * (CLUBS-97). Place it on `shale-900`, which the `loss` text needs.
  */
 export function YardstickList({ label, against, items }: YardstickListProps) {
   return (
@@ -88,7 +99,7 @@ function YardstickRow({
           />
         )}
       </div>
-      <p className="mt-1 flex flex-wrap gap-x-2 text-ink-muted text-xs">
+      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-ink-muted text-xs">
         {yardstick === null ? (
           <span>No {against} to set it against</span>
         ) : (
@@ -105,6 +116,6 @@ function StandingWord({
 }: {
   standing: YardstickStanding;
 }): ReactNode {
-  const { word, colour } = STANDING[standing];
-  return <span className={`font-semibold ${colour}`}>{word}</span>;
+  const { word, className } = STANDING[standing];
+  return <span className={`font-semibold ${className}`}>{word}</span>;
 }

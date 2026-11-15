@@ -163,9 +163,11 @@ function outputSchema(positions: readonly PositionGroup[]) {
 }
 
 const COMPARISON = {
+  muchBetter: "much better than a typical opponent",
   better: "better than a typical opponent",
-  worse: "worse than a typical opponent",
   level: "about the same as a typical opponent",
+  worse: "worse than a typical opponent",
+  muchWorse: "much worse than a typical opponent",
 } as const;
 
 /** What each team share is a share of, for the prompt. */
