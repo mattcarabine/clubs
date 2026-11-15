@@ -8,13 +8,46 @@ import {
   LineChart,
   SectionHeading,
 } from "~/components";
-import { formatSigned } from "~/lib/number-format";
+import { formatLondonDate } from "~/lib/london-time";
+import { formatCount, formatSigned } from "~/lib/number-format";
+import type { UnlistedMatches } from "~/stats";
 
 import { type CampaignsView, DivisionHistory } from "./campaigns";
 
 export interface SkillRatingView {
   labels: string[];
   values: number[];
+  /** Matches EA counted but never listed (CLUBS-90), by London day, oldest first. */
+  unlisted: UnlistedDay[];
+}
+
+export interface UnlistedDay {
+  /** "Fri 30 Oct". */
+  day: string;
+  count: number;
+  /** How the skill rating moved over them, when it is theirs alone. */
+  ratingChange: number | null;
+}
+
+/** `unlistedMatches` added up per London day. */
+export function unlistedByDay(
+  found: readonly UnlistedMatches[],
+): UnlistedDay[] {
+  const days: UnlistedDay[] = [];
+  for (const { seenAt, count, ratingChange } of found) {
+    const day = formatLondonDate(seenAt);
+    const last = days.at(-1);
+    if (last?.day !== day) {
+      days.push({ day, count, ratingChange });
+      continue;
+    }
+    last.count += count;
+    last.ratingChange =
+      last.ratingChange === null || ratingChange === null
+        ? null
+        : last.ratingChange + ratingChange;
+  }
+  return days;
 }
 
 export function OverTimeSection({
@@ -65,9 +98,28 @@ function SkillRatingSection({ skillRating }: { skillRating: SkillRatingView }) {
               The line starts once EA's rating changes.
             </p>
           )}
+          <UnlistedNote days={skillRating.unlisted} />
         </ChartFrame>
       )}
     </section>
+  );
+}
+
+/** Why the rating moved with no match to show for it. */
+function UnlistedNote({ days }: { days: readonly UnlistedDay[] }) {
+  if (days.length === 0) return null;
+  const total = days.reduce((sum, d) => sum + d.count, 0);
+  const when = days
+    .map(
+      ({ day, count, ratingChange }) =>
+        `${count} on ${day}${ratingChange === null ? "" : ` (rating ${formatSigned(ratingChange)})`}`,
+    )
+    .join(", ");
+  return (
+    <p className="mt-3 text-ink-muted text-sm">
+      EA counted {formatCount(total, "match", "matches")} it never listed, so{" "}
+      {total === 1 ? "it is" : "they are"} missing from this site: {when}.
+    </p>
   );
 }
 

@@ -48,6 +48,7 @@ import {
   getPeriodComparison,
   getWinChanceAnalysis,
   lineupRecords,
+  listKickoffs,
   listMatches,
   MIN_SPLIT_MATCHES,
   PLAYER_SPLIT_STATS,
@@ -63,6 +64,7 @@ import {
   statsFilterFromRequest,
   summariseClubSnapshots,
   summariseRecord,
+  unlistedMatches,
   winRateBucket,
   winRateGap,
 } from "~/stats";
@@ -76,7 +78,7 @@ import { FindingList } from "./findings";
 import { HumansSection } from "./humans";
 import { LineupsSection } from "./lineups";
 import { OutcomeTables } from "./outcome-table";
-import { OverTimeSection } from "./over-time";
+import { OverTimeSection, unlistedByDay } from "./over-time";
 import { ResultsSection, RollingSections } from "./results";
 import { WinChanceSection } from "./win-chance";
 
@@ -97,6 +99,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     winChance,
     stateOfTheClub,
     snapshots,
+    kickoffs,
     matches,
     appearances,
     campaign,
@@ -107,6 +110,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getWinChanceAnalysis(db, filter),
     latestWriteup(db, "club", CLUB_SUBJECT),
     clubSnapshots(db),
+    listKickoffs(db),
     listMatches(db, filter, { order: "oldest" }),
     squadAppearances(db, filter),
     getCampaignProgress(db),
@@ -135,6 +139,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     skillRating: {
       labels: skillRating.map((p) => formatLondonShortDate(p.takenAt)),
       values: skillRating.map((p) => p.skillRating),
+      unlisted: unlistedByDay(unlistedMatches(snapshots, kickoffs)),
     },
     split,
     winChance,
