@@ -88,6 +88,31 @@ test("charts both club Snapshots' skill ratings", async ({
   ).toHaveText(["1600", "1632"]);
 });
 
+test("says when EA counted a match it never listed", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.setPayload("clubs/overallStats", overallStats("1600", 112));
+  await triggerPoll();
+  await page.goto("/analysis");
+  const section = page.getByRole("region", { name: "Skill rating" });
+  await expect(section.getByText("Now 1600")).toBeVisible();
+  await expect(section.getByText(/never listed/)).toHaveCount(0);
+
+  // EA counts a game and moves the rating, but lists no Match for it.
+  await fakeEa.setPayload("clubs/overallStats", overallStats("1627", 113));
+  await triggerPoll();
+
+  await page.goto("/analysis");
+  await expect(section.getByText("Now 1627")).toBeVisible();
+  await expect(
+    section.getByText(
+      /^EA counted 1 match it never listed, so it is missing from this site: 1 on \w{3} \d{1,2} \w{3} \(rating \+27\)\.$/,
+    ),
+  ).toBeVisible();
+});
+
 test("respects the FilterBar's Match Types", async ({
   page,
   fakeEa,
@@ -246,13 +271,19 @@ test("/trends redirects to Analysis, keeping the filter", async ({ page }) => {
 });
 
 /** The recorded `clubs/overallStats` payload with a different skill rating. */
-function overallStats(skillRating: string): unknown {
+function overallStats(skillRating: string, gamesPlayed?: number): unknown {
   const file = path.resolve(
     import.meta.dirname,
     "../fixtures/ea/clubs-overallStats.json",
   );
   const [club] = JSON.parse(readFileSync(file, "utf8"));
-  return [{ ...club, skillRating }];
+  return [
+    {
+      ...club,
+      skillRating,
+      ...(gamesPlayed !== undefined && { gamesPlayed: String(gamesPlayed) }),
+    },
+  ];
 }
 
 /** The same Match with one of Our Club's Squad Members left out. */
