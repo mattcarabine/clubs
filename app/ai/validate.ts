@@ -31,7 +31,7 @@ export interface ProseContext {
   trackedDays?: number;
   /**
    * Whether the data leaves someone's stats out: a dropped-out player, or
-   * our side of a Match we quit. Only then is a zero-shots or zero-passes
+   * a side EA wiped when it rage quit. Only then is a zero-shots or zero-passes
    * claim taken for a gap; without one, every zero in the data is real.
    * Unknown counts as yes.
    */
@@ -76,7 +76,7 @@ const ZERO_MINUTES_RULE: ProseRule = {
   problem: "a zero-minutes claim",
 };
 
-/** EA's gaps (a dropped-out player, our side of a DNF we quit) reported as if they happened. */
+/** EA's gaps (a dropped-out player, a side wiped by a rage quit) reported as if they happened. */
 const ZERO_STAT_RULES: readonly ProseRule[] = [
   {
     pattern: /\b(?:zero|0|no|nil) (?:completed )?(?:shots?|passes)\b/i,

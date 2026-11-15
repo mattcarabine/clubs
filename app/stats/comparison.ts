@@ -46,8 +46,7 @@ export function isSmallSample(matches: number): boolean {
 }
 
 /**
- * One side's input: a Squad Member's filtered Appearances, oldest first,
- * DNFs we quit included (they count in records, not stats).
+ * One side's input: a Squad Member's filtered Appearances, oldest first.
  */
 export interface ComparisonSideInput {
   playerId: string;
@@ -121,7 +120,7 @@ export function compareSides(
     sides: inputs.map(({ appearances }) => {
       const own = inMainPosition(appearances, mainPositionOnly);
       const selected = inScope(own);
-      // Our side's stats in a DNF we quit are left out; its result is not.
+      // A 0-minute Appearance counts in the result, not the stats.
       const counted = selected.filter(isCountedAppearance);
       return {
         totals: summariseAppearances(counted),

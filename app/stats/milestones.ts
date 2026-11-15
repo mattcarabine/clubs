@@ -14,8 +14,8 @@
  * - **Counts** (a 5th Perfect rating) come from the recorded Appearances,
  *   for what EA's totals don't count, so they read "since records began".
  * - **Records** (biggest Win, biggest defeat) are judged on the recorded
- *   Matches only, so they read "since records began". A scoreline record
- *   leaves Rage Quits out: EA awards or cuts short their score (CLUBS-63).
+ *   Matches only, so they read "since records began". A Rage Quit counts
+ *   too, by its real score (CLUBS-87, CLUBS-91).
  * - **Streaks** (longest unbeaten run, scored in 4 in a row, CLUBS-63) are
  *   records too: the club's runs of results, counting a Rage Quit by its
  *   result, and each Squad Member's own best runs over their counted
@@ -720,7 +720,7 @@ function detectFeats({
 
   for (const match of matches) {
     for (const a of byMatch.get(match.matchId) ?? []) {
-      // A 0-minute Appearance or our side of a DNF we quit is no feat, and no history.
+      // A 0-minute Appearance is no feat, and no history.
       if (!isCountedAppearance({ ...a, ...match })) continue;
       const history = histories.get(a.playerId) ?? {
         appearances: 0,
@@ -840,7 +840,7 @@ class RunTracker<T extends { matchId: string }> {
 
 /**
  * Each Squad Member's own best runs, over their counted Appearances: one
- * that isn't counted (0 minutes, or a Match we quit) neither extends nor
+ * that isn't counted (0 minutes) neither extends nor
  * ends a run, and nor does a Match they missed.
  */
 function detectPlayerStreaks({
