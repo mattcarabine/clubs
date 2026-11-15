@@ -255,7 +255,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
             <section aria-label="In more detail" className="mb-8">
               <SectionHeading
                 title="In more detail"
-                subtitle="Each club's players added up. The AI players are not counted."
+                subtitle="Each club's human players added up, not the computer-controlled ones."
               />
               <TaleOfTheTape
                 caption="In more detail"
