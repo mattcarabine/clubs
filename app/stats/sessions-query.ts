@@ -8,7 +8,8 @@ import type { Db } from "~/db/client";
 import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
 import { listKickoffs, listMatches, type MatchSummary } from "./matches";
 import type { UsualComparisonRow } from "./outcome-split";
-import { getUsualComparison } from "./outcome-split-query";
+import { getSessionComparison } from "./outcome-split-query";
+import type { SessionStandouts } from "./session-standouts";
 import {
   groupSessions,
   pageSessions,
@@ -136,6 +137,8 @@ export interface SessionDetail {
   players: LeaderboardRow[];
   /** This Session's per-90s beside every Match's; null with too few other Matches. */
   usual: UsualComparisonRow[] | null;
+  /** What it did best and worst among our Sessions; null with too few to rank it. */
+  standouts: SessionStandouts | null;
 }
 
 /** A Session by its ID (its first Match's), or null when no Session starts with that Match. */
@@ -143,15 +146,20 @@ export async function getSession(
   db: Db,
   sessionId: string,
 ): Promise<SessionDetail | null> {
-  const session = (await listSessions(db)).find((s) => s.id === sessionId);
+  const sessions = await listSessions(db);
+  const session = sessions.find((s) => s.id === sessionId);
   if (!session) return null;
   const scope = {
     playedBetween: { start: session.start, end: session.end },
   };
-  const [matches, appearances, usual] = await Promise.all([
+  const [matches, appearances, { usual, standouts }] = await Promise.all([
     listMatches(db, DEFAULT_STATS_FILTER, { ...scope, order: "oldest" }),
     squadAppearances(db, DEFAULT_STATS_FILTER, scope),
-    getUsualComparison(db, session.matchIds),
+    getSessionComparison(
+      db,
+      session.matchIds,
+      sessions.map((s) => s.matchIds),
+    ),
   ]);
   return {
     id: session.id,
@@ -161,6 +169,7 @@ export async function getSession(
     record: summariseRecord(matches),
     players: leaderboardRows(appearances, { includeFormer: true }),
     usual,
+    standouts,
   };
 }
 

@@ -18,6 +18,7 @@ import {
   type OutcomeSplit,
 } from "./outcome-split";
 import { getAnalysisAsOf } from "./outcome-split-query";
+import { type SessionStandouts, sessionStandouts } from "./session-standouts";
 import { groupSessions, type SessionGroup } from "./sessions";
 import {
   type LeaderboardRow,
@@ -99,6 +100,11 @@ export interface SessionBrief {
   baselines: PlayerBaseline[];
   /** The `FORM_BEFORE_MATCHES` results before the Session, oldest first. */
   formBefore: Outcome[];
+  /**
+   * What it did best and worst among the Sessions up to and including it
+   * (CLUBS-96); null with too few to rank it.
+   */
+  standouts: SessionStandouts | null;
   club: ClubBrief;
 }
 
@@ -146,6 +152,10 @@ export async function getSessionBrief(
     includeFormer: true,
   });
   const earlier = analysis.matches.filter((m) => m.playedAt.getTime() < start);
+  // Only Matches the analysis covers: a Friendly has no performance.
+  const covered = new Set(analysis.matches.map((m) => m.matchId));
+  const performances = (ids: readonly string[]) =>
+    ids.filter((id) => covered.has(id)).map((id) => analysis.performance(id));
 
   return {
     session,
@@ -161,6 +171,10 @@ export async function getSessionBrief(
       ),
     ),
     formBefore: earlier.slice(-FORM_BEFORE_MATCHES).map((m) => m.outcome),
+    standouts: sessionStandouts(
+      performances(session.matchIds),
+      sessions.slice(0, index).map((s) => performances(s.matchIds)),
+    ),
     club: {
       record: summariseRecord(analysis.matches),
       split: analysis.split,

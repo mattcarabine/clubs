@@ -30,6 +30,7 @@ import {
 } from "./outcome-split";
 import { type ResultDrivers, resultDrivers } from "./result-drivers";
 import { isPlayedAppearanceSql, matchScope, type ScopeOptions } from "./scope";
+import { type SessionStandouts, sessionStandouts } from "./session-standouts";
 import { sessionPlaces } from "./sessions";
 import { ratingGap } from "./skill-rating";
 import { type SquadAppearance, squadAppearances } from "./squad";
@@ -174,23 +175,47 @@ export async function getDroppedPointsReasons(
   return droppedPointsReasons(performanceOf(totals.get(match.matchId)), wins);
 }
 
+/** One Session beside the rest, on the Session page. */
+export interface SessionComparison {
+  /** "Compared with your usual" (CLUBS-34); null with too few other Matches. */
+  usual: UsualComparisonRow[] | null;
+  /** What it did best and worst among our Sessions (CLUBS-96); null with too few. */
+  standouts: SessionStandouts | null;
+}
+
 /**
- * One Session's Matches beside every Match over the default filter
- * (Competitive Matches, all time, DNFs included): "Compared with your
- * usual" on the Session page (CLUBS-34). One query.
+ * One Session's Matches beside every Match, and every other Session, over
+ * the default filter (Competitive Matches, all time, DNFs included).
+ * `sessions` are every Session's Match IDs, this one's included. One query.
  */
-export async function getUsualComparison(
+export async function getSessionComparison(
   db: Db,
   matchIds: readonly string[],
-): Promise<UsualComparisonRow[] | null> {
+  sessions: readonly (readonly string[])[],
+): Promise<SessionComparison> {
   const totals = await clubMatchTotals(
     db,
     matchScope(db, DEFAULT_STATS_FILTER),
   );
-  return usualComparison(
-    matchIds.map((id) => performanceOf(totals.get(id))),
-    [...totals.values()].map(performanceOf),
-  );
+  // A Match outside the default filter (a Friendly) has no totals here.
+  const performances = (ids: readonly string[]) =>
+    ids.flatMap((id) => {
+      const sides = totals.get(id);
+      return sides ? [performanceOf(sides)] : [];
+    });
+  const own = new Set(matchIds);
+  return {
+    usual: usualComparison(
+      matchIds.map((id) => performanceOf(totals.get(id))),
+      [...totals.values()].map(performanceOf),
+    ),
+    standouts: sessionStandouts(
+      performances(matchIds),
+      sessions
+        .filter((ids) => !ids.some((id) => own.has(id)))
+        .map(performances),
+    ),
+  };
 }
 
 /** A Match's totals as the Outcome Split reads them: null for a club with no counted stats. */
