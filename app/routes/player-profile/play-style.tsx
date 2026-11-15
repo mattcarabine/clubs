@@ -19,7 +19,7 @@ type PlayStyleProps = {
 
 /** Each mix's heading, the card it sits in and what it shares out. */
 const MIXES: Record<
-  StyleMix["id"],
+  Exclude<StyleMix["id"], "ballLost">,
   { group: EventStatGroup; label: string; unit: string }
 > = {
   shots: { group: "attacking", label: "Where they shoot from", unit: "shots" },
@@ -33,17 +33,18 @@ const MIXES: Record<
     label: "How far they pass",
     unit: "passes",
   },
-  ballLost: {
-    group: "onTheBall",
-    label: "Where they lose the ball",
-    unit: "times",
-  },
   ballWon: {
     group: "defending",
     label: "Where they win the ball back",
     unit: "times",
   },
 };
+
+/** The mixes of one card; where they lose the ball is in "How they give the ball away". */
+const isShownHere =
+  (group: EventStatGroup) =>
+  (mix: StyleMix): mix is StyleMix & { id: keyof typeof MIXES } =>
+    mix.id !== "ballLost" && MIXES[mix.id].group === group;
 
 const IN_INFLUENCE: ReadonlySet<EventStatId> = new Set([
   ...INFLUENCE.adds,
@@ -54,7 +55,7 @@ const IN_INFLUENCE: ReadonlySet<EventStatId> = new Set([
  * "How they play" (CLUBS-85): the rest of a Squad Member's Event Stats, one
  * card per part of the game, each figure beside a typical opponent in their
  * position, with the mixes (where they shoot from, which way they pass,
- * where they win and lose the ball) as 100% bars. Influence's own figures
+ * where they win the ball) as 100% bars. Influence's own figures
  * are not repeated.
  */
 export function PlayStyle({ events, against }: PlayStyleProps) {
@@ -62,7 +63,7 @@ export function PlayStyle({ events, against }: PlayStyleProps) {
     <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       {EVENT_STAT_GROUPS.map(({ id, label }) => {
         const stats = eventStatsIn(id).filter((s) => !IN_INFLUENCE.has(s));
-        const mixes = events.mixes.filter((m) => MIXES[m.id].group === id);
+        const mixes = events.mixes.filter(isShownHere(id));
         if (stats.length === 0 && mixes.length === 0) return null;
         return (
           <section

@@ -16,6 +16,7 @@ import {
   type EventStatId,
   type EventStatLine,
   formatEventStat,
+  type Giveaways,
   getPlayerSummaryBrief,
   INFLUENCE,
   type PlayerSummaryBrief,
@@ -204,11 +205,36 @@ function positionInput({
     whatTheyAdd: lines(INFLUENCE.adds),
     whatTheyGiveAway: lines(INFLUENCE.costs),
     theRest: lines(EVENT_STAT_IDS.filter((id) => !IN_INFLUENCE.has(id))),
+    ...(events.giveaways && {
+      howTheyGiveTheBallAway: giveawaysInput(events.giveaways),
+    }),
     mixes: events.mixes.map((mix) => ({
       of: mix.id,
       shares: Object.fromEntries(
         mix.parts.map((p) => [p.label, formatPercentage(p.share)]),
       ),
+    })),
+  };
+}
+
+/** Failed passes by kind and direction, and how often each kind comes off (CLUBS-99). */
+function giveawaysInput({ byLength, byDirection, passTypes }: Giveaways) {
+  const shares = (mix: Giveaways["byLength"]) =>
+    mix
+      ? Object.fromEntries(
+          mix.parts.map((p) => [p.label, formatPercentage(p.share)]),
+        )
+      : undefined;
+  return {
+    failedPassesByKind: shares(byLength),
+    failedPassesByDirection: shares(byDirection),
+    completedByKind: passTypes.map((type) => ({
+      kind: type.label,
+      completed: formatPercentage(type.value),
+      ...(type.yardstick !== null && {
+        typicalOpponent: formatPercentage(type.yardstick),
+      }),
+      ...(type.standing && { comparison: COMPARISON[type.standing] }),
     })),
   };
 }

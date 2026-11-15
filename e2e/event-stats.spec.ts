@@ -205,6 +205,72 @@ test("what they add and give away sits beside a typical opponent in their positi
   ).toContainText("Typical opponent in the same positions: 2.00");
 });
 
+test("a profile says how they give the ball away", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const match = bare(win());
+  // Kabeeble: 16 of 20 short passes, 5 of 10 long and 1 of 2 crosses came
+  // off; 6 of the failed ones went forward, 2 sideways; lost the ball 4 times.
+  playing(match, OUR_CLUB_ID, KABEEBLE, {
+    24: 16,
+    25: 4,
+    28: 5,
+    29: 5,
+    36: 1,
+    37: 1,
+    31: 6,
+    35: 2,
+    105: 1,
+    106: 3,
+  });
+  // Their midfielder: 18 of 20 short passes, 2 of 10 long.
+  playing(match, OPPONENT_ID, THEIR_MIDFIELDER, {
+    24: 18,
+    25: 2,
+    28: 2,
+    29: 8,
+  });
+  await fakeEa.addMatch(match);
+  await triggerPoll();
+
+  await page.goto(PROFILE);
+  const giveaways = section(page, "How they give the ball away");
+  await expect(
+    giveaways.getByRole("img", {
+      name: "Passes that went astray, by kind: Short passes 40%, Medium passes 0%, Long passes 50%, Crosses 10%",
+    }),
+  ).toBeVisible();
+  await expect(
+    giveaways.getByRole("img", {
+      name: "Passes that went astray, by direction: Forward 75%, Sideways 25%, Backward 0%",
+    }),
+  ).toBeVisible();
+  await expect(
+    giveaways.getByRole("img", {
+      name: "Where they lose the ball: Our third 25%, Middle third 75%, Their third 0%",
+    }),
+  ).toBeVisible();
+
+  // Each kind of pass tried often enough, beside a typical opponent.
+  const cameOff = section(page, "Passes that came off");
+  await expect(yardstick(cameOff, "short")).toContainText(/Short passes\s*80%/);
+  await expect(yardstick(cameOff, "short")).toContainText(
+    "Typical opposing midfielder: 90%",
+  );
+  await expect(
+    yardstick(cameOff, "short").getByText("Worse", { exact: true }),
+  ).toBeVisible();
+  await expect(yardstick(cameOff, "long")).toContainText("Much better");
+  // Two crosses are too few to judge.
+  await expect(yardstick(cameOff, "crosses")).toHaveCount(0);
+
+  await expect(giveaways).toContainText(
+    "It doesn't say when a through ball failed or when they were tackled.",
+  );
+});
+
 test("a profile says what goes with winning", async ({
   page,
   fakeEa,
