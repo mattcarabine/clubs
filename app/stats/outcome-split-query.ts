@@ -11,8 +11,7 @@ import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import type { Db } from "~/db/client";
 import { appearances, matches } from "~/db/schema";
 
-import { toOutcome } from "./convert";
-import { countsStatsOf, isCountedAppearance, weQuit } from "./counted";
+import { isCountedAppearance, weQuit } from "./counted";
 import { eventCount, totalOf } from "./event-sql";
 import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
 import { listKickoffs, listMatches, type MatchSummary } from "./matches";
@@ -138,7 +137,7 @@ async function splitData(
 /**
  * A Dropped Points Match against the average Win over the default filter
  * (Competitive Matches, all time, DNFs included), whatever the page's
- * filters. Null for a Win, a DNF we quit (EA kept none of our stats), or
+ * filters. Null for a Win, a DNF we quit (it never ran its course), or
  * with fewer than 3 Wins to compare against.
  */
 export async function getDroppedPointsReasons(
@@ -203,9 +202,8 @@ function total(column: SQLiteColumn): SQL<number> {
 
 /**
  * Each club's Appearance totals in every Match `where` selects, by Match ID.
- * 0-minute Appearances are left out, and so are a club's totals in a Match
- * it rage quit (`counted.ts`), though ours still count towards the squad
- * size.
+ * 0-minute Appearances are left out. A club's totals in a Match it rage
+ * quit count too, marked `quit` (`counted.ts`).
  */
 async function clubMatchTotals(
   db: Db,
@@ -278,6 +276,7 @@ async function clubMatchTotals(
     } = row;
     const stats: ClubMatchTotals = {
       ...named,
+      quit: dnf && result === (ours ? "loss" : "win"),
       detail:
         withEvents > 0
           ? {
@@ -297,15 +296,12 @@ async function clubMatchTotals(
       opponentHumans: 0,
     };
     entry.secondsPlayed = Math.max(entry.secondsPlayed, secondsPlayed ?? 0);
-    const match = { dnf, outcome: toOutcome(result) };
     if (ours) {
       entry.squadSize = players;
     } else {
       entry.opponentHumans = players;
     }
-    if (countsStatsOf(ours ? "us" : "opponent", match)) {
-      entry[ours ? "ours" : "opponent"] = stats;
-    }
+    entry[ours ? "ours" : "opponent"] = stats;
     byMatch.set(matchId, entry);
   }
   return byMatch;
