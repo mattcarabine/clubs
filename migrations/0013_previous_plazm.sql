@@ -1,0 +1,1 @@
+ALTER TABLE `appearances` ADD `events` text;

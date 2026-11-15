@@ -93,7 +93,15 @@ export async function squadAppearances(
     .orderBy(asc(matches.playedAt), asc(appearances.playerId));
 
   return rows.map(({ appearance, personaName, match, opponentName }) => {
-    const { matchId, clubId: _, positionGroup, ...stats } = appearance;
+    // Match Events stay out until the per-player layer reads them (CLUBS-85):
+    // these rows reach loaders, and the map would ride along to the browser.
+    const {
+      matchId,
+      clubId: _,
+      events: _events,
+      positionGroup,
+      ...stats
+    } = appearance;
     return {
       ...stats,
       positionGroup: toPositionGroup(positionGroup),

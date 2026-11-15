@@ -220,7 +220,8 @@ test("a filtered or later page has no hero, only the list", async ({
   triggerPoll,
 }) => {
   await triggerPoll();
-  await page.goto("/?range=30d");
+  // Not a date range: the recorded Matches only get older.
+  await page.goto("/?types=league");
   await expect(
     page.getByRole("region", { name: /^Session, / }).first(),
   ).toBeVisible();

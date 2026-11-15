@@ -68,6 +68,10 @@ _Avoid_: Ranked match, real match
 One player's participation in one Match, with that player's stats for it. An Appearance with no minutes (EA's record of a player who rage quit, rated 3.0 with every stat zeroed) is never counted, and the Match page tags it "Rage quit" with no stats.
 _Avoid_: Cap, game played, player-match
 
+**Match Events**:
+The unnamed counters EA sends for every player in a Match (`match_event_aggregate_*`): how often each of about 150 coded things happened, such as a shot on target, a yellow card, an interception or a forward pass. Each Appearance stores them whole. The decoded ones are named in `app/ea/events.ts`, following community research (ADR 0009). On the page they are just stats: never "events" or "hidden stats".
+_Avoid_: Hidden stats, event codes, aggregates
+
 **Position Group**:
 The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfielder or Forward. These exact names are used in the app too.
 

@@ -218,3 +218,42 @@ test("a 403 or a timeout is recorded in poll_runs, and the next Poll catches up"
   await triggerPoll();
   expect(await db.rows("matches")).toHaveLength(10);
 });
+
+test("an Appearance keeps the Match Events EA sent, summed across the four fields (CLUBS-84)", async ({
+  triggerPoll,
+  fakeEa,
+  db,
+}) => {
+  const added = win();
+  const [playerId, player] = Object.entries(
+    added.match.players[OUR_CLUB_ID],
+  )[0];
+  player.match_event_aggregate_0 = "217:5,24:12,abc:1,12:,12:x";
+  player.match_event_aggregate_1 = "97:7,217:1";
+  player.match_event_aggregate_2 = "";
+  player.match_event_aggregate_3 = "";
+  const [silentId, silent] = Object.entries(
+    added.match.players[OUR_CLUB_ID],
+  )[1];
+  for (const field of Object.keys(silent)) {
+    if (field.startsWith("match_event_aggregate_")) delete silent[field];
+  }
+  await fakeEa.addMatch(added);
+  await triggerPoll();
+
+  const appearances = (
+    await db.rows<AppearanceRow & { events: string | null }>("appearances")
+  ).filter((a) => a.match_id === added.match.matchId);
+  const eventsOf = (id: string) =>
+    appearances.find((a) => a.player_id === id)?.events;
+  // Malformed pairs are skipped; the rest are kept.
+  expect(JSON.parse(eventsOf(playerId) ?? "null")).toEqual({
+    "217": 6,
+    "24": 12,
+    "97": 7,
+  });
+  expect(eventsOf(silentId)).toBeNull();
+
+  const runs = await db.rows<PollRunRow>("poll_runs");
+  expect(runs.at(-1)).toMatchObject({ status: "ok" });
+});

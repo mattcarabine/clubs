@@ -5,10 +5,11 @@
  * EA's API is unofficial: any field may be missing, empty or renamed in a
  * future FC version. Missing numbers become 0 (or null where 0 would lie, such
  * as a rating), and malformed entries are skipped rather than failing a Poll.
- * The `match_event_aggregate_*` counters are not parsed; they stay in the Raw
- * Payload (docs/adr/0003).
+ * The `match_event_aggregate_*` counters are kept whole as each Appearance's
+ * Match Events (`./events.ts`, docs/adr/0009).
  */
 import type { EaEndpoint, MatchType } from "./endpoints.ts";
+import { type MatchEvents, parseMatchEvents } from "./events.ts";
 import type { EaMatch, EaMatchClub, EaPlayerStats } from "./types.ts";
 
 export type MatchResult = "win" | "loss" | "draw";
@@ -70,6 +71,8 @@ export interface ParsedAppearance {
   goalsConceded: number;
   cleanSheet: boolean;
   secondsPlayed: number;
+  /** EA's unnamed counters for this Appearance; null when it sent none. */
+  events: MatchEvents | null;
 }
 
 /**
@@ -205,6 +208,7 @@ function parseAppearance(
     goalsConceded: toInt(stats.goalsconceded),
     cleanSheet: toInt(stats.cleansheetsany) > 0,
     secondsPlayed: toInt(stats.secondsPlayed),
+    events: parseMatchEvents(stats),
   };
 }
 
