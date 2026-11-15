@@ -35,7 +35,7 @@ const CLUBS: readonly Club[] = ["ours", "opponent"];
  * good for the club doing it. Goals, saves and ratings are left out: they
  * are the result, or follow from it.
  */
-const DRIVER_STATS: Record<string, "higher" | "lower"> = {
+export const DRIVER_STATS: Record<string, "higher" | "lower"> = {
   shots: "higher",
   conversion: "higher",
   pass: "higher",

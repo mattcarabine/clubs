@@ -43,6 +43,7 @@ export * from "./season-review";
 export * from "./season-review-query";
 export * from "./seasons";
 export * from "./session-brief";
+export * from "./session-standouts";
 export * from "./sessions";
 export * from "./sessions-query";
 export * from "./skill-rating";
