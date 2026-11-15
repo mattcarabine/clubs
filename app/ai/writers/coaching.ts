@@ -14,12 +14,12 @@ import {
   latestCoachingWeek,
 } from "~/lib/coaching-week";
 import { formatLondonDate } from "~/lib/london-time";
-import { formatDecimal, formatPercentage } from "~/lib/number-format";
 import {
   coachingPlayerIds,
+  EVENT_STATS,
+  formatEventStat,
   getCoachingBriefs,
   type PlayerCoachingBrief,
-  type PlayerTotals,
   type SquadAppearance,
 } from "~/stats";
 import { revised } from "../config";
@@ -35,6 +35,7 @@ import {
   proseLabels,
   recentWritingContext,
   resultInput,
+  totalsInput,
 } from "./inputs";
 
 /** How many recent players' notes a call sees, so it doesn't repeat them. */
@@ -73,6 +74,7 @@ const INSTRUCTIONS = `Write this week's coaching notes for each Squad Member in 
 - "notes": one entry per Squad Member, using their playerId. "points" holds 2 to 4 short points, each one or two plain sentences: what is working, what to work on, and one concrete focus for next week, e.g. "Conversion fell to 18% while shots rose; take one more touch."
 - Name the Squad Member in the third person, by the name in the data, never "you": the whole squad reads every note.
 - Ground every point in their numbers: this week's Matches against their recent changes, their form, their stats by Position Group, their stats in wins against draws and defeats, and their all-time totals. Every number must be in the data.
+- "detail" sets the finer side of their week (through balls, ball won and lost, poor pass choices, fouls and the like) against their usual, per 90 minutes unless a percentage. Use it to say what changed in how they played, not just what the scoreline shows, and say each stat in football words.
 - Honest means blunt about what went badly, but always about football, never the person, and never about a gap in EA's data.
 - Vary the points' openings and phrasing from player to player, and from the recent notes in the background.
 - Each point stands alone: no numbering, dashes or bullet characters, and no sign-off.`;
@@ -198,6 +200,13 @@ function briefInput(brief: PlayerCoachingBrief) {
       inDrawsAndDefeats: totalsInput(brief.outcomeSplit.dropped),
     },
     allTime: totalsInput(brief.allTime),
+    ...(brief.detail && {
+      detail: brief.detail.map(({ id, week, usual }) => ({
+        stat: EVENT_STATS[id].label,
+        thisWeek: formatEventStat(id, week),
+        usual: formatEventStat(id, usual),
+      })),
+    }),
   };
 }
 
@@ -215,22 +224,5 @@ function appearanceInput(a: SquadAppearance) {
     ...resultInput({ ...a, opponent: { name: a.opponentName } }),
     positionGroup: a.positionGroup ?? "Unknown",
     ...appearanceStatsInput(a),
-  };
-}
-
-function totalsInput(totals: PlayerTotals) {
-  return {
-    appearances: totals.appearances,
-    minutes: totals.minutes,
-    goals: totals.goals,
-    assists: totals.assists,
-    shots: totals.shots,
-    averageRating: formatDecimal(totals.averageRating),
-    manOfTheMatch: totals.manOfTheMatch,
-    passPercentage: formatPercentage(totals.passPercentage),
-    tacklePercentage: formatPercentage(totals.tacklePercentage),
-    goalsPer90: formatDecimal(totals.goalsPer90, 2),
-    assistsPer90: formatDecimal(totals.assistsPer90, 2),
-    shotsPer90: formatDecimal(totals.shotsPer90, 2),
   };
 }
