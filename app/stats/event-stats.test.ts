@@ -370,6 +370,8 @@ describe("giveaways", () => {
       "37": 1,
       "31": 6,
       "35": 2,
+      "105": 1,
+      "106": 4,
     }),
   ]);
   const theirs = eventTotals([
@@ -378,6 +380,14 @@ describe("giveaways", () => {
 
   it("shares out the failed passes by kind and by direction", () => {
     const found = giveaways(own, null);
+    // "216" is absent, so only the 5 losses on the ball count here.
+    expect(found?.overall).toEqual({
+      total: 5,
+      parts: [
+        { label: "Passes astray", share: 0 },
+        { label: "Lost on the ball", share: 100 },
+      ],
+    });
     expect(found?.byLength).toEqual({
       total: 10,
       parts: [

@@ -1067,11 +1067,18 @@ export interface PassTypeLine {
 
 /**
  * How a Squad Member gives the ball away (CLUBS-99), as far as EA says:
- * their failed passes by length and by direction, and how often each kind
- * of pass comes off. EA has no count for a failed through ball or for being
- * tackled.
+ * passes gone astray beside the ball lost while on it (tackled, or a dribble
+ * or touch gone wrong: EA does not split those), the failed passes by length
+ * and by direction, and how often each kind of pass comes off. EA has no
+ * count for a failed through ball.
  */
 export interface Giveaways {
+  /**
+   * Every time they gave it away: passes gone astray beside the ball lost
+   * while on it (EA's possession lost, which tracks the other side's tackles
+   * and the player's own dribbling, not their passing).
+   */
+  overall: ShareMix | null;
   /** Failed passes by kind; EA gives a length to nearly all of them. */
   byLength: ShareMix | null;
   /** Failed passes by direction; EA gives one to about three in four. */
@@ -1141,8 +1148,14 @@ export function giveaways(
     ["Sideways", counts.sidewaysPassesFailed],
     ["Backward", counts.backwardPassesFailed],
   ]);
-  if (!byLength && !byDirection && passTypes.length === 0) return null;
-  return { byLength, byDirection, passTypes };
+  const overall = sharesOf([
+    ["Passes astray", counts.passesFailed],
+    ["Lost on the ball", ballLost(counts)],
+  ]);
+  if (!overall && !byLength && !byDirection && passTypes.length === 0) {
+    return null;
+  }
+  return { overall, byLength, byDirection, passTypes };
 }
 
 /** One Event Stat beside its Yardstick. */

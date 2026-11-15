@@ -281,7 +281,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
             <section aria-label="How they give the ball away" className="mb-8">
               <SectionHeading
                 title="How they give the ball away"
-                subtitle="The passes that don't come off, and where the ball goes"
+                subtitle="Passes that go astray, and the ball lost when tackled or dribbling"
               />
               <Giveaways events={events} against={against} />
             </section>

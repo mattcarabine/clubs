@@ -222,6 +222,7 @@ test("a profile says how they give the ball away", async ({
     37: 1,
     31: 6,
     35: 2,
+    216: 12,
     105: 1,
     106: 3,
   });
@@ -247,11 +248,20 @@ test("a profile says how they give the ball away", async ({
       name: "Passes that went astray, by direction: Forward 75%, Sideways 25%, Backward 0%",
     }),
   ).toBeVisible();
+  // 12 passes went astray and they lost it on the ball 4 times.
   await expect(
     giveaways.getByRole("img", {
-      name: "Where they lose the ball: Our third 25%, Middle third 75%, Their third 0%",
+      name: "Every time they gave it away: Passes astray 75%, Lost on the ball 25%",
     }),
   ).toBeVisible();
+  await expect(
+    giveaways.getByRole("img", {
+      name: "Where they lose it on the ball: Our third 25%, Middle third 75%, Their third 0%",
+    }),
+  ).toBeVisible();
+  await expect(
+    yardstick(section(page, "How it goes"), "ballLost"),
+  ).toContainText(/Lost on the ball\s*4\.00/);
 
   // Each kind of pass tried often enough, beside a typical opponent.
   const cameOff = section(page, "Passes that came off");
@@ -267,7 +277,7 @@ test("a profile says how they give the ball away", async ({
   await expect(yardstick(cameOff, "crosses")).toHaveCount(0);
 
   await expect(giveaways).toContainText(
-    "It doesn't say when a through ball failed or when they were tackled.",
+    "Lost on the ball means tackled, or a dribble or touch gone wrong",
   );
 });
 

@@ -218,7 +218,12 @@ function positionInput({
 }
 
 /** Failed passes by kind and direction, and how often each kind comes off (CLUBS-99). */
-function giveawaysInput({ byLength, byDirection, passTypes }: Giveaways) {
+function giveawaysInput({
+  overall,
+  byLength,
+  byDirection,
+  passTypes,
+}: Giveaways) {
   const shares = (mix: Giveaways["byLength"]) =>
     mix
       ? Object.fromEntries(
@@ -226,6 +231,8 @@ function giveawaysInput({ byLength, byDirection, passTypes }: Giveaways) {
         )
       : undefined;
   return {
+    // "Lost on the ball" is being tackled, or a dribble or touch gone wrong.
+    everyGiveaway: shares(overall),
     failedPassesByKind: shares(byLength),
     failedPassesByDirection: shares(byDirection),
     completedByKind: passTypes.map((type) => ({
