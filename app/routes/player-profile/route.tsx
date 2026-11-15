@@ -13,7 +13,7 @@
 import { env } from "cloudflare:workers";
 import { data, Link, useSearchParams } from "react-router";
 
-import { writeupHistory } from "~/ai/writeups";
+import { latestWriteups, writeupHistory } from "~/ai/writeups";
 
 import {
   ChartFrame,
@@ -33,7 +33,7 @@ import {
   StatTile,
 } from "~/components";
 import { getDb } from "~/db/client";
-import type { PositionGroup } from "~/lib/domain";
+import { POSITION_GROUPS, type PositionGroup } from "~/lib/domain";
 import { formatLondonShortDate } from "~/lib/london-time";
 import {
   formatCount,
@@ -45,6 +45,7 @@ import {
   comparePath,
   getPlayerProfile,
   listMilestones,
+  playerSummaryKey,
   RECENT_WINDOW,
   resolveStatsFilter,
   statsFilterFromRequest,
@@ -59,6 +60,7 @@ import { EaTotals } from "./ea-totals";
 import { Influence } from "./influence";
 import { OutcomeSplitPanel } from "./outcome-split-panel";
 import { PlayStyle } from "./play-style";
+import { PlayerSummary } from "./player-summary";
 import { PositionGroupTable } from "./position-group-table";
 import { RecentChangesPanel } from "./recent-changes";
 
@@ -92,22 +94,40 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
-  const [profile, coachingNotes, milestones] = await Promise.all([
+  const [profile, coachingNotes, written, milestones] = await Promise.all([
     getPlayerProfile(db, params.playerId, filter, {
       mainPositionOnly: filter.mainPositionOnly,
     }),
     writeupHistory(db, "coaching", params.playerId, COACHING_WEEKS_SHOWN),
+    latestWriteups(
+      db,
+      "player-summary",
+      POSITION_GROUPS.map((g) => playerSummaryKey(params.playerId, g)),
+    ),
     listMilestones(db, env.EA_CLUB_NAME, {
       who: { playerId: params.playerId },
       limit: PROFILE_MILESTONES,
     }),
   ]);
   if (!profile) throw data("Not Found", { status: 404 });
+  // One per Position Group written about, their Main Position first.
+  const summaries = [...POSITION_GROUPS]
+    .sort(
+      (a, b) =>
+        Number(b === profile.mainPosition) - Number(a === profile.mainPosition),
+    )
+    .flatMap((positionGroup) => {
+      const summary = written.get(
+        playerSummaryKey(params.playerId, positionGroup),
+      );
+      return summary ? [{ positionGroup, ...summary }] : [];
+    });
   return {
     clubName: env.EA_CLUB_NAME,
     filter,
     profile,
     coachingNotes,
+    summaries,
     milestones,
   };
 }
@@ -126,7 +146,8 @@ const CONTRIBUTION_SERIES = [
 ] as const;
 
 export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
-  const { clubName, filter, profile, coachingNotes, milestones } = loaderData;
+  const { clubName, filter, profile, coachingNotes, summaries, milestones } =
+    loaderData;
   const { member, totals, form, build, career, season } = profile;
   const labels = form.map((p) => formatLondonShortDate(p.playedAt));
   const latestBuild = build.at(-1) ?? null;
@@ -203,6 +224,13 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
           />
         </StatGrid>
       </section>
+
+      <PlayerSummary
+        // A fresh pick for each Squad Member.
+        key={member.playerId}
+        name={member.name}
+        summaries={summaries}
+      />
 
       {form.length > 0 && (
         <section aria-label="Influence" className="mb-8">
