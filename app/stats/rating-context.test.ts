@@ -55,17 +55,17 @@ describe("aboveTeam", () => {
     });
   });
 
-  it("never counts a rage quit or a Match we quit", () => {
+  it("never counts a player who dropped out, but counts a Match we quit (CLUBS-87)", () => {
     const all = [
       ...lineup("m1", { a: 7, b: 7 }),
       // b dropped out: 0 minutes and EA's 3.0.
       rated("m1", "c", 3, { secondsPlayed: 0 }),
-      // We quit m2: nothing of ours counts.
+      // We quit m2: it counts like any other.
       rated("m2", "a", 9, { dnf: true, outcome: "L" }),
-      rated("m2", "b", 4, { dnf: true, outcome: "L" }),
+      rated("m2", "b", 5, { dnf: true, outcome: "L" }),
     ];
     const own = all.filter((x) => x.playerId === "a");
-    expect(aboveTeam(own, matchRatings(all))).toEqual({ matches: 1, gap: 0 });
+    expect(aboveTeam(own, matchRatings(all))).toEqual({ matches: 2, gap: 2 });
   });
 });
 
@@ -210,7 +210,6 @@ describe("consistency (CLUBS-74)", () => {
     const four = [
       ...ratings([7, 7, 7, 7]),
       rated("m8", "a", 3, { secondsPlayed: 0 }),
-      rated("m9", "a", 9, { dnf: true, outcome: "L" }),
       rated("m10", "a", null),
     ];
     expect(consistency(four)).toEqual({

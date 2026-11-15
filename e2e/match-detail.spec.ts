@@ -1,51 +1,24 @@
 // page.evaluate callbacks run in the browser, so they need DOM types.
 /// <reference lib="dom" />
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import { lasting, loss, OUR_CLUB_ID, win } from "./support/match-builders.ts";
+import {
+  bare,
+  type Events,
+  KABEEBLE,
+  lineup,
+  lineupCell,
+  OPPONENT_ID,
+  playing,
+  THEIR_MIDFIELDER,
+  TINBS,
+} from "./support/match-events.ts";
 import { daysAgo, record } from "./support/record.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-86: Match Events on the Match page, Compare and Analysis.
-
-const KABEEBLE = "256171605";
-const TINBS = "380993182";
-const OPPONENT_ID = "356611";
-const THEIR_MIDFIELDER = "1011157123282";
-const FULL_MATCH = 90 * 60;
-
-type Events = Record<number, number>;
-
-/** A built Match with every player's Match Events removed, so each test sets its own. */
-function bare(fake: AddMatchBody): AddMatchBody {
-  for (const players of Object.values(fake.match.players)) {
-    for (const player of Object.values(players)) {
-      for (const field of Object.keys(player)) {
-        if (field.startsWith("match_event_aggregate_")) delete player[field];
-      }
-    }
-  }
-  return fake;
-}
-
-/** Gives one player exactly these Match Events over exactly 90 minutes. */
-function playing(
-  fake: AddMatchBody,
-  clubId: string,
-  playerId: string,
-  events: Events,
-  stats: Record<string, string> = {},
-): AddMatchBody {
-  Object.assign(fake.match.players[clubId][playerId], {
-    secondsPlayed: String(FULL_MATCH),
-    match_event_aggregate_0: Object.entries(events)
-      .map(([code, count]) => `${code}:${count}`)
-      .join(","),
-    ...stats,
-  });
-  return fake;
-}
 
 function tapeRow(table: Locator, label: string) {
   return table.locator("tbody tr").filter({
@@ -70,23 +43,6 @@ async function expectTape(
     if (leader === side) await leads.toHaveAttribute("data-leader", "true");
     else await leads.not.toHaveAttribute("data-leader");
   }
-}
-
-function lineup(page: Page, club: string) {
-  return page.getByRole("table", { name: `${club} line-up` });
-}
-
-async function lineupCell(table: Locator, player: string, header: string) {
-  const headers = await table.getByRole("columnheader").allTextContents();
-  const index = headers.findIndex((h) => h.trim() === header);
-  expect(index, `column ${header}`).toBeGreaterThan(0);
-  return table
-    .locator("tbody tr")
-    .filter({
-      has: table.page().getByRole("rowheader", { name: new RegExp(player) }),
-    })
-    .getByRole("cell")
-    .nth(index - 1);
 }
 
 test.beforeEach(async ({ fakeEa }) => {

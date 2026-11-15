@@ -42,6 +42,7 @@ function match(
     goalsAgainst,
     outcome,
     dnf: false,
+    awardedScore: null,
     skillRatings: { ours: null, opponent: null },
     ...rest,
   };

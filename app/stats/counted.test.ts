@@ -67,10 +67,10 @@ describe("isCountedAppearance", () => {
     expect(isCountedAppearance({ ...full, secondsPlayed: 0 })).toBe(false);
   });
 
-  it("leaves out our side of a DNF we quit, not one the Opponent quit", () => {
-    expect(isCountedAppearance({ ...full, dnf: true })).toBe(false);
-    expect(isCountedAppearance({ ...full, dnf: true, outcome: "W" })).toBe(
-      true,
-    );
+  it("counts either side of a DNF, ours in one we quit too (CLUBS-87)", () => {
+    const weQuit = { ...full, dnf: true };
+    const theyQuit = { ...full, dnf: true, outcome: "W" as const };
+    expect(isCountedAppearance(weQuit)).toBe(true);
+    expect(isCountedAppearance(theyQuit)).toBe(true);
   });
 });

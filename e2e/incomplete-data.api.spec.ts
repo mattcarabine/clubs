@@ -6,6 +6,7 @@
 import { FAKE_USAGE } from "./fake-anthropic/control.ts";
 import { promptText } from "./support/fake-anthropic.ts";
 import {
+  DROPPED_OUT,
   dnf,
   lasting,
   OUR_CLUB_ID,
@@ -69,7 +70,7 @@ test("a DNF we quit reaches the Match report prompt as quitBy us, with its end m
     [
       { player: KAB, rating: 4.1 },
       // Trevor dropped out: EA records no minutes and a 3.0.
-      { player: TREV, rating: 3, stats: { secondsPlayed: "0" } },
+      { player: TREV, rating: 3, stats: DROPPED_OUT },
     ],
   );
   await fakeEa.addMatch(body);
@@ -79,7 +80,7 @@ test("a DNF we quit reaches the Match report prompt as quitBy us, with its end m
   for (const text of [
     '"quitBy":"us"',
     '"endedAtMinute":20',
-    `"score":"3-0 to ${opponentName(body)}"`,
+    `"score":"3-0 to ${opponentName(body)} when it ended"`,
     '"result":"we lost"',
     `"ourPlayers":["${KAB.name}"]`,
     `"droppedOut":[{"club":"A Bloo Bloo","name":"${TREV.name}"}]`,
@@ -211,7 +212,7 @@ test("a zero-shots claim is still sent back when a player dropped out", async ({
   await fakeEa.addMatch(
     withLineup(win({ matchId, playedAt: kickOff() }), [
       { player: KAB, rating: 7 },
-      { player: TREV, rating: 3, stats: { secondsPlayed: "0" } },
+      { player: TREV, rating: 3, stats: DROPPED_OUT },
     ]),
   );
   await fakeAnthropic.reply({
@@ -228,7 +229,7 @@ test("a zero-shots claim is still sent back when a player dropped out", async ({
   );
 });
 
-test("a feat in a DNF we quit, or from a 0-minute Appearance, is no Milestone", async ({
+test("a feat from a 0-minute Appearance is no Milestone, but one in a DNF we quit is (CLUBS-87)", async ({
   fakeEa,
   triggerPoll,
   db,
@@ -241,7 +242,7 @@ test("a feat in a DNF we quit, or from a 0-minute Appearance, is no Milestone", 
     win({ matchId: "94813000000002", playedAt: kickOff(200) }),
     [
       { player: KAB, rating: 10 },
-      { player: TREV, rating: 10, stats: { secondsPlayed: "0" } },
+      { player: TREV, rating: 10, stats: DROPPED_OUT },
     ],
   );
   await fakeEa.addMatch(quit);
@@ -251,7 +252,8 @@ test("a feat in a DNF we quit, or from a 0-minute Appearance, is no Milestone", 
   const feats = (await db.rows<MilestoneRow>("milestones")).filter(
     (m) => m.kind === "perfect-rating",
   );
-  expect(feats.map((m) => [m.player_id, m.match_id])).toEqual([
+  expect(feats.map((m) => [m.player_id, m.match_id]).sort()).toEqual([
+    [KAB.id, "94813000000001"],
     [KAB.id, "94813000000002"],
   ]);
 });

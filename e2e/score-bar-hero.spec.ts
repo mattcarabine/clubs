@@ -11,6 +11,7 @@ import {
   win,
   withLineup,
 } from "./support/match-builders.ts";
+import { bare } from "./support/match-events.ts";
 import { matchList } from "./support/match-list.ts";
 import { expect, test } from "./support/test.ts";
 
@@ -134,7 +135,8 @@ test("the stat strip compares both clubs' shots, pass % and tackles", async ({
   fakeEa,
   triggerPoll,
 }) => {
-  const body = win({ matchId: "31020" });
+  // Without Match Events nothing is restored, so EA's named stats are the totals.
+  const body = bare(win({ matchId: "31020" }));
   await fakeEa.addMatch(body);
   await triggerPoll();
 

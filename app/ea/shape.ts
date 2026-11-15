@@ -30,6 +30,7 @@ export const MATCH_PLAYER_FIELDS = [
   "goalsconceded",
   "cleansheetsany",
   "secondsPlayed",
+  "SCORE",
 ] as const;
 
 /** Snapshot fields read by `app/stats/` and `app/poll/seasons.ts`, per endpoint. */

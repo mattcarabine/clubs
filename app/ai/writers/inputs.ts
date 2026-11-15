@@ -44,16 +44,31 @@ export interface ResultFields {
 /**
  * A Match's result as every prompt gives it (CLUBS-48): the score winner
  * first with who won it, so a defeat is never written our way round, and
- * for a DNF who quit (`quitBy`) rather than the label.
+ * for a DNF who quit (`quitBy`) rather than the label, with the score as it
+ * stood and who led.
  */
 export function resultInput(match: ResultFields) {
   const high = Math.max(match.goalsFor, match.goalsAgainst);
   const low = Math.min(match.goalsFor, match.goalsAgainst);
   const opponent = promptName(match.opponent.name);
   const winner = { W: OUR_CLUB, L: opponent, D: null }[match.outcome];
+  let score = winner ? `${high}-${low} to ${winner}` : `${high}-${low} draw`;
+  if (match.dnf) {
+    // The score when it stopped (CLUBS-87): the side EA gave the Match to
+    // may have been level or behind, so say who led, not who won.
+    const leader =
+      match.goalsFor === match.goalsAgainst
+        ? null
+        : match.goalsFor > match.goalsAgainst
+          ? OUR_CLUB
+          : opponent;
+    score = leader
+      ? `${high}-${low} to ${leader} when it ended`
+      : `${high}-${low}, level when it ended`;
+  }
   return {
     opponent,
-    score: winner ? `${high}-${low} to ${winner}` : `${high}-${low} draw`,
+    score,
     ourGoals: match.goalsFor,
     theirGoals: match.goalsAgainst,
     result: { W: "we won", D: "a draw", L: "we lost" }[match.outcome],

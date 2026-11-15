@@ -16,7 +16,6 @@ import {
   ne,
   notExists,
   type SQL,
-  sql,
 } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
@@ -120,8 +119,7 @@ export const isOurAppearance = ne(appearances.clubId, matches.opponentClubId);
 export const isPlayedAppearanceSql: SQL = gt(appearances.secondsPlayed, 0);
 
 /**
- * `isCountedAppearance` (`counted.ts`) in SQL, for either club's Appearances: only Our
- * Club's side of a DNF we quit is left out. Needs `matches` joined to
- * `appearances`.
+ * `isCountedAppearance` (`counted.ts`) in SQL, for either club's
+ * Appearances: any with minutes (CLUBS-87).
  */
-export const isCountedAppearanceSql: SQL = sql`(${isPlayedAppearanceSql} and not (${isOurAppearance} and ${matches.dnf} = 1 and ${matches.result} = 'loss'))`;
+export const isCountedAppearanceSql: SQL = isPlayedAppearanceSql;

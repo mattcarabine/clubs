@@ -189,6 +189,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
             by={quitBy(match)}
             ours={clubName}
             theirs={opponent.name}
+            awarded={match.awardedScore}
           />
         )}
       </section>
@@ -424,10 +425,13 @@ function RageQuitNote({
   by,
   ours,
   theirs,
+  awarded,
 }: {
   by: QuitBy | null;
   ours: string;
   theirs: string;
+  /** The score EA awarded, ours first, where it is not the real one. */
+  awarded: readonly [number, number] | null;
 }) {
   const [quitter, winner] = by === "us" ? [ours, theirs] : [theirs, ours];
   return (
@@ -447,6 +451,12 @@ function RageQuitNote({
             time, and EA left the Match level.
           </>
         )}{" "}
+        {awarded && (
+          <>
+            This is the score when they left. EA records it as {awarded[0]}-
+            {awarded[1]}.{" "}
+          </>
+        )}
         Rage quits count in all stats unless you turn off “Include rage quits”
         in the filters.
       </p>

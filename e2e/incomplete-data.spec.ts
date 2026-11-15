@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import {
+  DROPPED_OUT,
   dnf,
   type Lineup,
   lasting,
@@ -33,7 +34,7 @@ test.beforeEach(async ({ fakeEa }) => {
 const droppedOut: Lineup[number] = {
   player: ALPHA,
   rating: 3,
-  stats: { secondsPlayed: "0" },
+  stats: DROPPED_OUT,
 };
 
 /**
@@ -66,7 +67,7 @@ async function squadCell(page: Page, name: string, header: string) {
     .nth(index - 1);
 }
 
-test("the Squad table counts neither a 0-minute Appearance nor a DNF we quit", async ({
+test("the Squad table leaves out a 0-minute Appearance but counts a DNF we quit (CLUBS-87)", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -74,9 +75,10 @@ test("the Squad table counts neither a 0-minute Appearance nor a DNF we quit", a
   await record(fakeEa, triggerPoll, alphaMatches());
 
   await page.goto("/squad");
-  await expect(await squadCell(page, ALPHA.name, "Played")).toHaveText("2");
-  await expect(await squadCell(page, ALPHA.name, "Rating")).toHaveText("8.0");
-  await expect(await squadCell(page, BRAVO.name, "Played")).toHaveText("3");
+  await expect(await squadCell(page, ALPHA.name, "Played")).toHaveText("3");
+  // (8 + 8 + 3) / 3
+  await expect(await squadCell(page, ALPHA.name, "Rating")).toHaveText("6.3");
+  await expect(await squadCell(page, BRAVO.name, "Played")).toHaveText("4");
 });
 
 test("the profile plots only counted Appearances", async ({
@@ -90,10 +92,10 @@ test("the profile plots only counted Appearances", async ({
   const ratings = page
     .getByRole("table", { name: "Match rating" })
     .locator("tbody tr");
-  await expect(ratings).toHaveCount(2);
-  for (const row of await ratings.all()) {
-    await expect(row.locator("td").first()).toHaveText("8.0");
-  }
+  // The two Wins and the DNF we quit; never the Win Alpha dropped out of.
+  await expect(ratings).toHaveCount(3);
+  await expect(ratings.locator("td").first()).toHaveText("8.0");
+  await expect(ratings.last().locator("td").first()).toHaveText("3.0");
 });
 
 /** A's figures on Compare's table for one stat. */
@@ -108,7 +110,7 @@ function compareFigure(table: Locator, label: string) {
     .locator("[data-figure]");
 }
 
-test("Compare leaves out our stats from a DNF we quit, but its record still counts the loss", async ({
+test("Compare counts our stats from a DNF we quit, and its record counts the loss", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -117,7 +119,7 @@ test("Compare leaves out our stats from a DNF we quit, but its record still coun
 
   await page.goto(`/compare?players=${ALPHA.id},${BRAVO.id}`);
   const headline = page.getByRole("table", { name: "Headline stats" });
-  await expect(compareFigure(headline, "Appearances")).toHaveText("2");
+  await expect(compareFigure(headline, "Appearances")).toHaveText("3");
   const teamRecord = page.getByRole("table", { name: "Team record" });
   // The two full Wins and the DNF we quit; never the Win Alpha dropped out of.
   await expect(compareFigure(teamRecord, "Played")).toHaveText("3");
