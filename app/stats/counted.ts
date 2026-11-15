@@ -7,8 +7,10 @@
  * - EA zeroes the named stats of a player who left a Match early. The Poll
  *   restores their goals, assists, shots and passes from their Match Events
  *   (CLUBS-87, `app/ea/parse.ts`), so their Appearance counts like any
- *   other, in a Match we quit too. Tackles and saves cannot be restored;
- *   the club's totals in that Match count all the same (CLUBS-93).
+ *   other, in a Match we quit too. Tackles and saves cannot be restored:
+ *   the club's totals in that Match count all the same (CLUBS-93), except
+ *   that its saves per 90 are not sampled. Tackle success is a rate, so the
+ *   zeroes drop out of it.
  *
  * Every Rage Quit (EA's DNF) has a side that quit: a DNF loss means we quit,
  * a DNF Win means the Opponent did.
