@@ -3,11 +3,10 @@
  * counted recorded Appearances, summed per current Squad Member, in two
  * parallel reads. Like Milestones, they ignore the `StatsFilter`.
  */
-import { type AnyColumn, and, eq, type SQL, sql } from "drizzle-orm";
+import { type AnyColumn, and, eq, sql } from "drizzle-orm";
 
 import type { Db } from "~/db/client";
 import { appearances, matches, players } from "~/db/schema";
-import { MATCH_EVENT_CODES, type MatchEventStat } from "~/ea/events";
 import { displayName, isFormerSquadMember } from "~/roster";
 
 import {
@@ -16,29 +15,12 @@ import {
   type LeaderCandidate,
 } from "./club-leaders";
 import { eaMemberTotals } from "./ea-totals";
-import { STRAIGHT_RED_CODE } from "./event-stats";
+import { eventCount, totalOf, yellowCardsSql } from "./event-sql";
 import { PERFECT_RATING } from "./milestones";
 import { isCountedAppearanceSql, isOurAppearance, isShownMatch } from "./scope";
 
 const total = (column: AnyColumn) =>
   sql<number>`coalesce(sum(${column}), 0)`.mapWith(Number);
-
-/** One Appearance's count of a Match Events code; 0 without it. */
-const eventCode = (code: number | string) =>
-  sql`coalesce(json_extract(${appearances.events}, ${`$."${code}"`}), 0)`;
-
-/** One Appearance's count of a decoded Match Event, in SQL. */
-const eventCount = (stat: MatchEventStat) =>
-  sql.join(MATCH_EVENT_CODES[stat].map(eventCode), sql` + `);
-
-/** `yellowCards` (`event-stats.ts`) in SQL: the same rule, one Appearance. */
-const yellowCardsSql = sql`case
-  when ${appearances.events} is null then 0
-  when ${appearances.redCards} >= 1 and ${eventCode(STRAIGHT_RED_CODE)} = 0 then 2
-  else min(1, ${eventCount("yellowCards")}) end`;
-
-const totalOf = (expression: SQL) =>
-  sql<number>`coalesce(sum(${expression}), 0)`.mapWith(Number);
 
 export async function getClubLeaders(db: Db): Promise<LeaderBoard[]> {
   const [members, recorded] = await Promise.all([

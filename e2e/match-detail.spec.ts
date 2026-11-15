@@ -3,10 +3,11 @@
 import type { Locator, Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
-import { OUR_CLUB_ID, win } from "./support/match-builders.ts";
+import { lasting, loss, OUR_CLUB_ID, win } from "./support/match-builders.ts";
+import { daysAgo, record } from "./support/record.ts";
 import { expect, test } from "./support/test.ts";
 
-// CLUBS-86: Match Events on the Match page and Compare.
+// CLUBS-86: Match Events on the Match page, Compare and Analysis.
 
 const KABEEBLE = "256171605";
 const TINBS = "380993182";
@@ -213,6 +214,40 @@ test("Compare sets two Squad Members' influence side by side", async ({
   await expectTape(tape, "Interceptions", ["4.00", "1.00"], 0);
   // Losing the ball less leads.
   await expectTape(tape, "Ball lost", ["3.00", "1.00"], 1);
+});
+
+test("Analysis sets what we do in wins against draws and defeats", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const built = (match: AddMatchBody, events: Events) =>
+    playing(lasting(bare(match), 90), OUR_CLUB_ID, KABEEBLE, events);
+  await record(fakeEa, triggerPoll, [
+    ...[9, 8, 7].map((d) => built(win(daysAgo(d)), { 6: 6, 106: 10 })),
+    ...[6, 5, 4].map((d) => built(loss(daysAgo(d)), { 6: 2, 106: 14 })),
+  ]);
+
+  await page.goto("/analysis");
+  const row = (label: string) =>
+    page
+      .getByRole("table", {
+        name: "Performance in wins against draws and defeats",
+      })
+      .locator("tbody tr")
+      .filter({ has: page.getByRole("rowheader", { name: label }) })
+      .getByRole("cell");
+  await expect(row("Interceptions per 90").nth(0)).toHaveText("6.0");
+  await expect(row("Interceptions per 90").nth(1)).toHaveText("2.0");
+  await expect(row("Ball lost per 90").nth(0)).toHaveText("10.0");
+  await expect(row("Ball lost per 90").nth(1)).toHaveText("14.0");
+  const findings = page.getByRole("list", { name: "Top findings" });
+  await expect(findings).toContainText(
+    "In draws and defeats we make 4.0 fewer interceptions per 90 than in wins (2.0 vs 6.0)",
+  );
+  await expect(findings).toContainText(
+    "In draws and defeats we lose the ball 4.0 more times per 90 than in wins (14.0 vs 10.0)",
+  );
 });
 
 test.describe("on a 375px phone", () => {
