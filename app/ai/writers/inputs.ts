@@ -1,10 +1,14 @@
 /** Prompt input shapes shared by the writers. */
 import type { Outcome } from "~/lib/domain";
-import { formatDecimal } from "~/lib/number-format";
+import { formatDecimal, formatPercentage } from "~/lib/number-format";
 import {
   type AppearanceStats,
+  ballLost,
+  ballWon,
+  type EventCounts,
   isPlayedAppearance,
   type MatchAppearance,
+  type PlayerTotals,
   quitBy,
   weQuit,
 } from "~/stats";
@@ -29,6 +33,20 @@ export function appearanceStatsInput(
     manOfTheMatch: a.manOfTheMatch,
     ...(a.saves > 0 && { saves: a.saves }),
     ...(a.redCards > 0 && { redCards: a.redCards }),
+  };
+}
+
+/** The finer counts of one Appearance, from its Match Events (CLUBS-94). */
+function detailInput(counts: EventCounts) {
+  return {
+    shotsOnTarget: counts.shotsOnTarget,
+    throughBalls: counts.throughBalls,
+    dribbles: counts.dribbles,
+    ballWon: ballWon(counts),
+    interceptions: counts.interceptions,
+    ballLost: ballLost(counts),
+    foulsConceded: counts.foulsConceded,
+    ...(counts.yellowCards > 0 && { yellowCards: counts.yellowCards }),
   };
 }
 
@@ -80,7 +98,8 @@ export function resultInput(match: ResultFields) {
  * Both line-ups with EA's data gaps taken out (`~/stats` counted.ts): a
  * player who dropped out (no minutes, a 3.0) is named in `droppedOut`
  * without stats. Our side of a DNF we quit has its stats like any other
- * (CLUBS-91): the Poll restores what EA wipes, bar tackles and saves.
+ * (CLUBS-91): the Poll restores what EA wipes, bar tackles and saves. A
+ * player read with their Match Events carries the finer counts as `detail`.
  * `endedAtMinute` is when a DNF stopped.
  */
 export function lineupInput(
@@ -95,6 +114,7 @@ export function lineupInput(
     ...who(a),
     positionGroup: a.positionGroup,
     ...appearanceStatsInput(a),
+    ...(a.detail && { detail: detailInput(a.detail) }),
   });
   const droppedOut = match.appearances
     .filter((a) => !isPlayedAppearance(a))
@@ -153,4 +173,22 @@ function endMinute(appearances: readonly MatchAppearance[]): number {
   return Math.round(
     Math.max(0, ...appearances.map((a) => a.secondsPlayed)) / 60,
   );
+}
+
+/** A Squad Member's totals, as every writer hands them over. */
+export function totalsInput(totals: PlayerTotals) {
+  return {
+    appearances: totals.appearances,
+    minutes: totals.minutes,
+    goals: totals.goals,
+    assists: totals.assists,
+    shots: totals.shots,
+    averageRating: formatDecimal(totals.averageRating),
+    manOfTheMatch: totals.manOfTheMatch,
+    passPercentage: formatPercentage(totals.passPercentage),
+    tacklePercentage: formatPercentage(totals.tacklePercentage),
+    goalsPer90: formatDecimal(totals.goalsPer90, 2),
+    assistsPer90: formatDecimal(totals.assistsPer90, 2),
+    shotsPer90: formatDecimal(totals.shotsPer90, 2),
+  };
 }

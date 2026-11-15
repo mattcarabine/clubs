@@ -8,6 +8,12 @@
 import type { Db } from "~/db/client";
 import { type CoachingWeek, coachingWeekLastMoment } from "~/lib/coaching-week";
 
+import {
+  EVENT_STATS,
+  type EventStatId,
+  eventTotals,
+  INFLUENCE,
+} from "./event-stats";
 import { DEFAULT_STATS_FILTER } from "./filter";
 import { type PlayerOutcomeSplit, playerOutcomeSplit } from "./outcome-split";
 import {
@@ -36,6 +42,34 @@ export interface PlayerCoachingBrief {
   outcomeSplit: PlayerOutcomeSplit;
   /** Every Appearance up to the week's end. */
   allTime: PlayerTotals;
+  /**
+   * The Event Stats behind Influence (CLUBS-94): the week's figure beside
+   * the one over every Appearance up to its end. Null when none of the
+   * week's Appearances has Match Events.
+   */
+  detail:
+    | { id: EventStatId; week: number | null; usual: number | null }[]
+    | null;
+}
+
+/** The Event Stats a brief carries: what adds to a result, then what gives it away. */
+const DETAIL_STATS: readonly EventStatId[] = [
+  ...INFLUENCE.adds,
+  ...INFLUENCE.costs,
+];
+
+function detailOf(
+  inWeek: readonly SquadAppearance[],
+  upToWeekEnd: readonly SquadAppearance[],
+): PlayerCoachingBrief["detail"] {
+  const week = eventTotals(inWeek);
+  if (week.appearances === 0) return null;
+  const usual = eventTotals(upToWeekEnd);
+  return DETAIL_STATS.map((id) => ({
+    id,
+    week: EVENT_STATS[id].value(week),
+    usual: EVENT_STATS[id].value(usual),
+  }));
 }
 
 /**
@@ -64,6 +98,7 @@ export async function getCoachingBriefs(
 ): Promise<PlayerCoachingBrief[]> {
   const apps = await squadAppearances(db, DEFAULT_STATS_FILTER, {
     playedBetween: { start: new Date(0), end: coachingWeekLastMoment(week) },
+    withEvents: true,
   });
   return coachingBriefs(apps, week, nameFor);
 }
@@ -98,6 +133,7 @@ export function coachingBriefs(
         .sort((a, b) => b.appearances - a.appearances),
       outcomeSplit: playerOutcomeSplit(upToWeekEnd, false),
       allTime: summariseAppearances(upToWeekEnd),
+      detail: detailOf(inWeek, upToWeekEnd),
     });
   }
   return briefs.sort((a, b) => a.name.localeCompare(b.name));
