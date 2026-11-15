@@ -18,7 +18,7 @@ import type { MatchEvents } from "~/ea/events";
 import type { MatchType, Outcome } from "~/lib/domain";
 import { displayName, isFormerSquadMember } from "~/roster";
 
-import type { ChoiceCounts } from "./choices";
+import type { PositionChoices } from "./choices";
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
 import { eventCount, totalOf } from "./event-sql";
 import {
@@ -183,31 +183,37 @@ export async function opponentEventAppearances(
 
 /** Both clubs' choices in some Matches, before they are shared out (`choiceBreakdown`). */
 export interface ClubChoiceCounts {
-  /** One per Squad Member with Match Events in those Matches. */
-  players: { playerId: string; name: string; counts: ChoiceCounts }[];
-  /** The opposing humans' together; null when none of them has Match Events. */
-  opponents: ChoiceCounts | null;
+  /** One per Squad Member with Match Events in those Matches, by Position Group. */
+  players: { playerId: string; name: string; positions: PositionChoices[] }[];
+  /** The opposing humans' together, by Position Group. */
+  opponents: PositionChoices[];
 }
 
 /**
  * Each Squad Member's choices (CLUBS-100) and the opposing humans' in the
- * Matches a filter selects, summed in SQL so the Worker never parses a Match
- * Events map for them. Whoever played counts, on either side of a rage quit:
- * EA zeroes a quitter's named stats, never their Match Events.
+ * Matches a filter selects, per Position Group (CLUBS-101), summed in SQL so
+ * the Worker never parses a Match Events map for them. Whoever played counts,
+ * on either side of a rage quit: EA zeroes a quitter's named stats, never
+ * their Match Events. An Appearance with no Match Events adds no choices but
+ * still counts towards a Main Position, as it does on a profile.
  */
 export async function clubChoiceCounts(
   db: Db,
   filter: StatsFilter,
   scope: ScopeOptions = {},
 ): Promise<ClubChoiceCounts> {
-  // One group per Squad Member, and one for every opposing human together.
+  // One group per Squad Member and Position Group, and one per Position
+  // Group for every opposing human together.
   const squadMember = sql<
     string | null
   >`case when ${isOurAppearance} then ${appearances.playerId} end`;
   const rows = await db
     .select({
       playerId: squadMember,
+      positionGroup: appearances.positionGroup,
       personaName: max(players.personaName),
+      played: sql<number>`count(*)`,
+      latestAt: sql<number>`max(${matches.playedAt})`,
       bestChoices: totalOf(eventCount("bestOptionTaken")),
       goodChoices: totalOf(eventCount("goodOptionTaken")),
       noGoodOptions: totalOf(eventCount("noGoodOption")),
@@ -216,26 +222,36 @@ export async function clubChoiceCounts(
     .from(appearances)
     .innerJoin(matches, eq(matches.matchId, appearances.matchId))
     .leftJoin(players, eq(players.playerId, appearances.playerId))
-    .where(
-      and(
-        isPlayedAppearanceSql,
-        isNotNull(appearances.events),
-        matchScope(db, filter, scope),
-      ),
-    )
-    .groupBy(squadMember);
-  const result: ClubChoiceCounts = { players: [], opponents: null };
-  for (const { playerId, personaName, ...counts } of rows) {
-    if (playerId === null) result.opponents = counts;
-    else {
-      result.players.push({
-        playerId,
-        name: displayName(playerId, personaName),
-        counts,
-      });
+    .where(and(isPlayedAppearanceSql, matchScope(db, filter, scope)))
+    .groupBy(squadMember, appearances.positionGroup);
+  const squad = new Map<string, ClubChoiceCounts["players"][number]>();
+  const opponents: PositionChoices[] = [];
+  for (const row of rows) {
+    const { playerId, personaName } = row;
+    const position: PositionChoices = {
+      positionGroup: toPositionGroup(row.positionGroup),
+      appearances: row.played,
+      latestAt: row.latestAt,
+      counts: {
+        bestChoices: row.bestChoices,
+        goodChoices: row.goodChoices,
+        noGoodOptions: row.noGoodOptions,
+        poorChoices: row.poorChoices,
+      },
+    };
+    if (playerId === null) {
+      opponents.push(position);
+      continue;
     }
+    const member = squad.get(playerId) ?? {
+      playerId,
+      name: displayName(playerId, personaName),
+      positions: [],
+    };
+    member.positions.push(position);
+    squad.set(playerId, member);
   }
-  return result;
+  return { players: [...squad.values()], opponents };
 }
 
 export interface LeaderboardRow extends PlayerTotals {

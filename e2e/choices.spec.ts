@@ -2,7 +2,8 @@
 /// <reference lib="dom" />
 /**
  * CLUBS-100: "Choices on the ball", EA's verdict on each pass and shot as
- * shares, on Analysis, a profile and Compare.
+ * shares, on Analysis, a profile and Compare. CLUBS-101: Analysis ranks each
+ * squad member against a typical opponent in their position.
  */
 import type { Locator, Page } from "@playwright/test";
 
@@ -21,6 +22,8 @@ import { expect, test } from "./support/test.ts";
 
 /** In every recorded Match for Our Club, as a forward. */
 const LOLTOWN = "274963432";
+/** The opposing forward in the Match every built one clones. */
+const THEIR_FORWARD = "1004605223836";
 
 /** EA's verdicts as Match Events, best first. */
 function verdicts(
@@ -34,13 +37,14 @@ function verdicts(
 
 /**
  * One Match: Kabeeble takes a good or the best option with 20% of 200
- * choices, tinbs_irl with 40% of 200, and their midfielder with 30% of 200.
+ * choices, tinbs_irl with 40% of 200, and their midfielder with 30% of 300.
+ * All three are midfielders.
  */
 function oneMatch(): AddMatchBody {
   const match = bare(win());
   playing(match, OUR_CLUB_ID, KABEEBLE, verdicts(10, 30, 100, 60));
   playing(match, OUR_CLUB_ID, TINBS, verdicts(30, 50, 80, 40));
-  playing(match, OPPONENT_ID, THEIR_MIDFIELDER, verdicts(20, 40, 100, 40));
+  playing(match, OPPONENT_ID, THEIR_MIDFIELDER, verdicts(30, 60, 150, 60));
   return match;
 }
 
@@ -59,7 +63,7 @@ test.beforeEach(async ({ fakeEa }) => {
   }
 });
 
-test("Analysis sets our club beside the opponents and ranks squad members by good or best options", async ({
+test("Analysis sets our club beside the opponents and each squad member against a typical opponent in their position", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -81,7 +85,10 @@ test("Analysis sets our club beside the opponents and ranks squad members by goo
     "30% good or best · 20% should have passed elsewhere",
   );
 
-  // The squad members, most good or best options first.
+  // The squad members, the furthest ahead of their position's opponents first.
+  await expect(section).toContainText(
+    "Each squad member is set against a typical opponent in their main position",
+  );
   const members = section
     .getByRole("list")
     .filter({ has: page.getByRole("link") })
@@ -89,11 +96,11 @@ test("Analysis sets our club beside the opponents and ranks squad members by goo
   await expect(members).toHaveCount(2);
   await expect(members.nth(0)).toContainText("tinbs_irl");
   await expect(members.nth(0)).toContainText(
-    "40% good or best · 20% should have passed elsewhere",
+    "40% good or best · 10 points above a typical opposing midfielder (30%)",
   );
   await expect(members.nth(1)).toContainText("Kabeeble");
   await expect(members.nth(1)).toContainText(
-    "20% good or best · 30% should have passed elsewhere",
+    "20% good or best · 10 points below a typical opposing midfielder (30%)",
   );
   await expect(members.nth(1).getByRole("link")).toHaveAttribute(
     "href",
@@ -121,6 +128,46 @@ test("Analysis sets our club beside the opponents and ranks squad members by goo
     ).toBeVisible();
   }
   await expect(section).toContainText("EA judges every pass and shot.");
+});
+
+test("a forward ahead of opposing forwards ranks above a midfielder who trails opposing midfielders", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const match = bare(win());
+  // Loltown95, a forward: 30%, against their forward's 20%.
+  playing(match, OUR_CLUB_ID, LOLTOWN, verdicts(30, 60, 150, 60));
+  playing(match, OPPONENT_ID, THEIR_FORWARD, verdicts(20, 40, 180, 60));
+  // Two midfielders against their midfielder's 45%: Kabeeble level on 45%,
+  // tinbs_irl behind on 35%, which is still more than Loltown95's 30%.
+  playing(match, OUR_CLUB_ID, KABEEBLE, verdicts(45, 90, 105, 60));
+  playing(match, OUR_CLUB_ID, TINBS, verdicts(30, 75, 135, 60));
+  playing(match, OPPONENT_ID, THEIR_MIDFIELDER, verdicts(45, 90, 105, 60));
+  await fakeEa.addMatch(match);
+  await triggerPoll();
+
+  await page.goto("/analysis");
+  const members = choices(page)
+    .getByRole("list")
+    .filter({ has: page.getByRole("link") })
+    .getByRole("listitem");
+  await expect(members).toHaveCount(3);
+  await expect(members.nth(0)).toContainText("Loltown95");
+  await expect(members.nth(0)).toContainText(
+    "30% good or best · 10 points above a typical opposing forward (20%)",
+  );
+  await expect(members.nth(1)).toContainText("Kabeeble");
+  await expect(members.nth(1)).toContainText(
+    "45% good or best · level with a typical opposing midfielder (45%)",
+  );
+  await expect(members.nth(2)).toContainText("tinbs_irl");
+  await expect(members.nth(2)).toContainText(
+    "35% good or best · 10 points below a typical opposing midfielder (45%)",
+  );
+  for (const member of await members.all()) {
+    await expect(member).not.toContainText("Small sample");
+  }
 });
 
 test("a share is printed on its segment where it fits", async ({
@@ -191,7 +238,10 @@ test("a small sample is said in words and listed last, and a handful of choices 
   await expect(members.nth(0)).toContainText("tinbs_irl");
   await expect(members.nth(0)).not.toContainText("Small sample");
   await expect(members.nth(1)).toContainText("Kabeeble");
-  await expect(members.nth(1)).toContainText("25% good or best");
+  // No opponent has detail here, so there is nobody to set them against.
+  await expect(members.nth(1)).toContainText(
+    "25% good or best · too few opposing midfielders to compare with",
+  );
   await expect(members.nth(1)).toContainText("Small sample");
   await expect(section.getByText("Loltown95")).toHaveCount(0);
   // Their 5 choices still count in the club's 345.

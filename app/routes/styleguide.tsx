@@ -1018,6 +1018,7 @@ export default function Styleguide() {
                   id: "a",
                   name: "Kabeeble",
                   mix: CHOICE_MIXES[1],
+                  detail: "3 points above a typical opposing midfielder (35%)",
                   to: "#choice-bars",
                 },
                 { id: "b", name: "Trevor", mix: CHOICE_MIXES[2] },

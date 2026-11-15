@@ -17,12 +17,15 @@
  * well they strike a pass: pass completion says that.
  *
  * Read a ranking with care. Forwards get fewer good or best options than
- * midfielders (26% against 30%, ours and opponents' alike), and a Squad
- * Member's share moved by up to 6 points between two halves of 40 Matches
- * each, as much as the gaps between them.
+ * midfielders (26% against 30%, ours and opponents' alike), so Analysis
+ * ranks each Squad Member against the opposing humans in their own position
+ * (CLUBS-101). And a Squad Member's share moved by up to 6 points between
+ * two halves of 40 Matches each, as much as the gaps between them.
  *
  * Pure and client-safe.
  */
+import type { PositionGroup } from "~/lib/domain";
+
 import type { EventCounts } from "./event-stats";
 
 /** EA's four verdicts, best first: the order every bar and table uses. */
@@ -64,7 +67,7 @@ export interface ChoiceMix {
   total: number;
   /** Each verdict's share, 0 to 100. */
   shares: Record<ChoiceVerdict, number>;
-  /** Good and best options together, 0 to 100: what a ranking goes by. */
+  /** Good and best options together, 0 to 100. */
   goodOrBest: number;
   /** Fewer than `SMALL_CHOICE_SAMPLE` choices. */
   smallSample: boolean;
@@ -115,18 +118,56 @@ export function sumChoiceCounts(rows: readonly ChoiceCounts[]): ChoiceCounts {
   return total;
 }
 
+/** One side's choices in one Position Group. */
+export interface PositionChoices {
+  /** Null for Appearances EA gave no position. */
+  positionGroup: PositionGroup | null;
+  /** How many Appearances the counts come from. */
+  appearances: number;
+  /** When the latest of them was played, in epoch milliseconds. */
+  latestAt: number;
+  counts: ChoiceCounts;
+}
+
 /**
- * Mixes in the order a page lists them: the most good or best options first,
- * the fewest "should have passed elsewhere" breaking a tie, then the name.
- * Small samples come after all the rest, in the same order among themselves.
+ * The Position Group most of a Squad Member's Appearances were in, a tie
+ * going to the one played in most recently: the Main Position
+ * (`mainPosition`, positions.ts) read off rows already grouped in SQL. Null
+ * when EA gave them no position.
  */
-export function rankChoices<T extends { name: string; mix: ChoiceMix }>(
-  rows: readonly T[],
-): T[] {
+export function mainChoicePosition(
+  positions: readonly PositionChoices[],
+): PositionGroup | null {
+  let main: PositionChoices | null = null;
+  for (const row of positions) {
+    if (row.positionGroup === null) continue;
+    if (
+      main === null ||
+      row.appearances > main.appearances ||
+      (row.appearances === main.appearances && row.latestAt > main.latestAt)
+    ) {
+      main = row;
+    }
+  }
+  return main?.positionGroup ?? null;
+}
+
+/**
+ * Mixes in the order a page lists them (CLUBS-101): the furthest ahead of
+ * their Yardstick first (`edge`), so a forward is not ranked below a
+ * midfielder for playing up front; then those with no Yardstick, the most
+ * good or best options first. The fewest "should have passed elsewhere"
+ * breaks a tie, then the name. Small samples come after all the rest, in the
+ * same order among themselves.
+ */
+export function rankChoices<
+  T extends { name: string; mix: ChoiceMix; edge: number | null },
+>(rows: readonly T[]): T[] {
   return [...rows].sort(
     (a, b) =>
       Number(a.mix.smallSample) - Number(b.mix.smallSample) ||
-      b.mix.goodOrBest - a.mix.goodOrBest ||
+      Number(a.edge === null) - Number(b.edge === null) ||
+      (b.edge ?? b.mix.goodOrBest) - (a.edge ?? a.mix.goodOrBest) ||
       a.mix.shares.poor - b.mix.shares.poor ||
       a.name.localeCompare(b.name),
   );
@@ -136,12 +177,25 @@ export function rankChoices<T extends { name: string; mix: ChoiceMix }>(
 export interface PlayerChoices {
   playerId: string;
   name: string;
+  /** Their Main Position, the only one `mix` counts; null when EA gave them none. */
+  position: PositionGroup | null;
   mix: ChoiceMix;
+  /**
+   * The Yardstick's: the opposing humans in that position. Null when they
+   * have too few choices to be worth comparing with (a small sample).
+   */
+  yardstick: ChoiceMix | null;
+  /**
+   * Their good or best share less the Yardstick's, in whole points between
+   * the two shares as a page prints them, so the ranking never disagrees with
+   * the figures beside it. Null with no Yardstick.
+   */
+  edge: number | null;
 }
 
 /** Our Club's choices in some Matches: the team's, the opponents', and each Squad Member's. */
 export interface ChoiceBreakdown {
-  /** Every Squad Member's choices together. */
+  /** Every Squad Member's choices together, in every position. */
   club: ChoiceMix;
   /** The opposing humans' in the same Matches; null when they have too few. */
   opponents: ChoiceMix | null;
@@ -150,23 +204,51 @@ export interface ChoiceBreakdown {
 }
 
 /**
- * The breakdown from each Squad Member's counts and the opponents' total.
- * Null when Our Club has too few choices to share out, as before Match
- * Events were stored.
+ * The breakdown from each side's counts per Position Group. A Squad Member's
+ * line counts their Main Position alone, beside the opposing humans in it,
+ * so it reads like their profile with "Main position only" on. Null when Our
+ * Club has too few choices to share out, as before Match Events were stored.
  */
 export function choiceBreakdown(
-  players: readonly { playerId: string; name: string; counts: ChoiceCounts }[],
-  opponents: ChoiceCounts | null,
+  players: readonly {
+    playerId: string;
+    name: string;
+    positions: readonly PositionChoices[];
+  }[],
+  opponents: readonly PositionChoices[],
 ): ChoiceBreakdown | null {
-  const club = choiceMix(sumChoiceCounts(players.map((p) => p.counts)));
+  const allOf = (rows: readonly PositionChoices[]) =>
+    sumChoiceCounts(rows.map((row) => row.counts));
+  const club = choiceMix(allOf(players.flatMap((p) => p.positions)));
   if (!club) return null;
   return {
     club,
-    opponents: opponents && choiceMix(opponents),
+    opponents: choiceMix(allOf(opponents)),
     players: rankChoices(
-      players.flatMap(({ playerId, name, counts }) => {
-        const mix = choiceMix(counts);
-        return mix ? [{ playerId, name, mix }] : [];
+      players.flatMap(({ playerId, name, positions }) => {
+        const position = mainChoicePosition(positions);
+        const inPosition = (rows: readonly PositionChoices[]) =>
+          rows.filter((row) => row.positionGroup === position);
+        // With no position at all, everything they did counts, beside nothing.
+        const mix = choiceMix(
+          allOf(position === null ? positions : inPosition(positions)),
+        );
+        if (!mix) return [];
+        const theirs =
+          position === null ? null : choiceMix(allOf(inPosition(opponents)));
+        const yardstick = theirs && !theirs.smallSample ? theirs : null;
+        return [
+          {
+            playerId,
+            name,
+            position,
+            mix,
+            yardstick,
+            edge:
+              yardstick &&
+              Math.round(mix.goodOrBest) - Math.round(yardstick.goodOrBest),
+          },
+        ];
       }),
     ),
   };
