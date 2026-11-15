@@ -18,6 +18,7 @@ import { type DivisionNumber, divisionName } from "./divisions";
 import type { MatchSummary } from "./matches";
 import { CLUB_STREAKS, MIN_RECORD_RUN } from "./milestones";
 import { groupSessions } from "./sessions";
+import { ratingGap } from "./skill-rating";
 
 export type ClubRecordId =
   | "highest-division"
@@ -255,10 +256,9 @@ export function clubRecords(
     longestRun(matches, (m) => m.goalsAgainst === 0),
   );
 
-  const giant = bestMatch(matches, ({ outcome, skillRatings: r }) => {
-    if (outcome !== "W" || r.ours === null || r.opponent === null) return null;
-    const gap = r.opponent - r.ours;
-    return gap > 0 ? gap : null;
+  const giant = bestMatch(matches, ({ outcome, skillRatings }) => {
+    const gap = ratingGap(skillRatings);
+    return outcome === "W" && gap !== null && gap < 0 ? -gap : null;
   });
   if (giant) {
     add("giant-killing", "Biggest giant-killing", {

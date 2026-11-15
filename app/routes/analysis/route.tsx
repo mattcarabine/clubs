@@ -75,6 +75,7 @@ import type { Route } from "./+types/route";
 import { CampaignSection, campaignsView } from "./campaigns";
 import { ClubSnapshot } from "./club-snapshot";
 import { CompareControl, ComparisonSection } from "./compare";
+import { DriversSection } from "./drivers";
 import { FindingList } from "./findings";
 import { HumansSection } from "./humans";
 import { LineupsSection } from "./lineups";
@@ -289,6 +290,14 @@ function SplitHeadlines({ split }: { split: OutcomeSplitData }) {
         )}
       </section>
 
+      <section aria-label="Why we win and lose">
+        <SectionHeading
+          title="Why we win, why we lose"
+          subtitle="What changes most between our wins and our draws and defeats, and who shows it most. A pattern in these matches, not proof."
+        />
+        <DriversSection drivers={split.drivers} />
+      </section>
+
       <section aria-label="Outcome Split">
         <SectionHeading
           title="Wins vs draws and defeats"
@@ -312,12 +321,12 @@ function CircumstancesSection({
     <section aria-label="Circumstances" className="flex min-w-0 flex-col gap-4">
       <SectionHeading
         title="When we play"
-        subtitle="How often we win by kick-off time (UK), day, and how far into a session. Matches played in brackets."
+        subtitle="How often we win by time of night (UK), day, and how far into a session. Matches played in brackets."
       />
       <div className="grid gap-4 lg:grid-cols-3 lg:gap-x-6">
-        <ChartFrame title="By kick-off">
+        <ChartFrame title="By time of night">
           <WinRateBarChart
-            label="Win % by kick-off time"
+            label="Win % by time of night"
             buckets={split.byTimeOfDay}
           />
         </ChartFrame>
