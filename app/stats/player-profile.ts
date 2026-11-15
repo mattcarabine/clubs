@@ -8,6 +8,11 @@ import {
   eaCareerTotals,
   eaSeasonTotals,
 } from "./ea-totals";
+import {
+  type PlayerEventProfile,
+  playerEventProfile,
+  positionTotals,
+} from "./event-stats";
 import type { StatsFilter } from "./filter";
 import {
   type PlayerOutcomeSplit,
@@ -35,6 +40,7 @@ import {
 import { memberSnapshots } from "./snapshots";
 import {
   getSquadMember,
+  opponentEventAppearances,
   type SquadAppearance,
   type SquadMember,
   squadAppearances,
@@ -62,6 +68,11 @@ export interface PlayerProfile {
   swing: Swing;
   /** Their Floor and Spread over the same Appearances (CLUBS-74). */
   consistency: Consistency;
+  /**
+   * Their Event Stats over the same Appearances (CLUBS-85): Influence, the
+   * Yardstick, team shares and Result Movers. Null with no Match Events.
+   */
+  events: PlayerEventProfile | null;
   /** The last 10 counted Appearances against the ones before (CLUBS-37). */
   recentChanges: RecentChanges;
   /** Hot or Cold form over the same Appearances (CLUBS-40), or null for neither. */
@@ -89,14 +100,22 @@ export async function getPlayerProfile(
   filter: StatsFilter,
   { mainPositionOnly = false }: PlayerProfileOptions = {},
 ): Promise<PlayerProfile | null> {
-  const [member, appearances, seasonSnapshots, careerSnapshots] =
+  const [member, team, opponents, seasonSnapshots, careerSnapshots] =
     await Promise.all([
       getSquadMember(db, playerId),
-      squadAppearances(db, filter, { playerId }),
+      // Every teammate's too: the team shares set theirs against the team's.
+      squadAppearances(db, filter, { withEvents: true }),
+      opponentEventAppearances(db, filter),
       memberSnapshots(db, playerId, "members/stats"),
       memberSnapshots(db, playerId, "members/career/stats"),
     ]);
   if (!member) return null;
+  const withEvents = team.filter((a) => a.playerId === playerId);
+  // Match Events never leave the loader: everything else reads plain rows.
+  const appearances = withEvents.map(({ events: _, ...rest }) => rest);
+  const selectedIds = new Set(
+    inMainPosition(appearances, mainPositionOnly).map((a) => a.matchId),
+  );
   const latestCareer = careerSnapshots.at(-1);
   const latestSeason = seasonSnapshots.at(-1);
   const selected = inMainPosition(appearances, mainPositionOnly);
@@ -109,6 +128,11 @@ export async function getPlayerProfile(
     bestMatches: bestAppearances(selected),
     outcomeSplit: playerOutcomeSplit(appearances, mainPositionOnly),
     ...playerRatingProfile(selected),
+    events: playerEventProfile(
+      withEvents.filter((a) => selectedIds.has(a.matchId)),
+      team,
+      positionTotals(opponents),
+    ),
     recentChanges: recentChanges(selected, member.name),
     formIndicator: formIndicator(selected),
     build: buildHistory(seasonSnapshots),

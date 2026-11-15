@@ -18,6 +18,7 @@ export {
 } from "./charts/chart-frame";
 export { GapBandChart, GapBandLegend } from "./charts/gap-band-chart";
 export { LineChart, type LineSeries } from "./charts/line-chart";
+export { MixBar } from "./charts/mix-bar";
 export { Sparkline } from "./charts/sparkline";
 export {
   StackedColumnChart,
@@ -102,3 +103,8 @@ export { EstimateTag, SmallSampleTag, Tag } from "./tag";
 export { Ticker, type TickerItem } from "./ticker";
 export { TopPerformersStrip } from "./top-performers-strip";
 export { UPSET_FILL, UpsetBadge, upsetLabel } from "./upset-badge";
+export {
+  type YardstickItem,
+  YardstickList,
+  type YardstickStanding,
+} from "./yardstick-list";

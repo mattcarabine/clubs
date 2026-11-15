@@ -20,6 +20,7 @@ export * from "./convert";
 export * from "./counted";
 export * from "./divisions";
 export * from "./ea-totals";
+export * from "./event-stats";
 export * from "./filter";
 export * from "./formulas";
 export * from "./matches";

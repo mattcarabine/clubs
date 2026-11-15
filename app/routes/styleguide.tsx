@@ -23,6 +23,7 @@ import {
   MilestoneCard,
   type MilestoneCardData,
   MilestoneRow,
+  MixBar,
   OutcomeBadge,
   PageHeader,
   PlayerChip,
@@ -46,6 +47,7 @@ import {
   TopPerformersStrip,
   useColumnLayout,
   WinRateCompareChart,
+  YardstickList,
 } from "~/components";
 import { crestUrl } from "~/ea/crest";
 import {
@@ -921,6 +923,50 @@ export default function Styleguide() {
           <Tag>Performance</Tag>
           <Tag>Pass %</Tag>
           <SmallSampleTag />
+        </div>
+      </Section>
+
+      <Section id="yardstick-list" title="YardstickList and MixBar">
+        <div className="grid gap-6 bg-shale-900 p-4 lg:grid-cols-2">
+          <YardstickList
+            label="Example figures"
+            against="typical opposing midfielder"
+            items={[
+              {
+                id: "interceptions",
+                label: "Interceptions",
+                value: 2.4,
+                yardstick: 1.7,
+                standing: "better",
+                format: (v) => v.toFixed(2),
+              },
+              {
+                id: "ballLost",
+                label: "Ball lost",
+                value: 4.1,
+                yardstick: 3.2,
+                standing: "worse",
+                format: (v) => v.toFixed(2),
+              },
+              {
+                id: "forwardShare",
+                label: "Passes played forward",
+                value: 48,
+                yardstick: 46,
+                standing: null,
+                format: (v) => `${Math.round(v)}%`,
+              },
+            ]}
+          />
+          <MixBar
+            label="Which way they pass"
+            note="of 214 passes"
+            parts={[
+              { label: "Forward", share: 48 },
+              { label: "Sideways", share: 31 },
+              { label: "Backward", share: 21 },
+            ]}
+          />
         </div>
       </Section>
 

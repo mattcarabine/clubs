@@ -72,6 +72,22 @@ _Avoid_: Cap, game played, player-match
 The unnamed counters EA sends for every player in a Match (`match_event_aggregate_*`): how often each of about 150 coded things happened, such as a shot on target, a yellow card, an interception or a forward pass. Each Appearance stores them whole. The decoded ones are named in `app/ea/events.ts`, following community research (ADR 0009). On the page they are just stats: never "events" or "hidden stats".
 _Avoid_: Hidden stats, event codes, aggregates
 
+**Event Stat**:
+A figure worked out from a Squad Member's Match Events over a set of Appearances: a count per 90 minutes played (ball lost, interceptions, through balls) or a share (shot accuracy, passes played forward). Each belongs to one part of the game: attacking, passing, on the ball, defending or discipline. Defined once, in `app/stats/event-stats.ts`.
+_Avoid_: Hidden stat, advanced stat, metric
+
+**Yardstick**:
+What an Event Stat is set against: the same figure for the opposing humans in the same Position Group, over the same minutes. On the page it is "a typical opposing midfielder".
+_Avoid_: Benchmark, baseline (that is a Squad Member's own earlier Appearances), league average
+
+**Influence**:
+How much a Squad Member sways results, shown as figures and never as one score (the owner's choice): their share of what the team did, the Event Stats that add to a result beside the ones that give it away, and their Result Movers.
+_Avoid_: Impact score, importance rating
+
+**Result Mover**:
+One count from a Squad Member's Match Events, with our Win % in the Matches they did more of it against the Matches they did less ("3 or more interceptions"). A pattern, not proof.
+_Avoid_: Driver, predictor, key factor
+
 **Position Group**:
 The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfielder or Forward. These exact names are used in the app too.
 
