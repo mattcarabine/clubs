@@ -198,7 +198,7 @@ test("with too few Matches for the Outcome Split, the Win % charts by kick-off a
     circumstances.getByRole("list", { name: "Win % by day of the week" }),
   ).toHaveText(/Tue \(2\)\s*50%/);
   await expect(
-    page.getByRole("list", { name: "Win % by kick-off time" }),
+    page.getByRole("list", { name: "Win % by time of night" }),
   ).toHaveCount(1);
   await expect(
     page.getByRole("region", { name: "Squad Members", exact: true }),

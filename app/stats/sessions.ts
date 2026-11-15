@@ -6,7 +6,11 @@
  */
 import type { PlayerTotals } from "./summaries";
 
-/** The longest gap between kick-offs that keeps two Matches in one Session. */
+/**
+ * The longest gap between two Matches' times that keeps them in one Session.
+ * A Match's time is its full time (CLUBS-89), so "kick-off" here and below
+ * means that.
+ */
 export const SESSION_GAP_MINUTES = 45;
 
 /** A Session's last kick-off at most this long ago makes it "Tonight's Session". */
