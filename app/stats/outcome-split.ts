@@ -139,7 +139,7 @@ type Club = "ours" | "opponent";
 /** Both clubs, Our Club first. */
 const CLUBS: readonly Club[] = ["ours", "opponent"];
 
-interface PerformanceMetric {
+export interface PerformanceMetric {
   id: string;
   /** The row label: "Shots per 90". */
   label: string;

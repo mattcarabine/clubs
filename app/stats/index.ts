@@ -37,6 +37,7 @@ export * from "./player-summary-brief";
 export * from "./positions";
 export * from "./rating-context";
 export * from "./recent-change";
+export * from "./result-drivers";
 export * from "./scope";
 export * from "./season-review";
 export * from "./season-review-query";

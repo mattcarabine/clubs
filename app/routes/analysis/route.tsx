@@ -72,6 +72,7 @@ import type { Route } from "./+types/route";
 import { CampaignSection, campaignsView } from "./campaigns";
 import { ClubSnapshot } from "./club-snapshot";
 import { CompareControl, ComparisonSection } from "./compare";
+import { DriversSection } from "./drivers";
 import { FindingList } from "./findings";
 import { HumansSection } from "./humans";
 import { LineupsSection } from "./lineups";
@@ -281,6 +282,14 @@ function SplitHeadlines({ split }: { split: OutcomeSplitData }) {
             description="Nothing stands out between wins and draws or defeats in these matches."
           />
         )}
+      </section>
+
+      <section aria-label="Why we win and lose">
+        <SectionHeading
+          title="Why we win, why we lose"
+          subtitle="What changes most between our wins and our draws and defeats, and who shows it most. A pattern in these matches, not proof."
+        />
+        <DriversSection drivers={split.drivers} />
       </section>
 
       <section aria-label="Outcome Split">
