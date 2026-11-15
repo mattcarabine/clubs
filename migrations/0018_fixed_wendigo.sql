@@ -1,0 +1,1 @@
+ALTER TABLE `matches` ADD `our_rating_before` integer;

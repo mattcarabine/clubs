@@ -3,8 +3,9 @@
  * picked in `./rating-targets.ts`).
  *
  * - A Match played within `RATING_WINDOW_MS` gets our latest Snapshot's Skill
- *   Rating when it is recorded, and the Opponent Rating from the first Poll in
- *   the window whose Opponents request succeeds.
+ *   Rating when it is recorded (our rating after it), our rating going into
+ *   it from the Snapshot before (`ourSnapshot`, CLUBS-88), and the Opponent
+ *   Rating from the first Poll in the window whose Opponents request succeeds.
  * - An older Match never rated (recorded before ratings were captured, or
  *   first seen after the window) is backfilled with the Opponent's current
  *   rating and our Snapshot nearest the Match (the earliest, for Matches
@@ -49,6 +50,25 @@ function ourRatingSnapshots(ourClubId: string): SQL {
 /** Our Club's Skill Rating from the first of its Snapshots in `orderBy`'s order. */
 function ourRating(ourClubId: string, orderBy: SQL): SQL {
   return sql`(SELECT json_extract(snapshots.stats, '$.skillRating') ${ourRatingSnapshots(ourClubId)} ORDER BY ${orderBy} LIMIT 1)`;
+}
+
+/**
+ * A field of one of Our Club's Skill Rating Snapshots, counting back from
+ * the latest (0). Our rating going into a Match (CLUBS-88) is the Snapshot
+ * before the one its result changed: EA's `gamesPlayed` says they are one
+ * game apart, which no timestamp can (a Match's time is its full time, and
+ * the result before it is often polled after it kicked off).
+ */
+function ourSnapshot(
+  ourClubId: string,
+  field: "skillRating" | "gamesPlayed" | "takenAt",
+  back: 0 | 1,
+): SQL {
+  const value =
+    field === "takenAt"
+      ? sql`snapshots.taken_at`
+      : sql`json_extract(snapshots.stats, ${`$.${field}`})`;
+  return sql`(SELECT ${value} ${ourRatingSnapshots(ourClubId)} ORDER BY snapshots.taken_at DESC, snapshots.id DESC LIMIT 1 OFFSET ${sql.raw(String(back))})`;
 }
 
 /** Read before the Poll's requests: which Opponents still need rating. */
@@ -100,6 +120,30 @@ export function ratingStatements(
   { matchesAdded, now }: { matchesAdded: number; now: number },
 ): BatchItem<"sqlite">[] {
   const statements: BatchItem<"sqlite">[] = [];
+  const ours = responses.find(
+    ({ request, response }) =>
+      request.endpoint === "clubs/overallStats" &&
+      request.variant !== OPPONENT_RATINGS_VARIANT &&
+      response.ok,
+  );
+  if (matchesAdded === 1 && ours) {
+    // Before the statement below rates it: only the new Match is unrated.
+    statements.push(
+      db
+        .update(matches)
+        .set({ ourRatingBefore: ourSnapshot(ourClubId, "skillRating", 1) })
+        .where(
+          and(
+            isNull(matches.ourSkillRating),
+            gte(matches.playedAt, new Date(now - RATING_WINDOW_MS)),
+            // Our latest Snapshot is this result's: taken by this Poll, one
+            // game on from the Snapshot before it.
+            sql`${ourSnapshot(ourClubId, "takenAt", 0)} = ${ours.fetchedAt}`,
+            sql`${ourSnapshot(ourClubId, "gamesPlayed", 0)} - ${ourSnapshot(ourClubId, "gamesPlayed", 1)} = 1`,
+          ),
+        ),
+    );
+  }
   if (matchesAdded > 0) {
     statements.push(
       db

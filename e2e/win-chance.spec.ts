@@ -1,9 +1,14 @@
 // page.evaluate callbacks run in the browser, so they need DOM types.
 /// <reference lib="dom" />
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import type { Page } from "@playwright/test";
 
-import { draw, loss, win } from "./support/match-builders.ts";
-import { type RatedMatch, recordRated } from "./support/ratings.ts";
+import { OPPONENT_RATINGS_VARIANT } from "../app/ea/endpoints.ts";
+import { draw, FIXTURES_DIR, loss, win } from "./support/match-builders.ts";
+import { against } from "./support/opponent.ts";
+import { OUR_RATING, type RatedMatch, recordRated } from "./support/ratings.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-30: Win Chance from the Skill Rating gap, on the Match and Analysis pages.
@@ -59,7 +64,9 @@ test("under 20 rated Matches the Elo estimate is used and labelled, with Wins ag
     ),
   ).toBeVisible();
   await expect(
-    section(page).getByText("1 Match without Skill Ratings is left out."),
+    section(page).getByText(
+      "1 match without skill ratings from before kick-off is left out.",
+    ),
   ).toBeVisible();
   await expect(
     section(page).getByRole("region", { name: "Wins against expected" }),
@@ -270,6 +277,41 @@ test("the Match page bills us Favourites, a Toss-up or Underdogs, in words and c
     }, colour);
     expect(figureColour, label).toBe(expected);
   }
+});
+
+test("the Win chance comes from the ratings before kick-off, not the ones the result moved", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const [ours] = JSON.parse(
+    readFileSync(path.join(FIXTURES_DIR, "clubs-overallStats.json"), "utf8"),
+  );
+  const played = Number(ours.gamesPlayed);
+  const opponent = { clubId: "980500", name: "Level Rivals" };
+  await triggerPoll();
+
+  // Level at kick-off, 1632 each. The Win moves us up 50 and, we take it,
+  // them down 50: read afterwards the gap looks like 100 in our favour.
+  await fakeEa.setPayload("clubs/overallStats", [
+    {
+      ...ours,
+      gamesPlayed: String(played + 1),
+      skillRating: String(OUR_RATING + 50),
+    },
+  ]);
+  await fakeEa.setPayload(
+    "clubs/overallStats",
+    [{ clubId: opponent.clubId, skillRating: String(OUR_RATING - 50) }],
+    OPPONENT_RATINGS_VARIANT,
+  );
+  await fakeEa.addMatch(against(opponent, win({ matchId: "30201" })));
+  await triggerPoll();
+
+  await page.goto("/matches/30201");
+  const note = matchNote(page);
+  await expect(note.getByText("Toss-up", { exact: true })).toBeVisible();
+  await expect(note.getByText("50%", { exact: true })).toBeVisible();
 });
 
 test("20 or more rated Matches fit a curve where a bigger gap gives a bigger chance", async ({

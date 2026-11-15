@@ -8,13 +8,17 @@
  *     { gap: null, build: win() },
  *   ]);
  *
- * The Matches are played now, so each Poll rates them live.
+ * The Matches are played now, so each Poll rates them live, one Match a
+ * Poll.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { OPPONENT_RATINGS_VARIANT } from "../../app/ea/endpoints.ts";
 import type { AddMatchBody } from "../fake-ea/control.ts";
 import type { fakeEa as FakeEa } from "./fake-ea.ts";
+import { FIXTURES_DIR } from "./match-builders.ts";
 import { against } from "./opponent.ts";
-import { record } from "./record.ts";
 
 /** Our Club's Skill Rating in the recorded `clubs/overallStats`. */
 export const OUR_RATING = 1632;
@@ -48,9 +52,19 @@ export async function recordRated(
     ),
     OPPONENT_RATINGS_VARIANT,
   );
-  await record(
-    fakeEa,
-    triggerPoll,
-    games.map(({ build }, i) => against(opponents[i], build)),
+  // Our rating going into a Match is our Snapshot one game before the one
+  // its result changed (CLUBS-88), so each Match needs a Poll of its own
+  // with EA's count of our games one higher. The rating itself never moves.
+  const [ours] = JSON.parse(
+    readFileSync(path.join(FIXTURES_DIR, "clubs-overallStats.json"), "utf8"),
   );
+  const played = Number(ours.gamesPlayed);
+  await triggerPoll();
+  for (const [i, { build }] of games.entries()) {
+    await fakeEa.setPayload("clubs/overallStats", [
+      { ...ours, gamesPlayed: String(played + i + 1) },
+    ]);
+    await fakeEa.addMatch(against(opponents[i], build));
+    await triggerPoll();
+  }
 }

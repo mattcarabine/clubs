@@ -19,15 +19,15 @@ How many human players the Opponent fielded in a Match: its Appearances with min
 _Avoid_: Real players, opponent size, lobby size
 
 **Skill Rating**:
-EA's rating of a club's strength (`skillRating` in `clubs/overallStats`). Each Match records both clubs' Skill Ratings at the time it was played.
+EA's rating of a club's strength (`skillRating` in `clubs/overallStats`). Each Match records both clubs' Skill Ratings as first read after it, so they already include its result, and Our Club's going into it (CLUBS-88): our reading one game earlier by EA's own count. The **rating gap** is ours minus the Opponent's before kick-off, with the Opponent's worked back by taking our change out of theirs. A Match with no reading of ours between it and the Match before has no rating gap.
 _Avoid_: Elo, SR, club rating, strength
 
 **Opponent Rating**:
-The Opponent's Skill Rating at a Match, read within an hour of it. Matches recorded before ratings were captured are backfilled with the Opponent's current rating instead.
+The Opponent's Skill Rating read within an hour after a Match, so it includes that result. Matches recorded before ratings were captured are backfilled with the Opponent's current rating instead.
 _Avoid_: Opposition strength, enemy rating
 
 **Win Chance**:
-Our Club's chance of a Win before kick-off, from the gap between our Skill Rating and the Opponent Rating. Fitted to our rated Competitive Matches (draws count as Dropped Points) once there are 20 of them; before that it is an Elo-style estimate, shown as "Estimate".
+Our Club's chance of a Win before kick-off, from the rating gap (see Skill Rating): both clubs' ratings as they stood going into the Match, never the ones its result moved. Fitted to our rated Competitive Matches (draws count as Dropped Points) once there are 20 of them; before that it is an Elo-style estimate, shown as "Estimate".
 _Avoid_: Odds, win probability, expected result
 
 **Billing**:
