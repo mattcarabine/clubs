@@ -315,12 +315,12 @@ function CircumstancesSection({
     <section aria-label="Circumstances" className="flex min-w-0 flex-col gap-4">
       <SectionHeading
         title="When we play"
-        subtitle="How often we win by kick-off time (UK), day, and how far into a session. Matches played in brackets."
+        subtitle="How often we win by time of night (UK), day, and how far into a session. Matches played in brackets."
       />
       <div className="grid gap-4 lg:grid-cols-3 lg:gap-x-6">
-        <ChartFrame title="By kick-off">
+        <ChartFrame title="By time of night">
           <WinRateBarChart
-            label="Win % by kick-off time"
+            label="Win % by time of night"
             buckets={split.byTimeOfDay}
           />
         </ChartFrame>

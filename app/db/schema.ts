@@ -98,6 +98,10 @@ export const matches = sqliteTable(
   {
     matchId: text().primaryKey(),
     matchType: text().$type<MatchKind>().notNull(),
+    /**
+     * EA's `timestamp`: when the Match ended, not when it kicked off
+     * (CLUBS-89, CONTEXT.md "Match").
+     */
     playedAt: integer({ mode: "timestamp_ms" }).notNull(),
     opponentClubId: text()
       .notNull()
