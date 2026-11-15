@@ -225,10 +225,10 @@ test("a profile says how they give the ball away", async ({
     105: 1,
     106: 3,
   });
-  // Their midfielder: 18 of 20 short passes, 2 of 10 long.
+  // Their midfielder: 17 of 20 short passes, 2 of 10 long.
   playing(match, OPPONENT_ID, THEIR_MIDFIELDER, {
-    24: 18,
-    25: 2,
+    24: 17,
+    35: 2,
     28: 2,
     29: 8,
   });
