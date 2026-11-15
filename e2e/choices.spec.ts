@@ -144,6 +144,28 @@ test("a share is printed on its segment where it fits", async ({
   }
 });
 
+test("focusing a bar, as a tap does, lists all four shares", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  await fakeEa.addMatch(oneMatch());
+  await triggerPoll();
+
+  await page.goto("/analysis");
+  const kabeeble = bar(choices(page), "Kabeeble");
+  const tooltip = kabeeble.getByText("Should have passed elsewhere", {
+    exact: true,
+  });
+  await expect(tooltip).toBeHidden();
+  await kabeeble.getByRole("img").focus();
+  await expect(tooltip).toBeVisible();
+  // The best option's 5% is too narrow to print on a phone's bar: it is here.
+  await expect(
+    kabeeble.getByText("Best option", { exact: true }),
+  ).toBeVisible();
+});
+
 test("a small sample is said in words and listed last, and a handful of choices is left out", async ({
   page,
   fakeEa,

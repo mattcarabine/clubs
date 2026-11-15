@@ -16,7 +16,11 @@ import { type MatchEvents, matchEventCount } from "~/ea/events";
 import type { Outcome, PositionGroup } from "~/lib/domain";
 import { formatDecimal, formatPercentage } from "~/lib/number-format";
 
-import { type PlayerChoiceProfile, playerChoiceProfile } from "./choices";
+import {
+  choiceTotal,
+  type PlayerChoiceProfile,
+  playerChoiceProfile,
+} from "./choices";
 import {
   per90,
   percentage,
@@ -359,6 +363,18 @@ export const EVENT_STATS = {
     better: "high",
     value: rate("aerialDuelsWon"),
   },
+  bestPassChoices: {
+    group: "attacking",
+    // EA gives this mostly for shots on target, rarely for a pass, so it
+    // sits with attacking, whatever its id says (CLUBS-100).
+    label: "Best option taken",
+    header: "Best opt/90",
+    description:
+      "Times EA judged they took the best option on the ball, per 90 minutes. Mostly given for shots on target",
+    unit: "per90",
+    better: "high",
+    value: rate("bestChoices"),
+  },
   // Passing
   passesCompleted: {
     group: "passing",
@@ -434,17 +450,6 @@ export const EVENT_STATS = {
     unit: "per90",
     better: "low",
     value: rate("offsidePasses"),
-  },
-  bestPassChoices: {
-    group: "passing",
-    // EA gives this mostly for shots on target, rarely for a pass (CLUBS-100).
-    label: "Best option taken",
-    header: "Best opt/90",
-    description:
-      "Times EA judged they took the best option on the ball, per 90 minutes. Mostly given for shots on target",
-    unit: "per90",
-    better: "high",
-    value: rate("bestChoices"),
   },
   poorPassChoices: {
     group: "passing",
@@ -771,6 +776,29 @@ export interface TeamShares {
   evenShare: number | null;
 }
 
+/** A Squad Member's totals beside Our Club's, over the Matches they count in. */
+export interface TeamInTheirMatches {
+  /** Their Appearances with Match Events and minutes. */
+  counted: MatchEventAppearance[];
+  mine: EventTotals;
+  /** Every teammate's in those Matches, theirs included. */
+  ours: EventTotals;
+}
+
+/** `own` beside `team` (every teammate's Appearance, theirs included) in the Matches `own` counts in. */
+export function teamInTheirMatches(
+  own: readonly MatchEventAppearance[],
+  team: readonly MatchEventAppearance[],
+): TeamInTheirMatches {
+  const counted = own.filter((a) => a.events && a.secondsPlayed > 0);
+  const matchIds = new Set(counted.map((a) => a.matchId));
+  return {
+    counted,
+    mine: eventTotals(counted),
+    ours: eventTotals(team.filter((a) => matchIds.has(a.matchId))),
+  };
+}
+
 /**
  * How much of what Our Club did came from one Squad Member, over the Matches
  * of `own` (their Appearances). `team` is every teammate's Appearance,
@@ -781,13 +809,8 @@ export interface TeamShares {
 export function teamShares(
   own: readonly MatchEventAppearance[],
   team: readonly MatchEventAppearance[],
+  { counted, mine, ours }: TeamInTheirMatches = teamInTheirMatches(own, team),
 ): TeamShares {
-  const counted = own.filter((a) => a.events && a.secondsPlayed > 0);
-  const matchIds = new Set(counted.map((a) => a.matchId));
-  const teammates = team.filter((a) => matchIds.has(a.matchId));
-  const mine = eventTotals(counted);
-  const ours = eventTotals(teammates);
-
   const involved = sumOf(mine, ["goals", "assists", "secondAssists"]);
   const scored = counted.reduce((total, a) => total + a.goalsFor, 0);
 
@@ -1215,19 +1238,26 @@ export function playerEventProfile(
       ];
     }),
   ) as Record<EventStatId, EventStatLine>;
-  const matchIds = new Set(own.map((a) => a.matchId));
-  const teammates = eventTotals(team.filter((a) => matchIds.has(a.matchId)));
+  const inTheirMatches = teamInTheirMatches(own, team);
+  // The Yardstick is scaled to their minutes, so its mix is held to how many
+  // choices the opposing humans in those Position Groups really made.
+  const opposingChoices = [
+    ...new Set(inTheirMatches.counted.map((a) => a.positionGroup)),
+  ].reduce((sum, group) => {
+    const theirs = group === null ? undefined : opponents.get(group);
+    return theirs ? sum + choiceTotal(theirs.counts) : sum;
+  }, 0);
   return {
     appearances: totals.appearances,
     lines,
-    teamShares: teamShares(own, team),
+    teamShares: teamShares(own, team, inTheirMatches),
     movers: resultMovers(own),
     mixes: styleMixes(totals),
     giveaways: giveaways(totals, against),
     choices: playerChoiceProfile(
       totals.counts,
-      against?.counts ?? null,
-      teammates.counts,
+      against && { counts: against.counts, judged: opposingChoices },
+      inTheirMatches.ours.counts,
     ),
   };
 }

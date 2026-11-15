@@ -470,4 +470,33 @@ describe("playerEventProfile", () => {
       standing: "muchBetter",
     });
   });
+
+  it("sets their Choice Mix beside the Yardstick's and the team's in their Matches", () => {
+    // 200 choices in one Match with Match Events, and one without any.
+    const played = inMatch({ "177": 10, "176": 30, "175": 100, "182": 60 });
+    const before = inMatch(null);
+    const team = [
+      played,
+      { ...played, playerId: "p2", events: { "176": 100, "175": 100 } },
+      // A teammate in the Match they have no Match Events for is left out.
+      { ...before, playerId: "p2", events: { "182": 500 } },
+    ];
+    // One opposing midfielder who played 9 minutes: 30 choices, scaled to 300.
+    const opponents = positionTotals([
+      appearance({ "176": 15, "175": 15 }, { secondsPlayed: 9 * 60 }),
+    ]);
+    const choices = playerEventProfile(
+      [played, before],
+      team,
+      opponents,
+    )?.choices;
+    expect(choices?.own).toMatchObject({ total: 200, goodOrBest: 20 });
+    expect(choices?.team).toMatchObject({ total: 400, goodOrBest: 35 });
+    // Held to the 30 choices really made, not the 300 they scale to.
+    expect(choices?.yardstick).toMatchObject({
+      total: 30,
+      goodOrBest: 50,
+      smallSample: true,
+    });
+  });
 });

@@ -52,7 +52,7 @@ export const MIN_CHOICES = 20;
 export const SMALL_CHOICE_SAMPLE = 100;
 
 export interface ChoiceMix {
-  /** How many choices EA judged. A Yardstick's is scaled, so it need not be whole. */
+  /** How many choices EA judged. */
   total: number;
   /** Each verdict's share, 0 to 100. */
   shares: Record<ChoiceVerdict, number>;
@@ -62,21 +62,34 @@ export interface ChoiceMix {
   smallSample: boolean;
 }
 
-/** The Choice Mix of some counts; null under `MIN_CHOICES` choices. */
-export function choiceMix(counts: ChoiceCounts): ChoiceMix | null {
-  const total = CHOICE_VERDICTS.reduce(
+/** How many choices some counts hold. */
+export function choiceTotal(counts: ChoiceCounts): number {
+  return CHOICE_VERDICTS.reduce(
     (sum, verdict) => sum + counts[verdict.count],
     0,
   );
-  if (total < MIN_CHOICES) return null;
+}
+
+/**
+ * The Choice Mix of some counts; null under `MIN_CHOICES` choices. `judged`
+ * is how many choices the counts really rest on, when they have been scaled
+ * (a Yardstick's are, to the Squad Member's minutes): it is what the mix is
+ * held to, and its `total`.
+ */
+export function choiceMix(
+  counts: ChoiceCounts,
+  judged = choiceTotal(counts),
+): ChoiceMix | null {
+  const sum = choiceTotal(counts);
+  if (judged < MIN_CHOICES || sum <= 0) return null;
   const shares = Object.fromEntries(
-    CHOICE_VERDICTS.map(({ id, count }) => [id, (counts[count] / total) * 100]),
+    CHOICE_VERDICTS.map(({ id, count }) => [id, (counts[count] / sum) * 100]),
   ) as Record<ChoiceVerdict, number>;
   return {
-    total,
+    total: judged,
     shares,
     goodOrBest: shares.best + shares.good,
-    smallSample: total < SMALL_CHOICE_SAMPLE,
+    smallSample: judged < SMALL_CHOICE_SAMPLE,
   };
 }
 
@@ -160,17 +173,21 @@ export interface PlayerChoiceProfile {
   team: ChoiceMix | null;
 }
 
-/** `PlayerChoiceProfile` from each side's counts; null when the Squad Member has too few. */
+/**
+ * `PlayerChoiceProfile` from each side's counts; null when the Squad Member
+ * has too few. The Yardstick's counts are scaled to their minutes, so it
+ * comes with how many choices the opposing humans really made (`judged`).
+ */
 export function playerChoiceProfile(
   own: ChoiceCounts,
-  yardstick: ChoiceCounts | null,
+  yardstick: { counts: ChoiceCounts; judged: number } | null,
   team: ChoiceCounts | null,
 ): PlayerChoiceProfile | null {
   const mix = choiceMix(own);
   if (!mix) return null;
   return {
     own: mix,
-    yardstick: yardstick && choiceMix(yardstick),
+    yardstick: yardstick && choiceMix(yardstick.counts, yardstick.judged),
     team: team && choiceMix(team),
   };
 }

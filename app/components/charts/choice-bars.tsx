@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import { formatCount, formatPercentage } from "~/lib/number-format";
+import { formatPercentage, formatThousands } from "~/lib/number-format";
 import {
   CHOICE_VERDICTS,
   type ChoiceMix,
@@ -48,8 +48,8 @@ const VERDICT_FILL: Record<ChoiceVerdict, string> = {
  * ends compare down the rows whatever the number of choices. A share is
  * printed on its segment where it fits; the row says the share that was good
  * or best, which a ranking goes by, and marks a small sample in words.
- * Hovering a bar lists all four shares, and each bar's label carries them for
- * screen readers.
+ * Hovering, tapping or focusing a bar lists all four shares, and each bar's
+ * label carries them for screen readers.
  */
 export function ChoiceBars({ label, groups }: ChoiceBarsProps) {
   const shown = groups.filter((group) => group.rows.length > 0);
@@ -109,14 +109,17 @@ function ChoiceBar({ row }: { row: ChoiceBarRow }) {
           <span className="font-semibold text-ink text-sm">{row.name}</span>
         )}
         <span className="shrink-0 text-ink-muted text-xs">
-          {row.note ?? formatCount(Math.round(mix.total), "choice", "choices")}
+          {row.note ?? `${formatThousands(mix.total)} choices`}
         </span>
       </span>
       <span className="flex min-w-0 flex-col gap-1.5">
+        {/* Focusable, so a tap or the keyboard opens the tooltip too. */}
         <span
           role="img"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: touch has no hover, and focus is how a tap shows all four shares.
+          tabIndex={0}
           aria-label={`${row.name}: ${summary}`}
-          className="group/bar relative flex h-5 gap-0.5"
+          className="group/bar relative flex h-5 gap-0.5 outline-none focus-visible:ring-2 focus-visible:ring-rave focus-visible:ring-offset-2 focus-visible:ring-offset-shale-900"
         >
           {CHOICE_VERDICTS.map(({ id }) =>
             mix.shares[id] > 0 ? (
@@ -155,7 +158,7 @@ function ChoiceTooltip({ row }: { row: ChoiceBarRow }) {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 hidden min-w-52 border-rave border-l-2 bg-shale-800 px-3 py-2 group-hover/bar:block"
+      className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 hidden min-w-52 border-rave border-l-2 bg-shale-800 px-3 py-2 group-hover/bar:block group-focus/bar:block"
     >
       <span className="mb-1 block text-ink-muted text-xs">{row.name}</span>
       {CHOICE_VERDICTS.map(({ id, label }) => (

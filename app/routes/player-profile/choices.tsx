@@ -14,6 +14,20 @@ type PlayerChoicesProps = {
  * and shots, as shares, over a typical opponent in their position and Our
  * Club in the Matches they played.
  */
+/** The section's subtitle, naming only what the Squad Member is set beside. */
+export function playerChoicesSubtitle(
+  choices: PlayerChoiceProfile,
+  against: string,
+): string {
+  const beside = [
+    choices.yardstick && `a ${against}`,
+    choices.team && "our club",
+  ].filter(Boolean);
+  return `How EA judged each of their passes and shots${
+    beside.length > 0 ? `, beside ${beside.join(" and ")}` : ""
+  }`;
+}
+
 export function PlayerChoices({ name, choices, against }: PlayerChoicesProps) {
   const rows: ChoiceBarRow[] = [{ id: "own", name, mix: choices.own }];
   if (choices.yardstick) {
@@ -21,7 +35,7 @@ export function PlayerChoices({ name, choices, against }: PlayerChoicesProps) {
       id: "yardstick",
       name: capitalise(against),
       mix: choices.yardstick,
-      // Scaled to their minutes, so its count of choices means little.
+      // Its count is every opposing human's in that position: no figure of theirs.
       note: "The humans we played",
     });
   }

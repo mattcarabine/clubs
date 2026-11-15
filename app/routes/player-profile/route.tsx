@@ -55,7 +55,7 @@ import { playerPreview } from "~/stats/link-preview";
 import type { Route } from "./+types/route";
 import { BestMatches } from "./best-matches";
 import { BuildPlate, BuildProgression } from "./build";
-import { PlayerChoices } from "./choices";
+import { PlayerChoices, playerChoicesSubtitle } from "./choices";
 import { COACHING_WEEKS_SHOWN, CoachingNotes } from "./coaching-notes";
 import { EaTotals } from "./ea-totals";
 import { Giveaways, hasGiveaways } from "./giveaways";
@@ -292,7 +292,7 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
             <section aria-label="Choices on the ball" className="mb-8">
               <SectionHeading
                 title="Choices on the ball"
-                subtitle={`How EA judged each of their passes and shots, beside a ${against} and our club`}
+                subtitle={playerChoicesSubtitle(events.choices, against)}
               />
               <PlayerChoices
                 name={member.name}

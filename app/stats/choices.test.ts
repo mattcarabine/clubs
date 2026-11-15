@@ -49,11 +49,17 @@ describe("choiceMix", () => {
     );
   });
 
-  it("shares out a scaled Yardstick's part counts", () => {
-    const mix = choiceMix(counts(2.5, 7.5, 25, 15));
-    expect(mix?.total).toBe(50);
-    expect(mix?.shares.best).toBe(5);
-    expect(mix?.goodOrBest).toBe(20);
+  it("holds scaled counts to how many choices they really rest on", () => {
+    // 40 real choices scaled up to a busy Squad Member's minutes.
+    const scaled = counts(30, 90, 300, 180);
+    const mix = choiceMix(scaled, 40);
+    expect(mix?.total).toBe(40);
+    expect(mix?.shares).toEqual({ best: 5, good: 15, none: 50, poor: 30 });
+    expect(mix?.smallSample).toBe(true);
+    // And scaled down: plenty of real choices behind a small share of minutes.
+    expect(choiceMix(counts(0.5, 1.5, 5, 3), 400)?.smallSample).toBe(false);
+    expect(choiceMix(scaled, MIN_CHOICES - 1)).toBeNull();
+    expect(choiceMix(counts(0, 0, 0, 0), 400)).toBeNull();
   });
 });
 
@@ -137,23 +143,34 @@ describe("playerChoiceProfile", () => {
   it("sets a Squad Member's mix beside the Yardstick's and the team's", () => {
     const profile = playerChoiceProfile(
       counts(10, 30, 100, 60),
-      counts(5, 20, 50, 25),
+      { counts: counts(5, 20, 50, 25), judged: 60 },
       counts(40, 80, 180, 100),
     );
     expect(profile?.own.goodOrBest).toBe(20);
     expect(profile?.yardstick?.goodOrBest).toBe(25);
+    expect(profile?.yardstick?.smallSample).toBe(true);
     expect(profile?.team?.goodOrBest).toBe(30);
   });
 
   it("is null when the Squad Member has too few choices", () => {
     expect(
-      playerChoiceProfile(counts(1, 1, 1, 1), counts(5, 20, 50, 25), null),
+      playerChoiceProfile(
+        counts(1, 1, 1, 1),
+        { counts: counts(5, 20, 50, 25), judged: 100 },
+        null,
+      ),
     ).toBeNull();
   });
 
   it("leaves out a side with too few", () => {
-    const profile = playerChoiceProfile(counts(10, 30, 100, 60), null, null);
-    expect(profile?.yardstick).toBeNull();
-    expect(profile?.team).toBeNull();
+    const own = counts(10, 30, 100, 60);
+    expect(playerChoiceProfile(own, null, null)).toMatchObject({
+      yardstick: null,
+      team: null,
+    });
+    // A Yardstick resting on a handful of real choices, however it scales.
+    expect(
+      playerChoiceProfile(own, { counts: own, judged: 5 }, counts(1, 1, 1, 1)),
+    ).toMatchObject({ yardstick: null, team: null });
   });
 });

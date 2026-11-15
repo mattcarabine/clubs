@@ -14,7 +14,6 @@ import { appearances, matches } from "~/db/schema";
 import { type ChoiceBreakdown, choiceBreakdown } from "./choices";
 import { isCountedAppearance, weQuit } from "./counted";
 import { eventCount, totalOf } from "./event-sql";
-import { eventTotals } from "./event-stats";
 import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
 import { listKickoffs, listMatches, type MatchSummary } from "./matches";
 import {
@@ -36,11 +35,10 @@ import { type SessionStandouts, sessionStandouts } from "./session-standouts";
 import { sessionPlaces } from "./sessions";
 import { ratingGap } from "./skill-rating";
 import {
-  opponentChoiceCounts,
+  clubChoiceCounts,
   type SquadAppearance,
   squadAppearances,
 } from "./squad";
-import { groupBy } from "./summaries";
 
 export interface OutcomeSplitOptions {
   /** Counts each Squad Member's Main Position only, in the per-player rows alone. */
@@ -66,25 +64,17 @@ export async function getOutcomeSplit(
   filter: StatsFilter,
   { mainPositionOnly = false }: OutcomeSplitOptions = {},
 ): Promise<OutcomeSplitPage> {
-  const [{ summaries, squad, split, splitMatches, withEvents }, opponents] =
+  const [{ summaries, squad, split, splitMatches, withEvents }, choices] =
     await Promise.all([
       splitData(db, filter, {}, true),
-      opponentChoiceCounts(db, filter),
+      clubChoiceCounts(db, filter),
     ]);
   return {
     ...split,
     drivers: split.ready
       ? resultDrivers(splitMatches, withEvents)
       : { win: [], lose: [] },
-    choices: choiceBreakdown(
-      [...groupBy(withEvents, (a) => a.playerId)].map(([playerId, own]) => ({
-        playerId,
-        // The name on their latest Appearance: the rows are oldest first.
-        name: own[own.length - 1].name,
-        counts: eventTotals(own).counts,
-      })),
-      opponents,
-    ),
+    choices: choiceBreakdown(choices.players, choices.opponents),
     players: playerSplits(squad, mainPositionOnly, split.withWithout),
     playedAt: summaries.map((m) => m.playedAt),
   };
