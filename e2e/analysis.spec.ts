@@ -404,11 +404,12 @@ test("each FilterBar dimension changes the results", async ({
   await page.goto("/analysis?types=league");
   await expect(summary()).toContainText("4 wins and 4 draws and defeats");
 
-  await page.goto("/analysis?dnf=0&types=playoff");
+  await page.goto("/analysis?types=playoff");
   await expect(page.getByText("Not enough matches yet")).toBeVisible();
 
+  // An old link's `dnf=0` is ignored (CLUBS-91).
   await page.goto("/analysis?dnf=0");
-  await expect(summary()).toContainText("4 wins and 4 draws and defeats");
+  await expect(summary()).toContainText("4 wins and 5 draws and defeats");
 
   await page.goto("/analysis?range=30d");
   await expect(summary()).toContainText("3 wins and 5 draws and defeats");

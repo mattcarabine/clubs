@@ -227,7 +227,7 @@ export function divisionJourney(
 }
 
 /**
- * The Win (or loss) by the most goals, DNFs left out (EA awards those).
+ * The Win (or loss) by the most goals. A Rage Quit counts by its real score (CLUBS-91).
  * Ties: more goals for a Win (against for a loss), then the earlier Match.
  */
 export function widestMargin(
@@ -239,7 +239,7 @@ export function widestMargin(
   const decisive = (m: MatchSummary) =>
     outcome === "W" ? m.goalsFor : m.goalsAgainst;
   const [top] = matches
-    .filter((m) => m.outcome === outcome && !m.dnf)
+    .filter((m) => m.outcome === outcome)
     .sort(
       (a, b) =>
         margin(b) - margin(a) ||

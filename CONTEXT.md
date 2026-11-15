@@ -96,7 +96,7 @@ The Position Group a Squad Member made most of their Appearances in, among the M
 _Avoid_: Position, role, attack, midfield, defence, GK/DEF/MID/FWD
 
 **Rage Quit**:
-A Match ended early because one side quit; EA awards the result to the side that stayed. Shown as "We rage quit" (EA records it as our loss) or "They rage quit" (the Opponent did, and it is our Win), and counted as "rage quits". Its result always counts, and since CLUBS-87 so do our Appearances in a Match we quit. A club's totals in a Match it quit are still left out of club against club comparisons, since its tackles and saves cannot be restored. When the side that stayed led by fewer than three, EA records the Match as 3-0. The site uses the real score everywhere (Matt, 15 Nov), read from the players' `SCORE`, and keeps EA's beside it (`matches.awardedGoalsFor` / `awardedGoalsAgainst`) for the Match page's note. The result is still EA's, so a Rage Quit can be a Win at 0-0. Code and URLs keep EA's name, `dnf` (`?dnf=0`).
+A Match ended early because one side quit; EA awards the result to the side that stayed. Shown as "We rage quit" (EA records it as our loss) or "They rage quit" (the Opponent did, and it is our Win), and counted as "rage quits". Its result always counts, and since CLUBS-87 so do our Appearances in a Match we quit. There is no filter for rage quits and nothing skips them: scoreline records, runs and feats count one like any other Match (CLUBS-91). The one exception is a profile's "What goes with winning", which leaves rage quits out because a Match cut short has fewer of everything, and says so. A club's totals in a Match it quit are still left out of club against club comparisons, since its tackles and saves cannot be restored. When the side that stayed led by fewer than three, EA records the Match as 3-0. The site uses the real score everywhere (Matt, 15 Nov), read from the players' `SCORE`, and keeps EA's beside it (`matches.awardedGoalsFor` / `awardedGoalsAgainst`) for the Match page's note. The result is still EA's, so a Rage Quit can be a Win at 0-0. Code keeps EA's name, `dnf`.
 _Avoid_: DNF, did not finish, forfeit, abandoned
 
 **Dropped Points**:
@@ -225,7 +225,7 @@ The sign-off on advice aimed at one Squad Member, such as their Coaching notes.
 _Avoid_: Coach, manager, AI coach
 
 **Milestone**:
-A notable achievement by Our Club or a Squad Member, reached in a specific Match: a landmark in EA's career totals (a 50th goal, a 100th Win) or in the recorded Appearances (a 5th Perfect rating), a one-Match feat (a hat-trick, a Perfect rating), a Streak or a club record (biggest Win, biggest defeat). Streaks, records and recorded counts cover only recorded Matches, so they are "since records began". A Rage Quit sets no scoreline record, since EA awards or cuts short its score, but counts by its result in a Streak. There are no Goalkeeper Milestones: the AI keeps goal.
+A notable achievement by Our Club or a Squad Member, reached in a specific Match: a landmark in EA's career totals (a 50th goal, a 100th Win) or in the recorded Appearances (a 5th Perfect rating), a one-Match feat (a hat-trick, a Perfect rating), a Streak or a club record (biggest Win, biggest defeat). Streaks, records and recorded counts cover only recorded Matches, so they are "since records began". A Rage Quit counts like any other Match, by its result and its real score. There are no Goalkeeper Milestones: the AI keeps goal.
 _Avoid_: Achievement, award, badge
 
 **Streak**:

@@ -30,7 +30,7 @@ Facts:
 
 Data gaps (EA's, not the players'):
 - When a player drops out, EA records them with no minutes and a 3.0 rating. The data lists them under "droppedOut" without stats. Never report a dropped-out player as playing zero minutes, rating 3.0 or doing nothing, and never mock them for it. Mention it only if it explains something, e.g. we played a man down.
-- A Match with "quitBy" ended early because one side quit. "quitBy": "us" means we quit, beaten and outclassed, and EA kept almost none of our stats, so the data leaves them out: never say we had no shots, no passes or no tackles. "quitBy": "opponent" means the Opponent quit while we were on top. "endedAtMinute" is when it stopped. Its score is the score at that moment, and EA gives the win to the side that stayed, so "result" can be a win or a defeat that the score does not show.
+- A Match with "quitBy" ended early because one side quit. "quitBy": "us" means we quit, usually beaten and outclassed. EA wipes the tackles and saves of the players who left, so never say we had no tackles or no saves. "quitBy": "opponent" means the Opponent quit while we were on top. "endedAtMinute" is when it stopped. Its score is the score at that moment, and EA gives the win to the side that stayed, so "result" can be a win or a defeat that the score does not show.
 - Never say a player or the club had zero shots, zero passes or zero minutes, or "not a single" shot or pass: in this data that is almost always a gap, not a performance.
 
 Words: site labels are for headings, not prose. The site shows these labels; never write them in your prose, and say what they mean in ordinary football words instead:

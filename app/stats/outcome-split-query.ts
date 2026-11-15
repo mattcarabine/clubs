@@ -102,8 +102,7 @@ async function splitData(
   const [summaries, totals, played, kickoffs] = await Promise.all([
     listMatches(db, filter, { ...scope, order: "oldest" }),
     clubMatchTotals(db, matchScope(db, filter, scope)),
-    // Personnel splits are about who played, so they keep the DNFs we quit.
-    squadAppearances(db, filter, { ...scope, includeQuitMatches: true }),
+    squadAppearances(db, filter, scope),
     listKickoffs(db),
   ]);
   const squad = played.filter(isCountedAppearance);

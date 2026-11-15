@@ -14,11 +14,10 @@
  * - **Counts** (a 5th Perfect rating) come from the recorded Appearances,
  *   for what EA's totals don't count, so they read "since records began".
  * - **Records** (biggest Win, biggest defeat) are judged on the recorded
- *   Matches only, so they read "since records began". A scoreline record
- *   leaves Rage Quits out: EA awards or cuts short their score (CLUBS-63).
+ *   Matches only, so they read "since records began". A Rage Quit counts
+ *   too, by its real score (CLUBS-87, CLUBS-91).
  * - **Streaks** (longest unbeaten run, scored in 4 in a row, CLUBS-63) are
- *   records too: the club's runs of results, counting a Rage Quit by its
- *   result, and each Squad Member's own best runs over their counted
+ *   records too: the club's runs of results, and each Squad Member's own best runs over their counted
  *   Appearances. One fires once per run, on the Match that beats the old best.
  *
  * No Goalkeeper Milestones: the AI keeps goal, never a Squad Member.
@@ -720,7 +719,7 @@ function detectFeats({
 
   for (const match of matches) {
     for (const a of byMatch.get(match.matchId) ?? []) {
-      // A 0-minute Appearance or our side of a DNF we quit is no feat, and no history.
+      // A 0-minute Appearance is no feat, and no history.
       if (!isCountedAppearance({ ...a, ...match })) continue;
       const history = histories.get(a.playerId) ?? {
         appearances: 0,
@@ -840,7 +839,7 @@ class RunTracker<T extends { matchId: string }> {
 
 /**
  * Each Squad Member's own best runs, over their counted Appearances: one
- * that isn't counted (0 minutes, or a Match we quit) neither extends nor
+ * that isn't counted (0 minutes) neither extends nor
  * ends a run, and nor does a Match they missed.
  */
 function detectPlayerStreaks({
@@ -928,28 +927,26 @@ function detectRecords(
     const margin = match.goalsFor - match.goalsAgainst;
     const isWin = match.outcome === "W";
 
-    // A Rage Quit's score is awarded or cut short, so it sets no scoreline record.
-    if (!match.dnf) {
-      const isLoss = match.outcome === "L";
-      if (counts && isWin && margin > bestMargin) {
-        record("record-win-margin", match, margin, bestMargin, match.matchId);
-      }
-      if (counts && isLoss && -margin > worstMargin) {
-        record(
-          "record-defeat-margin",
-          match,
-          -margin,
-          worstMargin,
-          match.matchId,
-        );
-      }
-      if (counts && match.goalsFor > bestGoals) {
-        record("record-goals", match, match.goalsFor, bestGoals, match.matchId);
-      }
-      if (isWin) bestMargin = Math.max(bestMargin, margin);
-      if (isLoss) worstMargin = Math.max(worstMargin, -margin);
-      bestGoals = Math.max(bestGoals, match.goalsFor);
+    // A Rage Quit counts too: its score is the real one (CLUBS-87, CLUBS-91).
+    const isLoss = match.outcome === "L";
+    if (counts && isWin && margin > bestMargin) {
+      record("record-win-margin", match, margin, bestMargin, match.matchId);
     }
+    if (counts && isLoss && -margin > worstMargin) {
+      record(
+        "record-defeat-margin",
+        match,
+        -margin,
+        worstMargin,
+        match.matchId,
+      );
+    }
+    if (counts && match.goalsFor > bestGoals) {
+      record("record-goals", match, match.goalsFor, bestGoals, match.matchId);
+    }
+    if (isWin) bestMargin = Math.max(bestMargin, margin);
+    if (isLoss) worstMargin = Math.max(worstMargin, -margin);
+    bestGoals = Math.max(bestGoals, match.goalsFor);
 
     for (const [kind, run] of runs) {
       if (run.add(match) && counts) {

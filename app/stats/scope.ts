@@ -62,7 +62,6 @@ export function matchScope(
   const { start, end } = dateWindow(filter.dates, now);
   return and(
     inArray(matches.matchType, filter.matchTypes.map(toMatchKind)),
-    filter.includeDnf ? undefined : eq(matches.dnf, false),
     start ? gte(matches.playedAt, start) : undefined,
     end ? lt(matches.playedAt, end) : undefined,
     opponentClubId ? eq(matches.opponentClubId, opponentClubId) : undefined,

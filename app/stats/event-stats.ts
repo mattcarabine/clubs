@@ -742,8 +742,7 @@ export interface TeamShares {
  * How much of what Our Club did came from one Squad Member, over the Matches
  * of `own` (their Appearances). `team` is every teammate's Appearance,
  * theirs included. Goals are our goals they scored or set up (second assists
- * count), against the Match scores, so goals by the AI count in the total; a
- * rage quit's score is EA's award, so those Matches are left out of that one.
+ * count), against the Match scores, so goals by the AI count in the total.
  * A share with nothing to share out is left out.
  */
 export function teamShares(
@@ -756,13 +755,8 @@ export function teamShares(
   const mine = eventTotals(counted);
   const ours = eventTotals(teammates);
 
-  const played = counted.filter((a) => !a.dnf);
-  const involved = sumOf(eventTotals(played), [
-    "goals",
-    "assists",
-    "secondAssists",
-  ]);
-  const scored = played.reduce((total, a) => total + a.goalsFor, 0);
+  const involved = sumOf(mine, ["goals", "assists", "secondAssists"]);
+  const scored = counted.reduce((total, a) => total + a.goalsFor, 0);
 
   const candidates: Omit<TeamShare, "share">[] = [
     {

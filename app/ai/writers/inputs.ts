@@ -79,14 +79,14 @@ export function resultInput(match: ResultFields) {
 /**
  * Both line-ups with EA's data gaps taken out (`~/stats` counted.ts): a
  * player who dropped out (no minutes, a 3.0) is named in `droppedOut`
- * without stats, and our side of a DNF we quit is only names, since EA
- * kept almost none of its stats. `endedAtMinute` is when a DNF stopped.
+ * without stats. Our side of a DNF we quit has its stats like any other
+ * (CLUBS-91): the Poll restores what EA wipes, bar tackles and saves.
+ * `endedAtMinute` is when a DNF stopped.
  */
 export function lineupInput(
   match: ResultFields & { appearances: readonly MatchAppearance[] },
 ) {
   const played = match.appearances.filter(isPlayedAppearance);
-  const quit = weQuit(match);
   const who = (a: MatchAppearance) => ({
     club: promptClub(a.isOurClub, match.opponent.name),
     name: promptName(a.name),
@@ -101,19 +101,15 @@ export function lineupInput(
     .map(who);
   return {
     ...(match.dnf && { endedAtMinute: endMinute(played) }),
-    appearances: played.filter((a) => !(quit && a.isOurClub)).map(statsFor),
-    ...(quit && {
-      ourPlayers: played
-        .filter((a) => a.isOurClub)
-        .map((a) => promptName(a.name)),
-    }),
+    appearances: played.map(statsFor),
     ...(droppedOut.length > 0 && { droppedOut }),
   };
 }
 
 /**
- * Whether `lineupInput` leaves anyone's stats out of a Match: a player who
- * dropped out, or our side of a DNF we quit (`ProseContext.dataGaps`).
+ * Whether a Match's stats have gaps: a player who dropped out, or a DNF we
+ * quit, where the tackles and saves of whoever left are still zeroed
+ * (`ProseContext.dataGaps`).
  */
 export function hasDataGaps(
   match: ResultFields & { appearances: readonly MatchAppearance[] },

@@ -72,12 +72,6 @@ export interface SquadAppearanceOptions extends ScopeOptions {
   /** Only this Squad Member's Appearances. */
   playerId?: string;
   /**
-   * Keep Appearances in DNFs we quit, for who-played views (line-ups,
-   * with and without) that count the result, not the stats. Filter with
-   * `isCountedAppearance` before totalling them.
-   */
-  includeQuitMatches?: boolean;
-  /**
    * Read each Appearance's Match Events too, for Event Stats (CLUBS-85):
    * everyone's, or only these Squad Members' (the rest get null).
    */
@@ -104,12 +98,7 @@ function eventsSelection(withEvents: boolean | readonly string[]) {
 export async function squadAppearances(
   db: Db,
   filter: StatsFilter,
-  {
-    playerId,
-    includeQuitMatches = false,
-    withEvents = false,
-    ...scope
-  }: SquadAppearanceOptions = {},
+  { playerId, withEvents = false, ...scope }: SquadAppearanceOptions = {},
 ): Promise<SquadAppearance[]> {
   const rows = await db
     .select({
@@ -126,7 +115,7 @@ export async function squadAppearances(
     .where(
       and(
         isOurAppearance,
-        includeQuitMatches ? isPlayedAppearanceSql : isCountedAppearanceSql,
+        isCountedAppearanceSql,
         matchScope(db, filter, scope),
         playerId ? eq(appearances.playerId, playerId) : undefined,
       ),

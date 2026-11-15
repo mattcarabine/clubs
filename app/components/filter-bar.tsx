@@ -157,17 +157,6 @@ export function FilterBar(props: FilterBarProps) {
           })}
         </ChipGroup>
 
-        <ChipGroup label="Rage quits">
-          <Chip
-            pressed={filter.includeDnf}
-            onClick={() =>
-              updateFilter((f) => ({ ...f, includeDnf: !f.includeDnf }))
-            }
-          >
-            Include rage quits
-          </Chip>
-        </ChipGroup>
-
         <ChipGroup label="Dates">
           <DateRangePicker
             value={filter.dates}

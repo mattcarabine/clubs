@@ -43,8 +43,8 @@ test("the club records show the club's best and worst, linking to where each was
   );
   await triggerPoll();
 
-  // Three Wins in one Session (the 4-0 is the biggest), a rage quit Win
-  // "9-0" that sets no scoreline record but extends the winning run to 4,
+  // Three Wins in one Session, a rage quit Win 9-0 that is the biggest win
+  // (CLUBS-91: a rage quit counts) and extends the winning run to 4,
   // a 0-3 defeat, then two clean sheets still going.
   const night = 3 * DAY_MS;
   await fakeEa.addMatch(win({ matchId: "77001", playedAt: ago(night) }));
@@ -112,13 +112,13 @@ test("the club records show the club's best and worst, linking to where each was
   // Our Club's Skill Rating in fixtures/ea/clubs-overallStats.json.
   await expect(board(page, "Highest skill rating")).toContainText("1,632");
 
-  await expect(board(page, "Biggest win")).toContainText("4–0");
+  await expect(board(page, "Biggest win")).toContainText("9–0");
   await expect(board(page, "Biggest win").getByRole("link")).toHaveAttribute(
     "href",
-    "/matches/77002",
+    "/matches/77004",
   );
-  await expect(board(page, "Most goals in a match")).toContainText("4");
-  await expect(board(page, "Most goals in a match")).toContainText("4–0");
+  await expect(board(page, "Most goals in a match")).toContainText("9");
+  await expect(board(page, "Most goals in a match")).toContainText("9–0");
 
   await expect(board(page, "Longest winning run")).toContainText(
     /4\s*wins in a row/,

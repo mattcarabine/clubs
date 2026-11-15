@@ -88,7 +88,7 @@ const INSTRUCTIONS = `Write about the Session in the data, which has just finish
 - "recap": the Session recap, two to four short paragraphs. Tell the story of the night, then the players who stood out against their own usual numbers (their baselines are in the background) and, after any defeats or draws, what went wrong.
 - "matchReports": one per Match, using its matchId: a "report" and a "headline".
 - A report is two to four sentences. Build it around what made that Match different: its "angle" when it has one (its most unusual stat against our usual), a player, a turning point. No two reports in a Session share an opening or a shape.
-- When a Match's "quitBy" is "us", we were outclassed and pulled the plug. Its report is one or two short, brutal sentences: the score, the minute it ended and how thoroughly we were run over. No stats about our side, no excuses, no silver linings. Say "outclassed and bailed" in a way none of the recent pieces have.
+- When a Match's "quitBy" is "us", we were outclassed and pulled the plug. Its report is one or two short, brutal sentences: the score, the minute it ended and how thoroughly we were run over. No excuses, no silver linings. Say "outclassed and bailed" in a way none of the recent pieces have.
 - When "quitBy" is "opponent", they gave up while we were on top: enjoy it, briefly.
 - ${HEADLINE_RULES}`;
 

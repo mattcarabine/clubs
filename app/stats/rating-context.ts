@@ -13,8 +13,8 @@
  *   4 of 5 Matches, and Spread, how far their ratings wander (Analysis,
  *   Compare, the profile).
  *
- * Only counted Appearances with a rating count (`isCountedAppearance`), so a
- * rage-quit 3.0 or our side of a Match we quit never moves either figure.
+ * Only counted Appearances with a rating count (`isCountedAppearance`), so the
+ * 3.0 of a player who dropped out never moves either figure.
  */
 import { isCountedAppearance, type QuitInput } from "./counted";
 import {

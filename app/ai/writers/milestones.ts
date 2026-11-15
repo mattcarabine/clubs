@@ -57,8 +57,7 @@ export const milestoneWriter: AiWriter = {
     });
     if (milestones.length === 0) return null;
     const [history, recent] = await Promise.all([
-      // The DNFs we quit stay in for results; player figures skip them.
-      squadAppearances(db, DEFAULT_STATS_FILTER, { includeQuitMatches: true }),
+      squadAppearances(db, DEFAULT_STATS_FILTER),
       recentWriteups(db, "milestone", RECENT_COMMENTS),
     ]);
     return milestoneTask(milestones, history, subject, recent);
