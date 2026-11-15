@@ -174,14 +174,15 @@ describe("divisionJourney", () => {
 });
 
 describe("widestMargin", () => {
-  it("picks the biggest Win, ties to more goals, then the earlier Match, ignoring DNFs", () => {
+  it("picks the biggest Win, ties to more goals, then the earlier Match, and counts a Rage Quit", () => {
     const fourNil = match("W", [4, 0], { at: "2026-10-03T20:00" });
     const fiveOne = match("W", [5, 1], { at: "2026-10-04T20:00" });
     const dnf = match("W", [3, 0], { dnf: true });
     expect(widestMargin([fourNil, fiveOne, dnf], "W")).toBe(fiveOne);
     const again = match("W", [5, 1], { at: "2026-10-05T20:00" });
     expect(widestMargin([again, fiveOne], "W")).toBe(fiveOne);
-    expect(widestMargin([match("W", [9, 0], { dnf: true })], "W")).toBeNull();
+    const quit = match("W", [9, 0], { dnf: true });
+    expect(widestMargin([fiveOne, quit], "W")).toBe(quit);
   });
 
   it("picks the heaviest defeat by margin, ties to more conceded", () => {

@@ -17,8 +17,7 @@
  *   Matches only, so they read "since records began". A Rage Quit counts
  *   too, by its real score (CLUBS-87, CLUBS-91).
  * - **Streaks** (longest unbeaten run, scored in 4 in a row, CLUBS-63) are
- *   records too: the club's runs of results, counting a Rage Quit by its
- *   result, and each Squad Member's own best runs over their counted
+ *   records too: the club's runs of results, and each Squad Member's own best runs over their counted
  *   Appearances. One fires once per run, on the Match that beats the old best.
  *
  * No Goalkeeper Milestones: the AI keeps goal, never a Squad Member.

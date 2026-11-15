@@ -236,13 +236,13 @@ describe("teamShares", () => {
     ]);
   });
 
-  it("leaves a rage quit's awarded score out of the goals share", () => {
+  it("counts a rage quit's real score in the goals share", () => {
     const own = [
       inMatch({ "214": 1 }, { matchId: "a", goalsFor: 2 }),
       inMatch({ "214": 1 }, { matchId: "b", goalsFor: 3, dnf: true }),
     ];
     const goals = teamShares(own, own).shares.find((s) => s.id === "goals");
-    expect(goals).toMatchObject({ own: 1, team: 2, share: 50 });
+    expect(goals).toMatchObject({ own: 2, team: 5, share: 40 });
   });
 
   it("leaves out a share with nothing to share out", () => {

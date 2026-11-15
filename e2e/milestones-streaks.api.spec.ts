@@ -1,8 +1,7 @@
 /**
  * CLUBS-63: Streaks (the club's runs of results, each Squad Member's own best
- * runs) and the biggest defeat. A Rage Quit counts by its result in a
- * Streak, but sets no scoreline record, since EA awards or cuts short its
- * score.
+ * runs) and the biggest defeat. A Rage Quit counts like any other Match, by
+ * its result and its real score (CLUBS-91).
  */
 
 import type { AddMatchBody } from "./fake-ea/control.ts";

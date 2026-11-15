@@ -457,7 +457,7 @@ function RageQuitNote({
             {awarded[1]}.{" "}
           </>
         )}
-        It counts in all stats like any other match.
+        It counts like any other match.
       </p>
     </aside>
   );
