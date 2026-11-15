@@ -90,7 +90,9 @@ test("Matches 30 minutes apart share a Session and a 60-minute gap starts a new 
   );
 
   await expect(newer.getByText("Won 1, drawn 1, lost 0")).toBeAttached();
-  await expect(newer.getByText("1 Dropped Points")).toBeVisible();
+  // CLUBS-98: the Session's Win %, never a count called points.
+  await expect(newer.getByText("50% won")).toBeVisible();
+  await expect(page.getByText(/dropped points/i)).toHaveCount(0);
   await expect(newer.getByText("5 scored, 3 conceded")).toBeVisible();
   await expect(newer.getByText("2 Matches", { exact: false })).toBeVisible();
   await expect(older.getByText("Won 1, drawn 0, lost 1")).toBeAttached();
@@ -211,7 +213,7 @@ test("the Session page shows its Matches in order, a leaderboard and its record"
   await expect(page.getByRole("link", { name: "All Matches" })).toBeVisible();
   const record = page.getByRole("region", { name: "Record" });
   await expect(record.getByText("Won 1, drawn 0, lost 1")).toBeAttached();
-  await expect(record.getByText("1 Dropped Points")).toBeVisible();
+  await expect(record.getByText("50% won")).toBeVisible();
 
   // Oldest first, and only this Session's.
   const matches = matchLinks(page.getByRole("region", { name: "Matches" }));

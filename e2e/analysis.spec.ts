@@ -17,7 +17,7 @@ import { daysAgo, type Fake, record } from "./support/record.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-25: /analysis, the Outcome Split of Wins against Dropped Points, and
-// the profile's "Wins vs Dropped Points" panel.
+// the profile's "Wins vs draws and defeats" panel.
 
 /** Squad Members that exist only in these specs. */
 const STAR = { id: "900000021", name: "Star Striker" };
@@ -529,10 +529,10 @@ test("the profile panel shows Wins against Dropped Points and follows main posit
 }) => {
   await recordPositions(fakeEa, triggerPoll, ["W", "W", "L"], ["L", "L", "W"]);
 
-  const panel = () => region(page, "Wins vs Dropped Points");
+  const panel = () => region(page, "Wins vs draws and defeats");
   const apps = () =>
     panel()
-      .getByRole("table", { name: "Wins against Dropped Points" })
+      .getByRole("table", { name: "Wins against draws and defeats" })
       .locator("tbody tr")
       .filter({ has: page.getByRole("rowheader", { name: "Appearances" }) })
       .getByRole("cell");
@@ -544,6 +544,11 @@ test("the profile panel shows Wins against Dropped Points and follows main posit
   // Main position Midfielder: 1 Win, 2 losses there.
   await page.goto(`/players/${STAR.id}`);
   await expect(apps()).toHaveText(["1", "2"]);
+  // CLUBS-98: named in plain words, never "Dropped Points".
+  await expect(
+    panel().getByRole("columnheader", { name: "Draws and defeats" }),
+  ).toBeVisible();
+  await expect(panel().getByText(/dropped points/i)).toHaveCount(0);
   // Every position is still listed.
   await expect(byPosition()).toHaveText(["Forward", "Midfielder"]);
 

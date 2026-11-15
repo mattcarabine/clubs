@@ -414,10 +414,10 @@ const UPSET_RULE: Record<Expectation["kind"], string> = {
 function upsetSentence({ kind, big }: Expectation): string {
   if (kind === "upset-win") {
     const under = big ? BIG_UPSET_WIN_CHANCE : UPSET_WIN_CHANCE;
-    return `A Win from a Win Chance under ${formatWinChance(under)}.`;
+    return `A win from a win chance under ${formatWinChance(under)}.`;
   }
   const over = big ? BIG_SHOULD_HAVE_WON_CHANCE : SHOULD_HAVE_WON_CHANCE;
-  return `Dropped Points from a Win Chance over ${formatWinChance(over)}.`;
+  return `No win from a win chance over ${formatWinChance(over)}.`;
 }
 
 /** Who rage quit and who EA gave the Match to; a level one names no side. */

@@ -144,7 +144,7 @@ test("the profile says the Floor and Spread in a sentence", async ({
 }) => {
   await recordRockAndSwingy(fakeEa, triggerPoll);
   await page.goto(`/players/${ROCK.id}`);
-  const panel = page.getByRole("region", { name: "Wins vs Dropped Points" });
+  const panel = page.getByRole("region", { name: "Wins vs draws and defeats" });
   await expect(panel).toContainText(
     "They rate 7.6 or better in 4 of 5 Matches, give or take 0.17.",
   );

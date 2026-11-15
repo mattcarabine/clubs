@@ -213,7 +213,7 @@ export function compareFigures(
     figure("against", "Goals conceded", "per Match", false, (r) =>
       perMatch(r.goalsAgainst, r.played),
     ),
-    figure("dropped", "Dropped Points", "pts", false, (r) =>
+    figure("dropped", "Draws and defeats", "pts", false, (r) =>
       percentage(r.draws + r.losses, r.played),
     ),
   ];

@@ -76,9 +76,7 @@ test("every component section renders", async ({ page }) => {
     }),
   ).toBeVisible();
   // CLUBS-34: a whole Session, and one the filter narrowed.
-  await expect(
-    section("session-header").getByText("2 Dropped Points"),
-  ).toBeVisible();
+  await expect(section("session-header").getByText("60% won")).toBeVisible();
   await expect(
     section("session-header").getByText("1 of 3 Matches shown"),
   ).toBeVisible();
