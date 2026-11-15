@@ -213,7 +213,7 @@ A London week, Monday 00:00 to Monday 00:00. Its Coaching notes are written by t
 _Avoid_: Training week, gameweek
 
 **Player summary**:
-Two or three short paragraphs on how a Squad Member plays, from every recorded Match in their Main Position (their Event Stats beside the Yardstick, and their share of the team's work), at the top of their profile. Written once they have 5 Appearances, and again only after a Coaching week they played in. The Coaching notes are the weekly view; this is the lasting one.
+Two or three short paragraphs on how a Squad Member plays in one Position Group, from every recorded Match there (their Event Stats beside the Yardstick, and their share of the team's work), at the top of their profile. There is one for each Position Group they have 5 Appearances in; the Main Position's shows first and chips pick another. They are written together, and again only after a Coaching week the Squad Member played in. The Coaching notes are the weekly view; this is the lasting one.
 _Avoid_: Scouting report, bio
 
 **Season Review**:

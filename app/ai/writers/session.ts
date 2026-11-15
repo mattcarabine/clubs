@@ -90,6 +90,7 @@ const INSTRUCTIONS = `Write about the Session in the data, which has just finish
 - A report is two to four sentences. Build it around what made that Match different: its "angle" when it has one (its most unusual stat against our usual), a player, a turning point. No two reports in a Session share an opening or a shape.
 - When a Match's "quitBy" is "us", we were outclassed and pulled the plug. Its report is one or two short, brutal sentences: the score, the minute it ended and how thoroughly we were run over. No excuses, no silver linings. Say "outclassed and bailed" in a way none of the recent pieces have.
 - When "quitBy" is "opponent", they gave up while we were on top: enjoy it, briefly.
+- A player's "detail" holds the finer counts of that Match: shots on target, through balls, dribbles, the ball won and lost, interceptions, fouls and yellow cards. Reach for one where it explains a Match (a midfielder who kept winning the ball back, a forward who kept losing it), in football words. Never list them.
 - ${HEADLINE_RULES}`;
 
 const CLUB_INSTRUCTIONS = `

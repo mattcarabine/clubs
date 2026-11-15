@@ -114,7 +114,8 @@ export async function getSessionBrief(
 
   const [analysis, details] = await Promise.all([
     getAnalysisAsOf(db, session.end),
-    getMatchDetails(db, session.matchIds),
+    // With each player's finer counts, for the write-up's input (CLUBS-94).
+    getMatchDetails(db, session.matchIds, { detail: true }),
   ]);
   const start = session.start.getTime();
   const wins = analysis.matches

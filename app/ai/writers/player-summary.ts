@@ -1,12 +1,14 @@
 /**
  * Player summaries (CLUBS-94): a short description of how a Squad Member
  * plays, from every recorded Match rather than one week (the coaching notes
- * are the weekly view). One call per Squad Member, and only once a London
+ * are the weekly view), one for each Position Group they have played enough
+ * in. One call per Squad Member covers them all, and only once a London
  * week they played in is over (released like the coaching notes, Monday
  * 09:00 London): the version is the week of their latest Appearance, so
  * someone who has not played since keeps the summary they have.
  */
 import { latestCoachingWeek } from "~/lib/coaching-week";
+import { POSITION_GROUPS, type PositionGroup } from "~/lib/domain";
 import { formatPercentage } from "~/lib/number-format";
 import {
   EVENT_STAT_IDS,
@@ -18,6 +20,8 @@ import {
   INFLUENCE,
   type PlayerSummaryBrief,
   type PlayerSummarySubject,
+  type PositionSummaryBrief,
+  playerSummaryKey,
   playerSummarySubjects,
 } from "~/stats";
 import { revised } from "../config";
@@ -59,12 +63,13 @@ export const playerSummaryWriter: AiWriter<SummarySubject> = {
   },
 };
 
-const INSTRUCTIONS = `Write a player summary for the Squad Member in the data: how they play, from every Match on record in their main position.
-- "paragraphs": two or three short paragraphs of two to four plain sentences each. First the kind of player they are and what they bring. Then what they give away or do little of. A third only when something else stands out, such as where they shoot from, how they pass or where they win the ball.
+const INSTRUCTIONS = `Write a player summary for the Squad Member in the data: how they play, from every Match on record. The data has one entry per position they have played regularly.
+- "summaries": one per position in the data, using its "positionGroup". Each has "paragraphs": two or three short paragraphs of two to four plain sentences each. First the kind of player they are in that position and what they bring. Then what they give away or do little of. A third only when something else stands out, such as where they shoot from, how they pass or where they win the ball.
+- With more than one position, each summary stands alone and reads differently: a reader sees one at a time. Say what changes when they play there.
 - This describes their style over the long run, not their form: nothing about this week, lately, or any one Match.
-- Each stat sits beside the same figure for a typical opposing player in their position ("typicalOpponent") and how the two compare ("comparison"). Build the piece on the stats where they are clearly better or worse, and on their share of the team's work beside an even share of the minutes.
+- Each stat sits beside the same figure for a typical opposing player in that position ("typicalOpponent") and how the two compare ("comparison"). Build each piece on the stats where they are clearly better or worse, and on their share of the team's work beside an even share of the minutes.
 - Figures are per 90 minutes unless they are a percentage.
-- Use six numbers at most, all from the data, and say what each means in football words. Never list stats.
+- Use six numbers at most in a summary, all from the data, and say what each means in football words. Never list stats.
 - Name them in the third person, by the name in the data, never "you". Be blunt about weaknesses, but about the football, never the person, and never about a gap in EA's data.
 - No headings, lists, bullet characters or sign-off.`;
 
@@ -73,58 +78,89 @@ export function playerSummaryTask(
   brief: PlayerSummaryBrief,
   { subjectKey, version }: Subject,
 ): GenerateTask {
+  const positions = brief.positions.map((p) => p.positionGroup);
   return {
     kind: "player-summary",
     subjectKey,
     version,
     prompt: { system: HOUSE_STYLE, instructions: INSTRUCTIONS },
-    input: briefInput(brief),
-    schema: OUTPUT_SCHEMA,
-    writeups: (output) => playerSummaryWriteups(output, subjectKey),
+    input: {
+      name: brief.name,
+      positions: brief.positions.map(positionInput),
+    },
+    schema: outputSchema(positions),
+    writeups: (output) => playerSummaryWriteups(output, subjectKey, positions),
   };
 }
 
+const isPositionGroup = (value: unknown): value is PositionGroup =>
+  POSITION_GROUPS.includes(value as PositionGroup);
+
 /**
- * The summary, or none unless the reply is exactly 1 to `MAX_PARAGRAPHS`
- * paragraphs within `MAX_PARAGRAPH_LENGTH`. Exported for unit tests.
+ * One write-up per Position Group, keyed `playerSummaryKey`, or none unless
+ * the reply has exactly one summary for each position in the input, each 1
+ * to `MAX_PARAGRAPHS` paragraphs within `MAX_PARAGRAPH_LENGTH`. Exported
+ * for unit tests.
  */
 export function playerSummaryWriteups(
   output: unknown,
   playerId: string,
+  positions: readonly PositionGroup[],
 ): WriteupDraft[] {
-  if (
-    !hasExactly(output, ["paragraphs"]) ||
-    !Array.isArray(output.paragraphs)
-  ) {
+  if (!hasExactly(output, ["summaries"]) || !Array.isArray(output.summaries)) {
     return [];
   }
-  const paragraphs: unknown[] = output.paragraphs;
-  if (
-    paragraphs.length === 0 ||
-    paragraphs.length > MAX_PARAGRAPHS ||
-    !paragraphs.every((p) => isText(p, MAX_PARAGRAPH_LENGTH))
-  ) {
-    return [];
-  }
-  return [
-    {
+  const drafts = new Map<PositionGroup, WriteupDraft>();
+  for (const summary of output.summaries) {
+    if (
+      !hasExactly(summary, ["positionGroup", "paragraphs"]) ||
+      !isPositionGroup(summary.positionGroup) ||
+      !positions.includes(summary.positionGroup) ||
+      drafts.has(summary.positionGroup) ||
+      !Array.isArray(summary.paragraphs)
+    ) {
+      return [];
+    }
+    const paragraphs: unknown[] = summary.paragraphs;
+    if (
+      paragraphs.length === 0 ||
+      paragraphs.length > MAX_PARAGRAPHS ||
+      !paragraphs.every((p) => isText(p, MAX_PARAGRAPH_LENGTH))
+    ) {
+      return [];
+    }
+    drafts.set(summary.positionGroup, {
       kind: "player-summary",
-      subjectKey: playerId,
+      subjectKey: playerSummaryKey(playerId, summary.positionGroup),
       text: paragraphs
         .map((p) => String(p).replace(/\s+/g, " ").trim())
         .join("\n\n"),
-    },
-  ];
+    });
+  }
+  return drafts.size === positions.length ? [...drafts.values()] : [];
 }
 
-const OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["paragraphs"],
-  properties: {
-    paragraphs: { type: "array", items: { type: "string" } },
-  },
-};
+function outputSchema(positions: readonly PositionGroup[]) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["summaries"],
+    properties: {
+      summaries: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["positionGroup", "paragraphs"],
+          properties: {
+            positionGroup: { type: "string", enum: [...positions] },
+            paragraphs: { type: "array", items: { type: "string" } },
+          },
+        },
+      },
+    },
+  };
+}
 
 const COMPARISON = {
   better: "better than a typical opponent",
@@ -145,17 +181,15 @@ const IN_INFLUENCE: ReadonlySet<EventStatId> = new Set([
   ...INFLUENCE.costs,
 ]);
 
-function briefInput({
-  name,
-  mainPosition,
+function positionInput({
+  positionGroup,
   totals,
   events,
-}: PlayerSummaryBrief) {
+}: PositionSummaryBrief) {
   const lines = (ids: readonly EventStatId[]) =>
     ids.flatMap((id) => lineInput(events.lines[id]));
   return {
-    name,
-    mainPosition: mainPosition ?? "Unknown",
+    positionGroup,
     matches: events.appearances,
     totals: totalsInput(totals),
     shareOfTheTeam: {

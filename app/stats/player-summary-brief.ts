@@ -1,7 +1,8 @@
 /**
- * What a player summary is written from (CLUBS-94): one Squad Member's style
- * over every recorded Match up to the end of a London week, in their Main
- * Position, as the profile's Influence and "How they play" show it.
+ * What player summaries are written from (CLUBS-94): one Squad Member's
+ * style over every recorded Match up to the end of a London week, once for
+ * each Position Group they have played enough in, as the profile's Influence
+ * and "How they play" show it.
  */
 import type { Db } from "~/db/client";
 import {
@@ -19,24 +20,31 @@ import {
   positionTotals,
 } from "./event-stats";
 import { DEFAULT_STATS_FILTER } from "./filter";
-import { inMainPosition, mainPosition } from "./positions";
 import { opponentEventAppearances, squadAppearances } from "./squad";
 import { groupBy, type PlayerTotals, summariseAppearances } from "./summaries";
 
-/** A Squad Member needs this many Appearances before a summary says how they play. */
+/** A Position Group needs this many Appearances before a summary says how they play there. */
 export const MIN_SUMMARY_APPEARANCES = 5;
 
-/** A Squad Member due a summary, and the week it is as of. */
+/** A Squad Member due summaries, and the week they are as of. */
 export interface PlayerSummarySubject {
   playerId: string;
   /** The Monday of the London week of their latest Appearance. */
   weekStart: CalendarDate;
 }
 
+/** The subject of one Position Group's summary: "935000001/Midfielder". */
+export function playerSummaryKey(
+  playerId: string,
+  positionGroup: PositionGroup,
+): string {
+  return `${playerId}/${positionGroup}`;
+}
+
 /**
- * Every Squad Member with `MIN_SUMMARY_APPEARANCES` up to the end of `week`,
- * in ID order, each as of the week they last played in: so a new summary is
- * due only after a week they played. One query.
+ * Every Squad Member with `MIN_SUMMARY_APPEARANCES` in a Position Group up
+ * to the end of `week`, in ID order, each as of the week they last played
+ * in: so new summaries are due only after a week they played. One query.
  */
 export async function playerSummarySubjects(
   db: Db,
@@ -48,12 +56,28 @@ export async function playerSummarySubjects(
   return summarySubjects(apps);
 }
 
+type Positioned = { positionGroup: PositionGroup | null };
+
+/**
+ * The Position Groups with `MIN_SUMMARY_APPEARANCES` among one Squad
+ * Member's Appearances, most played first (the Main Position leads).
+ */
+export function summaryPositions(own: readonly Positioned[]): PositionGroup[] {
+  return [...groupBy(own, (a) => a.positionGroup)]
+    .filter(
+      (entry): entry is [PositionGroup, Positioned[]] =>
+        entry[0] !== null && entry[1].length >= MIN_SUMMARY_APPEARANCES,
+    )
+    .sort(([, a], [, b]) => b.length - a.length)
+    .map(([positionGroup]) => positionGroup);
+}
+
 /** Pure; exported for unit tests. `appearances` are oldest first. */
 export function summarySubjects(
-  appearances: readonly { playerId: string; playedAt: Date }[],
+  appearances: readonly (Positioned & { playerId: string; playedAt: Date })[],
 ): PlayerSummarySubject[] {
   return [...groupBy(appearances, (a) => a.playerId)]
-    .filter(([, own]) => own.length >= MIN_SUMMARY_APPEARANCES)
+    .filter(([, own]) => summaryPositions(own).length > 0)
     .map(([playerId, own]) => ({
       playerId,
       weekStart: londonWeekStart(own[own.length - 1].playedAt),
@@ -61,19 +85,25 @@ export function summarySubjects(
     .sort((a, b) => a.playerId.localeCompare(b.playerId));
 }
 
+/** How a Squad Member plays in one Position Group. */
+export interface PositionSummaryBrief {
+  positionGroup: PositionGroup;
+  /** Their totals there. */
+  totals: PlayerTotals;
+  /** Their Event Stats there, beside the Yardstick for that position. */
+  events: PlayerEventProfile;
+}
+
 export interface PlayerSummaryBrief {
   playerId: string;
   name: string;
-  mainPosition: PositionGroup | null;
-  /** Their totals in their Main Position. */
-  totals: PlayerTotals;
-  /** Their Event Stats in their Main Position, beside the Yardstick. */
-  events: PlayerEventProfile;
+  /** One per Position Group with enough Appearances, most played first. */
+  positions: PositionSummaryBrief[];
 }
 
 /**
  * One Squad Member's brief as of the end of the week starting `weekStart`,
- * or null when they have no Appearance with Match Events by then. Two
+ * or null when no Position Group has Match Events to describe by then. Two
  * queries. `nameFor` shapes the name, e.g. for a prompt.
  */
 export async function getPlayerSummaryBrief(
@@ -95,14 +125,14 @@ export async function getPlayerSummaryBrief(
   const own = team.filter((a) => a.playerId === playerId);
   const latest = own.at(-1);
   if (!latest) return null;
-  const counted = inMainPosition(own, true);
-  const events = playerEventProfile(counted, team, positionTotals(opponents));
-  if (!events) return null;
-  return {
-    playerId,
-    name: nameFor(latest.name),
-    mainPosition: mainPosition(own),
-    totals: summariseAppearances(counted),
-    events,
-  };
+  const yardstick = positionTotals(opponents);
+  const positions = summaryPositions(own).flatMap((positionGroup) => {
+    const there = own.filter((a) => a.positionGroup === positionGroup);
+    const events = playerEventProfile(there, team, yardstick);
+    return events
+      ? [{ positionGroup, totals: summariseAppearances(there), events }]
+      : [];
+  });
+  if (positions.length === 0) return null;
+  return { playerId, name: nameFor(latest.name), positions };
 }
