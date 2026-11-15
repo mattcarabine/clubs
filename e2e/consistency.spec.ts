@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import {
-  dnf,
+  DROPPED_OUT,
   type Lineup,
   loss,
   win,
@@ -27,7 +27,7 @@ test.beforeEach(async ({ fakeEa }) => {
 /**
  * Three Wins and three defeats. Rock rates 7.5 to 8 whatever the result
  * (Floor 7.6, Spread 0.17); Swingy rates 9 in Wins and 6 in defeats (Floor
- * 6.0, Spread 1.50). Then a Match we rage quit, which must change nothing.
+ * 6.0, Spread 1.50). Then a Match both dropped out of, which must change nothing.
  */
 async function recordRockAndSwingy(
   fakeEa: FakeEa,
@@ -46,10 +46,10 @@ async function recordRockAndSwingy(
       };
     });
   matches.push({
-    build: (playedAt) => dnf({ ourWin: false, playedAt }),
+    build: (playedAt) => loss({ playedAt }),
     lineup: [
-      { player: ROCK, rating: 3 },
-      { player: SWINGY, rating: 10 },
+      { player: ROCK, rating: 3, stats: DROPPED_OUT },
+      { player: SWINGY, rating: 3, stats: DROPPED_OUT },
     ],
   });
   for (const [i, { build, lineup }] of matches.entries()) {

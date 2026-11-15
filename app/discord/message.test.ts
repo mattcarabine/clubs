@@ -28,6 +28,7 @@ function match(
     goalsAgainst,
     outcome,
     dnf: false,
+    realScore: null,
     skillRatings: { ours: null, opponent: null },
   };
 }

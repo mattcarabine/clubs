@@ -853,13 +853,12 @@ describe("swing (CLUBS-70)", () => {
     expect(result.gap).toBeNull();
   });
 
-  it("needs 3 Matches each side, and leaves out uncounted or unrated ones", () => {
+  it("needs 3 Matches each side, and leaves out 0-minute or unrated ones", () => {
     expect(swing(decider.slice(2)).gap).toBeNull();
     const withGaps = [
       ...decider,
-      // A dropout's 0 minutes and 3.0, a Match we quit, and no rating.
+      // A dropout's 0 minutes and 3.0, and no rating.
       app("W", 3, { secondsPlayed: 0 }),
-      app("L", 3, { dnf: true }),
       app("W", null),
     ];
     expect(swing(withGaps)).toEqual(swing(decider));

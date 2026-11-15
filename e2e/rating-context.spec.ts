@@ -3,7 +3,13 @@
 import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
-import { dnf, type Lineup, win, withLineup } from "./support/match-builders.ts";
+import {
+  DROPPED_OUT,
+  type Lineup,
+  loss,
+  win,
+  withLineup,
+} from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-66: ratings in the context of the team. Above team on the Squad table
@@ -49,7 +55,7 @@ async function record(
 /**
  * Ten Matches in which Alpha and Bravo swing with the whole team, Alpha
  * always above it; then the gaps EA leaves, which must change nothing: a
- * dropout's 0 minutes and 3.0, and a Match we rage quit.
+ * dropout's 0 minutes and 3.0, and a Match all three dropped out of.
  */
 async function recordTide(fakeEa: FakeEa, triggerPoll: () => Promise<void>) {
   await record(fakeEa, triggerPoll, [
@@ -58,18 +64,16 @@ async function recordTide(fakeEa: FakeEa, triggerPoll: () => Promise<void>) {
         { player: ALPHA, rating: night + 0.6 + ALPHA_NOISE[i] },
         { player: BRAVO, rating: night + BRAVO_NOISE[i] },
         { player: CHARLIE, rating: night },
-        ...(i === 0
-          ? [{ player: DELTA, rating: 3, stats: { secondsPlayed: "0" } }]
-          : []),
+        ...(i === 0 ? [{ player: DELTA, rating: 3, stats: DROPPED_OUT }] : []),
       ],
     })),
     {
       lineup: [
-        { player: ALPHA, rating: 3 },
-        { player: BRAVO, rating: 9.5 },
-        { player: CHARLIE, rating: 9.5 },
+        { player: ALPHA, rating: 3, stats: DROPPED_OUT },
+        { player: BRAVO, rating: 3, stats: DROPPED_OUT },
+        { player: CHARLIE, rating: 3, stats: DROPPED_OUT },
       ],
-      build: (playedAt) => dnf({ ourWin: false, playedAt }),
+      build: (playedAt) => loss({ playedAt }),
     },
   ]);
 }

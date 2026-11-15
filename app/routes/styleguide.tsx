@@ -154,6 +154,7 @@ const MILESTONE_MATCH: MilestoneEntry["match"] = {
   goalsAgainst: 1,
   outcome: "W",
   dnf: false,
+  realScore: null,
   skillRatings: { ours: null, opponent: null },
 };
 

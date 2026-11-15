@@ -106,6 +106,12 @@ export const matches = sqliteTable(
     goalsAgainst: integer().notNull(),
     result: text().$type<MatchResult>().notNull(),
     dnf: integer({ mode: "boolean" }).notNull(),
+    /**
+     * The score when a Rage Quit ended, where EA replaced it with an awarded
+     * 3-0 (CLUBS-87). Null for every other Match: `goalsFor` is the score.
+     */
+    realGoalsFor: integer(),
+    realGoalsAgainst: integer(),
     /** The Raw Payload this Match was first parsed from. */
     rawPayloadId: integer()
       .notNull()

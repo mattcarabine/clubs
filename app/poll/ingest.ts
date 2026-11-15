@@ -175,6 +175,8 @@ function matchStatements(
         goalsAgainst: match.goalsAgainst,
         result: match.result,
         dnf: match.dnf,
+        realGoalsFor: match.realGoalsFor,
+        realGoalsAgainst: match.realGoalsAgainst,
         rawPayloadId,
         ingestedAt: now,
       })),

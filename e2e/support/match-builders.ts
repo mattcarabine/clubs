@@ -106,16 +106,45 @@ export function draw(options: MatchOptions = {}): AddMatchBody {
   return buildMatch("draw", { goalsFor: 2, goalsAgainst: 2, ...options });
 }
 
+/** How EA leaves a player who left a Match early: every named stat zeroed. */
+export const WIPED_STATS: EaPlayerStats = {
+  goals: "0",
+  assists: "0",
+  shots: "0",
+  passesmade: "0",
+  passattempts: "0",
+  tacklesmade: "0",
+  tackleattempts: "0",
+};
+
+/** A player who never took part: no minutes and nothing done (EA rates them 3.0). */
+export const DROPPED_OUT: EaPlayerStats = {
+  ...WIPED_STATS,
+  secondsPlayed: "0",
+};
+
 /** A Match ended early; EA gives it to the side that stayed (Our Club by default). */
 export function dnf({
   ourWin = true,
+  realScore,
   ...options
-}: MatchOptions & { ourWin?: boolean } = {}): AddMatchBody {
-  return buildMatch(ourWin ? "dnfWin" : "dnfLoss", {
+}: MatchOptions & {
+  ourWin?: boolean;
+  /** The score when the side left, ours first, where EA awarded another. */
+  realScore?: [number, number];
+} = {}): AddMatchBody {
+  const built = buildMatch(ourWin ? "dnfWin" : "dnfLoss", {
     goalsFor: ourWin ? 3 : 0,
     goalsAgainst: ourWin ? 0 : 3,
     ...options,
   });
+  if (realScore) {
+    for (const [clubId, players] of Object.entries(built.match.players)) {
+      const goals = realScore[clubId === OUR_CLUB_ID ? 0 : 1];
+      for (const player of Object.values(players)) player.SCORE = String(goals);
+    }
+  }
+  return built;
 }
 
 /** Friendlies report W/D/L and `result` as 0, so only the score says who won. */
@@ -174,6 +203,8 @@ function buildMatch(
     for (const player of Object.values(match.players[side.clubId] ?? {})) {
       player.wins = flag(counter === "wins");
       player.losses = flag(counter === "losses");
+      // Every player's SCORE is their club's real goals.
+      player.SCORE = String(side.goals);
     }
   }
   return { matchType, match };

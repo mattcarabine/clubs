@@ -4,12 +4,13 @@
  *
  * - A player who drops out of a Match is recorded with 0 seconds played and
  *   a 3.0 rating. That Appearance is never counted, anywhere.
- * - In a Match one side rage quit, EA keeps almost nothing for the side
- *   that quit: most of its players show 0 shots and 0/0 passes. Our
- *   Appearances in a Match we quit are left out of every stat, comparison,
- *   baseline, per-90 and best or worst, and so are the Opponent's club
- *   totals in a Match they quit (CLUBS-56). The Match itself still counts
- *   in records and form.
+ * - EA zeroes the named stats of a player who left a Match early. The Poll
+ *   restores their goals, assists, shots and passes from their Match Events
+ *   (CLUBS-87, `app/ea/parse.ts`), so their Appearance counts like any
+ *   other, in a Match we quit too. Tackles and saves cannot be restored, so
+ *   a club's totals in a Match it quit are still left out of club against
+ *   club comparisons (`countsStatsOf`, CLUBS-56). The Match itself always
+ *   counts in records and form.
  *
  * Every Rage Quit (EA's DNF) has a side that quit: a DNF loss means we quit,
  * a DNF Win means the Opponent did.
@@ -67,10 +68,9 @@ export function isPlayedAppearance(a: { secondsPlayed: number }): boolean {
 
 /**
  * Whether one of Our Club's Appearances counts towards stats: it has
- * minutes, and is not from a DNF we quit.
+ * minutes. Until CLUBS-87 restored what EA wipes, ours in a DNF we quit were
+ * left out too.
  */
-export function isCountedAppearance(
-  a: { secondsPlayed: number } & QuitInput,
-): boolean {
-  return isPlayedAppearance(a) && countsStatsOf("us", a);
+export function isCountedAppearance(a: { secondsPlayed: number }): boolean {
+  return isPlayedAppearance(a);
 }

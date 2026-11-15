@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import {
-  dnf,
+  DROPPED_OUT,
   type Lineup,
   loss,
   win,
@@ -42,10 +42,10 @@ async function recordDeciderAndPadder(
       ],
     }));
   matches.push({
-    build: (playedAt) => dnf({ ourWin: false, playedAt }),
+    build: (playedAt) => loss({ playedAt }),
     lineup: [
-      { player: ALPHA, rating: 9 },
-      { player: BRAVO, rating: 3 },
+      { player: ALPHA, rating: 3, stats: DROPPED_OUT },
+      { player: BRAVO, rating: 3, stats: DROPPED_OUT },
     ],
   });
   for (const [i, { build, lineup }] of matches.entries()) {

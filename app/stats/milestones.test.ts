@@ -347,7 +347,7 @@ describe("feats", () => {
     ]);
   });
 
-  it("skips 0-minute Appearances and our side of a DNF we quit (CLUBS-48)", () => {
+  it("skips 0-minute Appearances but counts either side of a DNF (CLUBS-87)", () => {
     const quit = { ...match(10, "L", 0, 3), dnf: true };
     const won = { ...match(20, "W", 3, 0), dnf: true };
     const found = detectMilestones(
@@ -360,10 +360,13 @@ describe("feats", () => {
         ],
       }),
     );
-    // Only the DNF the Opponent quit counts.
-    expect(found.map((m) => [m.kind, m.matchId])).toEqual([
-      ["hat-trick", "m20"],
-    ]);
+    expect(found.map((m) => [m.kind, m.matchId])).toEqual(
+      expect.arrayContaining([
+        ["hat-trick", "m10"],
+        ["hat-trick", "m20"],
+      ]),
+    );
+    expect(found.some((m) => m.matchId === "m0")).toBe(false);
   });
 
   it("never reports a Goalkeeper's Milestones", () => {
@@ -559,7 +562,7 @@ describe("CLUBS-63 Squad Member streaks", () => {
     ];
     const appearances = [
       appearance("m0", KAB, { assists: 1 }),
-      // m1: missed. m2: we quit. m3: 0 minutes.
+      // m1: missed. m2: we quit, which counts and ends the run. m3: 0 minutes.
       appearance("m2", KAB, { assists: 0 }),
       appearance("m3", KAB, { assists: 0, secondsPlayed: 0 }),
       appearance("m4", KAB, { assists: 1 }),
@@ -572,10 +575,7 @@ describe("CLUBS-63 Squad Member streaks", () => {
     appearances.push(appearance("m5", KAB, { assists: 1 }));
     expect(
       streaks([...matches, match(5)], appearances).map((s) => s.slice(0, 3)),
-    ).toEqual([
-      ["motm-run", LOL, 2],
-      ["assist-run", KAB, 3],
-    ]);
+    ).toEqual([["motm-run", LOL, 2]]);
   });
 
   it("reads a streak as a run, since records began", () => {

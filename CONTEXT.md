@@ -65,7 +65,7 @@ A League or Playoff Match; the default scope for all stats.
 _Avoid_: Ranked match, real match
 
 **Appearance**:
-One player's participation in one Match, with that player's stats for it. An Appearance with no minutes (EA's record of a player who rage quit, rated 3.0 with every stat zeroed) is never counted, and the Match page tags it "Rage quit" with no stats.
+One player's participation in one Match, with that player's stats for it. An Appearance with no minutes and nothing done (EA's record of a player who never took part, rated 3.0 with every stat zeroed) is never counted, and the Match page tags it "Rage quit" with no stats. Every other Appearance counts. A player who left early has their named stats zeroed by EA but keeps their Match Events, so the Poll restores their goals, assists, shots and passes from those (CLUBS-87); a player whose minutes EA lost but whose stats it kept gets the Match's longest minutes and no rating.
 _Avoid_: Cap, game played, player-match
 
 **Match Events**:
@@ -96,7 +96,7 @@ The Position Group a Squad Member made most of their Appearances in, among the M
 _Avoid_: Position, role, attack, midfield, defence, GK/DEF/MID/FWD
 
 **Rage Quit**:
-A Match ended early because one side quit; EA awards the result to the side that stayed. Shown as "We rage quit" (EA records it as our loss) or "They rage quit" (the Opponent did, and it is our Win), and counted as "rage quits". EA keeps almost none of the quitting side's stats, so they are not counted (ours in a Match we quit, the Opponent's in one they quit); its result is. Code and URLs keep EA's name, `dnf` (`?dnf=0`).
+A Match ended early because one side quit; EA awards the result to the side that stayed. Shown as "We rage quit" (EA records it as our loss) or "They rage quit" (the Opponent did, and it is our Win), and counted as "rage quits". Its result always counts, and since CLUBS-87 so do our Appearances in a Match we quit. A club's totals in a Match it quit are still left out of club against club comparisons, since its tackles and saves cannot be restored. When the side that stayed led by fewer than three, EA records the Match as 3-0: that awarded score stays the score everywhere, and the Match page also says what it really was (`matches.realGoalsFor` / `realGoalsAgainst`). Code and URLs keep EA's name, `dnf` (`?dnf=0`).
 _Avoid_: DNF, did not finish, forfeit, abandoned
 
 **Dropped Points**:

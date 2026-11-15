@@ -169,13 +169,13 @@ describe("resolveComparisonPlayers", () => {
 });
 
 describe("compareSides with a DNF we quit (CLUBS-48)", () => {
-  it("leaves its stats out of the totals but counts its result in the record", () => {
+  it("counts its stats in the totals and its result in the record (CLUBS-87)", () => {
     const quit = appearance("m9", {
       outcome: "L",
       dnf: true,
       goalsFor: 0,
       goalsAgainst: 3,
-      rating: 3,
+      rating: 5,
     });
     const [side] = compareSides(
       [
@@ -188,9 +188,9 @@ describe("compareSides with a DNF we quit (CLUBS-48)", () => {
       matchRatings([appearance("m1"), quit]),
       true,
     ).sides;
-    expect(side.totals.appearances).toBe(1);
-    expect(side.totals.averageRating).toBe(7);
-    expect(side.form).toHaveLength(1);
+    expect(side.totals.appearances).toBe(2);
+    expect(side.totals.averageRating).toBe(6);
+    expect(side.form).toHaveLength(2);
     expect(side.record).toMatchObject({ played: 2, wins: 1, losses: 1 });
   });
 });

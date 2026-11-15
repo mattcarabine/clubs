@@ -3,6 +3,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import {
+  DROPPED_OUT,
   type Lineup,
   OUR_CLUB_ID,
   win,
@@ -25,7 +26,7 @@ let opponentName = "";
 /** EA's record of a player who rage quit. */
 const QUIT: Pick<Lineup[number], "rating" | "stats"> = {
   rating: 3,
-  stats: { secondsPlayed: "0" },
+  stats: DROPPED_OUT,
 };
 
 test.beforeEach(async ({ fakeEa, triggerPoll }) => {
@@ -43,7 +44,7 @@ test.beforeEach(async ({ fakeEa, triggerPoll }) => {
   const [first] = Object.values(opponentSide);
   Object.assign(first, {
     playername: OPPONENT_QUITTER,
-    secondsPlayed: "0",
+    ...DROPPED_OUT,
     rating: "3.00",
   });
   await fakeEa.addMatch(body);

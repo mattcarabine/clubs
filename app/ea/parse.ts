@@ -40,6 +40,12 @@ export interface ParsedMatch {
   /** From Our Club's point of view. */
   result: MatchResult;
   dnf: boolean;
+  /**
+   * The score when a Rage Quit ended, where EA awarded a different one
+   * (CLUBS-87); null otherwise.
+   */
+  realGoalsFor: number | null;
+  realGoalsAgainst: number | null;
   clubs: ParsedClub[];
   appearances: ParsedAppearance[];
 }
@@ -160,21 +166,34 @@ function parseMatch(
   const opponentClubId = opponentIds[0];
   const opponent = clubs[opponentClubId];
 
-  const appearances = Object.entries(match.players ?? {}).flatMap(
-    ([clubId, players]) =>
+  const appearances = withLostMinutes(
+    Object.entries(match.players ?? {}).flatMap(([clubId, players]) =>
       Object.entries(players ?? {}).map(([playerId, stats]) =>
         parseAppearance(playerId, clubId, stats ?? {}),
       ),
+    ),
   );
+  const outcome = matchResult(ours, opponent);
+  const goalsFor = toInt(ours.goals);
+  const goalsAgainst = toInt(opponent.goals);
+  const realFor = realGoals(match.players?.[ourClubId]);
+  const realAgainst = realGoals(match.players?.[opponentClubId]);
+  const awarded =
+    outcome.dnf &&
+    realFor !== null &&
+    realAgainst !== null &&
+    (realFor !== goalsFor || realAgainst !== goalsAgainst);
 
   return {
     matchId: String(match.matchId),
     matchType: MATCH_KINDS[matchType],
     playedAt: new Date(toInt(match.timestamp) * 1000),
     opponentClubId,
-    goalsFor: toInt(ours.goals),
-    goalsAgainst: toInt(opponent.goals),
-    ...matchResult(ours, opponent),
+    goalsFor,
+    goalsAgainst,
+    ...outcome,
+    realGoalsFor: awarded ? realFor : null,
+    realGoalsAgainst: awarded ? realAgainst : null,
     clubs: Object.entries(clubs).map(([clubId, club]) => ({
       clubId,
       name: club?.details?.name ?? null,
@@ -184,12 +203,73 @@ function parseMatch(
   };
 }
 
+/**
+ * A club's real goals: every player's `SCORE` carries them, even when the
+ * club's own `goals` is the 3-0 EA awards after a Rage Quit. Null when no
+ * player has one.
+ */
+function realGoals(
+  players: Record<string, EaPlayerStats> | undefined,
+): number | null {
+  for (const stats of Object.values(players ?? {})) {
+    if (/^\d+$/.test(stats?.SCORE ?? "")) return Number(stats.SCORE);
+  }
+  return null;
+}
+
+/**
+ * EA sometimes loses a player's minutes and rating (0 seconds, 3.0) but
+ * keeps what they did (CLUBS-87). Such a player played, so they get the
+ * Match's longest minutes and no rating, rather than reading as a player who
+ * never took part.
+ */
+function withLostMinutes(appearances: ParsedAppearance[]): ParsedAppearance[] {
+  const longest = Math.max(0, ...appearances.map((a) => a.secondsPlayed));
+  return appearances.map((a) =>
+    a.secondsPlayed === 0 && a.passAttempts + a.shots + a.tackleAttempts > 0
+      ? { ...a, secondsPlayed: longest, rating: null }
+      : a,
+  );
+}
+
+/** The Match Events EA's named stats equal exactly (checked on production). */
+const GOALS_CODE = "214";
+const ASSISTS_CODE = "11";
+const SHOT_CODES = ["217", "218"];
+const PASSES_MADE_CODE = "215";
+const PASSES_FAILED_CODE = "216";
+
+/**
+ * EA zeroes the named stats of a player who left a Match early but keeps
+ * their Match Events (CLUBS-87). Goals, assists and shots are restored from
+ * the events that equal them exactly, and passes from the pair that is right
+ * to within a pass or two. Tackles and saves have no such events, so they
+ * stay 0.
+ */
+function restoreWipedStats(a: ParsedAppearance): ParsedAppearance {
+  const { events } = a;
+  const wiped =
+    a.secondsPlayed > 0 &&
+    a.goals + a.assists + a.shots + a.passAttempts + a.tackleAttempts === 0;
+  if (!events || !wiped) return a;
+  const count = (code: string) => events[code] ?? 0;
+  const passesMade = count(PASSES_MADE_CODE);
+  return {
+    ...a,
+    goals: count(GOALS_CODE),
+    assists: count(ASSISTS_CODE),
+    shots: SHOT_CODES.reduce((total, code) => total + count(code), 0),
+    passesMade,
+    passAttempts: passesMade + count(PASSES_FAILED_CODE),
+  };
+}
+
 function parseAppearance(
   playerId: string,
   clubId: string,
   stats: EaPlayerStats,
 ): ParsedAppearance {
-  return {
+  return restoreWipedStats({
     playerId,
     clubId,
     personaName: stats.playername || null,
@@ -209,7 +289,7 @@ function parseAppearance(
     cleanSheet: toInt(stats.cleansheetsany) > 0,
     secondsPlayed: toInt(stats.secondsPlayed),
     events: parseMatchEvents(stats),
-  };
+  });
 }
 
 /**

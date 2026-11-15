@@ -7,7 +7,7 @@
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import type { fakeEa as FakeEa } from "./support/fake-ea.ts";
-import { dnf, draw, loss, win } from "./support/match-builders.ts";
+import { DROPPED_OUT, dnf, draw, loss, win } from "./support/match-builders.ts";
 import {
   KAB,
   LOL,
@@ -120,7 +120,7 @@ test("a Squad Member's scoring run skips a 0-minute Appearance, and a Man of the
   ]);
   // Kabeeble dropped out: 0 minutes neither extends nor ends the run.
   await serveMatch(fakeEa, ids[2], DAY_MINUTES, [
-    { player: KAB, rating: 3, stats: { secondsPlayed: "0" } },
+    { player: KAB, rating: 3, stats: DROPPED_OUT },
     { player: LOL },
   ]);
   await serveMatch(fakeEa, ids[3], 20, [
