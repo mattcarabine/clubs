@@ -374,7 +374,7 @@ test("kick-off and weekday groups use London time across a BST change", async ({
   ]);
 
   await page.goto("/analysis");
-  await expect(barList(page, "Win % by kick-off time")).toHaveText([
+  await expect(barList(page, "Win % by time of night")).toHaveText([
     /^Before 18:00 \(3\)\s*33%$/,
     /^20:00–22:00 \(2\)\s*100%$/,
     /^22:00 or later \(1\)\s*0%$/,

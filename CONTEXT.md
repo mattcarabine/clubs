@@ -53,7 +53,7 @@ _Avoid_: Squad list, members list
 ### Matches
 
 **Match**:
-One completed game between Our Club and an Opponent, identified by EA's match ID.
+One completed game between Our Club and an Opponent, identified by EA's match ID. Its time (`played_at`, EA's `timestamp`) is when it **ended**, not when it kicked off (CLUBS-89): a full Match takes about 17 minutes of real time, and one cut short by a Rage Quit is stamped sooner after the Match before it. Code and docs still say "kick-off" for this time in places (the Session rule, a Season's start); read it as full time. On the page say when a match was "played".
 _Avoid_: Game, fixture, result
 
 **Match Type**:
@@ -104,7 +104,7 @@ A Match drawn or lost. The term names the idea in code and docs only, never on t
 _Avoid_: Non-win, bad result
 
 **Session**:
-A run of Matches with no more than 45 minutes between consecutive kick-offs.
+A run of Matches with no more than 45 minutes between consecutive Match times (full time to full time: see Match).
 _Avoid_: Sitting, night
 
 **Season**:
