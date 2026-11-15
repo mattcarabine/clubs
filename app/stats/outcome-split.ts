@@ -89,6 +89,11 @@ export interface ClubMatchTotals {
   ratings: number;
   /** The club's Match Events added up; absent when EA sent its players none. */
   detail?: ClubMatchDetail | null;
+  /**
+   * The club rage quit this Match. EA zeroes the saves of whoever left and
+   * the Poll cannot restore them, so saves are not sampled (`counted.ts`).
+   */
+  quit?: boolean;
 }
 
 /** One club's Match Events in one Match, over its Appearances (CLUBS-86). */
@@ -225,6 +230,16 @@ const RATING: PerformanceMetric = {
     `${statName(club, "Average rating")} ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "lower" : "higher"}`,
 };
 
+/** Saves per 90; no sample for a club in a Match it rage quit (`ClubMatchTotals.quit`). */
+const SAVES: PerformanceMetric = (() => {
+  const metric = perNinety("saves", "saves", "make", (t) => t.saves);
+  return {
+    ...metric,
+    sample: (totals, seconds) =>
+      totals.quit ? null : metric.sample(totals, seconds),
+  };
+})();
+
 /** A count from a club's Match Events, per 90; no sample without them. */
 function detailPerNinety(
   id: string,
@@ -292,7 +307,7 @@ export const PERFORMANCE_METRICS: readonly PerformanceMetric[] = [
     (t) => t.tacklesMade,
     (t) => t.tackleAttempts,
   ),
-  perNinety("saves", "saves", "make", (t) => t.saves),
+  SAVES,
   perNinety("red-cards", "red cards", "get", (t) => t.redCards),
   RATING,
 ];

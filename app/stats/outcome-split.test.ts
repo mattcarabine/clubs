@@ -238,6 +238,19 @@ describe("outcomeSplit", () => {
     expect(split.findings).toEqual([]);
   });
 
+  it("leaves a club's saves out of a Match it rage quit", () => {
+    const split = outcomeSplit(
+      [
+        ...many(3, () => match("W")),
+        ...many(3, () => match("L", { ours: { saves: 4 } })),
+        match("L", { dnf: true, ours: { saves: 0, quit: true } }),
+      ],
+      [],
+    );
+    const saves = split.performance.find((row) => row.id === "saves");
+    expect(saves?.ours.dropped).toBe("4.0");
+  });
+
   it("charts a rolling Win %", () => {
     const split = outcomeSplit(
       [match("W"), match("L"), match("W"), match("D")],
