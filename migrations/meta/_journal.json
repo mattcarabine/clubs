@@ -120,6 +120,13 @@
       "when": 1794706783921,
       "tag": "0016_backfill_real_scores_and_wiped_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1794708048380,
+      "tag": "0017_rebuild_scoreline_record_milestones",
+      "breakpoints": true
     }
   ]
 }
