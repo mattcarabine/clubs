@@ -46,35 +46,50 @@ test("a new Match keeps our rating from before it and after it", async ({
       ]),
     );
 
+  /**
+   * A Match time a second or more after the last Poll, as in life: the Poll
+   * that reads a result always comes after the Match before it ended.
+   */
+  const afterLastPoll = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    return {
+      kickOff: new Date(Math.floor(Date.now() / 1000) * 1000),
+    };
+  };
+
   await ours(PLAYED, 1600);
   await triggerPoll();
 
   // A Win takes us from 1600 to 1620.
   await ours(PLAYED + 1, 1620);
-  await fakeEa.addMatch(win({ matchId: "88001" }));
+  await fakeEa.addMatch(win({ matchId: "88001", ...(await afterLastPoll()) }));
   await triggerPoll();
   expect(await ratings()).toEqual({ "88001": [1600, 1620] });
 
-  // Two results in one Poll: no reading sits between them.
+  // Two results in one Poll: the first follows our last reading, and no
+  // reading sits between it and the second.
   await ours(PLAYED + 3, 1610);
-  await fakeEa.addMatch(loss({ matchId: "88002" }));
-  await fakeEa.addMatch(win({ matchId: "88003" }));
+  const first = await afterLastPoll();
+  const second = await afterLastPoll();
+  await fakeEa.addMatch(loss({ matchId: "88002", ...first }));
+  await fakeEa.addMatch(win({ matchId: "88003", ...second }));
   await triggerPoll();
   expect(await ratings()).toMatchObject({
-    "88002": [null, 1610],
+    "88002": [1620, 1610],
     "88003": [null, 1610],
   });
 
-  // EA lists a Match before it counts it: our Snapshot is not this result's.
-  await fakeEa.addMatch(win({ matchId: "88004" }));
+  // EA lists a Match before it counts it: our last reading is still the
+  // one from before it.
+  await fakeEa.addMatch(win({ matchId: "88004", ...(await afterLastPoll()) }));
   await triggerPoll();
-  expect((await ratings())["88004"]).toEqual([null, 1610]);
+  expect((await ratings())["88004"]).toEqual([1610, 1610]);
 
   // Once EA catches up, the next one is rated as usual.
   await ours(PLAYED + 4, 1625);
   await triggerPoll();
   await ours(PLAYED + 5, 1590);
-  await fakeEa.addMatch(loss({ matchId: "88005" }));
+  await fakeEa.addMatch(loss({ matchId: "88005", ...(await afterLastPoll()) }));
   await triggerPoll();
   expect((await ratings())["88005"]).toEqual([1625, 1590]);
 });

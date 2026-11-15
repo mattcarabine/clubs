@@ -88,7 +88,9 @@ test("rated Matches land in their strength group with its Win rate, and unrated 
     page.getByRole("heading", { name: "By Opponent strength" }),
   ).toHaveJSProperty("tagName", "H3");
   await expect(
-    page.getByText("2 Matches without Skill Ratings are left out."),
+    page.getByText(
+      "2 matches without skill ratings from before kick-off are left out.",
+    ),
   ).toHaveCount(1);
   await expect(
     section(page)

@@ -71,6 +71,9 @@ function ourSnapshot(
   return sql`(SELECT ${value} ${ourRatingSnapshots(ourClubId)} ORDER BY snapshots.taken_at DESC, snapshots.id DESC LIMIT 1 OFFSET ${sql.raw(String(back))})`;
 }
 
+/** How far back a Poll looks for Matches still missing our rating before them. */
+const BEFORE_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
+
 /** Read before the Poll's requests: which Opponents still need rating. */
 export async function ratingState(
   db: Db,
@@ -144,7 +147,31 @@ export function ratingStatements(
         ),
     );
   }
+  // A reading this Poll took is never from before a Match it lists.
+  const pollStart = Math.min(now, ...responses.map((r) => r.fetchedAt));
   if (matchesAdded > 0) {
+    // What the rule above could not rate (EA listed the Match a Poll before
+    // counting it, or the Match arrived while older code was live): our
+    // latest Snapshot from before the Match's time and after the Match
+    // before it, the rule migration 0019 backfilled with. A Match whose
+    // result shares a Poll with the one before it has no such reading.
+    statements.push(
+      db
+        .update(matches)
+        .set({
+          ourRatingBefore: sql`(SELECT json_extract(snapshots.stats, '$.skillRating') ${ourRatingSnapshots(ourClubId)}
+            AND snapshots.taken_at < "matches"."played_at"
+            AND snapshots.taken_at < ${pollStart}
+            AND snapshots.taken_at > coalesce((SELECT max(earlier.played_at) FROM matches earlier WHERE earlier.played_at < "matches"."played_at"), 0)
+            ORDER BY snapshots.taken_at DESC, snapshots.id DESC LIMIT 1)`,
+        })
+        .where(
+          and(
+            isNull(matches.ourRatingBefore),
+            gte(matches.playedAt, new Date(now - BEFORE_RETRY_MS)),
+          ),
+        ),
+    );
     statements.push(
       db
         .update(matches)
