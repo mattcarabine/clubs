@@ -9,6 +9,7 @@ import {
   eventCounts,
   eventStatValues,
   eventTotals,
+  giveaways,
   type MatchEventAppearance,
   playerEventProfile,
   positionTotals,
@@ -354,6 +355,101 @@ describe("styleMixes", () => {
         ],
       },
     ]);
+  });
+});
+
+describe("giveaways", () => {
+  // 16 of 20 short passes, 5 of 10 long, 1 of 2 crosses; 6 failed forward, 2 sideways.
+  const own = eventTotals([
+    appearance({
+      "24": 16,
+      "25": 4,
+      "28": 5,
+      "29": 5,
+      "36": 1,
+      "37": 1,
+      "31": 6,
+      "35": 2,
+      "105": 1,
+      "106": 4,
+    }),
+  ]);
+  const theirs = eventTotals([
+    appearance({ "24": 17, "25": 3, "28": 2, "29": 8, "36": 1 }),
+  ]);
+
+  it("shares out the failed passes by kind and by direction", () => {
+    const found = giveaways(own, null);
+    // "216" is absent, so only the 5 losses on the ball count here.
+    expect(found?.overall).toEqual({
+      total: 5,
+      parts: [
+        { label: "Passes astray", share: 0 },
+        { label: "Lost on the ball", share: 100 },
+      ],
+    });
+    expect(found?.byLength).toEqual({
+      total: 10,
+      parts: [
+        { label: "Short passes", share: 40 },
+        { label: "Medium passes", share: 0 },
+        { label: "Long passes", share: 50 },
+        { label: "Crosses", share: 10 },
+      ],
+    });
+    expect(found?.byDirection).toEqual({
+      total: 8,
+      parts: [
+        { label: "Forward", share: 75 },
+        { label: "Sideways", share: 25 },
+        { label: "Backward", share: 0 },
+      ],
+    });
+  });
+
+  it("sets each kind tried often enough beside the Yardstick", () => {
+    expect(giveaways(own, theirs)?.passTypes).toEqual([
+      {
+        id: "short",
+        label: "Short passes",
+        attempted: 20,
+        failed: 4,
+        value: 80,
+        yardstick: 85,
+        standing: "worse",
+      },
+      {
+        id: "long",
+        label: "Long passes",
+        attempted: 10,
+        failed: 5,
+        value: 50,
+        yardstick: 20,
+        standing: "muchBetter",
+      },
+    ]);
+  });
+
+  it("judges the share that failed, and needs enough tries on the other side", () => {
+    const sharp = eventTotals([
+      appearance({ "24": 99, "25": 1, "36": 6, "37": 6 }),
+    ]);
+    const usual = eventTotals([appearance({ "24": 90, "25": 10, "36": 1 })]);
+    const [short, crosses] = giveaways(sharp, usual)?.passTypes ?? [];
+    expect(short).toMatchObject({
+      value: 99,
+      yardstick: 90,
+      standing: "muchBetter",
+    });
+    expect(crosses).toMatchObject({
+      value: 50,
+      yardstick: null,
+      standing: null,
+    });
+  });
+
+  it("is null with no passes to speak of", () => {
+    expect(giveaways(eventTotals([appearance({ "6": 1 })]), null)).toBeNull();
   });
 });
 
