@@ -29,19 +29,42 @@ describe("summaryPositions", () => {
 
 describe("summarySubjects", () => {
   it("lists Squad Members with enough Appearances in a position, as of the week they last played", () => {
-    const regular = Array.from({ length: MIN_SUMMARY_APPEARANCES }, (_, i) => ({
-      playerId: "2",
-      positionGroup: "Midfielder" as const,
-      // Tue 3 Nov, then Thu 12 Nov for the last.
-      playedAt: at(i < 4 ? "2026-11-03T20:00:00" : "2026-11-12T21:00:00"),
-    }));
-    // Five Appearances, but never five in one position.
-    const utility = Array.from({ length: MIN_SUMMARY_APPEARANCES }, (_, i) => ({
-      playerId: "1",
-      positionGroup: i < 3 ? ("Forward" as const) : ("Defender" as const),
-      playedAt: at("2026-11-12T21:00:00"),
-    }));
-    expect(summarySubjects([...regular, ...utility])).toEqual([
+    const counts = [
+      {
+        playerId: "2",
+        positionGroup: "midfielder",
+        played: MIN_SUMMARY_APPEARANCES,
+        lastPlayedAt: at("2026-11-03T20:00:00"),
+      },
+      // A later Appearance elsewhere still moves the week on.
+      {
+        playerId: "2",
+        positionGroup: "forward",
+        played: 1,
+        lastPlayedAt: at("2026-11-12T21:00:00"),
+      },
+      // Five Appearances, but never five in one position.
+      {
+        playerId: "1",
+        positionGroup: "forward",
+        played: 3,
+        lastPlayedAt: at("2026-11-12T21:00:00"),
+      },
+      {
+        playerId: "1",
+        positionGroup: "defender",
+        played: 2,
+        lastPlayedAt: at("2026-11-12T21:00:00"),
+      },
+      // Enough, but in no recorded position.
+      {
+        playerId: "3",
+        positionGroup: null,
+        played: MIN_SUMMARY_APPEARANCES,
+        lastPlayedAt: at("2026-11-12T21:00:00"),
+      },
+    ];
+    expect(summarySubjects(counts)).toEqual([
       { playerId: "2", weekStart: "2026-11-09" },
     ]);
   });

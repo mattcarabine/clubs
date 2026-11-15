@@ -14,7 +14,7 @@ import { aiJobs, aiWriteups } from "~/db/schema";
  * club) by `CLUB_SUBJECT`; `coaching` (a Squad Member's coaching notes,
  * CLUBS-44) by the player ID, its job by the week; a `milestone` comment by
  * the Milestone's ID; `season-review` (CLUBS-45) by `seasonReviewKey`; a
- * `player-summary` (CLUBS-94) by the player ID.
+ * `player-summary` (CLUBS-94) by `playerSummaryKey`, its job by the player ID.
  */
 export type WriteupKind =
   | "session"

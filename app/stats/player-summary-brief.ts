@@ -4,7 +4,10 @@
  * each Position Group they have played enough in, as the profile's Influence
  * and "How they play" show it.
  */
+import { and, count, eq, max } from "drizzle-orm";
+
 import type { Db } from "~/db/client";
+import { appearances, matches } from "~/db/schema";
 import {
   type CoachingWeek,
   coachingWeek,
@@ -20,6 +23,7 @@ import {
   positionTotals,
 } from "./event-stats";
 import { DEFAULT_STATS_FILTER } from "./filter";
+import { isCountedAppearanceSql, isOurAppearance, matchScope } from "./scope";
 import { opponentEventAppearances, squadAppearances } from "./squad";
 import { groupBy, type PlayerTotals, summariseAppearances } from "./summaries";
 
@@ -44,16 +48,36 @@ export function playerSummaryKey(
 /**
  * Every Squad Member with `MIN_SUMMARY_APPEARANCES` in a Position Group up
  * to the end of `week`, in ID order, each as of the week they last played
- * in: so new summaries are due only after a week they played. One query.
+ * in: so new summaries are due only after a week they played. One query,
+ * counted in SQL: it runs on every Poll.
  */
 export async function playerSummarySubjects(
   db: Db,
   week: CoachingWeek,
 ): Promise<PlayerSummarySubject[]> {
-  const apps = await squadAppearances(db, DEFAULT_STATS_FILTER, {
-    playedBetween: { start: new Date(0), end: coachingWeekLastMoment(week) },
-  });
-  return summarySubjects(apps);
+  const rows = await db
+    .select({
+      playerId: appearances.playerId,
+      positionGroup: appearances.positionGroup,
+      played: count(),
+      lastPlayedAt: max(matches.playedAt),
+    })
+    .from(appearances)
+    .innerJoin(matches, eq(matches.matchId, appearances.matchId))
+    .where(
+      and(
+        isOurAppearance,
+        isCountedAppearanceSql,
+        matchScope(db, DEFAULT_STATS_FILTER, {
+          playedBetween: {
+            start: new Date(0),
+            end: coachingWeekLastMoment(week),
+          },
+        }),
+      ),
+    )
+    .groupBy(appearances.playerId, appearances.positionGroup);
+  return summarySubjects(rows);
 }
 
 type Positioned = { positionGroup: PositionGroup | null };
@@ -72,15 +96,29 @@ export function summaryPositions(own: readonly Positioned[]): PositionGroup[] {
     .map(([positionGroup]) => positionGroup);
 }
 
-/** Pure; exported for unit tests. `appearances` are oldest first. */
+/** One Squad Member's Appearances in one Position Group (null for none recorded). */
+interface PositionCount {
+  playerId: string;
+  positionGroup: unknown;
+  played: number;
+  lastPlayedAt: Date | null;
+}
+
+/** Pure; exported for unit tests. */
 export function summarySubjects(
-  appearances: readonly (Positioned & { playerId: string; playedAt: Date })[],
+  counts: readonly PositionCount[],
 ): PlayerSummarySubject[] {
-  return [...groupBy(appearances, (a) => a.playerId)]
-    .filter(([, own]) => summaryPositions(own).length > 0)
+  return [...groupBy(counts, (c) => c.playerId)]
+    .filter(([, own]) =>
+      own.some(
+        (c) => c.positionGroup !== null && c.played >= MIN_SUMMARY_APPEARANCES,
+      ),
+    )
     .map(([playerId, own]) => ({
       playerId,
-      weekStart: londonWeekStart(own[own.length - 1].playedAt),
+      weekStart: londonWeekStart(
+        new Date(Math.max(...own.map((c) => c.lastPlayedAt?.getTime() ?? 0))),
+      ),
     }))
     .sort((a, b) => a.playerId.localeCompare(b.playerId));
 }

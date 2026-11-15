@@ -225,7 +225,12 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
         </StatGrid>
       </section>
 
-      <PlayerSummary name={member.name} summaries={summaries} />
+      <PlayerSummary
+        // A fresh pick for each Squad Member.
+        key={member.playerId}
+        name={member.name}
+        summaries={summaries}
+      />
 
       {form.length > 0 && (
         <section aria-label="Influence" className="mb-8">
