@@ -20,6 +20,7 @@ import {
   ChartLegend,
   Chip,
   ChipGroup,
+  ChoiceBars,
   EmptyState,
   FilterBar,
   LineChart,
@@ -199,6 +200,32 @@ function RecordedComparison(data: CompareDataFor<"recorded">) {
             caption="Influence"
             names={names(data)}
             rows={influenceRows(sides)}
+          />
+        </section>
+      )}
+      {sides.some((s) => s.choices) && (
+        <section aria-label="Choices on the ball" className="mb-8">
+          <SectionHeading
+            title="Choices on the ball"
+            subtitle="How EA judged each of their passes and shots"
+          />
+          <ChoiceBars
+            label="Choices on the ball"
+            groups={[
+              {
+                rows: sides.flatMap(({ choices }, i) =>
+                  choices
+                    ? [
+                        {
+                          id: players[i].playerId,
+                          name: players[i].name,
+                          mix: choices,
+                        },
+                      ]
+                    : [],
+                ),
+              },
+            ]}
           />
         </section>
       )}

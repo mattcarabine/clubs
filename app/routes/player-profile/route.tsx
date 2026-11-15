@@ -55,6 +55,7 @@ import { playerPreview } from "~/stats/link-preview";
 import type { Route } from "./+types/route";
 import { BestMatches } from "./best-matches";
 import { BuildPlate, BuildProgression } from "./build";
+import { PlayerChoices, playerChoicesSubtitle } from "./choices";
 import { COACHING_WEEKS_SHOWN, CoachingNotes } from "./coaching-notes";
 import { EaTotals } from "./ea-totals";
 import { Giveaways, hasGiveaways } from "./giveaways";
@@ -284,6 +285,20 @@ export default function PlayerProfile({ loaderData }: Route.ComponentProps) {
                 subtitle="Passes that go astray, and the ball lost when tackled or dribbling"
               />
               <Giveaways events={events} against={against} />
+            </section>
+          )}
+
+          {events?.choices && (
+            <section aria-label="Choices on the ball" className="mb-8">
+              <SectionHeading
+                title="Choices on the ball"
+                subtitle={playerChoicesSubtitle(events.choices, against)}
+              />
+              <PlayerChoices
+                name={member.name}
+                choices={events.choices}
+                against={against}
+              />
             </section>
           )}
 

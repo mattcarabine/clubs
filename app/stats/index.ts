@@ -8,6 +8,7 @@
 export * from "./awards";
 export * from "./campaigns";
 export * from "./campaigns-query";
+export * from "./choices";
 export * from "./club-leaders";
 export * from "./club-leaders-query";
 export * from "./club-records";

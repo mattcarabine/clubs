@@ -17,6 +17,11 @@ import type { Outcome, PositionGroup } from "~/lib/domain";
 import { formatDecimal, formatPercentage } from "~/lib/number-format";
 
 import {
+  choiceTotal,
+  type PlayerChoiceProfile,
+  playerChoiceProfile,
+} from "./choices";
+import {
   per90,
   percentage,
   winPercentage,
@@ -86,8 +91,10 @@ export const EVENT_COUNTS = [
   "penaltiesConceded",
   "inPosition",
   "outOfPosition",
-  "bestPassChoices",
-  "poorPassChoices",
+  "bestChoices",
+  "goodChoices",
+  "noGoodOptions",
+  "poorChoices",
 ] as const;
 
 export type EventCount = (typeof EVENT_COUNTS)[number];
@@ -158,8 +165,11 @@ export function eventCounts(appearance: EventAppearance): EventCounts | null {
     penaltiesConceded: n("penaltiesConceded"),
     inPosition: n("inPosition"),
     outOfPosition: n("outOfPosition"),
-    bestPassChoices: n("bestOptionTaken"),
-    poorPassChoices: n("shouldHavePassedElsewhere"),
+    // EA's verdict on each pass and shot (the Choice Mix, `choices.ts`).
+    bestChoices: n("bestOptionTaken"),
+    goodChoices: n("goodOptionTaken"),
+    noGoodOptions: n("noGoodOption"),
+    poorChoices: n("shouldHavePassedElsewhere"),
   };
 }
 
@@ -353,6 +363,18 @@ export const EVENT_STATS = {
     better: "high",
     value: rate("aerialDuelsWon"),
   },
+  bestPassChoices: {
+    group: "attacking",
+    // EA gives this far more often for a shot on target than for a pass, so it
+    // sits with attacking, whatever its id says (CLUBS-100).
+    label: "Best option taken",
+    header: "Best opt/90",
+    description:
+      "Times EA judged they took the best option on the ball, per 90 minutes. A shot on target earns it far more often than a pass",
+    unit: "per90",
+    better: "high",
+    value: rate("bestChoices"),
+  },
   // Passing
   passesCompleted: {
     group: "passing",
@@ -429,16 +451,6 @@ export const EVENT_STATS = {
     better: "low",
     value: rate("offsidePasses"),
   },
-  bestPassChoices: {
-    group: "passing",
-    label: "Best pass picked",
-    header: "Best pass/90",
-    description:
-      "Times EA judged they picked the best pass on offer, per 90 minutes",
-    unit: "per90",
-    better: "high",
-    value: rate("bestPassChoices"),
-  },
   poorPassChoices: {
     group: "passing",
     label: "Poor pass choices",
@@ -447,7 +459,7 @@ export const EVENT_STATS = {
       "Times EA judged they should have passed elsewhere, per 90 minutes",
     unit: "per90",
     better: "low",
-    value: rate("poorPassChoices"),
+    value: rate("poorChoices"),
   },
   // On the ball
   dribbles: {
@@ -764,6 +776,29 @@ export interface TeamShares {
   evenShare: number | null;
 }
 
+/** A Squad Member's totals beside Our Club's, over the Matches they count in. */
+export interface TeamInTheirMatches {
+  /** Their Appearances with Match Events and minutes. */
+  counted: MatchEventAppearance[];
+  mine: EventTotals;
+  /** Every teammate's in those Matches, theirs included. */
+  ours: EventTotals;
+}
+
+/** `own` beside `team` (every teammate's Appearance, theirs included) in the Matches `own` counts in. */
+export function teamInTheirMatches(
+  own: readonly MatchEventAppearance[],
+  team: readonly MatchEventAppearance[],
+): TeamInTheirMatches {
+  const counted = own.filter((a) => a.events && a.secondsPlayed > 0);
+  const matchIds = new Set(counted.map((a) => a.matchId));
+  return {
+    counted,
+    mine: eventTotals(counted),
+    ours: eventTotals(team.filter((a) => matchIds.has(a.matchId))),
+  };
+}
+
 /**
  * How much of what Our Club did came from one Squad Member, over the Matches
  * of `own` (their Appearances). `team` is every teammate's Appearance,
@@ -774,13 +809,8 @@ export interface TeamShares {
 export function teamShares(
   own: readonly MatchEventAppearance[],
   team: readonly MatchEventAppearance[],
+  { counted, mine, ours }: TeamInTheirMatches = teamInTheirMatches(own, team),
 ): TeamShares {
-  const counted = own.filter((a) => a.events && a.secondsPlayed > 0);
-  const matchIds = new Set(counted.map((a) => a.matchId));
-  const teammates = team.filter((a) => matchIds.has(a.matchId));
-  const mine = eventTotals(counted);
-  const ours = eventTotals(teammates);
-
   const involved = sumOf(mine, ["goals", "assists", "secondAssists"]);
   const scored = counted.reduce((total, a) => total + a.goalsFor, 0);
 
@@ -842,7 +872,7 @@ export const RESULT_MOVERS = {
   ballLost: { counts: BALL_LOST, plural: "times losing the ball" },
   passesFailed: { counts: ["passesFailed"], plural: "passes gone astray" },
   poorPassChoices: {
-    counts: ["poorPassChoices"],
+    counts: ["poorChoices"],
     plural: "poor pass choices",
   },
   tacklesLost: { counts: ["tacklesLost"], plural: "tackles missed" },
@@ -1176,6 +1206,8 @@ export interface PlayerEventProfile {
   movers: ResultMovers;
   mixes: StyleMix[];
   giveaways: Giveaways | null;
+  /** Their Choice Mix (CLUBS-100) beside the Yardstick's and the team's; null with too few choices. */
+  choices: PlayerChoiceProfile | null;
 }
 
 /**
@@ -1206,12 +1238,26 @@ export function playerEventProfile(
       ];
     }),
   ) as Record<EventStatId, EventStatLine>;
+  const inTheirMatches = teamInTheirMatches(own, team);
+  // The Yardstick is scaled to their minutes, so its mix is held to how many
+  // choices the opposing humans in those Position Groups really made.
+  const opposingChoices = [
+    ...new Set(inTheirMatches.counted.map((a) => a.positionGroup)),
+  ].reduce((sum, group) => {
+    const theirs = group === null ? undefined : opponents.get(group);
+    return theirs ? sum + choiceTotal(theirs.counts) : sum;
+  }, 0);
   return {
     appearances: totals.appearances,
     lines,
-    teamShares: teamShares(own, team),
+    teamShares: teamShares(own, team, inTheirMatches),
     movers: resultMovers(own),
     mixes: styleMixes(totals),
     giveaways: giveaways(totals, against),
+    choices: playerChoiceProfile(
+      totals.counts,
+      against && { counts: against.counts, judged: opposingChoices },
+      inTheirMatches.ours.counts,
+    ),
   };
 }

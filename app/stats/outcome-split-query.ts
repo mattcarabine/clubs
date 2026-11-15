@@ -11,6 +11,7 @@ import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import type { Db } from "~/db/client";
 import { appearances, matches } from "~/db/schema";
 
+import { type ChoiceBreakdown, choiceBreakdown } from "./choices";
 import { isCountedAppearance, weQuit } from "./counted";
 import { eventCount, totalOf } from "./event-sql";
 import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
@@ -33,7 +34,11 @@ import { isPlayedAppearanceSql, matchScope, type ScopeOptions } from "./scope";
 import { type SessionStandouts, sessionStandouts } from "./session-standouts";
 import { sessionPlaces } from "./sessions";
 import { ratingGap } from "./skill-rating";
-import { type SquadAppearance, squadAppearances } from "./squad";
+import {
+  clubChoiceCounts,
+  type SquadAppearance,
+  squadAppearances,
+} from "./squad";
 
 export interface OutcomeSplitOptions {
   /** Counts each Squad Member's Main Position only, in the per-player rows alone. */
@@ -43,6 +48,11 @@ export interface OutcomeSplitOptions {
 export interface OutcomeSplitPage extends OutcomeSplit {
   /** Why we win and why we lose (CLUBS-95); empty until the split is `ready`. */
   drivers: ResultDrivers;
+  /**
+   * How EA judged our passes and shots (CLUBS-100), every position counted;
+   * null before any Match Events.
+   */
+  choices: ChoiceBreakdown | null;
   players: PlayerSplitRow[];
   /** One per Match, oldest first, matching `rollingWinPercentage`. */
   playedAt: Date[];
@@ -54,17 +64,17 @@ export async function getOutcomeSplit(
   filter: StatsFilter,
   { mainPositionOnly = false }: OutcomeSplitOptions = {},
 ): Promise<OutcomeSplitPage> {
-  const { summaries, squad, split, splitMatches, withEvents } = await splitData(
-    db,
-    filter,
-    {},
-    true,
-  );
+  const [{ summaries, squad, split, splitMatches, withEvents }, choices] =
+    await Promise.all([
+      splitData(db, filter, {}, true),
+      clubChoiceCounts(db, filter),
+    ]);
   return {
     ...split,
     drivers: split.ready
       ? resultDrivers(splitMatches, withEvents)
       : { win: [], lose: [] },
+    choices: choiceBreakdown(choices.players, choices.opponents),
     players: playerSplits(squad, mainPositionOnly, split.withWithout),
     playedAt: summaries.map((m) => m.playedAt),
   };
