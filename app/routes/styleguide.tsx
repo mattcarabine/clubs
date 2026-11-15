@@ -942,6 +942,22 @@ export default function Styleguide() {
                 format: (v) => formatDecimal(v, 2),
               },
               {
+                id: "dribbles",
+                label: "Dribbles",
+                value: 3.6,
+                yardstick: 1.8,
+                standing: "muchBetter",
+                format: (v) => formatDecimal(v, 2),
+              },
+              {
+                id: "passesFailed",
+                label: "Passes that failed",
+                value: 9.5,
+                yardstick: 5.9,
+                standing: "muchWorse",
+                format: (v) => formatDecimal(v, 2),
+              },
+              {
                 id: "ballLost",
                 label: "Ball lost",
                 value: 4.1,

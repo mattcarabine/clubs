@@ -156,10 +156,18 @@ describe("EVENT_STATS", () => {
 
 describe("standing", () => {
   it("reads the gap the way that is good for us", () => {
-    expect(standing("high", 3, 2)).toBe("better");
-    expect(standing("high", 2, 3)).toBe("worse");
-    expect(standing("low", 2, 3)).toBe("better");
-    expect(standing("low", 3, 2)).toBe("worse");
+    expect(standing("high", 2.5, 2)).toBe("better");
+    expect(standing("high", 2, 2.5)).toBe("worse");
+    expect(standing("low", 2, 2.5)).toBe("better");
+    expect(standing("low", 2.5, 2)).toBe("worse");
+  });
+
+  it("says much better or worse once one is half as much again as the other", () => {
+    expect(standing("high", 3, 2)).toBe("muchBetter");
+    expect(standing("high", 2, 3)).toBe("muchWorse");
+    expect(standing("low", 3, 6)).toBe("muchBetter");
+    expect(standing("low", 1, 0)).toBe("muchWorse");
+    expect(standing("high", 2.9, 2)).toBe("better");
   });
 
   it("calls a gap under a tenth level", () => {
@@ -363,7 +371,7 @@ describe("playerEventProfile", () => {
       id: "interceptions",
       value: 4,
       yardstick: 2,
-      standing: "better",
+      standing: "muchBetter",
     });
   });
 });
