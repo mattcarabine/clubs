@@ -64,6 +64,7 @@ import {
   statsFilterFromRequest,
   summariseClubSnapshots,
   summariseRecord,
+  unlistedByDay,
   unlistedMatches,
   winRateBucket,
   winRateGap,
@@ -78,7 +79,7 @@ import { FindingList } from "./findings";
 import { HumansSection } from "./humans";
 import { LineupsSection } from "./lineups";
 import { OutcomeTables } from "./outcome-table";
-import { OverTimeSection, unlistedByDay } from "./over-time";
+import { OverTimeSection } from "./over-time";
 import { ResultsSection, RollingSections } from "./results";
 import { WinChanceSection } from "./win-chance";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { unlistedMatches } from "./unlisted-matches";
+import { unlistedByDay, unlistedMatches } from "./unlisted-matches";
 
 const at = (minute: number) => new Date(Date.UTC(2026, 9, 30, 20, minute));
 const snapshot = (minute: number, gamesPlayed: number, skillRating = 1700) => ({
@@ -73,5 +73,38 @@ describe("unlistedMatches", () => {
         [match(5)],
       ),
     ).toEqual([]);
+  });
+
+  it("credits the rating change only when the gap holds nothing else", () => {
+    // Two games counted, then a Match listed late for one of them.
+    expect(
+      unlistedMatches(
+        [snapshot(0, 150, 1700), snapshot(20, 152, 1730), snapshot(40, 152)],
+        [match(30)],
+      ),
+    ).toEqual([{ seenAt: at(20), count: 1, ratingChange: null }]);
+  });
+
+  it("blames nothing on EA in a gap that fills its short list of Matches", () => {
+    const listed = Array.from({ length: 10 }, (_, i) => match(i + 1));
+    expect(
+      unlistedMatches([snapshot(0, 150), snapshot(30, 162)], listed),
+    ).toEqual([]);
+  });
+});
+
+describe("unlistedByDay", () => {
+  it("adds up a London day, and its rating change while every part has one", () => {
+    const later = new Date(Date.UTC(2026, 10, 12, 22, 0));
+    expect(
+      unlistedByDay([
+        { seenAt: at(35), count: 1, ratingChange: 27 },
+        { seenAt: at(40), count: 1, ratingChange: 4 },
+        { seenAt: later, count: 1, ratingChange: null },
+      ]),
+    ).toEqual([
+      { day: at(35), count: 2, ratingChange: 31 },
+      { day: later, count: 1, ratingChange: null },
+    ]);
   });
 });
