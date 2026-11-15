@@ -126,85 +126,65 @@ test("Compare counts our stats from a DNF we quit, and its record counts the los
   await expect(compareFigure(teamRecord, "Lost")).toHaveText("1");
 });
 
-/** The Analysis page's Shots per 90 row: ours in Wins, ours in draws and defeats, then the Opponent's. */
-function analysisShots(page: Page): Locator {
+const OUR_TABLE = "Performance in wins against draws and defeats";
+const OPPONENT_TABLE =
+  "Opponents' performance in our wins against our draws and defeats";
+
+/** A club's Shots per 90 row on the Analysis page: in our Wins, then in our draws and defeats. */
+function analysisShots(page: Page, table: string): Locator {
   return page
-    .getByRole("table", {
-      name: "Performance in wins against draws and defeats",
-    })
+    .getByRole("table", { name: table, exact: true })
     .locator("tbody tr")
     .filter({ has: page.getByRole("rowheader", { name: "Shots per 90" }) })
     .getByRole("cell");
 }
 
-/** The Analysis page's Outcome Split heading text, where the rage-quit note sits. */
+/** The Analysis page's Outcome Split section. */
 function outcomeSplitSection(page: Page): Locator {
   return page.getByRole("region", { name: "Outcome Split", exact: true });
 }
 
-test("the Outcome Split leaves our stats from a DNF we quit out of the per-90s, but counts the loss", async ({
+// CLUBS-93: with the wiped stats restored (CLUBS-87), a side's stats in a
+// Match it rage quit count like any others.
+test("the Outcome Split counts our stats from a Match we rage quit", async ({
   page,
   fakeEa,
   triggerPoll,
 }) => {
   await record(fakeEa, triggerPoll, [
     ...[9, 8, 7].map((d) => withShots(lasting(win(daysAgo(d)), 90), 10)),
-    ...[6, 5, 4].map((d) => withShots(lasting(loss(daysAgo(d)), 90), 4)),
-    // EA keeps no shots for us after we quit; counted, it would drag 4.0 down.
-    withShots(lasting(dnf({ ourWin: false, ...daysAgo(3) }), 20), 0),
+    ...[6, 5].map((d) => withShots(lasting(loss(daysAgo(d)), 90), 4)),
+    // 4 shots in the 45 minutes before we quit is 8 per 90: (4 + 4 + 8) / 3.
+    withShots(lasting(dnf({ ourWin: false, ...daysAgo(3) }), 45), 4),
   ]);
 
   await page.goto("/analysis");
   await expect(
     page.getByRole("region", { name: "Top findings", exact: true }),
-  ).toContainText("3 wins and 4 draws and defeats");
-  await expect(analysisShots(page).nth(0)).toHaveText("10.0");
-  await expect(analysisShots(page).nth(1)).toHaveText("4.0");
-  await expect(outcomeSplitSection(page)).toContainText(
-    "Leaves out our stats from 1 match we rage quit, since EA wipes the stats of a side that rage quits.",
-  );
+  ).toContainText("3 wins and 3 draws and defeats");
+  await expect(analysisShots(page, OUR_TABLE).nth(0)).toHaveText("10.0");
+  await expect(analysisShots(page, OUR_TABLE).nth(1)).toHaveText("4.8");
+  await expect(outcomeSplitSection(page)).not.toContainText("rage quit");
 });
 
-// CLUBS-56: EA zeroes the Opponent's side when they quit, just as it does ours.
-test("the Outcome Split leaves the Opponent's zeroed stats from a Match they quit out of their per-90s", async ({
+test("the Outcome Split counts the Opponent's stats from a Match they rage quit", async ({
   page,
   fakeEa,
   triggerPoll,
 }) => {
   await record(fakeEa, triggerPoll, [
-    ...[9, 8, 7].map((d) =>
+    ...[9, 8].map((d) =>
       withShots(lasting(win(daysAgo(d)), 90), 6, "opponent"),
     ),
-    // They quit at 30 minutes and EA kept no shots for them; counted, it
-    // would drag their 6.0 in our Wins down to 5.1.
-    withShots(lasting(dnf({ ourWin: true, ...daysAgo(6) }), 30), 0, "opponent"),
+    // 6 shots in the 45 minutes before they quit is 12 per 90.
+    withShots(lasting(dnf({ ourWin: true, ...daysAgo(6) }), 45), 6, "opponent"),
     ...[5, 4, 3].map((d) =>
       withShots(lasting(loss(daysAgo(d)), 90), 9, "opponent"),
     ),
   ]);
 
   await page.goto("/analysis");
-  await expect(
-    page.getByRole("region", { name: "Top findings", exact: true }),
-  ).toContainText("4 wins and 3 draws and defeats");
-  await expect(analysisShots(page).nth(2)).toHaveText("6.0");
-  await expect(analysisShots(page).nth(3)).toHaveText("9.0");
-  await expect(outcomeSplitSection(page)).toContainText(
-    "Leaves out opponents' stats from 1 match they rage quit, since EA wipes the stats of a side that rage quits.",
-  );
-});
-
-test("the Outcome Split says nothing about rage quits when no one quit", async ({
-  page,
-  fakeEa,
-  triggerPoll,
-}) => {
-  await record(fakeEa, triggerPoll, [
-    ...[6, 5, 4].map((d) => win(daysAgo(d))),
-    ...[3, 2, 1].map((d) => loss(daysAgo(d))),
-  ]);
-
-  await page.goto("/analysis");
-  await expect(outcomeSplitSection(page)).toBeVisible();
-  await expect(outcomeSplitSection(page)).not.toContainText("rage quit");
+  // (6 + 6 + 6) shots over 225 minutes.
+  await expect(analysisShots(page, OPPONENT_TABLE).nth(0)).toHaveText("7.2");
+  await expect(analysisShots(page, OPPONENT_TABLE).nth(1)).toHaveText("9.0");
 });

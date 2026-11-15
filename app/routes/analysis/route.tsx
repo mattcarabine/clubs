@@ -50,7 +50,6 @@ import {
   lineupRecords,
   listMatches,
   MIN_SPLIT_MATCHES,
-  type PerformanceRow,
   PLAYER_SPLIT_STATS,
   type PlayerSplitRow,
   POSITION_OUTLIER_GAP,
@@ -67,7 +66,6 @@ import {
   winRateBucket,
   winRateGap,
 } from "~/stats";
-import type { QuitBy } from "~/stats/counted";
 import { parseStatsFilter, writeStatsFilter } from "~/stats/filter";
 
 import type { Route } from "./+types/route";
@@ -77,6 +75,7 @@ import { CompareControl, ComparisonSection } from "./compare";
 import { FindingList } from "./findings";
 import { HumansSection } from "./humans";
 import { LineupsSection } from "./lineups";
+import { OutcomeTables } from "./outcome-table";
 import { OverTimeSection } from "./over-time";
 import { ResultsSection, RollingSections } from "./results";
 import { WinChanceSection } from "./win-chance";
@@ -287,14 +286,9 @@ function SplitHeadlines({ split }: { split: OutcomeSplitData }) {
       <section aria-label="Outcome Split">
         <SectionHeading
           title="Wins vs draws and defeats"
-          subtitle={`Our averages and the opponent's, when we win and when we don't. Counts are per 90 minutes.${rageQuitNote(split.rageQuits)}`}
+          subtitle="What we and our opponents do differently when we win, biggest differences first. Counts are per 90 minutes, and the gap is wins minus draws and defeats."
         />
-        <DataTable
-          caption="Performance in wins against draws and defeats"
-          columns={PERFORMANCE_COLUMNS}
-          rows={split.performance}
-          rowKey={(r) => r.id}
-        />
+        <OutcomeTables performance={split.performance} />
       </section>
     </>
   );
@@ -492,22 +486,6 @@ function SquadSizeSplits({ split }: { split: OutcomeSplitData }) {
   );
 }
 
-/**
- * " Leaves out our stats from 1 match we rage quit, …", or nothing when no
- * one quit. EA zeroes the quitter's stats (CLUBS-56).
- */
-function rageQuitNote(rageQuits: Record<QuitBy, number>): string {
-  const sides = [
-    rageQuits.us > 0 &&
-      `our stats from ${formatCount(rageQuits.us, "match", "matches")} we rage quit`,
-    rageQuits.opponent > 0 &&
-      `opponents' stats from ${formatCount(rageQuits.opponent, "match", "matches")} they rage quit`,
-  ].filter(Boolean);
-  return sides.length === 0
-    ? ""
-    : ` Leaves out ${sides.join(" and ")}, since EA wipes the stats of a side that rage quits.`;
-}
-
 /** What the Squad members table's own stats mean, in plain words. */
 const SQUAD_KEY: readonly [string, string][] = [
   [
@@ -524,29 +502,6 @@ const SQUAD_KEY: readonly [string, string][] = [
     "W and D/L",
     "Their stats in wins, and in draws and defeats, per 90 minutes.",
   ],
-];
-
-const PERFORMANCE_COLUMNS: DataTableColumn<PerformanceRow>[] = [
-  { id: "stat", header: "Stat", cell: (r) => r.label },
-  { id: "wins", header: "Wins", align: "right", cell: (r) => r.ours.wins },
-  {
-    id: "dropped",
-    header: "Draws and defeats",
-    align: "right",
-    cell: (r) => r.ours.dropped,
-  },
-  {
-    id: "opp-wins",
-    header: "Opponent in wins",
-    align: "right",
-    cell: (r) => r.opponent.wins,
-  },
-  {
-    id: "opp-dropped",
-    header: "Opponent in draws and defeats",
-    align: "right",
-    cell: (r) => r.opponent.dropped,
-  },
 ];
 
 /** Played and Win % in the group and the rest, and the gap between them. */

@@ -16,12 +16,14 @@ import {
   formatCount,
   formatDecimal,
   formatPercentage,
+  formatPointsGap,
+  formatSignedDecimal,
   NO_VALUE,
 } from "~/lib/number-format";
 import { capitalise } from "~/lib/text";
 import { isFormerSquadMember } from "~/roster";
 
-import { isCountedAppearance, type QuitBy, quitBy } from "./counted";
+import { isCountedAppearance, quitBy } from "./counted";
 import {
   average,
   effectSize,
@@ -109,7 +111,7 @@ export interface SplitMatch {
   dnf: boolean;
   /** How long the Match ran: the longest Appearance in it, on either side. */
   secondsPlayed: number;
-  /** Null when a club's stats are not counted: the side that rage quit (`counted.ts`). */
+  /** Null when EA listed none of the club's players. */
   ours: ClubMatchTotals | null;
   opponent: ClubMatchTotals | null;
   /** How many Squad Members played. */
@@ -142,6 +144,8 @@ interface PerformanceMetric {
     secondsPlayed: number,
   ) => WeightedValue | null;
   format: (value: number) => string;
+  /** Wins minus Dropped Points, as the table shows it: "+2.7", "+18 pts". */
+  gap: (diff: number) => string;
   /** The finding's sentence after "In draws and defeats". */
   describe: (club: Club, diff: number) => string;
   /** One Match against a typical Win, before "than in a typical Win": "6.1 fewer shots per 90". */
@@ -176,6 +180,7 @@ function perNinety(
       return value === null ? null : { value, weight: seconds };
     },
     format: (value) => formatDecimal(value),
+    gap: (diff) => formatSignedDecimal(diff),
     describe: (club, diff) =>
       `${SUBJECT[club]} ${verb} ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "fewer" : "more"} ${noun} per 90`,
     compare: (club, diff) =>
@@ -197,6 +202,7 @@ function rate(
       return value === null ? null : { value, weight: attempts(totals) };
     },
     format: formatPercentage,
+    gap: formatPointsGap,
     describe: (club, diff) =>
       `${POSSESSIVE[club]} ${label.toLowerCase()} is ${Math.round(Math.abs(diff))} points ${diff < 0 ? "lower" : "higher"}`,
     compare: (club, diff) =>
@@ -212,6 +218,7 @@ const RATING: PerformanceMetric = {
       ? null
       : { value: totals.ratingSum / totals.ratings, weight: totals.ratings },
   format: (value) => formatDecimal(value),
+  gap: (diff) => formatSignedDecimal(diff),
   describe: (club, diff) =>
     `${POSSESSIVE[club]} average rating is ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "lower" : "higher"}`,
   compare: (club, diff) =>
@@ -337,7 +344,23 @@ const SPLIT_METRICS = [...PERFORMANCE_METRICS, ...DETAIL_METRICS];
 export interface SplitValues {
   wins: string;
   dropped: string;
+  /** Wins minus Dropped Points ("+2.7", "+18 pts"); null when either is missing. */
+  gap: string | null;
+  /** Each figure as a share of the bigger one, 0 to 100, for the table's bars. */
+  bars: Record<OutcomeSide, number> | null;
+  /** The difference against how much the stat varies Match to Match (|Cohen's d|, capped). */
+  strength: number;
+  /** Too small a difference to call: the table lists it as "about the same". */
+  level: boolean;
+  /** Nothing on either side (saves, when the computer keeps goal): not shown. */
+  empty: boolean;
 }
+
+/** A difference under this (|Cohen's d|) is "about the same either way". */
+export const LEVEL_EFFECT = 0.2;
+
+/** The cap on a row's `strength`: a stat that never varies has an infinite one. */
+const MAX_STRENGTH = 99;
 
 /** One row of the Outcome Split table. */
 export interface PerformanceRow {
@@ -345,6 +368,29 @@ export interface PerformanceRow {
   label: string;
   ours: SplitValues;
   opponent: SplitValues;
+}
+
+/** One club's side of the Outcome Split table, as the page lays it out. */
+export interface PerformanceTable {
+  /** The stats that differ, biggest difference first. */
+  rows: (SplitValues & Pick<PerformanceRow, "id" | "label">)[];
+  /** The labels of the stats that are about the same either way, in table order. */
+  level: string[];
+}
+
+/** Splits one club's rows into those worth a look and those about the same. */
+export function performanceTable(
+  performance: readonly PerformanceRow[],
+  club: "ours" | "opponent",
+): PerformanceTable {
+  const rows = performance
+    .map((row) => ({ id: row.id, label: row.label, ...row[club] }))
+    .filter((row) => !row.empty);
+  return {
+    // The sort is stable, so ties keep the table order.
+    rows: rows.filter((r) => !r.level).sort((a, b) => b.strength - a.strength),
+    level: rows.filter((r) => r.level).map((r) => r.label),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1045,8 +1091,6 @@ function withoutNulls<T>(items: readonly (T | null)[]): T[] {
 
 export interface OutcomeSplit {
   record: { wins: number; dropped: number };
-  /** Matches each side rage quit: its performance stats leave them out. */
-  rageQuits: Record<QuitBy, number>;
   /** Whether both sides have `MIN_SPLIT_MATCHES`; otherwise only `record` is meaningful. */
   ready: boolean;
   findings: Finding[];
@@ -1187,10 +1231,6 @@ export function outcomeSplit(
 
   return {
     record,
-    rageQuits: {
-      us: matches.filter((m) => quitBy(m) === "us").length,
-      opponent: matches.filter((m) => quitBy(m) === "opponent").length,
-    },
     ready,
     findings: findings
       .sort((a, b) => b.strength - a.strength || a.id.localeCompare(b.id))
@@ -1235,10 +1275,26 @@ function performanceSplit(
   const dropped = weightedMean(samples.dropped);
   const format = (v: number | null) =>
     v === null ? NO_VALUE : metric.format(v);
-  const values = { wins: format(wins), dropped: format(dropped) };
-
   const n = { wins: samples.wins.length, dropped: samples.dropped.length };
   const effect = effectSize(samples.dropped, samples.wins);
+  const text = { wins: format(wins), dropped: format(dropped) };
+  const biggest = Math.max(wins ?? 0, dropped ?? 0);
+  const strength = Math.min(Math.abs(effect ?? 0), MAX_STRENGTH);
+  const values: SplitValues = {
+    ...text,
+    gap: wins !== null && dropped !== null ? metric.gap(wins - dropped) : null,
+    bars:
+      wins !== null && dropped !== null && biggest > 0
+        ? { wins: (wins / biggest) * 100, dropped: (dropped / biggest) * 100 }
+        : null,
+    strength,
+    level:
+      wins === null ||
+      dropped === null ||
+      text.wins === text.dropped ||
+      strength < LEVEL_EFFECT,
+    empty: !(wins || dropped),
+  };
   if (
     wins === null ||
     dropped === null ||

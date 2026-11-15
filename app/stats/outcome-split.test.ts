@@ -17,6 +17,7 @@ import {
   matchAngle,
   outcomeSplit,
   POSITION_OUTLIER_GAP,
+  performanceTable,
   playerOutcomeSplit,
   positionOutliers,
   type SplitMatch,
@@ -94,19 +95,6 @@ describe("outcomeSplit", () => {
     expect(split.findings).toEqual([]);
   });
 
-  it("counts the Matches each side rage quit", () => {
-    const split = outcomeSplit(
-      [
-        match("W", { dnf: true }),
-        match("L", { dnf: true }),
-        match("L", { dnf: true }),
-        match("D"),
-      ],
-      [],
-    );
-    expect(split.rageQuits).toEqual({ us: 2, opponent: 1 });
-  });
-
   it("counts draws as Dropped Points", () => {
     const split = outcomeSplit(
       [...many(3, () => match("W")), ...many(3, () => match("D"))],
@@ -149,8 +137,18 @@ describe("outcomeSplit", () => {
       [],
     );
     const row = (id: string) => split.performance.find((r) => r.id === id);
-    expect(row("interceptions")?.ours).toEqual({ wins: "6.0", dropped: "2.0" });
-    expect(row("interceptions")?.opponent).toEqual({ wins: "–", dropped: "–" });
+    expect(row("interceptions")?.ours).toMatchObject({
+      wins: "6.0",
+      dropped: "2.0",
+      gap: "+4.0",
+      level: false,
+    });
+    expect(row("interceptions")?.opponent).toMatchObject({
+      wins: "–",
+      dropped: "–",
+      gap: null,
+      empty: true,
+    });
     expect(split.findings.map((f) => f.text)).toEqual(
       expect.arrayContaining([
         "In draws and defeats we make 4.0 fewer interceptions per 90 than in wins (2.0 vs 6.0)",
@@ -170,7 +168,37 @@ describe("outcomeSplit", () => {
       [],
     );
     const shots = split.performance.find((row) => row.id === "shots");
-    expect(shots?.ours).toEqual({ wins: "10.0", dropped: "4.0" });
+    expect(shots?.ours).toMatchObject({ wins: "10.0", dropped: "4.0" });
+  });
+
+  it("lays the table out biggest difference first, with level and empty stats apart", () => {
+    const split = outcomeSplit(
+      [
+        match("W", { ours: { shots: 12, goals: 4 } }),
+        match("W", { ours: { shots: 10, goals: 5 } }),
+        match("W", { ours: { shots: 11, goals: 3 } }),
+        match("L", { ours: { shots: 4, goals: 3 } }),
+        match("L", { ours: { shots: 5, goals: 4 } }),
+        match("L", { ours: { shots: 3, goals: 2 } }),
+      ],
+      [],
+    );
+    const table = performanceTable(split.performance, "ours");
+    // Shots differ by far more of their spread than goals do.
+    const order = table.rows.map((r) => r.id);
+    expect(order[0]).toBe("shots");
+    expect(order).toContain("goals");
+    expect(table.rows[0]).toMatchObject({
+      wins: "11.0",
+      dropped: "4.0",
+      gap: "+7.0",
+      bars: { wins: 100 },
+    });
+    // The same in every Match: about the same either way.
+    expect(table.level).toContain("Pass completion");
+    // No one was sent off: not shown at all.
+    const shown = [...table.rows.map((r) => r.label), ...table.level];
+    expect(shown).not.toContain("Red cards per 90");
   });
 
   it("does not scale rates, and weights them by attempts", () => {

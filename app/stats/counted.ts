@@ -7,10 +7,8 @@
  * - EA zeroes the named stats of a player who left a Match early. The Poll
  *   restores their goals, assists, shots and passes from their Match Events
  *   (CLUBS-87, `app/ea/parse.ts`), so their Appearance counts like any
- *   other, in a Match we quit too. Tackles and saves cannot be restored, so
- *   a club's totals in a Match it quit are still left out of club against
- *   club comparisons (`countsStatsOf`, CLUBS-56). The Match itself always
- *   counts in records and form.
+ *   other, in a Match we quit too. Tackles and saves cannot be restored;
+ *   the club's totals in that Match count all the same (CLUBS-93).
  *
  * Every Rage Quit (EA's DNF) has a side that quit: a DNF loss means we quit,
  * a DNF Win means the Opponent did.
@@ -54,11 +52,6 @@ export function rageQuitLabel(match: QuitInput): string | null {
 /** Whether Our Club quit the Match. */
 export function weQuit(match: QuitInput): boolean {
   return quitBy(match) === "us";
-}
-
-/** Whether one side's stats in a Match count: not when that side rage quit. */
-export function countsStatsOf(side: QuitBy, match: QuitInput): boolean {
-  return quitBy(match) !== side;
 }
 
 /** Whether an Appearance has any minutes: a dropped-out player's has none. */
