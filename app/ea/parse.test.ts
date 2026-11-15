@@ -152,6 +152,7 @@ describe("parseMatches", () => {
       goalsConceded: 1,
       cleanSheet: false,
       secondsPlayed: 5613,
+      events: expect.objectContaining({ "215": 23 }),
     });
   });
 
@@ -172,8 +173,17 @@ describe("parseMatches", () => {
     });
   });
 
-  it("does not parse match_event_aggregate_* counters", () => {
+  it("keeps each player's Match Events as a map of code to count", () => {
     const [match] = parseMatches(recorded, "leagueMatch", OUR_CLUB);
+    const kabeeble = match.appearances.find((a) => a.playerId === "256171605");
+    // "…,215:23,216:2,217:1,218:1,…" in _0 and "97:7" in _1.
+    expect(kabeeble?.events).toMatchObject({
+      "215": 23,
+      "216": 2,
+      "217": 1,
+      "218": 1,
+      "97": 7,
+    });
     expect(JSON.stringify(match)).not.toContain("match_event_aggregate");
   });
 

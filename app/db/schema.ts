@@ -16,6 +16,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
+import type { MatchEvents } from "../ea/events.ts";
 import type { MatchKind, MatchResult, PositionGroup } from "../ea/parse.ts";
 
 export type PollStatus = "ok" | "partial" | "failed";
@@ -155,6 +156,11 @@ export const appearances = sqliteTable(
     goalsConceded: integer().notNull(),
     cleanSheet: integer({ mode: "boolean" }).notNull(),
     secondsPlayed: integer().notNull(),
+    /**
+     * Match Events (docs/adr/0009): EA's unnamed counters, code to count, as
+     * sent. Null when EA sent none. `app/ea/events.ts` names the decoded ones.
+     */
+    events: text({ mode: "json" }).$type<MatchEvents>(),
   },
   (table) => [
     primaryKey({ columns: [table.matchId, table.playerId] }),
