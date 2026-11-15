@@ -9,6 +9,7 @@ import type { PositionGroup } from "~/lib/domain";
 import type { ComparisonParams, ComparisonScope } from "./comparison-params";
 import { isCountedAppearance } from "./counted";
 import { type EaSeasonTotals, eaMemberTotals } from "./ea-totals";
+import { type EventStatValues, eventStatsOf } from "./event-stats";
 import type { StatsFilter } from "./filter";
 import { type FormPoint, formSeries } from "./player";
 import { inMainPosition, mainPosition } from "./positions";
@@ -71,6 +72,8 @@ export interface ComparedTotals {
   consistency: Consistency;
   /** The Main Position this side counts (CLUBS-82); null when every position counts. */
   mainPosition: PositionGroup | null;
+  /** Their Event Stats over the same Appearances (CLUBS-86); null without Match Events. */
+  eventStats: EventStatValues | null;
 }
 
 export interface ComparedSides {
@@ -128,6 +131,7 @@ export function compareSides(
         aboveTeam: aboveTeam(counted, ratings),
         consistency: consistency(counted),
         mainPosition: mainPositionOnly ? mainPosition(appearances) : null,
+        eventStats: eventStatsOf(counted),
       };
     }),
     // A Squad Member appears once per Match, so A's Appearances are the Matches.
@@ -177,7 +181,10 @@ export async function getComparison(
   const [members, appearances] = await Promise.all([
     listSquadMembers(db),
     params.players.length > 0
-      ? squadAppearances(db, filter, { includeQuitMatches: true })
+      ? squadAppearances(db, filter, {
+          includeQuitMatches: true,
+          withEvents: params.players,
+        })
       : [],
   ]);
   const players = resolveComparisonPlayers(params.players, members);

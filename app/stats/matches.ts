@@ -10,6 +10,7 @@ import { type CalendarDate, londonDateKey } from "~/lib/london-time";
 import { displayName } from "~/roster";
 
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
+import { type EventCounts, eventCounts } from "./event-stats";
 import type { StatsFilter } from "./filter";
 import { isShownMatch, matchScope, type ScopeOptions } from "./scope";
 import type { Kickoff } from "./sessions";
@@ -158,6 +159,11 @@ export interface MatchAppearance
   clubId: string;
   isOurClub: boolean;
   positionGroup: PositionGroup | null;
+  /**
+   * What their Match Events count up to (CLUBS-86), only when asked for
+   * (`getMatch`); null when EA sent none. The map itself never leaves here.
+   */
+  detail?: EventCounts | null;
 }
 
 export interface MatchDetail extends MatchSummary {
@@ -170,7 +176,7 @@ export async function getMatch(
   db: Db,
   matchId: string,
 ): Promise<MatchDetail | null> {
-  const [match] = await getMatchDetails(db, [matchId]);
+  const [match] = await getMatchDetails(db, [matchId], { detail: true });
   return match ?? null;
 }
 
@@ -182,6 +188,9 @@ export async function getMatch(
 export async function getMatchDetails(
   db: Db,
   matchIds: readonly string[],
+  {
+    detail = false,
+  }: { /** Give each Appearance its `detail`. */ detail?: boolean } = {},
 ): Promise<MatchDetail[]> {
   if (matchIds.length === 0) return [];
   const [found, rows] = await Promise.all([
@@ -202,14 +211,18 @@ export async function getMatchDetails(
         // Match Events stay in the loader: the map is too big for the browser.
         const {
           matchId: _,
-          events: _events,
-          positionGroup,
+          events,
+          positionGroup: storedPosition,
           ...stats
         } = appearance;
         const isOurClub = appearance.clubId !== match.opponentClubId;
+        const positionGroup = toPositionGroup(storedPosition);
         return {
           ...stats,
-          positionGroup: toPositionGroup(positionGroup),
+          ...(detail && {
+            detail: eventCounts({ ...stats, positionGroup, events }),
+          }),
+          positionGroup,
           isOurClub,
           name: isOurClub
             ? displayName(appearance.playerId, personaName)

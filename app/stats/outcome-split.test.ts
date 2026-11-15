@@ -129,6 +129,36 @@ describe("outcomeSplit", () => {
     });
   });
 
+  it("reads Match Events into the table and findings, skipping Matches without them (CLUBS-86)", () => {
+    const detail = (interceptions: number, ballLost: number) => ({
+      shotsOnTarget: 0,
+      throughBalls: 0,
+      dribbles: 0,
+      interceptions,
+      ballWon: 0,
+      ballLost,
+      fouls: 0,
+    });
+    const split = outcomeSplit(
+      [
+        ...many(3, () => match("W", { ours: { detail: detail(6, 10) } })),
+        // EA sent no Match Events: not a Match with none of anything.
+        match("W", { ours: { detail: null } }),
+        ...many(3, () => match("L", { ours: { detail: detail(2, 14) } })),
+      ],
+      [],
+    );
+    const row = (id: string) => split.performance.find((r) => r.id === id);
+    expect(row("interceptions")?.ours).toEqual({ wins: "6.0", dropped: "2.0" });
+    expect(row("interceptions")?.opponent).toEqual({ wins: "–", dropped: "–" });
+    expect(split.findings.map((f) => f.text)).toEqual(
+      expect.arrayContaining([
+        "In draws and defeats we make 4.0 fewer interceptions per 90 than in wins (2.0 vs 6.0)",
+        "In draws and defeats we lose the ball 4.0 more times per 90 than in wins (14.0 vs 10.0)",
+      ]),
+    );
+  });
+
   it("scales counts to 90 minutes by how long each Match ran", () => {
     // A rage quit at 45 minutes with 5 shots is 10 per 90, like the rest.
     const split = outcomeSplit(

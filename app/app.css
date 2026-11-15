@@ -39,6 +39,7 @@
   --color-draw: #8fa1b0;
   --color-loss: #ef5b5b;
   --color-stale: #f2b33d;
+  --color-booking: #ffd84a; /* a yellow card icon only */
   /* Cold form badge (Hot uses rave); shale-950 text on it is 9.2:1. */
   --color-cold: #6cc4e8;
 

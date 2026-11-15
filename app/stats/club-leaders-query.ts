@@ -15,6 +15,7 @@ import {
   type LeaderCandidate,
 } from "./club-leaders";
 import { eaMemberTotals } from "./ea-totals";
+import { eventCount, totalOf, yellowCardsSql } from "./event-sql";
 import { PERFECT_RATING } from "./milestones";
 import { isCountedAppearanceSql, isOurAppearance, isShownMatch } from "./scope";
 
@@ -35,6 +36,9 @@ export async function getClubLeaders(db: Db): Promise<LeaderBoard[]> {
         tackles: total(appearances.tacklesMade),
         passes: total(appearances.passesMade),
         shots: total(appearances.shots),
+        interceptions: totalOf(eventCount("interceptions")),
+        dribbles: totalOf(eventCount("dribblesCompleted")),
+        yellowCards: totalOf(yellowCardsSql),
         redCards: total(appearances.redCards),
       })
       .from(appearances)

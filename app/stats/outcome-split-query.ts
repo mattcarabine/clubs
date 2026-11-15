@@ -13,6 +13,7 @@ import { appearances, matches } from "~/db/schema";
 
 import { toOutcome } from "./convert";
 import { countsStatsOf, isCountedAppearance, weQuit } from "./counted";
+import { eventCount, totalOf } from "./event-sql";
 import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
 import { listKickoffs, listMatches, type MatchSummary } from "./matches";
 import {
@@ -229,6 +230,26 @@ async function clubMatchTotals(
       redCards: total(appearances.redCards),
       ratingSum: total(appearances.rating),
       ratings: count(appearances.rating),
+      withEvents: count(appearances.events),
+      shotsOnTarget: totalOf(eventCount("shotsOnTarget")),
+      throughBalls: totalOf(eventCount("throughBalls")),
+      dribbles: totalOf(eventCount("dribblesCompleted")),
+      interceptions: totalOf(eventCount("interceptions")),
+      ballWon: totalOf(
+        eventCount(
+          "possessionWonDefensiveThird",
+          "possessionWonMiddleThird",
+          "possessionWonAttackingThird",
+        ),
+      ),
+      ballLost: totalOf(
+        eventCount(
+          "possessionLostDefensiveThird",
+          "possessionLostMiddleThird",
+          "possessionLostAttackingThird",
+        ),
+      ),
+      fouls: totalOf(eventCount("foulsConceded")),
       dnf: matches.dnf,
       result: matches.result,
     })
@@ -239,8 +260,38 @@ async function clubMatchTotals(
 
   const byMatch = new Map<string, MatchTotals>();
   for (const row of rows) {
-    const { matchId, ours, players, secondsPlayed, dnf, result, ...stats } =
-      row;
+    const {
+      matchId,
+      ours,
+      players,
+      secondsPlayed,
+      dnf,
+      result,
+      withEvents,
+      shotsOnTarget,
+      throughBalls,
+      dribbles,
+      interceptions,
+      ballWon,
+      ballLost,
+      fouls,
+      ...named
+    } = row;
+    const stats: ClubMatchTotals = {
+      ...named,
+      detail:
+        withEvents > 0
+          ? {
+              shotsOnTarget,
+              throughBalls,
+              dribbles,
+              interceptions,
+              ballWon,
+              ballLost,
+              fouls,
+            }
+          : null,
+    };
     const entry = byMatch.get(matchId) ?? {
       secondsPlayed: 0,
       squadSize: 0,

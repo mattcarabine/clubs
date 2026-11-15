@@ -29,7 +29,7 @@ import { groupBy } from "./summaries";
  * The research has it only as a partial red-card sign, so it gets no name in
  * `app/ea/events.ts`; this one use was checked against production (CLUBS-85).
  */
-const STRAIGHT_RED_CODE = "96";
+export const STRAIGHT_RED_CODE = "96";
 
 /** What an Appearance needs to be totalled. */
 export interface EventAppearance {
@@ -196,6 +196,19 @@ function addScaled(into: EventTotals, from: EventTotals, factor: number) {
   for (const id of EVENT_COUNTS) into.counts[id] += from.counts[id] * factor;
 }
 
+/** Counts added up, e.g. one club's in a Match; null when none of them has any. */
+export function sumEventCounts(
+  rows: readonly (EventCounts | null | undefined)[],
+): EventCounts | null {
+  const present = rows.filter((row) => row != null);
+  if (present.length === 0) return null;
+  const total = emptyTotals().counts;
+  for (const row of present) {
+    for (const id of EVENT_COUNTS) total[id] += row[id];
+  }
+  return total;
+}
+
 /** The parts of the game an Event Stat belongs to, in page order. */
 export const EVENT_STAT_GROUPS = [
   { id: "attacking", label: "Attacking" },
@@ -223,8 +236,11 @@ export interface EventStatDefinition {
   value: (totals: EventTotals) => number | null;
 }
 
+const sumCounts = (counts: EventCounts, ids: readonly EventCount[]) =>
+  ids.reduce((total, id) => total + counts[id], 0);
+
 const sumOf = (totals: EventTotals, ids: readonly EventCount[]) =>
-  ids.reduce((total, id) => total + totals.counts[id], 0);
+  sumCounts(totals.counts, ids);
 
 /** A count per 90 minutes played. */
 const rate =
@@ -251,6 +267,12 @@ const BALL_LOST = [
   "ballLostMiddleThird",
   "ballLostAttackingThird",
 ] as const;
+
+/** How often the ball was won back, anywhere on the pitch. */
+export const ballWon = (counts: EventCounts) => sumCounts(counts, BALL_WON);
+
+/** How often the ball was lost, anywhere on the pitch. */
+export const ballLost = (counts: EventCounts) => sumCounts(counts, BALL_LOST);
 
 /** Every Event Stat a page can show, in the order tables and lists use. */
 export const EVENT_STATS = {
@@ -582,6 +604,14 @@ export function eventStatValues(totals: EventTotals): EventStatValues {
   return Object.fromEntries(
     EVENT_STAT_IDS.map((id) => [id, EVENT_STATS[id].value(totals)]),
   ) as EventStatValues;
+}
+
+/** Event Stats over some Appearances; null when none of them has Match Events. */
+export function eventStatsOf(
+  appearances: readonly EventAppearance[],
+): EventStatValues | null {
+  const totals = eventTotals(appearances);
+  return totals.appearances === 0 ? null : eventStatValues(totals);
 }
 
 /** An Event Stat's value as text: "61%", "2.35" per 90, or "14.7" from 10 up. */

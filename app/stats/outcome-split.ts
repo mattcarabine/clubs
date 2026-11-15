@@ -85,6 +85,19 @@ export interface ClubMatchTotals {
   ratingSum: number;
   /** Appearances with a rating. */
   ratings: number;
+  /** The club's Match Events added up; absent when EA sent its players none. */
+  detail?: ClubMatchDetail | null;
+}
+
+/** One club's Match Events in one Match, over its Appearances (CLUBS-86). */
+export interface ClubMatchDetail {
+  shotsOnTarget: number;
+  throughBalls: number;
+  dribbles: number;
+  interceptions: number;
+  ballWon: number;
+  ballLost: number;
+  fouls: number;
 }
 
 /** One Match, as the Outcome Split reads it. */
@@ -205,6 +218,41 @@ const RATING: PerformanceMetric = {
     `${statName(club, "Average rating")} ${formatDecimal(Math.abs(diff))} ${diff < 0 ? "lower" : "higher"}`,
 };
 
+/** A count from a club's Match Events, per 90; no sample without them. */
+function detailPerNinety(
+  id: string,
+  noun: string,
+  verb: string,
+  pick: (d: ClubMatchDetail) => number,
+): PerformanceMetric {
+  const metric = perNinety(id, noun, verb, () => 0);
+  return {
+    ...metric,
+    sample: ({ detail }, seconds) => {
+      const value = detail ? per90(pick(detail), seconds) : null;
+      return value === null ? null : { value, weight: seconds };
+    },
+  };
+}
+
+/** As `detailPerNinety`, for something said as a verb: "win the ball back". */
+function detailTimesPerNinety(
+  id: string,
+  label: string,
+  /** Reads after "we" or "opponents". */
+  phrase: string,
+  pick: (d: ClubMatchDetail) => number,
+): PerformanceMetric {
+  const times = (diff: number) =>
+    `${formatDecimal(Math.abs(diff))} ${diff < 0 ? "fewer" : "more"} times per 90`;
+  return {
+    ...detailPerNinety(id, "", "", pick),
+    label,
+    describe: (club, diff) => `${SUBJECT[club]} ${phrase} ${times(diff)}`,
+    compare: (club, diff) => `${statName(club, label)}: ${times(diff)}`,
+  };
+}
+
 /** One club's sample of a stat in one Match, or null when it has no counted stats. */
 function sampleOf(
   metric: PerformanceMetric,
@@ -241,6 +289,49 @@ export const PERFORMANCE_METRICS: readonly PerformanceMetric[] = [
   perNinety("red-cards", "red cards", "get", (t) => t.redCards),
   RATING,
 ];
+
+/**
+ * The stats read from Match Events (CLUBS-86), after the named ones in the
+ * Outcome Split's table and findings. Kept apart from `PERFORMANCE_METRICS`
+ * so the Match and Session panels built on those stay as they are.
+ */
+export const DETAIL_METRICS: readonly PerformanceMetric[] = [
+  detailPerNinety(
+    "shots-on-target",
+    "shots on target",
+    "have",
+    (d) => d.shotsOnTarget,
+  ),
+  detailPerNinety(
+    "through-balls",
+    "through balls",
+    "play",
+    (d) => d.throughBalls,
+  ),
+  detailPerNinety("dribbles", "dribbles", "complete", (d) => d.dribbles),
+  detailPerNinety(
+    "interceptions",
+    "interceptions",
+    "make",
+    (d) => d.interceptions,
+  ),
+  detailTimesPerNinety(
+    "ball-won",
+    "Ball won per 90",
+    "win the ball back",
+    (d) => d.ballWon,
+  ),
+  detailTimesPerNinety(
+    "ball-lost",
+    "Ball lost per 90",
+    "lose the ball",
+    (d) => d.ballLost,
+  ),
+  detailPerNinety("fouls", "fouls", "give away", (d) => d.fouls),
+];
+
+/** Every row of the Outcome Split's table, in order. */
+const SPLIT_METRICS = [...PERFORMANCE_METRICS, ...DETAIL_METRICS];
 
 /** One club's average for one stat in Wins and in Dropped Points. */
 export interface SplitValues {
@@ -991,7 +1082,7 @@ export function outcomeSplit(
   const record = { wins, dropped: outcomes.length - wins };
   const ready = Math.min(record.wins, record.dropped) >= MIN_SPLIT_MATCHES;
 
-  const performance = PERFORMANCE_METRICS.flatMap((metric) =>
+  const performance = SPLIT_METRICS.flatMap((metric) =>
     CLUBS.map((club) => performanceSplit(metric, club, matches)),
   );
   const withWithoutRows = withAndWithout(matches, appearances);
@@ -1105,7 +1196,7 @@ export function outcomeSplit(
       .sort((a, b) => b.strength - a.strength || a.id.localeCompare(b.id))
       .slice(0, TOP_FINDINGS)
       .map(({ strength: _, ...finding }) => finding),
-    performance: PERFORMANCE_METRICS.map((metric, i) => ({
+    performance: SPLIT_METRICS.map((metric, i) => ({
       id: metric.id,
       label: metric.label,
       ours: performance[i * 2].values,
