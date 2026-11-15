@@ -81,8 +81,10 @@ export function ChoiceBars({ label, groups }: ChoiceBarsProps) {
       </div>
       <figcaption className="mt-4 text-ink-muted text-xs">
         EA judges every pass and shot. A shot on target earns best option far
-        more often than a pass does, and no good option includes most passes
-        that went astray.
+        more often than a pass does, and a pass that goes astray is almost never
+        good or best. Forwards get fewer good or best options than midfielders,
+        for us and for our opponents, and a gap of a few points between two
+        players means little.
       </figcaption>
     </figure>
   );

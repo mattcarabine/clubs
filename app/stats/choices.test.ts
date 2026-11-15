@@ -25,9 +25,9 @@ const counts = (
 
 describe("choiceMix", () => {
   it("shares the four verdicts out of their total", () => {
-    const mix = choiceMix(counts(10, 30, 100, 60));
+    const mix = choiceMix(counts(20, 60, 200, 120));
     expect(mix).toEqual({
-      total: 200,
+      total: 400,
       shares: { best: 5, good: 15, none: 50, poor: 30 },
       goodOrBest: 20,
       smallSample: false,
@@ -85,7 +85,7 @@ describe("rankChoices", () => {
   it("puts the most good or best options first, whatever the volume", () => {
     const ranked = rankChoices([
       row("Busy", counts(20, 80, 500, 400)),
-      row("Tidy", counts(10, 30, 40, 20)),
+      row("Tidy", counts(40, 120, 160, 80)),
     ]);
     expect(ranked.map((r) => r.name)).toEqual(["Tidy", "Busy"]);
   });
@@ -102,7 +102,7 @@ describe("rankChoices", () => {
   it("lists small samples after everyone else", () => {
     const ranked = rankChoices([
       row("One match", counts(10, 10, 5, 0)),
-      row("Regular", counts(10, 20, 100, 70)),
+      row("Regular", counts(15, 30, 150, 105)),
       row("Two matches", counts(4, 6, 20, 10)),
     ]);
     expect(ranked.map((r) => r.name)).toEqual([

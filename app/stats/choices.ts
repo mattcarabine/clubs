@@ -7,12 +7,19 @@
  * their total they show how well someone chooses, however much of the ball
  * they see.
  *
- * What the verdicts cover, checked on the recorded Matches (CLUBS-100):
- * every pass and every shot gets one; a shot on target earns "best option"
- * far more often than a pass does (about 0.6 a shot against 0.04 a pass);
- * nearly every pass that goes astray lands in "no good option"; "good
- * option" comes only from completed passes. So this is how they choose, not
- * how well they strike a pass: pass completion says that.
+ * What the verdicts cover, checked on 90 production Matches (725 players'
+ * Appearances, CLUBS-100): every pass and every shot gets one, near enough
+ * (their total runs about 4% over, and the extra tracks the ball lost on
+ * it); a shot on target earns "best option" far more often than a pass does
+ * (about 0.45 a shot against 0.06 a completed pass); a pass that goes astray
+ * is "no good option" about 6 times in 10 and "should have passed elsewhere"
+ * the rest, almost never good or best. So this is how they choose, not how
+ * well they strike a pass: pass completion says that.
+ *
+ * Read a ranking with care. Forwards get fewer good or best options than
+ * midfielders (26% against 30%, ours and opponents' alike), and a Squad
+ * Member's share moved by up to 6 points between two halves of 40 Matches
+ * each, as much as the gaps between them.
  *
  * Pure and client-safe.
  */
@@ -46,11 +53,11 @@ export type ChoiceCounts = Pick<
 export const MIN_CHOICES = 20;
 
 /**
- * Under this many choices (about five Matches' worth) a share can be several
- * points out either way, so the mix is marked "Small sample" and never ranked
- * among the rest.
+ * Under this many choices (about fifteen Matches' worth) a share can be five
+ * points or more out either way, as much as the gaps between Squad Members,
+ * so the mix is marked "Small sample" and never ranked among the rest.
  */
-export const SMALL_CHOICE_SAMPLE = 100;
+export const SMALL_CHOICE_SAMPLE = 300;
 
 export interface ChoiceMix {
   /** How many choices EA judged. */
