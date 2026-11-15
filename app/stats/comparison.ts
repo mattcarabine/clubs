@@ -6,10 +6,15 @@
 import type { Db } from "~/db/client";
 import type { PositionGroup } from "~/lib/domain";
 
+import { type ChoiceMix, choiceMix } from "./choices";
 import type { ComparisonParams, ComparisonScope } from "./comparison-params";
 import { isCountedAppearance } from "./counted";
 import { type EaSeasonTotals, eaMemberTotals } from "./ea-totals";
-import { type EventStatValues, eventStatsOf } from "./event-stats";
+import {
+  type EventStatValues,
+  eventStatValues,
+  eventTotals,
+} from "./event-stats";
 import type { StatsFilter } from "./filter";
 import { type FormPoint, formSeries } from "./player";
 import { inMainPosition, mainPosition } from "./positions";
@@ -73,6 +78,8 @@ export interface ComparedTotals {
   mainPosition: PositionGroup | null;
   /** Their Event Stats over the same Appearances (CLUBS-86); null without Match Events. */
   eventStats: EventStatValues | null;
+  /** Their Choice Mix over the same Appearances (CLUBS-100); null with too few choices. */
+  choices: ChoiceMix | null;
 }
 
 export interface ComparedSides {
@@ -122,6 +129,7 @@ export function compareSides(
       const selected = inScope(own);
       // A 0-minute Appearance counts in the result, not the stats.
       const counted = selected.filter(isCountedAppearance);
+      const events = eventTotals(counted);
       return {
         totals: summariseAppearances(counted),
         form: formSeries(counted),
@@ -130,7 +138,8 @@ export function compareSides(
         aboveTeam: aboveTeam(counted, ratings),
         consistency: consistency(counted),
         mainPosition: mainPositionOnly ? mainPosition(appearances) : null,
-        eventStats: eventStatsOf(counted),
+        eventStats: events.appearances === 0 ? null : eventStatValues(events),
+        choices: choiceMix(events.counts),
       };
     }),
     // A Squad Member appears once per Match, so A's Appearances are the Matches.

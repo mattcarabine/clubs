@@ -11,8 +11,10 @@ import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import type { Db } from "~/db/client";
 import { appearances, matches } from "~/db/schema";
 
+import { type ChoiceBreakdown, choiceBreakdown } from "./choices";
 import { isCountedAppearance, weQuit } from "./counted";
 import { eventCount, totalOf } from "./event-sql";
+import { eventTotals } from "./event-stats";
 import { DEFAULT_STATS_FILTER, type StatsFilter } from "./filter";
 import { listKickoffs, listMatches, type MatchSummary } from "./matches";
 import {
@@ -33,7 +35,12 @@ import { isPlayedAppearanceSql, matchScope, type ScopeOptions } from "./scope";
 import { type SessionStandouts, sessionStandouts } from "./session-standouts";
 import { sessionPlaces } from "./sessions";
 import { ratingGap } from "./skill-rating";
-import { type SquadAppearance, squadAppearances } from "./squad";
+import {
+  opponentChoiceCounts,
+  type SquadAppearance,
+  squadAppearances,
+} from "./squad";
+import { groupBy } from "./summaries";
 
 export interface OutcomeSplitOptions {
   /** Counts each Squad Member's Main Position only, in the per-player rows alone. */
@@ -43,6 +50,11 @@ export interface OutcomeSplitOptions {
 export interface OutcomeSplitPage extends OutcomeSplit {
   /** Why we win and why we lose (CLUBS-95); empty until the split is `ready`. */
   drivers: ResultDrivers;
+  /**
+   * How EA judged our passes and shots (CLUBS-100), every position counted;
+   * null before any Match Events.
+   */
+  choices: ChoiceBreakdown | null;
   players: PlayerSplitRow[];
   /** One per Match, oldest first, matching `rollingWinPercentage`. */
   playedAt: Date[];
@@ -54,17 +66,25 @@ export async function getOutcomeSplit(
   filter: StatsFilter,
   { mainPositionOnly = false }: OutcomeSplitOptions = {},
 ): Promise<OutcomeSplitPage> {
-  const { summaries, squad, split, splitMatches, withEvents } = await splitData(
-    db,
-    filter,
-    {},
-    true,
-  );
+  const [{ summaries, squad, split, splitMatches, withEvents }, opponents] =
+    await Promise.all([
+      splitData(db, filter, {}, true),
+      opponentChoiceCounts(db, filter),
+    ]);
   return {
     ...split,
     drivers: split.ready
       ? resultDrivers(splitMatches, withEvents)
       : { win: [], lose: [] },
+    choices: choiceBreakdown(
+      [...groupBy(withEvents, (a) => a.playerId)].map(([playerId, own]) => ({
+        playerId,
+        // The name on their latest Appearance: the rows are oldest first.
+        name: own[own.length - 1].name,
+        counts: eventTotals(own).counts,
+      })),
+      opponents,
+    ),
     players: playerSplits(squad, mainPositionOnly, split.withWithout),
     playedAt: summaries.map((m) => m.playedAt),
   };

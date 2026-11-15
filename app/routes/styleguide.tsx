@@ -5,6 +5,7 @@ import {
   CampaignPanel,
   ChartFrame,
   ChartLegend,
+  ChoiceBars,
   ClubLeaders,
   ColumnPicker,
   DataTable,
@@ -58,6 +59,7 @@ import {
 } from "~/lib/domain";
 import { formatDecimal, formatPercentage } from "~/lib/number-format";
 import { pageMeta } from "~/lib/page-meta";
+import { choiceMix } from "~/stats/choices";
 import type { LeaderBoard } from "~/stats/club-leaders";
 import { type DateRange, dateRangeLabel } from "~/stats/filter";
 import type { MilestoneEntry } from "~/stats/milestones-query";
@@ -85,6 +87,21 @@ const DIVISION_LEVELS = [
   "Division 1",
   "Elite",
 ];
+
+/** Our club, a regular and a small sample. */
+const CHOICE_MIXES = [
+  [62, 180, 430, 148],
+  [28, 61, 97, 48],
+  [3, 9, 22, 12],
+].flatMap(([bestChoices, goodChoices, noGoodOptions, poorChoices]) => {
+  const mix = choiceMix({
+    bestChoices,
+    goodChoices,
+    noGoodOptions,
+    poorChoices,
+  });
+  return mix ? [mix] : [];
+});
 
 const GAP_BANDS: GapBand[] = [
   {
@@ -987,6 +1004,27 @@ export default function Styleguide() {
             ]}
           />
         </div>
+      </Section>
+
+      <Section id="choice-bars" title="ChoiceBars">
+        <ChoiceBars
+          label="Example choices"
+          groups={[
+            { rows: [{ id: "club", name: "Our club", mix: CHOICE_MIXES[0] }] },
+            {
+              label: "Squad members",
+              rows: [
+                {
+                  id: "a",
+                  name: "Kabeeble",
+                  mix: CHOICE_MIXES[1],
+                  to: "#choice-bars",
+                },
+                { id: "b", name: "Trevor", mix: CHOICE_MIXES[2] },
+              ],
+            },
+          ]}
+        />
       </Section>
 
       <Section id="data-table" title="DataTable">

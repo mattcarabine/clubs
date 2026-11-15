@@ -88,6 +88,10 @@ _Avoid_: Impact score, importance rating
 One count from a Squad Member's Match Events, with our Win % in the Matches they did more of it against the Matches they did less ("3 or more interceptions"). A pattern, not proof.
 _Avoid_: Driver, predictor, key factor
 
+**Choice Mix**:
+EA's verdict on each pass and shot a player makes, as shares of all their verdicts: best option taken, good option taken, no good option, should have passed elsewhere (CLUBS-100). It says how well they choose, however much of the ball they see, and never how cleanly they pass: "best option" is mostly given for shots on target, and "no good option" takes in most passes that went astray. Under 20 verdicts there is no mix, and under 100 it is a small sample. On the page it is "choices on the ball".
+_Avoid_: Passing quality, pass rating, decision score
+
 **Position Group**:
 The coarse position EA reports for an Appearance: Goalkeeper, Defender, Midfielder or Forward. These exact names are used in the app too.
 

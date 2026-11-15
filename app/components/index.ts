@@ -16,6 +16,12 @@ export {
   SERIES_COLORS,
   type SeriesColor,
 } from "./charts/chart-frame";
+export {
+  type ChoiceBarGroup,
+  type ChoiceBarRow,
+  ChoiceBars,
+  ChoiceLegend,
+} from "./charts/choice-bars";
 export { GapBandChart, GapBandLegend } from "./charts/gap-band-chart";
 export { LineChart, type LineSeries } from "./charts/line-chart";
 export { MixBar } from "./charts/mix-bar";

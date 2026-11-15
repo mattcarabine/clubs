@@ -73,6 +73,7 @@ import { parseStatsFilter, writeStatsFilter } from "~/stats/filter";
 
 import type { Route } from "./+types/route";
 import { CampaignSection, campaignsView } from "./campaigns";
+import { ChoicesSection } from "./choices";
 import { ClubSnapshot } from "./club-snapshot";
 import { CompareControl, ComparisonSection } from "./compare";
 import { DriversSection } from "./drivers";
@@ -232,6 +233,7 @@ export default function Analysis({ loaderData }: Route.ComponentProps) {
             <LineupsSection lineups={lineups} />
           </>
         )}
+        {split.choices && <ChoicesSection choices={split.choices} />}
         {split.ready && (
           <SplitDetails
             split={split}

@@ -17,7 +17,9 @@ import type { MatchEvents } from "~/ea/events";
 import type { MatchType, Outcome } from "~/lib/domain";
 import { displayName, isFormerSquadMember } from "~/roster";
 
+import type { ChoiceCounts } from "./choices";
 import { toMatchType, toOutcome, toPositionGroup } from "./convert";
+import { eventCount, totalOf } from "./event-sql";
 import {
   type EventAppearance,
   type EventStatValues,
@@ -176,6 +178,36 @@ export async function opponentEventAppearances(
     ...row,
     positionGroup: toPositionGroup(row.positionGroup),
   }));
+}
+
+/**
+ * The opposing humans' choices (CLUBS-100) in the Matches a filter selects,
+ * summed in SQL so the Worker never parses their Match Events. The same
+ * Appearances as `opponentEventAppearances`.
+ */
+export async function opponentChoiceCounts(
+  db: Db,
+  filter: StatsFilter,
+  scope: ScopeOptions = {},
+): Promise<ChoiceCounts> {
+  const [row] = await db
+    .select({
+      bestChoices: totalOf(eventCount("bestOptionTaken")),
+      goodChoices: totalOf(eventCount("goodOptionTaken")),
+      noGoodOptions: totalOf(eventCount("noGoodOption")),
+      poorChoices: totalOf(eventCount("shouldHavePassedElsewhere")),
+    })
+    .from(appearances)
+    .innerJoin(matches, eq(matches.matchId, appearances.matchId))
+    .where(
+      and(
+        not(isOurAppearance),
+        isPlayedAppearanceSql,
+        isNotNull(appearances.events),
+        matchScope(db, filter, scope),
+      ),
+    );
+  return row;
 }
 
 export interface LeaderboardRow extends PlayerTotals {
