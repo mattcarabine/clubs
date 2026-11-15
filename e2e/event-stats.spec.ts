@@ -120,12 +120,17 @@ test("a profile leads with the Squad Member's share of what the team did", async
       has: page.getByText(label, { exact: true }),
     });
   await expect(tile("Of our goals, scored or set up")).toContainText("67%");
-  await expect(tile("Of our goals, scored or set up")).toContainText(
-    "2 of 3. An even share is 50%",
+  await expect(tile("Of our goals, scored or set up")).toContainText("2 of 3");
+  // Each other share says where it sits against an equal split of the minutes.
+  await expect(tile("Of our shots on target")).toContainText(
+    "75%■3 of 4, more than an even share (50%)",
   );
-  await expect(tile("Of our shots on target")).toContainText("75%");
-  await expect(tile("Of the ball we won back")).toContainText("50%");
-  await expect(tile("Of the ball we lost")).toContainText("75%");
+  await expect(tile("Of the ball we won back")).toContainText(
+    "50%■2 of 4, an even share (50%)",
+  );
+  await expect(tile("Of the ball we lost")).toContainText(
+    "75%■3 of 4, more than an even share (50%)",
+  );
 });
 
 test("what they add and give away sits beside a typical opponent in their position", async ({
@@ -266,7 +271,18 @@ test("the Squad table shows one part of the game at a time", async ({
   // A teammate with no detailed stats shows a dash, not a zero.
   await expect(await squadCell(page, "tinbs_irl", "Yellow/90")).toHaveText("–");
   // The key under the table says what each header means.
-  await expect(page.getByText("Yellow cards per 90 minutes")).toBeVisible();
+  await expect(
+    page.getByText("Yellow cards per 90 minutes. Lower is better"),
+  ).toBeVisible();
+
+  // Compare ticks survive a change of view.
+  await squadTable(page)
+    .getByRole("checkbox", { name: "Compare Kabeeble" })
+    .check();
+  await views.getByRole("button", { name: "Defending" }).click();
+  await expect(
+    squadTable(page).getByRole("checkbox", { name: "Compare Kabeeble" }),
+  ).toBeChecked();
 
   // The view is part of the address, so a link opens on it.
   await page.goto("/squad?view=passing");

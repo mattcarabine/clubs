@@ -200,6 +200,11 @@ export interface LeaderboardOptions extends ScopeOptions {
    * (default: every Appearance). Pass `filter.mainPositionOnly`.
    */
   mainPositionOnly?: boolean;
+  /**
+   * Read Match Events and give each row its `eventStats` (default: null).
+   * Only for a page that shows them: parsing every map costs CPU.
+   */
+  eventStats?: boolean;
 }
 
 /**
@@ -213,12 +218,13 @@ export async function squadLeaderboard(
   {
     includeFormer = false,
     mainPositionOnly = false,
+    eventStats = false,
     ...scope
   }: LeaderboardOptions = {},
 ): Promise<LeaderboardRow[]> {
   const appearances = await squadAppearances(db, filter, {
     ...scope,
-    withEvents: true,
+    withEvents: eventStats,
   });
   return leaderboardRows(appearances, {
     includeFormer,

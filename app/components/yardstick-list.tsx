@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 
 import { NO_VALUE } from "~/lib/number-format";
+import type { Standing } from "~/stats/event-stats";
 
 /** Where a figure stands against its yardstick, in the way that is good for us. */
-export type YardstickStanding = "better" | "worse" | "level";
+export type YardstickStanding = Standing;
 
 export type YardstickItem = {
   id: string;

@@ -110,15 +110,15 @@ export async function getPlayerProfile(
       memberSnapshots(db, playerId, "members/career/stats"),
     ]);
   if (!member) return null;
-  const withEvents = team.filter((a) => a.playerId === playerId);
+  const own = team.filter((a) => a.playerId === playerId);
+  const ownSelected = inMainPosition(own, mainPositionOnly);
   // Match Events never leave the loader: everything else reads plain rows.
-  const appearances = withEvents.map(({ events: _, ...rest }) => rest);
-  const selectedIds = new Set(
-    inMainPosition(appearances, mainPositionOnly).map((a) => a.matchId),
-  );
+  const plain = (rows: readonly SquadAppearance[]) =>
+    rows.map(({ events: _, ...rest }) => rest);
+  const appearances = plain(own);
+  const selected = plain(ownSelected);
   const latestCareer = careerSnapshots.at(-1);
   const latestSeason = seasonSnapshots.at(-1);
-  const selected = inMainPosition(appearances, mainPositionOnly);
   return {
     member,
     totals: summariseAppearances(selected),
@@ -128,11 +128,7 @@ export async function getPlayerProfile(
     bestMatches: bestAppearances(selected),
     outcomeSplit: playerOutcomeSplit(appearances, mainPositionOnly),
     ...playerRatingProfile(selected),
-    events: playerEventProfile(
-      withEvents.filter((a) => selectedIds.has(a.matchId)),
-      team,
-      positionTotals(opponents),
-    ),
+    events: playerEventProfile(ownSelected, team, positionTotals(opponents)),
     recentChanges: recentChanges(selected, member.name),
     formIndicator: formIndicator(selected),
     build: buildHistory(seasonSnapshots),

@@ -24,7 +24,11 @@ import {
 } from "./formulas";
 import { groupBy } from "./summaries";
 
-/** EA's code for a straight red card; a red without it is a second yellow. */
+/**
+ * EA's code for a straight red card; a red without it is a second yellow.
+ * The research has it only as a partial red-card sign, so it gets no name in
+ * `app/ea/events.ts`; this one use was checked against production (CLUBS-85).
+ */
 const STRAIGHT_RED_CODE = "96";
 
 /** What an Appearance needs to be totalled. */
@@ -160,19 +164,21 @@ export interface EventTotals {
   counts: EventCounts;
 }
 
-function emptyCounts(): EventCounts {
-  return Object.fromEntries(EVENT_COUNTS.map((id) => [id, 0])) as EventCounts;
+function emptyTotals(): EventTotals {
+  return {
+    appearances: 0,
+    seconds: 0,
+    counts: Object.fromEntries(
+      EVENT_COUNTS.map((id) => [id, 0]),
+    ) as EventCounts,
+  };
 }
 
 /** Totals over the Appearances that have Match Events and minutes. */
 export function eventTotals(
   appearances: readonly EventAppearance[],
 ): EventTotals {
-  const totals: EventTotals = {
-    appearances: 0,
-    seconds: 0,
-    counts: emptyCounts(),
-  };
+  const totals = emptyTotals();
   for (const appearance of appearances) {
     if (appearance.secondsPlayed <= 0) continue;
     const counts = eventCounts(appearance);
@@ -653,7 +659,8 @@ export function positionTotals(
 
 /**
  * The Yardstick for a set of Appearances: what the opposing humans in the
- * same Position Groups did over the same minutes. Each group's opponents are
+ * same Position Groups did (every opponent in `opponents`, usually all in
+ * the filtered Matches), over the same minutes. Each group's opponents are
  * scaled to the time these Appearances spent in it, so any Event Stat of the
  * result reads like the Squad Member's own. Null when no opponent played in
  * any of the groups.
@@ -662,11 +669,7 @@ export function yardstickTotals(
   appearances: readonly EventAppearance[],
   opponents: PositionTotals,
 ): EventTotals | null {
-  const yardstick: EventTotals = {
-    appearances: 0,
-    seconds: 0,
-    counts: emptyCounts(),
-  };
+  const yardstick = emptyTotals();
   for (const [group, own] of positionTotals(appearances)) {
     const theirs = opponents.get(group);
     if (!theirs || theirs.seconds === 0 || own.seconds === 0) continue;
@@ -698,8 +701,9 @@ export interface TeamShare {
 export interface TeamShares {
   shares: TeamShare[];
   /**
-   * The share an equal split of the minutes would give them (0 to 100), or
-   * null with no minutes. Above it, they do more than their part.
+   * The share an equal split of the humans' minutes would give them (0 to
+   * 100), or null with no minutes. It fits every share but goals, where one
+   * goal can be shared by its scorer and both passers and the AI scores too.
    */
   evenShare: number | null;
 }
@@ -716,12 +720,13 @@ export function teamShares(
   own: readonly MatchEventAppearance[],
   team: readonly MatchEventAppearance[],
 ): TeamShares {
-  const matchIds = new Set(own.map((a) => a.matchId));
+  const counted = own.filter((a) => a.events && a.secondsPlayed > 0);
+  const matchIds = new Set(counted.map((a) => a.matchId));
   const teammates = team.filter((a) => matchIds.has(a.matchId));
-  const mine = eventTotals(own);
+  const mine = eventTotals(counted);
   const ours = eventTotals(teammates);
 
-  const played = own.filter((a) => !a.dnf && a.events);
+  const played = counted.filter((a) => !a.dnf);
   const involved = sumOf(eventTotals(played), [
     "goals",
     "assists",
@@ -732,6 +737,7 @@ export function teamShares(
   const candidates: Omit<TeamShare, "share">[] = [
     {
       id: "goals",
+      // EA's counters can run a goal ahead of the score; never show over 100%.
       own: Math.min(involved, scored),
       team: scored,
       better: "high",

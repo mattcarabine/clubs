@@ -15,7 +15,6 @@ import {
   type PlayerEventProfile,
   type ResultMover,
   type ResultMovers,
-  standing,
   type TeamShare,
   type TeamShares,
 } from "~/stats/event-stats";
@@ -53,7 +52,7 @@ export function Influence({ name, events, against }: InfluenceProps) {
       <div className="grid gap-6 lg:grid-cols-2">
         <InfluenceCard
           title="What they add"
-          note="Per 90 minutes. More is better."
+          note="More is better."
           rule="border-rave"
         >
           <YardstickList
@@ -64,7 +63,7 @@ export function Influence({ name, events, against }: InfluenceProps) {
         </InfluenceCard>
         <InfluenceCard
           title="What they give away"
-          note="Per 90 minutes. Less is better."
+          note="Less is better."
           rule="border-loss"
         >
           <YardstickList
@@ -75,8 +74,8 @@ export function Influence({ name, events, against }: InfluenceProps) {
         </InfluenceCard>
       </div>
       <p className="-mt-3 text-ink-muted text-xs">
-        The bar is {name}. The white marker is a {against}, from the humans we
-        played against.
+        Figures are per 90 minutes unless they are a %. The bar is {name}. The
+        white marker is a {against}, from the humans we played against.
       </p>
       <ResultMoversPanel name={name} movers={events.movers} />
     </div>
@@ -121,6 +120,10 @@ function TeamShareTiles({ shares }: { shares: TeamShares }) {
   if (shares.shares.length === 0) return null;
   return (
     <section aria-label="Share of the team">
+      <p className="mb-2 text-ink-muted text-sm">
+        An even share is what an equal split of our players' minutes would give
+        them.
+      </p>
       <StatGrid>
         {shares.shares.map((share, i) => (
           <StatTile
@@ -128,16 +131,7 @@ function TeamShareTiles({ shares }: { shares: TeamShares }) {
             label={SHARE_LABEL[share.id]}
             value={formatPercentage(share.share)}
             featured={i === 0}
-            delta={
-              evenShare === null
-                ? undefined
-                : {
-                    text: `${share.own} of ${share.team}. An even share is ${formatPercentage(evenShare)}`,
-                    tone: SHARE_TONE[
-                      standing(share.better, share.share, evenShare) ?? "level"
-                    ],
-                  }
-            }
+            delta={{ text: shareNote(share, evenShare), tone: "neutral" }}
           />
         ))}
       </StatGrid>
@@ -145,11 +139,20 @@ function TeamShareTiles({ shares }: { shares: TeamShares }) {
   );
 }
 
-const SHARE_TONE = {
-  better: "positive",
-  worse: "negative",
-  level: "neutral",
-} as const;
+/**
+ * "3 of 4, more than an even share (50%)": the counts, and where the share
+ * sits against an equal split of the minutes. Goals get the counts alone,
+ * since one goal can count for its scorer and both passers.
+ */
+function shareNote(share: TeamShare, evenShare: number | null): string {
+  const counts = `${share.own} of ${share.team}`;
+  if (share.id === "goals" || evenShare === null) return counts;
+  const even = `an even share (${formatPercentage(evenShare)})`;
+  // Judged on the whole percentages shown.
+  const gap = Math.round(share.share) - Math.round(evenShare);
+  if (gap === 0) return `${counts}, ${even}`;
+  return `${counts}, ${gap > 0 ? "more" : "less"} than ${even}`;
+}
 
 /** What goes with winning and with dropping points, as two short lists. */
 function ResultMoversPanel({

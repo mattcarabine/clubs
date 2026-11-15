@@ -56,7 +56,7 @@ import {
   POSITION_GROUP_ABBR,
   type PositionGroup,
 } from "~/lib/domain";
-import { formatDecimal } from "~/lib/number-format";
+import { formatDecimal, formatPercentage } from "~/lib/number-format";
 import { pageMeta } from "~/lib/page-meta";
 import type { LeaderBoard } from "~/stats/club-leaders";
 import { type DateRange, dateRangeLabel } from "~/stats/filter";
@@ -938,7 +938,7 @@ export default function Styleguide() {
                 value: 2.4,
                 yardstick: 1.7,
                 standing: "better",
-                format: (v) => v.toFixed(2),
+                format: (v) => formatDecimal(v, 2),
               },
               {
                 id: "ballLost",
@@ -946,7 +946,7 @@ export default function Styleguide() {
                 value: 4.1,
                 yardstick: 3.2,
                 standing: "worse",
-                format: (v) => v.toFixed(2),
+                format: (v) => formatDecimal(v, 2),
               },
               {
                 id: "forwardShare",
@@ -954,7 +954,7 @@ export default function Styleguide() {
                 value: 48,
                 yardstick: 46,
                 standing: null,
-                format: (v) => `${Math.round(v)}%`,
+                format: formatPercentage,
               },
             ]}
           />
