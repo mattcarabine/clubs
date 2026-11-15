@@ -54,7 +54,10 @@ export interface SessionStandout {
 export interface SessionStandouts {
   well: SessionStandout[];
   badly: SessionStandout[];
-  /** How many Sessions were ranked, this one included. */
+  /**
+   * How many Sessions could be ranked, this one included. A stat's own
+   * `standing` can count fewer: older Sessions have no Match Events.
+   */
   sessions: number;
 }
 
@@ -128,8 +131,10 @@ export function sessionStandouts(
       const cutoff = Math.max(1, Math.floor(sessions / STANDOUT_FRACTION));
       // More of it is good for us when we do a good thing, or they do a bad one.
       const moreIsGood = (club === "ours") === (better === "higher");
-      const above = theirs.filter((v) => v > value).length;
-      const below = theirs.filter((v) => v < value).length;
+      // A tie counts against the rank at both ends: a Session with no red
+      // cards, like most of them, is not our best for red cards.
+      const above = theirs.filter((v) => v >= value).length;
+      const below = theirs.filter((v) => v <= value).length;
       const fromBest = (moreIsGood ? above : below) + 1;
       const fromWorst = (moreIsGood ? below : above) + 1;
       const end = fromBest <= cutoff ? "well" : fromWorst <= cutoff && "badly";

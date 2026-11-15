@@ -80,6 +80,20 @@ describe("sessionStandouts", () => {
     });
   });
 
+  it("does not call a figure most Sessions share our best or worst", () => {
+    // No red cards, like three of the four others.
+    const carded = [match({ redCards: 2 }), match({ redCards: 2 })];
+    const standouts = sessionStandouts(shooting(9), [
+      ...others.slice(1),
+      carded,
+    ]);
+    const ids = [...(standouts?.well ?? []), ...(standouts?.badly ?? [])].map(
+      (s) => s.id,
+    );
+    expect(ids).not.toContain("ours-red-cards");
+    expect(ids).not.toContain("opponent-red-cards");
+  });
+
   it("says nothing for a one-Match Session or with fewer than four others", () => {
     expect(sessionStandouts([match({ shots: 20 })], others)).toBeNull();
     expect(sessionStandouts(shooting(14), others.slice(1))).toBeNull();

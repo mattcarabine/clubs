@@ -48,7 +48,9 @@ test("a Session page says what the Session did best and worst among our sessions
   const section = page.getByRole("region", {
     name: "Against our other sessions",
   });
-  await expect(section).toContainText("among our 5 sessions");
+  await expect(section).toContainText(
+    "among our sessions of 2 or more matches",
+  );
   const well = section
     .getByRole("region", { name: "What we did well" })
     .getByRole("listitem")

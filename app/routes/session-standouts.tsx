@@ -33,7 +33,7 @@ export function SessionStandoutsSection({
     <section aria-label="Against our other sessions" className="mb-8">
       <SectionHeading
         title="Against our other sessions"
-        subtitle={`Where this session ranks among our ${standouts.sessions} sessions of ${MIN_SESSION_MATCHES} or more matches.`}
+        subtitle={`Where this session ranks among our sessions of ${MIN_SESSION_MATCHES} or more matches.`}
       />
       {typical ? (
         <p className="border-shale-600 border-t-2 bg-shale-900 px-4 py-3 text-ink-soft text-sm">
