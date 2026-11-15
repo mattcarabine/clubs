@@ -187,6 +187,74 @@ describe("parseMatches", () => {
     expect(JSON.stringify(match)).not.toContain("match_event_aggregate");
   });
 
+  it("uses the real score of a Rage Quit EA awarded 3-0, and keeps EA's (CLUBS-87)", () => {
+    const quit = structuredClone(recorded[0]);
+    const opponentId = "356611";
+    Object.assign(quit.clubs[OUR_CLUB], { goals: "3", result: "16385" });
+    Object.assign(quit.clubs[opponentId], { goals: "0", result: "10" });
+    for (const player of Object.values(quit.players[OUR_CLUB])) {
+      player.SCORE = "2";
+    }
+    for (const player of Object.values(quit.players[opponentId])) {
+      player.SCORE = "0";
+    }
+    const [match] = parseMatches([quit], "leagueMatch", OUR_CLUB);
+    expect(match).toMatchObject({
+      result: "win",
+      dnf: true,
+      goalsFor: 2,
+      goalsAgainst: 0,
+      awardedGoalsFor: 3,
+      awardedGoalsAgainst: 0,
+    });
+    // A Match played out keeps EA's score and has no awarded one.
+    const [played] = parseMatches(recorded, "leagueMatch", OUR_CLUB);
+    expect(played).toMatchObject({
+      goalsFor: 4,
+      awardedGoalsFor: null,
+      awardedGoalsAgainst: null,
+    });
+  });
+
+  it("restores a wiped player's stats from their Match Events (CLUBS-87)", () => {
+    const left = structuredClone(recorded[0]);
+    Object.assign(left.players[OUR_CLUB]["256171605"], {
+      goals: "0",
+      assists: "0",
+      shots: "0",
+      passesmade: "0",
+      passattempts: "0",
+      tacklesmade: "0",
+      tackleattempts: "0",
+      match_event_aggregate_0: "214:2,11:1,217:3,218:1,215:20,216:4",
+      match_event_aggregate_1: "",
+    });
+    const [match] = parseMatches([left], "leagueMatch", OUR_CLUB);
+    expect(
+      match.appearances.find((a) => a.playerId === "256171605"),
+    ).toMatchObject({
+      goals: 2,
+      assists: 1,
+      shots: 4,
+      passesMade: 20,
+      passAttempts: 24,
+      tacklesMade: 0,
+    });
+  });
+
+  it("gives a player whose minutes EA lost the Match's longest (CLUBS-87)", () => {
+    const lost = structuredClone(recorded[0]);
+    Object.assign(lost.players[OUR_CLUB]["256171605"], {
+      secondsPlayed: "0",
+      rating: "3.00",
+    });
+    const [match] = parseMatches([lost], "leagueMatch", OUR_CLUB);
+    const longest = Math.max(...match.appearances.map((a) => a.secondsPlayed));
+    expect(
+      match.appearances.find((a) => a.playerId === "256171605"),
+    ).toMatchObject({ secondsPlayed: longest, rating: null, passesMade: 23 });
+  });
+
   it("tolerates missing fields", () => {
     const [match] = parseMatches(
       [

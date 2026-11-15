@@ -30,12 +30,15 @@ SET
 WHERE `seconds_played` = 0
   AND `pass_attempts` + `shots` + `tackle_attempts` > 0;
 --> statement-breakpoint
--- 3. The score when a Rage Quit ended, where EA awarded a different one.
---    Every player's `SCORE` in the Raw Payload carries their club's real goals.
+-- 3. When the side that stayed led by fewer than three, EA records a Rage
+--    Quit as 3-0. Every player's `SCORE` in the Raw Payload carries their
+--    club's real goals: make that the Match's score and keep EA's beside it.
 UPDATE `matches`
 SET
-  `real_goals_for` = `source`.`goals_for`,
-  `real_goals_against` = `source`.`goals_against`
+  `awarded_goals_for` = `matches`.`goals_for`,
+  `awarded_goals_against` = `matches`.`goals_against`,
+  `goals_for` = `source`.`goals_for`,
+  `goals_against` = `source`.`goals_against`
 FROM (
   SELECT
     `stored`.`match_id` AS `match_id`,
@@ -49,6 +52,7 @@ FROM (
     json_each(`match`.`value`, '$.players') AS `club`,
     json_each(`club`.`value`) AS `player`
   WHERE `stored`.`dnf` = 1
+    AND `stored`.`awarded_goals_for` IS NULL
     AND json_valid(`payload`.`body`)
     AND json_extract(`match`.`value`, '$.matchId') = `stored`.`match_id`
     AND json_extract(`player`.`value`, '$.SCORE') GLOB '[0-9]*'

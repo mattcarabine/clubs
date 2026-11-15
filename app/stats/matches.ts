@@ -47,11 +47,11 @@ export interface MatchSummary {
   /** Flag these in the UI: EA awarded the result because a side quit. */
   dnf: boolean;
   /**
-   * The score when a Rage Quit ended, where EA awarded a different one
-   * (CLUBS-87): ours first. Null otherwise. Shown beside the awarded score,
-   * which stays the score everywhere else.
+   * The score EA awarded for a Rage Quit, ours first, where it differs from
+   * the real score in `goalsFor` and `goalsAgainst` (CLUBS-87). Null
+   * otherwise. Only the Match page mentions it.
    */
-  realScore: readonly [number, number] | null;
+  awardedScore: readonly [number, number] | null;
   skillRatings: MatchSkillRatings;
 }
 
@@ -74,8 +74,8 @@ export const summaryColumns = {
   goalsAgainst: matches.goalsAgainst,
   result: matches.result,
   dnf: matches.dnf,
-  realGoalsFor: matches.realGoalsFor,
-  realGoalsAgainst: matches.realGoalsAgainst,
+  awardedGoalsFor: matches.awardedGoalsFor,
+  awardedGoalsAgainst: matches.awardedGoalsAgainst,
   ourSkillRating: matches.ourSkillRating,
   opponentSkillRating: matches.opponentSkillRating,
 };
@@ -254,8 +254,8 @@ export interface SummaryRow {
   goalsAgainst: number;
   result: MatchResult;
   dnf: boolean;
-  realGoalsFor: number | null;
-  realGoalsAgainst: number | null;
+  awardedGoalsFor: number | null;
+  awardedGoalsAgainst: number | null;
   ourSkillRating: number | null;
   opponentSkillRating: number | null;
 }
@@ -274,9 +274,9 @@ export function toSummary(row: SummaryRow): MatchSummary {
     goalsAgainst: row.goalsAgainst,
     outcome: toOutcome(row.result),
     dnf: row.dnf,
-    realScore:
-      row.realGoalsFor !== null && row.realGoalsAgainst !== null
-        ? [row.realGoalsFor, row.realGoalsAgainst]
+    awardedScore:
+      row.awardedGoalsFor !== null && row.awardedGoalsAgainst !== null
+        ? [row.awardedGoalsFor, row.awardedGoalsAgainst]
         : null,
     skillRatings: {
       ours: row.ourSkillRating,

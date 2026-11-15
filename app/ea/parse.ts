@@ -41,11 +41,11 @@ export interface ParsedMatch {
   result: MatchResult;
   dnf: boolean;
   /**
-   * The score when a Rage Quit ended, where EA awarded a different one
-   * (CLUBS-87); null otherwise.
+   * The score EA awarded for a Rage Quit, where it differs from the real one
+   * in `goalsFor` and `goalsAgainst` (CLUBS-87); null otherwise.
    */
-  realGoalsFor: number | null;
-  realGoalsAgainst: number | null;
+  awardedGoalsFor: number | null;
+  awardedGoalsAgainst: number | null;
   clubs: ParsedClub[];
   appearances: ParsedAppearance[];
 }
@@ -174,26 +174,27 @@ function parseMatch(
     ),
   );
   const outcome = matchResult(ours, opponent);
-  const goalsFor = toInt(ours.goals);
-  const goalsAgainst = toInt(opponent.goals);
+  // EA's score: after a Rage Quit it can be an awarded 3-0, not the real one.
+  const eaFor = toInt(ours.goals);
+  const eaAgainst = toInt(opponent.goals);
   const realFor = realGoals(match.players?.[ourClubId]);
   const realAgainst = realGoals(match.players?.[opponentClubId]);
   const awarded =
     outcome.dnf &&
     realFor !== null &&
     realAgainst !== null &&
-    (realFor !== goalsFor || realAgainst !== goalsAgainst);
+    (realFor !== eaFor || realAgainst !== eaAgainst);
 
   return {
     matchId: String(match.matchId),
     matchType: MATCH_KINDS[matchType],
     playedAt: new Date(toInt(match.timestamp) * 1000),
     opponentClubId,
-    goalsFor,
-    goalsAgainst,
+    goalsFor: awarded ? realFor : eaFor,
+    goalsAgainst: awarded ? realAgainst : eaAgainst,
     ...outcome,
-    realGoalsFor: awarded ? realFor : null,
-    realGoalsAgainst: awarded ? realAgainst : null,
+    awardedGoalsFor: awarded ? eaFor : null,
+    awardedGoalsAgainst: awarded ? eaAgainst : null,
     clubs: Object.entries(clubs).map(([clubId, club]) => ({
       clubId,
       name: club?.details?.name ?? null,
@@ -211,10 +212,12 @@ function parseMatch(
 function realGoals(
   players: Record<string, EaPlayerStats> | undefined,
 ): number | null {
-  for (const stats of Object.values(players ?? {})) {
-    if (/^\d+$/.test(stats?.SCORE ?? "")) return Number(stats.SCORE);
-  }
-  return null;
+  // Every player of a club carries the same value; the highest is the safe
+  // reading if one who left early ever carries an older score.
+  const scores = Object.values(players ?? {}).flatMap((stats) =>
+    /^\d+$/.test(stats?.SCORE ?? "") ? [Number(stats.SCORE)] : [],
+  );
+  return scores.length ? Math.max(...scores) : null;
 }
 
 /**
@@ -242,8 +245,8 @@ const PASSES_FAILED_CODE = "216";
 /**
  * EA zeroes the named stats of a player who left a Match early but keeps
  * their Match Events (CLUBS-87). Goals, assists and shots are restored from
- * the events that equal them exactly, and passes from the pair that is right
- * to within a pass or two. Tackles and saves have no such events, so they
+ * the events that equal them exactly, and passes from the pair that is close
+ * (within about four attempts either way). Tackles and saves have no such events, so they
  * stay 0.
  */
 function restoreWipedStats(a: ParsedAppearance): ParsedAppearance {

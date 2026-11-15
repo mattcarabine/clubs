@@ -23,7 +23,7 @@ test.beforeEach(async ({ fakeEa }) => {
   }
 });
 
-test("a rage quit EA recorded as 3-0 says what the score was", async ({
+test("a rage quit EA recorded as 3-0 shows the real score", async ({
   page,
   fakeEa,
   triggerPoll,
@@ -39,28 +39,30 @@ test("a rage quit EA recorded as 3-0 says what the score was", async ({
   expect(
     stored.find((m) => m.match_id === awarded.match.matchId),
   ).toMatchObject({
-    goals_for: 3,
+    goals_for: 2,
     goals_against: 0,
-    real_goals_for: 2,
-    real_goals_against: 0,
+    result: "win",
+    awarded_goals_for: 3,
+    awarded_goals_against: 0,
   });
   expect(stored.find((m) => m.match_id === stood.match.matchId)).toMatchObject({
     goals_for: 4,
-    real_goals_for: null,
-    real_goals_against: null,
+    awarded_goals_for: null,
+    awarded_goals_against: null,
   });
 
   await page.goto(`/matches/${awarded.match.matchId}`);
+  await expect(page.getByRole("region", { name: "Score" })).toContainText(
+    "A Bloo Bloo 2, Bunch of bums 0",
+  );
   const note = page.getByRole("complementary", { name: "Rage quit" });
   await expect(note).toContainText(
-    "It was 2-0 at the time, and EA records it as 3-0.",
+    "This is the score when they left. EA records it as 3-0.",
   );
-  // The score that counts is still EA's.
-  await expect(page.getByRole("region", { name: "Score" })).toContainText("3");
 
   await page.goto(`/matches/${stood.match.matchId}`);
   await expect(note).toBeVisible();
-  await expect(note).not.toContainText("at the time");
+  await expect(note).not.toContainText("EA records it as");
 });
 
 test("a player who left early gets their goals, assists, shots and passes back", async ({

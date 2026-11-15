@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "da00fb78-a49e-45a8-ad25-e4bd06f4f1fa",
+  "id": "2232d4fc-e27c-40e9-840f-8e7916fdb7cd",
   "prevId": "a7da6ec0-3dd2-455f-9152-ca018e642557",
   "tables": {
     "ai_jobs": {
@@ -516,15 +516,15 @@
           "notNull": true,
           "autoincrement": false
         },
-        "real_goals_for": {
-          "name": "real_goals_for",
+        "awarded_goals_for": {
+          "name": "awarded_goals_for",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "real_goals_against": {
-          "name": "real_goals_against",
+        "awarded_goals_against": {
+          "name": "awarded_goals_against",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
