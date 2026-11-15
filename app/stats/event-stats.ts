@@ -976,16 +976,22 @@ export function evenestThreshold(values: readonly number[]): number | null {
   return best ? best.threshold : null;
 }
 
-/** Where a Squad Member wins and loses the ball, and how they pass and shoot: shares of 100. */
-export interface StyleMix {
-  id: "passDirection" | "passLength" | "ballWon" | "ballLost" | "shots";
+/** Shares of 100 of something counted `total` times. */
+export interface ShareMix {
   /** How many things the shares divide. */
   total: number;
   parts: { label: string; share: number }[];
 }
 
+/** Where a Squad Member wins and loses the ball, and how they pass and shoot. */
+export interface StyleMix extends ShareMix {
+  id: "passDirection" | "passLength" | "ballWon" | "ballLost" | "shots";
+}
+
 /** Counts as shares of 100 of their total; nothing when there is nothing to divide. */
-function sharesOf(parts: readonly (readonly [string, number])[]) {
+function sharesOf(
+  parts: readonly (readonly [string, number])[],
+): ShareMix | null {
   const total = parts.reduce((sum, [, count]) => sum + count, 0);
   if (total === 0) return null;
   return {
@@ -1053,14 +1059,10 @@ export interface PassTypeLine {
   failed: number;
   /** The share completed, 0 to 100. */
   value: number | null;
+  /** Null unless the Yardstick tried it `MIN_PASS_TYPE_ATTEMPTS` times too. */
   yardstick: number | null;
+  /** Judged on the share that failed, so 99% beside 90% is far apart. */
   standing: Standing | null;
-}
-
-/** Shares of 100 of something counted `total` times. */
-export interface GiveawayMix {
-  total: number;
-  parts: { label: string; share: number }[];
 }
 
 /**
@@ -1071,9 +1073,9 @@ export interface GiveawayMix {
  */
 export interface Giveaways {
   /** Failed passes by kind; EA gives a length to nearly all of them. */
-  byLength: GiveawayMix | null;
+  byLength: ShareMix | null;
   /** Failed passes by direction; EA gives one to about three in four. */
-  byDirection: GiveawayMix | null;
+  byDirection: ShareMix | null;
   /** The kinds tried at least `MIN_PASS_TYPE_ATTEMPTS` times, in `PASS_TYPES` order. */
   passTypes: PassTypeLine[];
 }
@@ -1113,7 +1115,12 @@ export function giveaways(
   const passTypes = PASS_TYPES.flatMap(({ id, label }): PassTypeLine[] => {
     if (own[id].attempted < MIN_PASS_TYPE_ATTEMPTS) return [];
     const value = completed(own[id]);
-    const yardstick = theirs ? completed(theirs[id]) : null;
+    const yardstick =
+      theirs && theirs[id].attempted >= MIN_PASS_TYPE_ATTEMPTS
+        ? completed(theirs[id])
+        : null;
+    const failed = (share: number | null) =>
+      share === null ? null : 100 - share;
     return [
       {
         id,
@@ -1121,7 +1128,7 @@ export function giveaways(
         ...own[id],
         value,
         yardstick,
-        standing: standing("high", value, yardstick),
+        standing: standing("low", failed(value), failed(yardstick)),
       },
     ];
   });

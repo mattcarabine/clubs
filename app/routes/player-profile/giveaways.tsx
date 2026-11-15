@@ -19,10 +19,17 @@ const CARD_TITLE =
  * position. EA has no count for a failed through ball or for being tackled,
  * and the section says so.
  */
+const ballLostMix = (events: PlayerEventProfile) =>
+  events.mixes.find((mix) => mix.id === "ballLost");
+
+/** Whether there is anything to show, so the page can leave the heading out too. */
+export function hasGiveaways(events: PlayerEventProfile): boolean {
+  return events.giveaways !== null || ballLostMix(events) !== undefined;
+}
+
 export function Giveaways({ events, against }: GiveawaysProps) {
   const { giveaways } = events;
-  const ballLost = events.mixes.find((mix) => mix.id === "ballLost");
-  if (!giveaways && !ballLost) return null;
+  const ballLost = ballLostMix(events);
   const mixes = [
     {
       label: "Passes that went astray, by kind",
@@ -39,27 +46,29 @@ export function Giveaways({ events, against }: GiveawaysProps) {
       mix: ballLost,
       unit: ["time", "times"],
     },
-  ] as const;
+  ].filter(({ mix }) => mix);
   const passTypes = giveaways?.passTypes ?? [];
   return (
     <div className="grid gap-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <section aria-label="What goes astray" className={CARD}>
-          <h3 className={CARD_TITLE}>What goes astray</h3>
-          <div className="grid gap-5">
-            {mixes.map(
-              ({ label, mix, unit }) =>
-                mix && (
-                  <MixBar
-                    key={label}
-                    label={label}
-                    note={`of ${formatCount(mix.total, unit[0], unit[1])}`}
-                    parts={mix.parts}
-                  />
-                ),
-            )}
-          </div>
-        </section>
+        {mixes.length > 0 && (
+          <section aria-label="What goes astray" className={CARD}>
+            <h3 className={CARD_TITLE}>What goes astray</h3>
+            <div className="grid gap-5">
+              {mixes.map(
+                ({ label, mix, unit }) =>
+                  mix && (
+                    <MixBar
+                      key={label}
+                      label={label}
+                      note={`of ${formatCount(mix.total, unit[0], unit[1])}`}
+                      parts={mix.parts}
+                    />
+                  ),
+              )}
+            </div>
+          </section>
+        )}
         {passTypes.length > 0 && (
           <section aria-label="Passes that came off" className={CARD}>
             <h3 className={CARD_TITLE}>Passes that came off</h3>

@@ -257,7 +257,7 @@ test("a profile says how they give the ball away", async ({
   const cameOff = section(page, "Passes that came off");
   await expect(yardstick(cameOff, "short")).toContainText(/Short passes\s*80%/);
   await expect(yardstick(cameOff, "short")).toContainText(
-    "Typical opposing midfielder: 90%",
+    "Typical opposing midfielder: 85%",
   );
   await expect(
     yardstick(cameOff, "short").getByText("Worse", { exact: true }),

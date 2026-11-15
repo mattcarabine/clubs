@@ -373,7 +373,7 @@ describe("giveaways", () => {
     }),
   ]);
   const theirs = eventTotals([
-    appearance({ "24": 18, "25": 2, "28": 2, "29": 8 }),
+    appearance({ "24": 17, "25": 3, "28": 2, "29": 8, "36": 1 }),
   ]);
 
   it("shares out the failed passes by kind and by direction", () => {
@@ -405,7 +405,7 @@ describe("giveaways", () => {
         attempted: 20,
         failed: 4,
         value: 80,
-        yardstick: 90,
+        yardstick: 85,
         standing: "worse",
       },
       {
@@ -418,6 +418,24 @@ describe("giveaways", () => {
         standing: "muchBetter",
       },
     ]);
+  });
+
+  it("judges the share that failed, and needs enough tries on the other side", () => {
+    const sharp = eventTotals([
+      appearance({ "24": 99, "25": 1, "36": 6, "37": 6 }),
+    ]);
+    const usual = eventTotals([appearance({ "24": 90, "25": 10, "36": 1 })]);
+    const [short, crosses] = giveaways(sharp, usual)?.passTypes ?? [];
+    expect(short).toMatchObject({
+      value: 99,
+      yardstick: 90,
+      standing: "muchBetter",
+    });
+    expect(crosses).toMatchObject({
+      value: 50,
+      yardstick: null,
+      standing: null,
+    });
   });
 
   it("is null with no passes to speak of", () => {
