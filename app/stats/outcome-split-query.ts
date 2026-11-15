@@ -28,6 +28,7 @@ import {
   type UsualComparisonRow,
   usualComparison,
 } from "./outcome-split";
+import { type ResultDrivers, resultDrivers } from "./result-drivers";
 import { isPlayedAppearanceSql, matchScope, type ScopeOptions } from "./scope";
 import { sessionPlaces } from "./sessions";
 import { ratingGap } from "./skill-rating";
@@ -39,6 +40,8 @@ export interface OutcomeSplitOptions {
 }
 
 export interface OutcomeSplitPage extends OutcomeSplit {
+  /** Why we win and why we lose (CLUBS-95); empty until the split is `ready`. */
+  drivers: ResultDrivers;
   players: PlayerSplitRow[];
   /** One per Match, oldest first, matching `rollingWinPercentage`. */
   playedAt: Date[];
@@ -50,9 +53,17 @@ export async function getOutcomeSplit(
   filter: StatsFilter,
   { mainPositionOnly = false }: OutcomeSplitOptions = {},
 ): Promise<OutcomeSplitPage> {
-  const { summaries, squad, split } = await splitData(db, filter);
+  const { summaries, squad, split, splitMatches, withEvents } = await splitData(
+    db,
+    filter,
+    {},
+    true,
+  );
   return {
     ...split,
+    drivers: split.ready
+      ? resultDrivers(splitMatches, withEvents)
+      : { win: [], lose: [] },
     players: playerSplits(squad, mainPositionOnly, split.withWithout),
     playedAt: summaries.map((m) => m.playedAt),
   };
@@ -97,14 +108,18 @@ async function splitData(
   db: Db,
   filter: StatsFilter,
   scope: ScopeOptions = {},
+  /** Read Match Events too, for the result drivers. */
+  events = false,
 ) {
   const [summaries, totals, played, kickoffs] = await Promise.all([
     listMatches(db, filter, { ...scope, order: "oldest" }),
     clubMatchTotals(db, matchScope(db, filter, scope)),
-    squadAppearances(db, filter, scope),
+    squadAppearances(db, filter, { ...scope, withEvents: events }),
     listKickoffs(db),
   ]);
-  const squad = played.filter(isCountedAppearance);
+  const withEvents = played.filter(isCountedAppearance);
+  // Match Events never leave here: everything else reads plain rows.
+  const squad = withEvents.map(({ events: _, ...rest }) => rest);
   const places = sessionPlaces(kickoffs);
   const splitMatches = summaries.map((m, i): SplitMatch => {
     const sides = totals.get(m.matchId);
@@ -130,7 +145,9 @@ async function splitData(
     summaries,
     totals,
     squad,
-    split: outcomeSplit(splitMatches, played),
+    splitMatches,
+    withEvents,
+    split: outcomeSplit(splitMatches, squad),
   };
 }
 
