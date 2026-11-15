@@ -62,7 +62,8 @@ test.describe("on a 375px phone", () => {
   test("the filter rail fades at the edge it scrolls toward", async ({
     page,
   }) => {
-    await page.goto("/opponents");
+    // The Squad page's rail has the most chips, so it overflows a phone.
+    await page.goto("/squad");
     const rail = page
       .getByRole("region", { name: "Stats filters" })
       .locator(".scroll-fade")
