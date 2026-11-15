@@ -27,6 +27,9 @@ function member(
       tackles: 0,
       passes: 0,
       shots: 0,
+      interceptions: 0,
+      dribbles: 0,
+      yellowCards: 0,
       redCards: 0,
       ...recorded,
     },
@@ -99,12 +102,22 @@ describe("clubLeaders", () => {
   it("puts graft and discipline in their own group, from recorded Appearances", () => {
     const boards = clubLeaders([
       member("Hardman", null, { tackles: 40, redCards: 2 }),
-      member("Playmaker", null, { passes: 300, shots: 12, tackles: 10 }),
+      member("Playmaker", null, {
+        passes: 300,
+        shots: 12,
+        tackles: 10,
+        interceptions: 7,
+        dribbles: 20,
+        yellowCards: 1,
+      }),
     ]);
     expect(boards.map((b) => [b.stat, b.group])).toEqual([
       ["tackles", "graft"],
       ["passes", "graft"],
       ["shots", "graft"],
+      ["interceptions", "graft"],
+      ["dribbles", "graft"],
+      ["yellow-cards", "graft"],
       ["red-cards", "graft"],
     ]);
     expect(

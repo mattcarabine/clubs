@@ -56,7 +56,12 @@ import {
   summariseMatchSides,
 } from "~/stats";
 import { isPlayedAppearance } from "~/stats/counted";
-import { type EventCounts, sumEventCounts } from "~/stats/event-stats";
+import {
+  ballLost,
+  ballWon,
+  type EventCounts,
+  sumEventCounts,
+} from "~/stats/event-stats";
 // meta() builds the preview and the component groups line-ups, so import the
 // pure helpers directly to keep the query modules out of the client bundle.
 import { matchPreview } from "~/stats/link-preview";
@@ -145,6 +150,8 @@ export default function Match({ loaderData }: Route.ComponentProps) {
   const [lineupView, setLineupView] = useState<LineupView>("basics");
   const tape = matchStatRows(ours, theirs);
   const hasDetail = match.appearances.some((a) => a.detail);
+  // A Match without detail has no chips to switch back with.
+  const view = hasDetail ? lineupView : "basics";
   return (
     <>
       <BackLink to="/">All Matches</BackLink>
@@ -243,7 +250,7 @@ export default function Match({ loaderData }: Route.ComponentProps) {
           )}
         </section>
 
-        <section aria-label="Line-ups" className="min-w-0 lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           {tape && (
             <section aria-label="In more detail" className="mb-8">
               <SectionHeading
@@ -258,43 +265,53 @@ export default function Match({ loaderData }: Route.ComponentProps) {
               />
             </section>
           )}
-          <SectionHeading
-            title="Line-ups"
-            subtitle="Each club's Appearances by Position Group, best rated first. EA zeroes the stats of a player who rage quit."
-            aside={
-              hasDetail && (
-                <fieldset>
-                  <legend className="sr-only">Line-up stats to show</legend>
-                  <div className="flex gap-1">
-                    {LINEUP_VIEWS.map(({ id, label }) => (
-                      <Chip
-                        key={id}
-                        pressed={lineupView === id}
-                        onClick={() => setLineupView(id)}
-                      >
-                        {label}
-                      </Chip>
-                    ))}
-                  </div>
-                </fieldset>
-              )
-            }
-          />
-          <div className="flex flex-col gap-6">
-            <Lineup
-              name={clubName}
-              appearances={ours}
-              isOurClub
-              view={lineupView}
+          <section aria-label="Line-ups">
+            <SectionHeading
+              title="Line-ups"
+              subtitle="Each club's Appearances by Position Group, best rated first. EA zeroes the basic stats of a player who rage quit."
+              aside={
+                hasDetail && (
+                  <fieldset>
+                    <legend className="sr-only">Line-up stats to show</legend>
+                    <div className="flex gap-1">
+                      {LINEUP_VIEWS.map(({ id, label }) => (
+                        <Chip
+                          key={id}
+                          pressed={view === id}
+                          onClick={() => setLineupView(id)}
+                        >
+                          {label}
+                        </Chip>
+                      ))}
+                    </div>
+                  </fieldset>
+                )
+              }
             />
-            <Lineup
-              name={opponent.name}
-              appearances={theirs}
-              isOurClub={false}
-              view={lineupView}
-            />
-          </div>
-        </section>
+            <div className="flex flex-col gap-6">
+              <Lineup
+                name={clubName}
+                appearances={ours}
+                isOurClub
+                view={view}
+              />
+              <Lineup
+                name={opponent.name}
+                appearances={theirs}
+                isOurClub={false}
+                view={view}
+              />
+            </div>
+            {view === "detail" && (
+              <p className="mt-3 text-ink-muted text-sm">
+                {MATCH_STATS.map(
+                  ({ abbr, label }) => `${abbr}: ${label.toLowerCase()}`,
+                ).join(", ")}
+                .
+              </p>
+            )}
+          </section>
+        </div>
       </div>
     </>
   );
@@ -628,33 +645,41 @@ const POSITION_HEADING: Record<PositionGroup, string> = {
   Forward: "Forwards",
 };
 
-/** One stat of a Match, Our Club's players against the Opponent's (CLUBS-86). */
+/** A Match's detail (CLUBS-86): the tape's rows and the line-ups' Detail columns. */
 const MATCH_STATS: readonly {
   label: string;
+  abbr: string;
   pick: (counts: EventCounts) => number;
   better: TapeRow["better"];
 }[] = [
-  { label: "On target", pick: (c) => c.shotsOnTarget, better: "higher" },
-  { label: "Through balls", pick: (c) => c.throughBalls, better: "higher" },
-  { label: "Dribbles", pick: (c) => c.dribbles, better: "higher" },
-  { label: "Ball won", pick: ballWon, better: "higher" },
-  { label: "Interceptions", pick: (c) => c.interceptions, better: "higher" },
-  { label: "Ball lost", pick: ballLost, better: "lower" },
-  { label: "Fouls", pick: (c) => c.foulsConceded, better: "lower" },
-  { label: "Yellow cards", pick: (c) => c.yellowCards, better: "lower" },
+  {
+    label: "Shots on target",
+    abbr: "OnT",
+    pick: (c) => c.shotsOnTarget,
+    better: "higher",
+  },
+  {
+    label: "Through balls",
+    abbr: "Thr",
+    pick: (c) => c.throughBalls,
+    better: "higher",
+  },
+  { label: "Dribbles", abbr: "Drb", pick: (c) => c.dribbles, better: "higher" },
+  { label: "Ball won", abbr: "Won", pick: ballWon, better: "higher" },
+  {
+    label: "Interceptions",
+    abbr: "Int",
+    pick: (c) => c.interceptions,
+    better: "higher",
+  },
+  { label: "Ball lost", abbr: "Lost", pick: ballLost, better: "lower" },
+  {
+    label: "Fouls",
+    abbr: "Fls",
+    pick: (c) => c.foulsConceded,
+    better: "lower",
+  },
 ];
-
-function ballWon(c: EventCounts): number {
-  return (
-    c.ballWonDefensiveThird + c.ballWonMiddleThird + c.ballWonAttackingThird
-  );
-}
-
-function ballLost(c: EventCounts): number {
-  return (
-    c.ballLostDefensiveThird + c.ballLostMiddleThird + c.ballLostAttackingThird
-  );
-}
 
 /** The "In more detail" tape, or null unless both clubs' players have detail. */
 function matchStatRows(
@@ -665,7 +690,14 @@ function matchStatRows(
     sumEventCounts(side.map((a) => a.detail)),
   );
   if (!us || !them) return null;
-  return MATCH_STATS.map(({ label, pick, better }) => ({
+  return [
+    ...MATCH_STATS,
+    {
+      label: "Yellow cards",
+      pick: (c: EventCounts) => c.yellowCards,
+      better: "lower" as const,
+    },
+  ].map(({ label, pick, better }) => ({
     label,
     values: [pick(us), pick(them)],
     format: String,
@@ -685,20 +717,9 @@ type LineupColumn = {
   title: string;
   cell: (a: MatchAppearance) => string | number;
   emphasis?: boolean;
+  /** Shown for a player who rage quit, whose other stats EA zeroes. */
+  keptOnQuit?: boolean;
 };
-
-/** A count from a player's detail, or a dash when EA sent none. */
-function detailColumn(
-  abbr: string,
-  title: string,
-  pick: (counts: EventCounts) => number,
-): LineupColumn {
-  return {
-    abbr,
-    title,
-    cell: (a) => (a.detail ? pick(a.detail) : NO_VALUE),
-  };
-}
 
 /** The "Detail" view of a line-up: what each player did beyond the basics. */
 const DETAIL_COLUMNS: LineupColumn[] = [
@@ -708,13 +729,15 @@ const DETAIL_COLUMNS: LineupColumn[] = [
     cell: (a) => formatDecimal(a.rating),
     emphasis: true,
   },
-  detailColumn("OnT", "Shots on target", (c) => c.shotsOnTarget),
-  detailColumn("Thr", "Through balls", (c) => c.throughBalls),
-  detailColumn("Drb", "Dribbles", (c) => c.dribbles),
-  detailColumn("Won", "Ball won", ballWon),
-  detailColumn("Int", "Interceptions", (c) => c.interceptions),
-  detailColumn("Lost", "Ball lost", ballLost),
-  detailColumn("Fls", "Fouls given away", (c) => c.foulsConceded),
+  ...MATCH_STATS.map(
+    ({ abbr, label, pick }): LineupColumn => ({
+      abbr,
+      title: label,
+      // EA keeps a rage quitter's detail, so it shows; a dash when EA sent none.
+      cell: (a) => (a.detail ? pick(a.detail) : NO_VALUE),
+      keptOnQuit: true,
+    }),
+  ),
 ];
 
 /** Rating leads, so it stays in view on a phone without scrolling the table. */
@@ -869,7 +892,7 @@ function LineupRow({
           key={c.abbr}
           className={`${cell} ${c.emphasis ? "font-display font-extrabold text-ink text-lg" : "text-ink-soft"}`}
         >
-          {quit ? NO_VALUE : c.cell(a)}
+          {quit && !c.keptOnQuit ? NO_VALUE : c.cell(a)}
         </td>
       ))}
     </tr>

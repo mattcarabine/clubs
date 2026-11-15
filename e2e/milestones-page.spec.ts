@@ -178,6 +178,46 @@ test("graft and discipline lead with tackles, passes, shots and red cards from r
   await expect(board("Red cards")).toHaveText(/^Red cards\s*2\s*Kabeeble$/);
 });
 
+test("graft and discipline count interceptions, dribbles and yellow cards from each Match's detail", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const detail = (events: string, reds = 0) => ({
+    match_event_aggregate_0: events,
+    redcards: String(reds),
+  });
+  await serveMatch(fakeEa, "937300000000001", 60, [
+    // Booked once, however often EA counts it.
+    { player: KAB, stats: detail("6:4,174:1,95:1,213:1") },
+    { player: LOL, stats: detail("6:1,174:5") },
+  ]);
+  await serveMatch(fakeEa, "937300000000002", 30, [
+    // Sent off without a straight red: two yellows.
+    { player: KAB, stats: detail("6:2,174:2", 1) },
+    // A straight red is no yellow.
+    { player: LOL, stats: detail("6:2,174:3,96:1", 1) },
+  ]);
+  await triggerPoll();
+
+  await page.goto("/milestones");
+  const section = page.getByRole("region", { name: "Graft and discipline" });
+  const board = (label: string) =>
+    section
+      .getByRole("listitem")
+      .filter({ has: page.getByRole("heading", { name: label, exact: true }) });
+  await expect(board("Interceptions")).toHaveText(
+    /^Interceptions\s*6\s*Kabeeble\s*2\s*Loltown95\s*3$/,
+  );
+  await expect(board("Dribbles")).toHaveText(
+    /^Dribbles\s*8\s*Loltown95\s*2\s*Kabeeble\s*3$/,
+  );
+  await expect(board("Yellow cards")).toHaveText(
+    /^Yellow cards\s*3\s*Kabeeble$/,
+  );
+  await expectNoHorizontalScroll(page);
+});
+
 test("with nothing recorded, there are no leaders and the empty state says what will fill the page", async ({
   page,
 }) => {

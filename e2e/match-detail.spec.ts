@@ -108,7 +108,7 @@ test("the Match page sets our players' stats against theirs", async ({
 
   await page.goto(`/matches/${match.match.matchId}`);
   const tape = page.getByRole("table", { name: "In more detail" });
-  await expectTape(tape, "On target", ["4", "1"], 0);
+  await expectTape(tape, "Shots on target", ["4", "1"], 0);
   await expectTape(tape, "Interceptions", ["3", "3"], null);
   // Fewer is better for these, so the lower figure leads.
   await expectTape(tape, "Ball lost", ["2", "5"], 0);
@@ -186,6 +186,10 @@ test("line-ups show yellow cards and switch to each player's detail", async ({
   ]) {
     await expect(await lineupCell(ours, "Kabeeble", header)).toHaveText(value);
   }
+  // Phones have no hover, so the short headers are spelled out underneath.
+  await expect(page.getByRole("region", { name: "Line-ups" })).toContainText(
+    "OnT: shots on target, Thr: through balls",
+  );
   // A player EA sent no detail for shows dashes, not zeroes.
   await expect(await lineupCell(ours, "Loltown95", "OnT")).toHaveText("–");
   await expect(

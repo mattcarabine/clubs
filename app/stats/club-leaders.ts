@@ -4,7 +4,8 @@
  * it from EA's career totals (the same numbers landmarks are read from, so a
  * "100th goal" and the Goals leader agree) and Our Club's counted recorded
  * Appearances. Two groups: the honours, and graft and discipline (tackles,
- * passes, shots, red cards). EA sends no yellow cards.
+ * passes, shots, red cards, and from Match Events interceptions, dribbles
+ * and yellow cards).
  */
 import { formatDecimal } from "~/lib/number-format";
 
@@ -20,6 +21,9 @@ export type LeaderStat =
   | "tackles"
   | "passes"
   | "shots"
+  | "interceptions"
+  | "dribbles"
+  | "yellow-cards"
   | "red-cards";
 
 /** The honours lead the page; graft and discipline follow. */
@@ -32,6 +36,10 @@ export interface RecordedTotals {
   tackles: number;
   passes: number;
   shots: number;
+  /** From Match Events, so 0 for Appearances EA sent none for. */
+  interceptions: number;
+  dribbles: number;
+  yellowCards: number;
   redCards: number;
 }
 
@@ -131,6 +139,24 @@ const STATS: Readonly<Record<LeaderStat, StatDefinition>> = {
     group: "graft",
     label: "Shots",
     value: (c) => c.recorded?.shots ?? null,
+    figure: String,
+  },
+  interceptions: {
+    group: "graft",
+    label: "Interceptions",
+    value: (c) => c.recorded?.interceptions ?? null,
+    figure: String,
+  },
+  dribbles: {
+    group: "graft",
+    label: "Dribbles",
+    value: (c) => c.recorded?.dribbles ?? null,
+    figure: String,
+  },
+  "yellow-cards": {
+    group: "graft",
+    label: "Yellow cards",
+    value: (c) => c.recorded?.yellowCards ?? null,
     figure: String,
   },
   "red-cards": {

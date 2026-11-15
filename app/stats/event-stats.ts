@@ -29,7 +29,7 @@ import { groupBy } from "./summaries";
  * The research has it only as a partial red-card sign, so it gets no name in
  * `app/ea/events.ts`; this one use was checked against production (CLUBS-85).
  */
-const STRAIGHT_RED_CODE = "96";
+export const STRAIGHT_RED_CODE = "96";
 
 /** What an Appearance needs to be totalled. */
 export interface EventAppearance {
@@ -236,8 +236,11 @@ export interface EventStatDefinition {
   value: (totals: EventTotals) => number | null;
 }
 
+const sumCounts = (counts: EventCounts, ids: readonly EventCount[]) =>
+  ids.reduce((total, id) => total + counts[id], 0);
+
 const sumOf = (totals: EventTotals, ids: readonly EventCount[]) =>
-  ids.reduce((total, id) => total + totals.counts[id], 0);
+  sumCounts(totals.counts, ids);
 
 /** A count per 90 minutes played. */
 const rate =
@@ -264,6 +267,12 @@ const BALL_LOST = [
   "ballLostMiddleThird",
   "ballLostAttackingThird",
 ] as const;
+
+/** How often the ball was won back, anywhere on the pitch. */
+export const ballWon = (counts: EventCounts) => sumCounts(counts, BALL_WON);
+
+/** How often the ball was lost, anywhere on the pitch. */
+export const ballLost = (counts: EventCounts) => sumCounts(counts, BALL_LOST);
 
 /** Every Event Stat a page can show, in the order tables and lists use. */
 export const EVENT_STATS = {

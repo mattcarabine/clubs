@@ -193,7 +193,7 @@ function RecordedComparison(data: CompareDataFor<"recorded">) {
         <section aria-label="Influence" className="mb-8">
           <SectionHeading
             title="Influence"
-            subtitle="What each adds, then what each gives away, per 90 minutes"
+            subtitle="What each adds, then what each gives away. Most are per 90 minutes."
           />
           <TaleOfTheTape
             caption="Influence"

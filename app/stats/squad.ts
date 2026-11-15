@@ -4,6 +4,7 @@ import {
   asc,
   eq,
   getTableColumns,
+  inArray,
   isNotNull,
   min,
   not,
@@ -76,8 +77,11 @@ export interface SquadAppearanceOptions extends ScopeOptions {
    * `isCountedAppearance` before totalling them.
    */
   includeQuitMatches?: boolean;
-  /** Read each Appearance's Match Events too, for Event Stats (CLUBS-85). */
-  withEvents?: boolean;
+  /**
+   * Read each Appearance's Match Events too, for Event Stats (CLUBS-85):
+   * everyone's, or only these Squad Members' (the rest get null).
+   */
+  withEvents?: boolean | readonly string[];
 }
 
 /** Every Appearance column but the Match Events, which are read only on request. */
@@ -89,6 +93,14 @@ const { events: eventsColumn, ...appearanceColumns } =
  * filter selects, oldest first. The building block for anything per Squad
  * Member or per line-up.
  */
+function eventsSelection(withEvents: boolean | readonly string[]) {
+  if (withEvents === true) return eventsColumn;
+  if (withEvents === false || withEvents.length === 0) return sql<null>`null`;
+  return sql`case when ${inArray(appearances.playerId, [...withEvents])} then ${appearances.events} end`.mapWith(
+    eventsColumn,
+  );
+}
+
 export async function squadAppearances(
   db: Db,
   filter: StatsFilter,
@@ -102,7 +114,7 @@ export async function squadAppearances(
   const rows = await db
     .select({
       appearance: appearanceColumns,
-      events: withEvents ? eventsColumn : sql<null>`null`,
+      events: eventsSelection(withEvents),
       personaName: players.personaName,
       match: matches,
       opponentName: clubs.name,
