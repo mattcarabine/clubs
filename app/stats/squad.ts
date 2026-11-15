@@ -20,8 +20,7 @@ import { toMatchType, toOutcome, toPositionGroup } from "./convert";
 import {
   type EventAppearance,
   type EventStatValues,
-  eventStatValues,
-  eventTotals,
+  eventStatsOf,
 } from "./event-stats";
 import type { StatsFilter } from "./filter";
 import { inMainPosition } from "./positions";
@@ -261,14 +260,6 @@ export function leaderboardRows(
     .sort(
       (a, b) => b.appearances - a.appearances || a.name.localeCompare(b.name),
     );
-}
-
-/** Event Stats over Appearances read `withEvents`; null when none has Match Events. */
-function eventStatsOf(
-  appearances: readonly SquadAppearance[],
-): EventStatValues | null {
-  const totals = eventTotals(appearances);
-  return totals.appearances === 0 ? null : eventStatValues(totals);
 }
 
 /** A current Squad Member in Hot or Cold form. */

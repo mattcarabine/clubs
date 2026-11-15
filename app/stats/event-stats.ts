@@ -196,6 +196,19 @@ function addScaled(into: EventTotals, from: EventTotals, factor: number) {
   for (const id of EVENT_COUNTS) into.counts[id] += from.counts[id] * factor;
 }
 
+/** Counts added up, e.g. one club's in a Match; null when none of them has any. */
+export function sumEventCounts(
+  rows: readonly (EventCounts | null | undefined)[],
+): EventCounts | null {
+  const present = rows.filter((row) => row != null);
+  if (present.length === 0) return null;
+  const total = emptyTotals().counts;
+  for (const row of present) {
+    for (const id of EVENT_COUNTS) total[id] += row[id];
+  }
+  return total;
+}
+
 /** The parts of the game an Event Stat belongs to, in page order. */
 export const EVENT_STAT_GROUPS = [
   { id: "attacking", label: "Attacking" },
@@ -582,6 +595,14 @@ export function eventStatValues(totals: EventTotals): EventStatValues {
   return Object.fromEntries(
     EVENT_STAT_IDS.map((id) => [id, EVENT_STATS[id].value(totals)]),
   ) as EventStatValues;
+}
+
+/** Event Stats over some Appearances; null when none of them has Match Events. */
+export function eventStatsOf(
+  appearances: readonly EventAppearance[],
+): EventStatValues | null {
+  const totals = eventTotals(appearances);
+  return totals.appearances === 0 ? null : eventStatValues(totals);
 }
 
 /** An Event Stat's value as text: "61%", "2.35" per 90, or "14.7" from 10 up. */

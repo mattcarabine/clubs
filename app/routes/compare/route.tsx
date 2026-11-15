@@ -26,8 +26,11 @@ import {
   PageHeader,
   SERIES_COLORS,
   SectionHeading,
+  SMALL_SAMPLE_NOTE,
   StatGrid,
   StatTile,
+  TaleOfTheTape,
+  type TapeRow,
 } from "~/components";
 import { getDb } from "~/db/client";
 import {
@@ -57,14 +60,16 @@ import {
   writeComparisonScope,
 } from "~/stats";
 
+import {
+  EVENT_STATS,
+  type EventStatId,
+  formatEventStat,
+  INFLUENCE,
+} from "~/stats/event-stats";
+
 import type { Route } from "./+types/route";
 import { PlayerPlates } from "./player-plates";
 import { RatingLink } from "./rating-link";
-import {
-  SMALL_SAMPLE_NOTE,
-  TaleOfTheTape,
-  type TapeRow,
-} from "./tale-of-the-tape";
 
 export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
@@ -184,6 +189,19 @@ function RecordedComparison(data: CompareDataFor<"recorded">) {
           rows={recordedRows(sides)}
         />
       </section>
+      {sides.some((s) => s.eventStats) && (
+        <section aria-label="Influence" className="mb-8">
+          <SectionHeading
+            title="Influence"
+            subtitle="What each adds, then what each gives away, per 90 minutes"
+          />
+          <TaleOfTheTape
+            caption="Influence"
+            names={names(data)}
+            rows={influenceRows(sides)}
+          />
+        </section>
+      )}
       <div className="grid gap-6 lg:grid-cols-2">
         <RatingChart data={data} />
         <section aria-label="Team record" className="min-w-0">
@@ -335,6 +353,22 @@ function recordedRows(sides: readonly ComparedTotals[]): TapeRow[] {
     },
     stat("MOTM", (t) => t.manOfTheMatch),
     stat("Form", (t) => t.form, formatDecimal),
+  ];
+}
+
+/** Influence (CLUBS-86): the stats that add to a result (higher leads), then the ones that give it away (lower leads). */
+function influenceRows(sides: readonly ComparedTotals[]): TapeRow[] {
+  const smallSample = smallSamples(sides, (s) => s.totals.appearances);
+  const row = (id: EventStatId, better: TapeRow["better"]): TapeRow => ({
+    label: EVENT_STATS[id].label,
+    values: pair(sides, (s) => s.eventStats?.[id] ?? null),
+    format: (value) => formatEventStat(id, value),
+    better,
+    smallSample,
+  });
+  return [
+    ...INFLUENCE.adds.map((id) => row(id, "higher")),
+    ...INFLUENCE.costs.map((id) => row(id, "lower")),
   ];
 }
 

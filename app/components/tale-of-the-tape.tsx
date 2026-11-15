@@ -1,9 +1,10 @@
 /**
- * The broadcast tale of the tape: each stat's label in the middle, Squad
- * Member A's figure on the left in blue and B's on the right in green, each
- * over a bar of their share. The leader's figure sits on a slanted chip in
- * their side's colour, the way FotMob and Sofascore fill the better figure
- * (CLUBS-79).
+ * The broadcast tale of the tape: each stat's label in the middle, A's
+ * figure on the left in blue and B's on the right, each over a bar of their
+ * share. The leader's figure sits on a slanted chip in their side's colour,
+ * the way FotMob and Sofascore fill the better figure (CLUBS-79). Compare
+ * sets two Squad Members side by side (B in green); the Match page sets Our
+ * Club against the Opponent (`right="opponent"`, B in slate; CLUBS-86).
  */
 import { NO_VALUE } from "~/lib/number-format";
 
@@ -29,9 +30,32 @@ type TaleOfTheTapeProps = {
   /** A's and B's names, for the column headers. */
   names: readonly [string, string | null];
   rows: readonly TapeRow[];
+  /** Who B is: a second Squad Member (the default) or the Opponent. */
+  right?: RightTone;
 };
 
-export function TaleOfTheTape({ caption, names, rows }: TaleOfTheTapeProps) {
+/** B's colours: a Squad Member in rave, the Opponent in slate like their panels. */
+type RightTone = "member" | "opponent";
+
+const RIGHT = {
+  member: {
+    header: "bg-rave text-shale-950",
+    lead: "bg-rave text-shale-950",
+    bar: "bg-rave",
+  },
+  opponent: {
+    header: "bg-shale-800 text-ink",
+    lead: "bg-shale-600 text-ink",
+    bar: "bg-ink-muted",
+  },
+} as const satisfies Record<RightTone, Record<string, string>>;
+
+export function TaleOfTheTape({
+  caption,
+  names,
+  rows,
+  right = "member",
+}: TaleOfTheTapeProps) {
   const hasSmallSample = rows.some((r) => r.smallSample?.some(Boolean));
   return (
     <div className="border-shale-700 border-t-2 bg-shale-900">
@@ -55,7 +79,7 @@ export function TaleOfTheTape({ caption, names, rows }: TaleOfTheTapeProps) {
             </th>
             <th
               scope="col"
-              className={`truncate px-3 py-2 text-left font-display font-bold text-base uppercase tracking-wide ${names[1] ? "bg-rave text-shale-950" : "bg-shale-800 text-ink-muted"}`}
+              className={`truncate px-3 py-2 text-left font-display font-bold text-base uppercase tracking-wide ${names[1] ? RIGHT[right].header : "bg-shale-800 text-ink-muted"}`}
             >
               {names[1] ?? NO_VALUE}
             </th>
@@ -63,7 +87,7 @@ export function TaleOfTheTape({ caption, names, rows }: TaleOfTheTapeProps) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <TapeRowView key={row.label} row={row} />
+            <TapeRowView key={row.label} row={row} right={right} />
           ))}
         </tbody>
       </table>
@@ -77,7 +101,7 @@ export function TaleOfTheTape({ caption, names, rows }: TaleOfTheTapeProps) {
   );
 }
 
-function TapeRowView({ row }: { row: TapeRow }) {
+function TapeRowView({ row, right }: { row: TapeRow; right: RightTone }) {
   const leader = leadingSide(row);
   const [a, b] = row.values;
   const total = (a ?? 0) + (b ?? 0);
@@ -86,6 +110,7 @@ function TapeRowView({ row }: { row: TapeRow }) {
     return (
       <TapeCell
         side={side}
+        right={right}
         text={value === null ? NO_VALUE : row.format(value)}
         leads={leader === side}
         smallSample={value !== null && (row.smallSample?.[side] ?? false)}
@@ -112,6 +137,7 @@ type Side = 0 | 1;
 
 type TapeCellProps = {
   side: Side;
+  right: RightTone;
   text: string;
   leads: boolean;
   smallSample: boolean;
@@ -119,11 +145,8 @@ type TapeCellProps = {
   share: number | null;
 };
 
-/** A leading figure's chip: A in club blue, B in rave, as their column headers. */
-const LEAD_FILL: Record<Side, string> = {
-  0: "bg-sound-700 text-ink",
-  1: "bg-rave text-shale-950",
-};
+/** A's leading figure sits on club blue; B's on its own tone, as their column headers. */
+const LEFT_LEAD = "bg-sound-700 text-ink";
 
 /** A figure's share of both, 0 to 100; nothing for a missing or non-positive one. */
 function barShare(value: number | null, total: number): number {
@@ -132,7 +155,14 @@ function barShare(value: number | null, total: number): number {
 }
 
 /** One side's figure, on a chip in their colour when it leads, over its share bar. */
-function TapeCell({ side, text, leads, smallSample, share }: TapeCellProps) {
+function TapeCell({
+  side,
+  right,
+  text,
+  leads,
+  smallSample,
+  share,
+}: TapeCellProps) {
   const left = side === 0;
   return (
     <td
@@ -144,7 +174,7 @@ function TapeCell({ side, text, leads, smallSample, share }: TapeCellProps) {
       >
         <span
           data-figure
-          className={`px-2 py-0.5 [--slant:0.4rem] ${leads ? `clip-slant font-extrabold ${LEAD_FILL[side]}` : "font-bold text-ink-soft"}`}
+          className={`px-2 py-0.5 [--slant:0.4rem] ${leads ? `clip-slant font-extrabold ${left ? LEFT_LEAD : RIGHT[right].lead}` : "font-bold text-ink-soft"}`}
         >
           {text}
         </span>
@@ -161,7 +191,7 @@ function TapeCell({ side, text, leads, smallSample, share }: TapeCellProps) {
           className={`mt-1.5 flex h-1.5 bg-shale-800 ${left ? "justify-end" : ""}`}
         >
           <span
-            className={`${left ? "bg-sound-300" : "bg-rave"} ${leads ? "" : "opacity-50"}`}
+            className={`${left ? "bg-sound-300" : RIGHT[right].bar} ${leads ? "" : "opacity-50"}`}
             style={{ width: `${share}%` }}
           />
         </span>
