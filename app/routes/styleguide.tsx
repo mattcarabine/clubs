@@ -155,7 +155,7 @@ const MILESTONE_MATCH: MilestoneEntry["match"] = {
   outcome: "W",
   dnf: false,
   awardedScore: null,
-  skillRatings: { ours: null, opponent: null },
+  skillRatings: { ours: null, opponent: null, oursBefore: null },
 };
 
 const SAMPLE_MILESTONES: MilestoneCardData[] = [

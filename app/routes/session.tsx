@@ -33,6 +33,7 @@ import { cumulativePoints, getSession, type UsualComparisonRow } from "~/stats";
 import { sessionPreview } from "~/stats/link-preview";
 
 import type { Route } from "./+types/session";
+import { SessionStandoutsSection } from "./session-standouts";
 
 export function meta({ loaderData, location }: Route.MetaArgs) {
   if (!loaderData) {
@@ -82,7 +83,7 @@ const USUAL_COLUMNS: DataTableColumn<UsualComparisonRow>[] = [
 
 export default function Session({ loaderData }: Route.ComponentProps) {
   const { clubName, session, recap, outcomes, points } = loaderData;
-  const { matches, record, players, usual } = session;
+  const { matches, record, players, usual, standouts } = session;
   return (
     <>
       <BackLink to="/">All Matches</BackLink>
@@ -115,6 +116,8 @@ export default function Session({ loaderData }: Route.ComponentProps) {
           />
         </section>
       )}
+
+      {standouts && <SessionStandoutsSection standouts={standouts} />}
 
       <section aria-label="Matches" className="mb-10">
         <SectionHeading

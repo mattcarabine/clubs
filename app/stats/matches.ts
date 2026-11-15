@@ -29,10 +29,16 @@ export interface Club {
   crestUrl: string | null;
 }
 
-/** Both clubs' Skill Ratings at a Match; null when it was never rated. */
+/**
+ * Both clubs' Skill Ratings at a Match; null when it was never rated. `ours`
+ * and `opponent` were read after the Match, so they include its result; the
+ * gap before kick-off is `ratingGap` (`skill-rating.ts`).
+ */
 export interface MatchSkillRatings {
   ours: number | null;
   opponent: number | null;
+  /** Our Skill Rating going into the Match; null with no reading then (CLUBS-88). */
+  oursBefore: number | null;
 }
 
 /** One Match from Our Club's point of view. */
@@ -78,6 +84,7 @@ export const summaryColumns = {
   awardedGoalsAgainst: matches.awardedGoalsAgainst,
   ourSkillRating: matches.ourSkillRating,
   opponentSkillRating: matches.opponentSkillRating,
+  ourRatingBefore: matches.ourRatingBefore,
 };
 
 /** Matches joined to their Opponent, selecting the columns `toSummary` reads. */
@@ -258,6 +265,7 @@ export interface SummaryRow {
   awardedGoalsAgainst: number | null;
   ourSkillRating: number | null;
   opponentSkillRating: number | null;
+  ourRatingBefore: number | null;
 }
 
 export function toSummary(row: SummaryRow): MatchSummary {
@@ -281,6 +289,7 @@ export function toSummary(row: SummaryRow): MatchSummary {
     skillRatings: {
       ours: row.ourSkillRating,
       opponent: row.opponentSkillRating,
+      oursBefore: row.ourRatingBefore,
     },
   };
 }

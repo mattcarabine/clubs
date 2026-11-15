@@ -3,8 +3,9 @@
  * picked in `./rating-targets.ts`).
  *
  * - A Match played within `RATING_WINDOW_MS` gets our latest Snapshot's Skill
- *   Rating when it is recorded, and the Opponent Rating from the first Poll in
- *   the window whose Opponents request succeeds.
+ *   Rating when it is recorded (our rating after it), our rating going into
+ *   it from the Snapshot before (`ourSnapshot`, CLUBS-88), and the Opponent
+ *   Rating from the first Poll in the window whose Opponents request succeeds.
  * - An older Match never rated (recorded before ratings were captured, or
  *   first seen after the window) is backfilled with the Opponent's current
  *   rating and our Snapshot nearest the Match (the earliest, for Matches
@@ -50,6 +51,28 @@ function ourRatingSnapshots(ourClubId: string): SQL {
 function ourRating(ourClubId: string, orderBy: SQL): SQL {
   return sql`(SELECT json_extract(snapshots.stats, '$.skillRating') ${ourRatingSnapshots(ourClubId)} ORDER BY ${orderBy} LIMIT 1)`;
 }
+
+/**
+ * A field of one of Our Club's Skill Rating Snapshots, counting back from
+ * the latest (0). Our rating going into a Match (CLUBS-88) is the Snapshot
+ * before the one its result changed: EA's `gamesPlayed` says they are one
+ * game apart, which no timestamp can (a Match's time is its full time, and
+ * the result before it is often polled after it kicked off).
+ */
+function ourSnapshot(
+  ourClubId: string,
+  field: "skillRating" | "gamesPlayed" | "takenAt",
+  back: 0 | 1,
+): SQL {
+  const value =
+    field === "takenAt"
+      ? sql`snapshots.taken_at`
+      : sql`json_extract(snapshots.stats, ${`$.${field}`})`;
+  return sql`(SELECT ${value} ${ourRatingSnapshots(ourClubId)} ORDER BY snapshots.taken_at DESC, snapshots.id DESC LIMIT 1 OFFSET ${sql.raw(String(back))})`;
+}
+
+/** How far back a Poll looks for Matches still missing our rating before them. */
+const BEFORE_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Read before the Poll's requests: which Opponents still need rating. */
 export async function ratingState(
@@ -100,7 +123,55 @@ export function ratingStatements(
   { matchesAdded, now }: { matchesAdded: number; now: number },
 ): BatchItem<"sqlite">[] {
   const statements: BatchItem<"sqlite">[] = [];
+  const ours = responses.find(
+    ({ request, response }) =>
+      request.endpoint === "clubs/overallStats" &&
+      request.variant !== OPPONENT_RATINGS_VARIANT &&
+      response.ok,
+  );
+  if (matchesAdded === 1 && ours) {
+    // Before the statement below rates it: only the new Match is unrated.
+    statements.push(
+      db
+        .update(matches)
+        .set({ ourRatingBefore: ourSnapshot(ourClubId, "skillRating", 1) })
+        .where(
+          and(
+            isNull(matches.ourSkillRating),
+            gte(matches.playedAt, new Date(now - RATING_WINDOW_MS)),
+            // Our latest Snapshot is this result's: taken by this Poll, one
+            // game on from the Snapshot before it.
+            sql`${ourSnapshot(ourClubId, "takenAt", 0)} = ${ours.fetchedAt}`,
+            sql`${ourSnapshot(ourClubId, "gamesPlayed", 0)} - ${ourSnapshot(ourClubId, "gamesPlayed", 1)} = 1`,
+          ),
+        ),
+    );
+  }
+  // A reading this Poll took is never from before a Match it lists.
+  const pollStart = Math.min(now, ...responses.map((r) => r.fetchedAt));
   if (matchesAdded > 0) {
+    // What the rule above could not rate (EA listed the Match a Poll before
+    // counting it, or the Match arrived while older code was live): our
+    // latest Snapshot from before the Match's time and after the Match
+    // before it, the rule migration 0019 backfilled with. A Match whose
+    // result shares a Poll with the one before it has no such reading.
+    statements.push(
+      db
+        .update(matches)
+        .set({
+          ourRatingBefore: sql`(SELECT json_extract(snapshots.stats, '$.skillRating') ${ourRatingSnapshots(ourClubId)}
+            AND snapshots.taken_at < "matches"."played_at"
+            AND snapshots.taken_at < ${pollStart}
+            AND snapshots.taken_at > coalesce((SELECT max(earlier.played_at) FROM matches earlier WHERE earlier.played_at < "matches"."played_at"), 0)
+            ORDER BY snapshots.taken_at DESC, snapshots.id DESC LIMIT 1)`,
+        })
+        .where(
+          and(
+            isNull(matches.ourRatingBefore),
+            gte(matches.playedAt, new Date(now - BEFORE_RETRY_MS)),
+          ),
+        ),
+    );
     statements.push(
       db
         .update(matches)

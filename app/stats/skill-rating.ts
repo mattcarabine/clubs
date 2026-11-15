@@ -1,6 +1,6 @@
 /**
  * Skill Rating gaps (CLUBS-29): how much stronger an Opponent was than Our
- * Club at a Match, from both clubs' Skill Ratings at the time. Pure and
+ * Club going into a Match, from both clubs' Skill Ratings before kick-off. Pure and
  * client-safe.
  */
 import type { MatchSkillRatings } from "./matches";
@@ -17,14 +17,22 @@ export const OPPONENT_STRENGTHS = [
 export type OpponentStrength = (typeof OPPONENT_STRENGTHS)[number]["id"];
 
 /**
- * Our Skill Rating minus the Opponent Rating at a Match: positive when we
- * were the stronger club. Null unless both were rated.
+ * Our Skill Rating minus the Opponent's before kick-off: positive when we
+ * were the stronger club (CLUBS-88). Both stored ratings were read after the
+ * Match, so a Win has already pushed ours up and theirs down. Ours before
+ * kick-off is a reading of its own (`oursBefore`); the Opponent's is their
+ * stored rating with our change taken back out, since what we gained they
+ * roughly lost. Null unless all three are known: a gap that already
+ * contains the result would bill every Win as expected.
  */
 export function ratingGap({
   ours,
   opponent,
+  oursBefore,
 }: MatchSkillRatings): number | null {
-  return ours === null || opponent === null ? null : ours - opponent;
+  if (ours === null || opponent === null || oursBefore === null) return null;
+  const opponentBefore = opponent + (ours - oursBefore);
+  return oursBefore - opponentBefore;
 }
 
 /**

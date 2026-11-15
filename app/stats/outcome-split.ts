@@ -139,7 +139,7 @@ type Club = "ours" | "opponent";
 /** Both clubs, Our Club first. */
 const CLUBS: readonly Club[] = ["ours", "opponent"];
 
-interface PerformanceMetric {
+export interface PerformanceMetric {
   id: string;
   /** The row label: "Shots per 90". */
   label: string;
@@ -166,7 +166,7 @@ const POSSESSIVE: Record<Club, string> = {
 const OWNER: Record<Club, string> = { ours: "", opponent: "Opponent " };
 
 /** "Pass completion" for ours, "Opponent pass completion" for theirs. */
-function statName(club: Club, label: string): string {
+export function statName(club: Club, label: string): string {
   return capitalise(`${OWNER[club]}${label.toLowerCase()}`);
 }
 
@@ -1097,7 +1097,7 @@ function bucketFindings<B extends BucketOption>(
   );
 }
 
-function withoutNulls<T>(items: readonly (T | null)[]): T[] {
+export function withoutNulls<T>(items: readonly (T | null)[]): T[] {
   return items.filter((item): item is T => item !== null);
 }
 

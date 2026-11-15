@@ -29,7 +29,7 @@ function match(
     goalsAgainst,
     outcome,
     dnf: false,
-    skillRatings: { ours: null, opponent: null },
+    skillRatings: { ours: null, opponent: null, oursBefore: null },
     ...extra,
   };
 }
@@ -140,8 +140,12 @@ describe("clubRecords", () => {
   it("finds the highest skill rating and the win over the strongest side", () => {
     const records = clubRecords(
       [
-        W(0, { skillRatings: { ours: 1500, opponent: 1700 } }),
-        W(1, { skillRatings: { ours: 1650, opponent: 1600 } }),
+        W(0, {
+          skillRatings: { ours: 1500, opponent: 1700, oursBefore: 1500 },
+        }),
+        W(1, {
+          skillRatings: { ours: 1650, opponent: 1600, oursBefore: 1650 },
+        }),
         L(2),
       ],
       null,
