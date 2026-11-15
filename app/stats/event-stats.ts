@@ -653,11 +653,25 @@ export const INFLUENCE = {
   ],
 } as const satisfies Record<string, readonly EventStatId[]>;
 
-/** How a figure sits against another: better or worse for us, or level. */
-export type Standing = "better" | "worse" | "level";
+/**
+ * How a figure sits against another: better or worse for us (much so past
+ * `FAR_MARGIN`), or level.
+ */
+export type Standing =
+  | "muchBetter"
+  | "better"
+  | "level"
+  | "worse"
+  | "muchWorse";
 
 /** A gap smaller than this share of the larger figure counts as level. */
 export const LEVEL_MARGIN = 0.1;
+
+/**
+ * A gap of at least this share of the larger figure is "much" better or
+ * worse (CLUBS-97): one figure is at least half as much again as the other.
+ */
+export const FAR_MARGIN = 1 / 3;
 
 /** Where `value` stands against `against` for a stat; null when it only describes style. */
 export function standing(
@@ -667,10 +681,14 @@ export function standing(
 ): Standing | null {
   if (better === "neither" || value === null || against === null) return null;
   const scale = Math.max(Math.abs(value), Math.abs(against));
-  if (scale === 0 || Math.abs(value - against) / scale < LEVEL_MARGIN) {
-    return "level";
+  const gap = scale === 0 ? 0 : Math.abs(value - against) / scale;
+  if (gap < LEVEL_MARGIN) return "level";
+  // A hair's tolerance, so 3 against 2 (a third exactly) counts.
+  const far = gap >= FAR_MARGIN - 1e-9;
+  if (value > against === (better === "high")) {
+    return far ? "muchBetter" : "better";
   }
-  return value > against === (better === "high") ? "better" : "worse";
+  return far ? "muchWorse" : "worse";
 }
 
 /** Each Position Group's totals, for the Yardstick. */

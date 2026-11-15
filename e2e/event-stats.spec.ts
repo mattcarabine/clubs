@@ -133,6 +133,33 @@ test("a profile leads with the Squad Member's share of what the team did", async
   );
 });
 
+test("a small gap is better or worse, a big one much better or much worse", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  const match = bare(win());
+  // Kabeeble: 5 interceptions to their midfielder's 4, and lost the ball 6 times to 3.
+  playing(match, OUR_CLUB_ID, KABEEBLE, { 6: 5, 106: 6 });
+  playing(match, OPPONENT_ID, THEIR_MIDFIELDER, { 6: 4, 106: 3 });
+  await fakeEa.addMatch(match);
+  await triggerPoll();
+
+  await page.goto(PROFILE);
+  await expect(
+    yardstick(section(page, "What they add"), "interceptions").getByText(
+      "Better",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    yardstick(section(page, "What they give away"), "ballLost").getByText(
+      "Much worse",
+      { exact: true },
+    ),
+  ).toBeVisible();
+});
+
 test("what they add and give away sits beside a typical opponent in their position", async ({
   page,
   fakeEa,
@@ -154,15 +181,16 @@ test("what they add and give away sits beside a typical opponent in their positi
   await expect(yardstick(adds, "interceptions")).toContainText(
     "Typical opposing midfielder: 2.00",
   );
-  await expect(yardstick(adds, "interceptions")).toContainText("Better");
+  // Twice a typical opponent's is much better, and says so.
+  await expect(yardstick(adds, "interceptions")).toContainText("Much better");
 
-  // Losing the ball less than they do is better, and says so.
+  // Losing the ball half as often as they do is much better too.
   const costs = section(page, "What they give away");
   await expect(yardstick(costs, "ballLost")).toContainText(/Ball lost\s*3\.00/);
   await expect(yardstick(costs, "ballLost")).toContainText(
     "Typical opposing midfielder: 6.00",
   );
-  await expect(yardstick(costs, "ballLost")).toContainText("Better");
+  await expect(yardstick(costs, "ballLost")).toContainText("Much better");
 
   // The rest of their game, by part of the game.
   const attacking = section(page, "How they play").getByRole("region", {
