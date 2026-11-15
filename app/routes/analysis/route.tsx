@@ -48,6 +48,7 @@ import {
   getPeriodComparison,
   getWinChanceAnalysis,
   lineupRecords,
+  listKickoffs,
   listMatches,
   MIN_SPLIT_MATCHES,
   PLAYER_SPLIT_STATS,
@@ -63,6 +64,8 @@ import {
   statsFilterFromRequest,
   summariseClubSnapshots,
   summariseRecord,
+  unlistedByDay,
+  unlistedMatches,
   winRateBucket,
   winRateGap,
 } from "~/stats";
@@ -98,6 +101,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     winChance,
     stateOfTheClub,
     snapshots,
+    kickoffs,
     matches,
     appearances,
     campaign,
@@ -108,6 +112,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getWinChanceAnalysis(db, filter),
     latestWriteup(db, "club", CLUB_SUBJECT),
     clubSnapshots(db),
+    listKickoffs(db),
     listMatches(db, filter, { order: "oldest" }),
     squadAppearances(db, filter),
     getCampaignProgress(db),
@@ -136,6 +141,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     skillRating: {
       labels: skillRating.map((p) => formatLondonShortDate(p.takenAt)),
       values: skillRating.map((p) => p.skillRating),
+      unlisted: unlistedByDay(unlistedMatches(snapshots, kickoffs)),
     },
     split,
     winChance,
@@ -315,12 +321,12 @@ function CircumstancesSection({
     <section aria-label="Circumstances" className="flex min-w-0 flex-col gap-4">
       <SectionHeading
         title="When we play"
-        subtitle="How often we win by kick-off time (UK), day, and how far into a session. Matches played in brackets."
+        subtitle="How often we win by time of night (UK), day, and how far into a session. Matches played in brackets."
       />
       <div className="grid gap-4 lg:grid-cols-3 lg:gap-x-6">
-        <ChartFrame title="By kick-off">
+        <ChartFrame title="By time of night">
           <WinRateBarChart
-            label="Win % by kick-off time"
+            label="Win % by time of night"
             buckets={split.byTimeOfDay}
           />
         </ChartFrame>

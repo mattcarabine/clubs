@@ -98,6 +98,10 @@ export const matches = sqliteTable(
   {
     matchId: text().primaryKey(),
     matchType: text().$type<MatchKind>().notNull(),
+    /**
+     * EA's `timestamp`: when the Match ended, not when it kicked off
+     * (CLUBS-89, CONTEXT.md "Match").
+     */
     playedAt: integer({ mode: "timestamp_ms" }).notNull(),
     opponentClubId: text()
       .notNull()
@@ -119,12 +123,22 @@ export const matches = sqliteTable(
       .references(() => rawPayloads.id),
     ingestedAt: integer({ mode: "timestamp_ms" }).notNull(),
     /**
-     * Our Club's Skill Rating at the Match, from our `clubs/overallStats`
-     * Snapshot. Null until the Poll rates the Match (`app/poll/ratings.ts`).
+     * Our Club's Skill Rating after the Match, from our first
+     * `clubs/overallStats` Snapshot to include it. Null until the Poll rates
+     * the Match (`app/poll/ratings.ts`).
      */
     ourSkillRating: integer(),
-    /** The Opponent Rating: the Opponent's Skill Rating at the Match. */
+    /**
+     * The Opponent Rating: the Opponent's Skill Rating, read after the Match
+     * (so it already includes this result).
+     */
     opponentSkillRating: integer(),
+    /**
+     * Our Club's Skill Rating going into the Match (CLUBS-88): our Snapshot
+     * before the one this result changed. Null when no reading sits between
+     * the Match before and this one; the rating gap is then unknown.
+     */
+    ourRatingBefore: integer(),
   },
   (table) => [
     index("matches_played_at_idx").on(table.playedAt),
