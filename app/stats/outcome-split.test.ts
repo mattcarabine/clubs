@@ -73,6 +73,7 @@ function match(
     opponent: totals(opponent),
     squadSize: 4,
     opponentHumans: 4,
+    droppedOut: [],
     // Each Match its own Session unless a test says otherwise.
     session: sequence,
     sessionPlace: 1,
@@ -710,6 +711,42 @@ describe("withAndWithout", () => {
     expect(row.group).toEqual({ played: 3, wins: 3, winPercentage: 100 });
     expect(row.rest).toEqual({ played: 4, wins: 0, winPercentage: 0 });
   });
+
+  it("counts a Match they dropped out of neither with them nor without (CLUBS-103)", () => {
+    const wins = many(3, () => match("W"));
+    const missed = many(3, () => match("L"));
+    const left = many(2, () => match("L", { droppedOut: ["a"] }));
+    const matches = [...wins, ...missed, ...left];
+    const rows = withAndWithout(matches, [
+      ...wins.map((m) => appearance(m.matchId, "a")),
+      // Their teammate played every Match, the two "a" left included.
+      ...matches.map((m) => appearance(m.matchId, "b")),
+    ]);
+    const a = rows.find((row) => row.playerId === "a");
+    expect(a?.group).toEqual({ played: 3, wins: 3, winPercentage: 100 });
+    expect(a?.rest).toEqual({ played: 3, wins: 0, winPercentage: 0 });
+    const b = rows.find((row) => row.playerId === "b");
+    expect(b?.group.played).toBe(8);
+    expect(b?.rest.played).toBe(0);
+  });
+});
+
+describe("squad size", () => {
+  it("leaves out a Match whose squad size is unknown (CLUBS-103)", () => {
+    const { bySquadSize } = outcomeSplit(
+      [
+        ...many(3, () => match("W", { squadSize: 4 })),
+        ...many(2, () => match("L", { squadSize: 3 })),
+        // One of ours dropped out: who played is not known.
+        match("L", { squadSize: 0, droppedOut: ["a"] }),
+      ],
+      [],
+    );
+    expect(bySquadSize.map((b) => [b.label, b.played])).toEqual([
+      ["3 playing", 2],
+      ["4 playing", 3],
+    ]);
+  });
 });
 
 describe("winRateGap", () => {
@@ -745,6 +782,19 @@ describe("positionOutliers", () => {
       "Player a at Midfielder",
     ]);
     expect(POSITION_OUTLIER_GAP).toBe(25);
+  });
+
+  it("does not count a Match they dropped out of among the others (CLUBS-103)", () => {
+    const asForward = [match("W"), match("W"), match("L")]; // 67%
+    const others = [match("L"), match("L"), match("W")]; // 33%
+    // Three Wins they dropped out of would lift "every other Match" to 67%.
+    const left = many(3, () => match("W", { droppedOut: ["a"] }));
+    const apps = [
+      ...asForward.map((m) => appearance(m.matchId, "a", "Forward")),
+      ...others.map((m) => appearance(m.matchId, "a", "Midfielder")),
+    ];
+    const outliers = positionOutliers([...asForward, ...others, ...left], apps);
+    expect(outliers.map((o) => o.rest.played)).toEqual([3, 3]);
   });
 
   it("does not appear under the gap or with fewer than 3 Matches a side", () => {

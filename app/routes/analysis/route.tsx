@@ -47,7 +47,6 @@ import {
   getOutcomeSplit,
   getPeriodComparison,
   getWinChanceAnalysis,
-  lineupRecords,
   listKickoffs,
   listMatches,
   MIN_SPLIT_MATCHES,
@@ -60,7 +59,6 @@ import {
   resultsTimeline,
   skillRatingHistory,
   splitByWeekday,
-  squadAppearances,
   statsFilterFromRequest,
   summariseClubSnapshots,
   summariseRecord,
@@ -98,13 +96,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const filter = await resolveStatsFilter(db, statsFilterFromRequest(request));
   const [
-    { playedAt, ...split },
+    { playedAt, lineups, ...split },
     winChance,
     stateOfTheClub,
     snapshots,
     kickoffs,
     matches,
-    appearances,
     campaign,
   ] = await Promise.all([
     getOutcomeSplit(db, filter, {
@@ -115,7 +112,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     clubSnapshots(db),
     listKickoffs(db),
     listMatches(db, filter, { order: "oldest" }),
-    squadAppearances(db, filter),
     getCampaignProgress(db),
   ]);
   if (campaign.mismatch) {
@@ -138,7 +134,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     timeline: resultsTimeline(matches),
     timelineLabels: matches.map((m) => formatLondonShortDate(m.playedAt)),
     byWeekday: splitByWeekday(matches),
-    lineups: lineupRecords(appearances),
+    lineups,
     skillRating: {
       labels: skillRating.map((p) => formatLondonShortDate(p.takenAt)),
       values: skillRating.map((p) => p.skillRating),

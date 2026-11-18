@@ -2,8 +2,11 @@
  * Gaps in EA's data (CLUBS-48), and the one rule for leaving them out of
  * stats. Two things look like performances but are not:
  *
- * - A player who drops out of a Match is recorded with 0 seconds played and
- *   a 3.0 rating. That Appearance is never counted, anywhere.
+ * - A player who drops out of a Match (closes the game, say) is recorded
+ *   with 0 seconds played and a 3.0 rating, whenever they left, and EA
+ *   keeps nothing of what they did. That Appearance is never counted,
+ *   anywhere, and the Match is neither one with them nor one without them;
+ *   their club's totals in it are not used either (CLUBS-103).
  * - EA zeroes the named stats of a player who left a Match early. The Poll
  *   restores their goals, assists, shots and passes from their Match Events
  *   (CLUBS-87, `app/ea/parse.ts`), so their Appearance counts like any

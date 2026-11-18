@@ -39,6 +39,7 @@ function match(
     opponent: { ...TOTALS, ...opponent },
     squadSize: 4,
     opponentHumans: 4,
+    droppedOut: [],
     session: sequence,
     sessionPlace: 1,
     ratingGap: null,

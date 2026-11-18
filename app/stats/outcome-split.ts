@@ -119,10 +119,16 @@ export interface SplitMatch {
   /** Null when EA listed none of the club's players. */
   ours: ClubMatchTotals | null;
   opponent: ClubMatchTotals | null;
-  /** How many Squad Members played. */
+  /** How many Squad Members played, or 0 when that is unknown: EA listed none, or one dropped out. */
   squadSize: number;
   /** How many humans played for the Opponent (EA lists no AI players), or 0 when EA listed none. */
   opponentHumans: number;
+  /**
+   * The Squad Members who dropped out of it (CLUBS-103). EA kept nothing of
+   * what they did, so the Match says nothing about our record with them or
+   * without them.
+   */
+  droppedOut: readonly string[];
   /** Which Session it was in: equal for Matches in the same Session. */
   session: number;
   /** 1 for the first Match in its Session. */
@@ -589,7 +595,18 @@ type PersonnelAppearance = Pick<
   "matchId" | "playerId" | "name" | "positionGroup"
 >;
 
-/** Each Squad Member's Win % with and without them, most Matches first. */
+/** The Matches that say something about a Squad Member: every one they did not drop out of. */
+function matchesKnownFor<T extends Pick<SplitMatch, "droppedOut">>(
+  matches: readonly T[],
+  playerId: string,
+): T[] {
+  return matches.filter((m) => !m.droppedOut.includes(playerId));
+}
+
+/**
+ * Each Squad Member's Win % with and without them, most Matches first. A
+ * Match they dropped out of is on neither side.
+ */
 export function withAndWithout(
   matches: readonly SplitMatch[],
   appearances: readonly PersonnelAppearance[],
@@ -601,7 +618,9 @@ export function withAndWithout(
         playerId,
         name: apps[apps.length - 1].name,
         former: isFormerSquadMember(playerId),
-        ...splitBy(matches, (m) => played.has(m.matchId)),
+        ...splitBy(matchesKnownFor(matches, playerId), (m) =>
+          played.has(m.matchId),
+        ),
       };
     })
     .sort(
@@ -610,9 +629,10 @@ export function withAndWithout(
 }
 
 /**
- * "Squad Member at Position Group" against every other Match, kept only with
- * at least `MIN_SPLIT_MATCHES` on each side and a Win-rate gap of at least
- * `POSITION_OUTLIER_GAP` points. Biggest gap first.
+ * "Squad Member at Position Group" against every other Match (but none they
+ * dropped out of), kept only with at least `MIN_SPLIT_MATCHES` on each side
+ * and a Win-rate gap of at least `POSITION_OUTLIER_GAP` points. Biggest gap
+ * first.
  */
 export function positionOutliers(
   matches: readonly SplitMatch[],
@@ -629,11 +649,18 @@ export function positionOutliers(
         playerId: apps[0].playerId,
         name: apps[apps.length - 1].name,
         positionGroup: apps[0].positionGroup,
-        ...splitBy(matches, (m) => played.has(m.matchId)),
+        ...splitBy(matchesKnownFor(matches, apps[0].playerId), (m) =>
+          played.has(m.matchId),
+        ),
       };
     })
     .filter((o) => isComparable(o) && Math.abs(gap(o)) >= POSITION_OUTLIER_GAP)
     .sort((a, b) => Math.abs(gap(b)) - Math.abs(gap(a)));
+}
+
+/** The Matches whose squad size is known. */
+function sizedMatches(matches: readonly SplitMatch[]): SplitMatch[] {
+  return matches.filter((m) => m.squadSize > 0);
 }
 
 /** The squad sizes Matches were played with, fewest first, as buckets. */
@@ -1146,7 +1173,8 @@ export function outcomeSplit(
   );
   const withWithoutRows = withAndWithout(matches, appearances);
   const outliers = positionOutliers(matches, appearances);
-  const sizes = squadSizes(matches);
+  const sized = sizedMatches(matches);
+  const sizes = squadSizes(sized);
   const afterResultSplits = afterResult(matches);
   const strength = byOpponentStrength(matches);
   // A Squad Member who only ever plays one Position Group would say the same
@@ -1170,7 +1198,7 @@ export function outcomeSplit(
         ...bucketFindings(
           "Personnel",
           "squad",
-          matches,
+          sized,
           sizes,
           squadSizeOf,
           ({ id }) => {
@@ -1258,7 +1286,7 @@ export function outcomeSplit(
       opponent: performance[i * 2 + 1].values,
     })),
     withWithout: withWithoutRows,
-    bySquadSize: buckets(matches, sizes, squadSizeOf),
+    bySquadSize: buckets(sized, sizes, squadSizeOf),
     positionOutliers: outliers,
     byTimeOfDay: splitByTimeOfDay(matches),
     byDayType: buckets(matches, DAY_TYPES, (m) => dayType(m.playedAt)),

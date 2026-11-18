@@ -5,6 +5,7 @@ import type { Page } from "@playwright/test";
 import type { AddMatchBody } from "./fake-ea/control.ts";
 import { leaderboardWithGamesPlayed } from "./support/leaderboard.ts";
 import {
+  DROPPED_OUT,
   dnf,
   draw,
   lasting,
@@ -267,6 +268,85 @@ test("a Gap resting on fewer than 3 Matches with or without a Squad Member shows
       "The gap needs 3 matches each way.",
     ),
   ).toBeVisible();
+});
+
+test("a Match a Squad Member dropped out of is neither with them nor without them, and in no line-up or squad size (CLUBS-103)", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // Star plays 3 Wins, misses 3 losses, and drops out of 3 more Wins: EA
+  // keeps no minutes and no stats of theirs in those.
+  await record(fakeEa, triggerPoll, [
+    ...[9, 8, 7].map((d) =>
+      withLineup(win(daysAgo(d)), [{ player: ROCK }, { player: STAR }]),
+    ),
+    ...[6, 5, 4].map((d) => withLineup(loss(daysAgo(d)), [{ player: ROCK }])),
+    ...[3, 2, 1].map((d) =>
+      withLineup(win(daysAgo(d)), [
+        { player: ROCK },
+        { player: STAR, rating: 3, stats: DROPPED_OUT },
+      ]),
+    ),
+  ]);
+
+  await page.goto("/analysis");
+  // Without Star is the 3 losses alone: 0%, not 3 Wins in 6.
+  await expectWithWithout(page, STAR.name, ["100%", "0%", "+100 pts"]);
+  await expectWithWithout(page, ROCK.name, ["67%", "–", "–"]);
+
+  // Who played the last 3 is not known, so Rock alone is the 3 losses.
+  const lineups = page
+    .getByRole("table", { name: "Line-up performance" })
+    .locator("tbody tr");
+  await expect(lineups).toHaveCount(2);
+  await expect(lineups.nth(0).getByRole("listitem")).toHaveText([
+    ROCK.name,
+    STAR.name,
+  ]);
+  await expect(lineups.nth(0).getByRole("cell")).toContainText(["3", "100%"]);
+  await expect(lineups.nth(1).getByRole("listitem")).toHaveText([ROCK.name]);
+  await expect(lineups.nth(1).getByRole("cell")).toContainText(["3", "0%"]);
+
+  const sizes = barList(page, "Win % by squad members playing");
+  await expect(sizes).toHaveCount(2);
+  await expect(sizes.nth(0)).toContainText("1 playing (3)");
+  await expect(sizes.nth(1)).toContainText("2 playing (3)");
+});
+
+test("a club's totals are not sampled in a Match one of its players dropped out of (CLUBS-103)", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // `withShots` gives the shots to the lower ID, Rock.
+  const both = [{ player: ROCK }, { player: BENCH }];
+  // Only shots differ: 12 in every Win played out, 9 in every loss.
+  const wins = [9, 8, 7].map((d) =>
+    withShots(withLineup(lasting(win(daysAgo(d)), 90), both), 12),
+  );
+  const losses = [6, 5, 4].map((d) =>
+    withShots(withLineup(lasting(loss(daysAgo(d)), 90), both), 9),
+  );
+  // Bench dropped out of 3 more Wins. Rock's 1 shot is not the team's, so
+  // these never pull our shots in Wins down to 6.5.
+  const left = [3, 2, 1].map((d) =>
+    withShots(
+      withLineup(lasting(win(daysAgo(d)), 90), [
+        { player: ROCK },
+        { player: BENCH, rating: 3, stats: DROPPED_OUT },
+      ]),
+      1,
+    ),
+  );
+  await record(fakeEa, triggerPoll, [...wins, ...losses, ...left]);
+
+  await page.goto("/analysis");
+  await expect(
+    findings(page).filter({ hasText: "shots per 90" }),
+  ).toContainText(
+    "In draws and defeats we take 3.0 fewer shots per 90 than in wins (9.0 vs 12.0)",
+  );
 });
 
 /** STAR at Forward in 3 Matches and at Midfielder in the rest, with these outcomes. */
