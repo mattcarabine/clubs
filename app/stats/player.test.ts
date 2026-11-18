@@ -27,6 +27,7 @@ function appearance(overrides: Partial<SquadAppearance> = {}): SquadAppearance {
     goalsAgainst: 1,
     outcome: "W",
     dnf: false,
+    teammateDroppedOut: false,
     positionGroup: "Midfielder",
     goals: 0,
     assists: 0,

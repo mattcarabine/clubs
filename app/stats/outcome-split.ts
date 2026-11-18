@@ -595,12 +595,20 @@ type PersonnelAppearance = Pick<
   "matchId" | "playerId" | "name" | "positionGroup"
 >;
 
-/** The Matches that say something about a Squad Member: every one they did not drop out of. */
-function matchesKnownFor<T extends Pick<SplitMatch, "droppedOut">>(
-  matches: readonly T[],
+/**
+ * Our record in the Matches a Squad Member `played` against the rest. A
+ * Match they dropped out of says nothing about them, so it is on neither
+ * side.
+ */
+function splitByPlayed(
+  matches: readonly SplitMatch[],
   playerId: string,
-): T[] {
-  return matches.filter((m) => !m.droppedOut.includes(playerId));
+  played: ReadonlySet<string>,
+) {
+  return splitBy(
+    matches.filter((m) => !m.droppedOut.includes(playerId)),
+    (m) => played.has(m.matchId),
+  );
 }
 
 /**
@@ -618,9 +626,7 @@ export function withAndWithout(
         playerId,
         name: apps[apps.length - 1].name,
         former: isFormerSquadMember(playerId),
-        ...splitBy(matchesKnownFor(matches, playerId), (m) =>
-          played.has(m.matchId),
-        ),
+        ...splitByPlayed(matches, playerId, played),
       };
     })
     .sort(
@@ -649,18 +655,16 @@ export function positionOutliers(
         playerId: apps[0].playerId,
         name: apps[apps.length - 1].name,
         positionGroup: apps[0].positionGroup,
-        ...splitBy(matchesKnownFor(matches, apps[0].playerId), (m) =>
-          played.has(m.matchId),
-        ),
+        ...splitByPlayed(matches, apps[0].playerId, played),
       };
     })
     .filter((o) => isComparable(o) && Math.abs(gap(o)) >= POSITION_OUTLIER_GAP)
     .sort((a, b) => Math.abs(gap(b)) - Math.abs(gap(a)));
 }
 
-/** The Matches whose squad size is known. */
-function sizedMatches(matches: readonly SplitMatch[]): SplitMatch[] {
-  return matches.filter((m) => m.squadSize > 0);
+/** Whether we know who played a Match for us: EA listed our players and none dropped out. */
+function isSquadKnown(match: SplitMatch): boolean {
+  return match.squadSize > 0;
 }
 
 /** The squad sizes Matches were played with, fewest first, as buckets. */
@@ -1173,7 +1177,7 @@ export function outcomeSplit(
   );
   const withWithoutRows = withAndWithout(matches, appearances);
   const outliers = positionOutliers(matches, appearances);
-  const sized = sizedMatches(matches);
+  const sized = matches.filter(isSquadKnown);
   const sizes = squadSizes(sized);
   const afterResultSplits = afterResult(matches);
   const strength = byOpponentStrength(matches);

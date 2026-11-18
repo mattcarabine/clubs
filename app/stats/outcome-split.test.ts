@@ -715,7 +715,7 @@ describe("withAndWithout", () => {
   it("counts a Match they dropped out of neither with them nor without (CLUBS-103)", () => {
     const wins = many(3, () => match("W"));
     const missed = many(3, () => match("L"));
-    const left = many(2, () => match("L", { droppedOut: ["a"] }));
+    const left = many(2, () => match("L", { squadSize: 0, droppedOut: ["a"] }));
     const matches = [...wins, ...missed, ...left];
     const rows = withAndWithout(matches, [
       ...wins.map((m) => appearance(m.matchId, "a")),
@@ -788,7 +788,7 @@ describe("positionOutliers", () => {
     const asForward = [match("W"), match("W"), match("L")]; // 67%
     const others = [match("L"), match("L"), match("W")]; // 33%
     // Three Wins they dropped out of would lift "every other Match" to 67%.
-    const left = many(3, () => match("W", { droppedOut: ["a"] }));
+    const left = many(3, () => match("W", { squadSize: 0, droppedOut: ["a"] }));
     const apps = [
       ...asForward.map((m) => appearance(m.matchId, "a", "Forward")),
       ...others.map((m) => appearance(m.matchId, "a", "Midfielder")),

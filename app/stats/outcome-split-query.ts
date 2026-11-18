@@ -55,10 +55,7 @@ export interface OutcomeSplitPage extends OutcomeSplit {
    */
   choices: ChoiceBreakdown | null;
   players: PlayerSplitRow[];
-  /**
-   * Our record by the exact set of Squad Members playing. A Match one of
-   * ours dropped out of is in none: who played it is not known (CLUBS-103).
-   */
+  /** Our record by the exact set of Squad Members playing (`lineupRecords`). */
   lineups: LineupRecord[];
   /** One per Match, oldest first, matching `rollingWinPercentage`. */
   playedAt: Date[];
@@ -75,9 +72,6 @@ export async function getOutcomeSplit(
       splitData(db, filter, {}, true),
       clubChoiceCounts(db, filter),
     ]);
-  const incomplete = new Set(
-    splitMatches.filter((m) => m.droppedOut.length > 0).map((m) => m.matchId),
-  );
   return {
     ...split,
     drivers: split.ready
@@ -85,7 +79,7 @@ export async function getOutcomeSplit(
       : { win: [], lose: [] },
     choices: choiceBreakdown(choices.players, choices.opponents),
     players: playerSplits(squad, mainPositionOnly, split.withWithout),
-    lineups: lineupRecords(squad.filter((a) => !incomplete.has(a.matchId))),
+    lineups: lineupRecords(squad),
     playedAt: summaries.map((m) => m.playedAt),
   };
 }
@@ -260,7 +254,7 @@ interface MatchTotals {
   squadSize: number;
   /** The Opponent's Appearances with minutes: its humans, since EA lists no AI players. */
   opponentHumans: number;
-  /** Our Club's players who dropped out (`isPlayedAppearance`): EA kept nothing of theirs. */
+  /** Our Club's players who dropped out (no minutes): EA kept nothing of theirs. */
   droppedOut: string[];
 }
 
@@ -285,9 +279,7 @@ async function clubMatchTotals(
       ours: sql<boolean>`${appearances.clubId} <> ${matches.opponentClubId}`.mapWith(
         Boolean,
       ),
-      players: sql<number>`coalesce(sum(${isPlayedAppearanceSql}), 0)`.mapWith(
-        Number,
-      ),
+      players: totalOf(isPlayedAppearanceSql),
       droppedOut: sql<
         string | null
       >`group_concat(case when not ${isPlayedAppearanceSql} then ${appearances.playerId} end)`,
@@ -374,13 +366,14 @@ async function clubMatchTotals(
     };
     entry.secondsPlayed = Math.max(entry.secondsPlayed, secondsPlayed ?? 0);
     byMatch.set(matchId, entry);
-    if (!ours) entry.opponentHumans = players;
-    if (droppedOut) {
-      if (ours) entry.droppedOut = droppedOut.split(",");
-      continue;
+    if (ours) {
+      entry.droppedOut = droppedOut?.split(",") ?? [];
+      // Who played is unknown once one of ours dropped out.
+      if (!droppedOut) entry.squadSize = players;
+    } else {
+      entry.opponentHumans = players;
     }
-    if (ours) entry.squadSize = players;
-    entry[ours ? "ours" : "opponent"] = stats;
+    if (!droppedOut) entry[ours ? "ours" : "opponent"] = stats;
   }
   return byMatch;
 }

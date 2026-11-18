@@ -11,6 +11,7 @@ import {
   not,
   sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 
 import type { Db } from "~/db/client";
 import { appearances, clubs, matches, players } from "~/db/schema";
@@ -64,6 +65,13 @@ export interface SquadAppearance extends AppearanceStats {
   outcome: Outcome;
   dnf: boolean;
   /**
+   * Whether a teammate dropped out of the Match (CLUBS-103): EA kept nothing
+   * of what they did, so the Appearances on record are not the whole team.
+   * Anything set against the team's total, or about who played together,
+   * leaves the Match out.
+   */
+  teammateDroppedOut: boolean;
+  /**
    * The Appearance's Match Events, only with `withEvents`; null when EA sent
    * none. Work figures out from them in the loader: the map itself is too
    * big to send to the browser.
@@ -98,6 +106,13 @@ function eventsSelection(withEvents: boolean | readonly string[]) {
   );
 }
 
+/** Whether anyone else at the Appearance's club has a 0-minute Appearance in its Match. */
+const dropped = alias(appearances, "dropped");
+const teammateDroppedOut =
+  sql<boolean>`exists (select 1 from ${appearances} as "dropped" where ${dropped.matchId} = ${appearances.matchId} and ${dropped.clubId} = ${appearances.clubId} and ${dropped.secondsPlayed} = 0)`.mapWith(
+    Boolean,
+  );
+
 export async function squadAppearances(
   db: Db,
   filter: StatsFilter,
@@ -107,6 +122,7 @@ export async function squadAppearances(
     .select({
       appearance: appearanceColumns,
       events: eventsSelection(withEvents),
+      teammateDroppedOut,
       personaName: players.personaName,
       match: matches,
       opponentName: clubs.name,
@@ -126,7 +142,14 @@ export async function squadAppearances(
     .orderBy(asc(matches.playedAt), asc(appearances.playerId));
 
   return rows.map(
-    ({ appearance, events, personaName, match, opponentName }) => {
+    ({
+      appearance,
+      events,
+      teammateDroppedOut,
+      personaName,
+      match,
+      opponentName,
+    }) => {
       const { matchId, clubId: _, positionGroup, ...stats } = appearance;
       return {
         ...stats,
@@ -142,6 +165,7 @@ export async function squadAppearances(
         goalsAgainst: match.goalsAgainst,
         outcome: toOutcome(match.result),
         dnf: match.dnf,
+        teammateDroppedOut,
       };
     },
   );
