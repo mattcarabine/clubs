@@ -49,6 +49,7 @@ function inMatch(
     goalsFor: 0,
     outcome: "W",
     dnf: false,
+    teammateDroppedOut: false,
     ...overrides,
   };
 }
@@ -243,6 +244,24 @@ describe("teamShares", () => {
       { id: "ballWon", own: 2, team: 4, share: 50, better: "high" },
       { id: "ballLost", own: 1, team: 4, share: 25, better: "low" },
     ]);
+  });
+
+  it("leaves out a Match a teammate dropped out of: the team's total is not whole (CLUBS-103)", () => {
+    const whole = inMatch({ "217": 1 }, { matchId: "a" });
+    const short = inMatch(
+      { "217": 5 },
+      { matchId: "b", teammateDroppedOut: true },
+    );
+    const team = [
+      whole,
+      short,
+      inMatch({ "217": 3 }, { matchId: "a", playerId: "p2" }),
+    ];
+    const { shares, evenShare } = teamShares([whole, short], team);
+    expect(shares).toEqual([
+      { id: "shotsOnTarget", own: 1, team: 4, share: 25, better: "high" },
+    ]);
+    expect(evenShare).toBe(50);
   });
 
   it("counts a rage quit's real score in the goals share", () => {

@@ -753,6 +753,8 @@ export interface MatchEventAppearance extends EventAppearance {
   goalsFor: number;
   outcome: Outcome;
   dnf: boolean;
+  /** `SquadAppearance.teammateDroppedOut`: the team's total in the Match is not whole. */
+  teammateDroppedOut: boolean;
 }
 
 /** A Squad Member's part of Our Club's total in the Matches they played. */
@@ -776,9 +778,12 @@ export interface TeamShares {
   evenShare: number | null;
 }
 
-/** A Squad Member's totals beside Our Club's, over the Matches they count in. */
+/**
+ * A Squad Member's totals beside Our Club's, over the Matches they count in
+ * and no teammate dropped out of (CLUBS-103).
+ */
 export interface TeamInTheirMatches {
-  /** Their Appearances with Match Events and minutes. */
+  /** Their Appearances with Match Events and minutes, in a Match with the whole team on record. */
   counted: MatchEventAppearance[];
   mine: EventTotals;
   /** Every teammate's in those Matches, theirs included. */
@@ -790,7 +795,9 @@ export function teamInTheirMatches(
   own: readonly MatchEventAppearance[],
   team: readonly MatchEventAppearance[],
 ): TeamInTheirMatches {
-  const counted = own.filter((a) => a.events && a.secondsPlayed > 0);
+  const counted = own.filter(
+    (a) => a.events && a.secondsPlayed > 0 && !a.teammateDroppedOut,
+  );
   const matchIds = new Set(counted.map((a) => a.matchId));
   return {
     counted,

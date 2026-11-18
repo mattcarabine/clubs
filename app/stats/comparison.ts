@@ -127,7 +127,6 @@ export function compareSides(
     sides: inputs.map(({ appearances }) => {
       const own = inMainPosition(appearances, mainPositionOnly);
       const selected = inScope(own);
-      // A 0-minute Appearance counts in the result, not the stats.
       const counted = selected.filter(isCountedAppearance);
       const events = eventTotals(counted);
       return {

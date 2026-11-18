@@ -88,6 +88,8 @@ export interface LineupAppearance extends TrendMatch {
   matchId: string;
   playerId: string;
   name: string;
+  /** `SquadAppearance.teammateDroppedOut`: who played the Match is not known. */
+  teammateDroppedOut: boolean;
 }
 
 /** One set of Squad Members who played together, and how they got on. */
@@ -110,24 +112,24 @@ export const MIN_LINEUP_MATCHES = 3;
 /**
  * Groups Our Club's Appearances by Match, then Matches by the exact set of
  * Squad Members who played, keeping sets with at least `minMatches` Matches.
- * Most Matches first, then best win %.
+ * A Match a teammate dropped out of is in none (CLUBS-103). Most Matches
+ * first, then best win %.
  */
 export function lineupRecords(
   appearances: readonly LineupAppearance[],
   minMatches = MIN_LINEUP_MATCHES,
 ): LineupRecord[] {
-  const lineups = [...groupBy(appearances, (a) => a.matchId).values()].map(
-    (apps) => {
-      const players = [...apps].sort((a, b) =>
-        a.playerId.localeCompare(b.playerId),
-      );
-      return {
-        key: players.map((p) => p.playerId).join("+"),
-        names: players.map((p) => p.name),
-        match: apps[0],
-      };
-    },
-  );
+  const whole = appearances.filter((a) => !a.teammateDroppedOut);
+  const lineups = [...groupBy(whole, (a) => a.matchId).values()].map((apps) => {
+    const players = [...apps].sort((a, b) =>
+      a.playerId.localeCompare(b.playerId),
+    );
+    return {
+      key: players.map((p) => p.playerId).join("+"),
+      names: players.map((p) => p.name),
+      match: apps[0],
+    };
+  });
 
   return [...groupBy(lineups, (l) => l.key).entries()]
     .filter(([, matches]) => matches.length >= minMatches)

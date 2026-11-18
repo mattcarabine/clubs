@@ -5,7 +5,7 @@
  * Appearance. The Match page's "Why we dropped points" panel (CLUBS-27)
  * reads the same totals.
  */
-import { and, count, eq, max, or, type SQL, sql } from "drizzle-orm";
+import { count, eq, max, or, type SQL, sql } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
 import type { Db } from "~/db/client";
@@ -39,6 +39,7 @@ import {
   type SquadAppearance,
   squadAppearances,
 } from "./squad";
+import { type LineupRecord, lineupRecords } from "./trends";
 
 export interface OutcomeSplitOptions {
   /** Counts each Squad Member's Main Position only, in the per-player rows alone. */
@@ -54,6 +55,8 @@ export interface OutcomeSplitPage extends OutcomeSplit {
    */
   choices: ChoiceBreakdown | null;
   players: PlayerSplitRow[];
+  /** Our record by the exact set of Squad Members playing (`lineupRecords`). */
+  lineups: LineupRecord[];
   /** One per Match, oldest first, matching `rollingWinPercentage`. */
   playedAt: Date[];
 }
@@ -76,6 +79,7 @@ export async function getOutcomeSplit(
       : { win: [], lose: [] },
     choices: choiceBreakdown(choices.players, choices.opponents),
     players: playerSplits(squad, mainPositionOnly, split.withWithout),
+    lineups: lineupRecords(squad),
     playedAt: summaries.map((m) => m.playedAt),
   };
 }
@@ -147,6 +151,7 @@ async function splitData(
       ...performanceOf(sides),
       squadSize: sides?.squadSize ?? 0,
       opponentHumans: sides?.opponentHumans ?? 0,
+      droppedOut: sides?.droppedOut ?? [],
       session,
       sessionPlace: place,
       ratingGap: ratingGap(m.skillRatings),
@@ -242,10 +247,15 @@ interface MatchTotals {
   opponent?: ClubMatchTotals;
   /** The longest Appearance on either side: how long the Match ran. */
   secondsPlayed: number;
-  /** Our Club's Appearances with minutes, a DNF we quit's included. */
+  /**
+   * Our Club's Appearances with minutes, a DNF we quit's included; 0 when
+   * one of ours dropped out, since who played is then unknown.
+   */
   squadSize: number;
   /** The Opponent's Appearances with minutes: its humans, since EA lists no AI players. */
   opponentHumans: number;
+  /** Our Club's players who dropped out (no minutes): EA kept nothing of theirs. */
+  droppedOut: string[];
 }
 
 function total(column: SQLiteColumn): SQL<number> {
@@ -254,8 +264,10 @@ function total(column: SQLiteColumn): SQL<number> {
 
 /**
  * Each club's Appearance totals in every Match `where` selects, by Match ID.
- * 0-minute Appearances are left out. A club's totals in a Match it rage
- * quit count too, marked `quit` (`counted.ts`).
+ * A club with a player who dropped out (a 0-minute Appearance, CLUBS-103)
+ * has no totals in that Match: EA kept nothing of what that player did, so
+ * the rest of the side is not the whole of it. A club's totals in a Match
+ * it rage quit count too, marked `quit` (`counted.ts`).
  */
 async function clubMatchTotals(
   db: Db,
@@ -267,7 +279,10 @@ async function clubMatchTotals(
       ours: sql<boolean>`${appearances.clubId} <> ${matches.opponentClubId}`.mapWith(
         Boolean,
       ),
-      players: count(),
+      players: totalOf(isPlayedAppearanceSql),
+      droppedOut: sql<
+        string | null
+      >`group_concat(case when not ${isPlayedAppearanceSql} then ${appearances.playerId} end)`,
       goals: total(appearances.goals),
       secondsPlayed: max(appearances.secondsPlayed),
       shots: total(appearances.shots),
@@ -304,7 +319,7 @@ async function clubMatchTotals(
     })
     .from(appearances)
     .innerJoin(matches, eq(matches.matchId, appearances.matchId))
-    .where(and(where, isPlayedAppearanceSql))
+    .where(where)
     .groupBy(appearances.matchId, appearances.clubId);
 
   const byMatch = new Map<string, MatchTotals>();
@@ -313,6 +328,7 @@ async function clubMatchTotals(
       matchId,
       ours,
       players,
+      droppedOut,
       secondsPlayed,
       dnf,
       result,
@@ -346,15 +362,18 @@ async function clubMatchTotals(
       secondsPlayed: 0,
       squadSize: 0,
       opponentHumans: 0,
+      droppedOut: [],
     };
     entry.secondsPlayed = Math.max(entry.secondsPlayed, secondsPlayed ?? 0);
+    byMatch.set(matchId, entry);
     if (ours) {
-      entry.squadSize = players;
+      entry.droppedOut = droppedOut?.split(",") ?? [];
+      // Who played is unknown once one of ours dropped out.
+      if (!droppedOut) entry.squadSize = players;
     } else {
       entry.opponentHumans = players;
     }
-    entry[ours ? "ours" : "opponent"] = stats;
-    byMatch.set(matchId, entry);
+    if (!droppedOut) entry[ours ? "ours" : "opponent"] = stats;
   }
   return byMatch;
 }

@@ -3,7 +3,12 @@
 import type { Locator, Page } from "@playwright/test";
 
 import type { AddMatchBody } from "./fake-ea/control.ts";
-import { loss, OUR_CLUB_ID, win } from "./support/match-builders.ts";
+import {
+  DROPPED_OUT,
+  loss,
+  OUR_CLUB_ID,
+  win,
+} from "./support/match-builders.ts";
 import { expect, test } from "./support/test.ts";
 
 // CLUBS-85: the Squad table and profiles rebuilt around Match Events.
@@ -129,6 +134,42 @@ test("a profile leads with the Squad Member's share of what the team did", async
     "50%■2 of 4, an even share (50%)",
   );
   await expect(tile("Of the ball we lost")).toContainText(
+    "75%■3 of 4, more than an even share (50%)",
+  );
+});
+
+test("a Match a teammate dropped out of is left out of the shares of the team (CLUBS-103)", async ({
+  page,
+  fakeEa,
+  triggerPoll,
+}) => {
+  // Kabeeble has 3 of our 4 shots on target in a Match played out.
+  const whole = bare(
+    win({
+      goalsFor: 3,
+      goalsAgainst: 1,
+      playedAt: new Date(Date.now() - 3_600_000),
+    }),
+  );
+  playing(whole, OUR_CLUB_ID, KABEEBLE, { 214: 1, 217: 3 });
+  playing(whole, OUR_CLUB_ID, TINBS, { 217: 1 });
+  // In the next tinbs dropped out: EA kept nothing of theirs, so Kabeeble's
+  // 5 are not 5 of the team's 5.
+  const short = bare(win({ goalsFor: 2, goalsAgainst: 0 }));
+  playing(short, OUR_CLUB_ID, KABEEBLE, { 214: 2, 217: 5 });
+  Object.assign(short.match.players[OUR_CLUB_ID][TINBS], DROPPED_OUT);
+  await fakeEa.addMatch(whole);
+  await fakeEa.addMatch(short);
+  await triggerPoll();
+
+  await page.goto(PROFILE);
+  const shares = section(page, "Share of the team");
+  const tile = (label: string) =>
+    shares.locator("div").filter({
+      has: page.getByText(label, { exact: true }),
+    });
+  await expect(tile("Of our goals, scored or set up")).toContainText("1 of 3");
+  await expect(tile("Of our shots on target")).toContainText(
     "75%■3 of 4, more than an even share (50%)",
   );
 });

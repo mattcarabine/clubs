@@ -85,12 +85,14 @@ describe("lineupRecords", () => {
     outcome: Outcome,
     goalsFor: number,
     goalsAgainst: number,
+    teammateDroppedOut = false,
   ): LineupAppearance[] =>
     playerIds.map((playerId) => ({
       ...match(outcome, goalsFor, goalsAgainst),
       matchId,
       playerId,
       name: `Player ${playerId}`,
+      teammateDroppedOut,
     }));
 
   const four = ["4", "1", "3", "2"];
@@ -115,6 +117,18 @@ describe("lineupRecords", () => {
         winPercentage: expect.closeTo(33.33, 2),
       },
     ]);
+  });
+
+  it("leaves out a Match a teammate dropped out of (CLUBS-103)", () => {
+    const records = lineupRecords(
+      [
+        ...lineup("m1", ["1", "2"], "W", 1, 0),
+        // "3" dropped out of this one, so "1" and "2" were not the line-up.
+        ...lineup("m2", ["1", "2"], "L", 0, 1, true),
+      ],
+      1,
+    );
+    expect(records).toMatchObject([{ key: "1+2", played: 1, wins: 1 }]);
   });
 
   it("takes a lower minimum", () => {

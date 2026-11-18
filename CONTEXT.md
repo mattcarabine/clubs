@@ -65,7 +65,7 @@ A League or Playoff Match; the default scope for all stats.
 _Avoid_: Ranked match, real match
 
 **Appearance**:
-One player's participation in one Match, with that player's stats for it. An Appearance with no minutes and nothing done (EA's record of a player who never took part, rated 3.0 with every stat zeroed) is never counted, and the Match page tags it "Rage quit" with no stats. Every other Appearance counts. A player who left early has their named stats zeroed by EA but keeps their Match Events, so the Poll restores their goals, assists, shots and passes from those (CLUBS-87); a player whose minutes EA lost but whose stats it kept gets the Match's longest minutes and no rating.
+One player's participation in one Match, with that player's stats for it. An Appearance with no minutes and nothing done (EA's record of a player who dropped out, for instance by closing the game: rated 3.0 with every stat zeroed and no Match Events, whenever they left) is never counted, and the Match page tags it "Rage quit" with no stats. The Match then says nothing about them either way: it is neither a Match with them nor one without them, and their club's totals in it are not used, in a comparison or as what a teammate's share is measured against (CLUBS-103). Every other Appearance counts. A player who left early has their named stats zeroed by EA but keeps their Match Events, so the Poll restores their goals, assists, shots and passes from those (CLUBS-87); a player whose minutes EA lost but whose stats it kept gets the Match's longest minutes and no rating.
 _Avoid_: Cap, game played, player-match
 
 **Match Events**:
